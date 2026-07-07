@@ -27,8 +27,10 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
           // TODO: спокойный экран ошибки, не стектрейс.
           error: (e, _) => Center(child: Text('$e')),
           data: (list) {
-            final card = list[_index];
-            final isLast = _index == list.length - 1;
+            // Защита от RangeError, если данные обновились и список стал короче.
+            final index = _index.clamp(0, list.length - 1);
+            final card = list[index];
+            final isLast = index == list.length - 1;
             return Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
