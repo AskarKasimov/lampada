@@ -33,8 +33,9 @@ iOS — первый приоритет, Android — второй.
 ### 4. Ошибки — через Result, не исключения
 
 Usecase и репозиторий возвращают `Result<T>` (`lib/core/result/result.dart`).
-Исключения гасятся в repository impl:
-`lib/features/daily_cards/data/repositories/day_cards_repository_impl.dart`.
+Репозиторий сам получает данные (отдельного datasource-слоя нет) и гасит
+исключения:
+`lib/features/daily_cards/data/repositories/mock_day_cards_repository.dart`.
 
 ### 5. Riverpod
 

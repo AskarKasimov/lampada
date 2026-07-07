@@ -1,16 +1,27 @@
+import '../../../../core/result/result.dart';
+import '../../domain/entities/day_card.dart';
+import '../../domain/repositories/day_cards_repository.dart';
 import '../dto/day_card_dto.dart';
+import '../mappers/day_card_mapper.dart';
 
-/// Источник дневного контента. Может бросать исключения —
-/// их гасит repository impl.
-abstract interface class DayCardsRemoteDatasource {
-  Future<List<DayCardDto>> fetchCardsFor(DateTime date);
-}
-
-/// Мок до реального парсинга Азбуки веры.
+/// Мок-реализация до реального парсинга Азбуки веры.
+/// Репозиторий сам отвечает за получение данных (без отдельного datasource);
+/// единственное место, где исключения data-слоя превращаются в Failure.
 /// TODO: заменить на HTTP-реализацию (дневные фиды Азбуки).
-class MockDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
+class MockDayCardsRepository implements DayCardsRepository {
+  const MockDayCardsRepository();
+
   @override
-  Future<List<DayCardDto>> fetchCardsFor(DateTime date) async {
+  Future<Result<List<DayCard>>> getCardsFor(DateTime date) async {
+    try {
+      final dtos = await _fetchCardsFor(date);
+      return Success(dtos.map((dto) => dto.toEntity()).toList());
+    } on Exception catch (e) {
+      return Failure(AppFailure('Не удалось загрузить карточки дня', cause: e));
+    }
+  }
+
+  Future<List<DayCardDto>> _fetchCardsFor(DateTime date) async {
     return const [
       DayCardDto(
         id: 'quote-2026-07-07',

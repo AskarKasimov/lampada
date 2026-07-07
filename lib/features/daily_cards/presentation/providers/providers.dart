@@ -1,22 +1,17 @@
 // lib/features/daily_cards/presentation/providers/providers.dart
 //
 // Единственное место, где presentation видит data:
-// здесь склеиваются datasource → repository → usecase.
+// здесь склеиваются repository → usecase.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
-import '../../data/datasources/day_cards_remote_datasource.dart';
-import '../../data/repositories/day_cards_repository_impl.dart';
+import '../../data/repositories/mock_day_cards_repository.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/usecases/get_today_cards.dart';
 
-final dayCardsDatasourceProvider = Provider<DayCardsRemoteDatasource>(
-  (ref) => MockDayCardsRemoteDatasource(),
-);
-
 final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
-  (ref) => DayCardsRepositoryImpl(ref.watch(dayCardsDatasourceProvider)),
+  (ref) => const MockDayCardsRepository(),
 );
 
 final getTodayCardsProvider = Provider<GetTodayCards>(
