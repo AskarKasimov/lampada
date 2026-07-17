@@ -11,7 +11,6 @@ abstract class DayCardDto with _$DayCardDto {
     required String id,
     /// Строковый тип из источника: quote | advice | basics | reading.
     required String type,
-    required String title,
     required String body,
     required String source,
   }) = _DayCardDto;

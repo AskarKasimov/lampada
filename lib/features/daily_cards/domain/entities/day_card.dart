@@ -12,7 +12,6 @@ abstract class DayCard with _$DayCard {
   const factory DayCard({
     required String id,
     required CardType type,
-    required String title,
     required String body,
     /// Источник на Азбуке веры (автор/страница).
     required String source,

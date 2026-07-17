@@ -7,7 +7,6 @@ extension DayCardDtoMapper on DayCardDto {
   DayCard toEntity() => DayCard(
         id: id,
         type: CardType.values.byName(type),
-        title: title,
         body: body,
         source: source,
       );

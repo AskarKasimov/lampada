@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 mixin _$DayCardDto {
 
  String get id;/// Строковый тип из источника: quote | advice | basics | reading.
- String get type; String get title; String get body; String get source;
+ String get type; String get body; String get source;
 /// Create a copy of DayCardDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,16 @@ $DayCardDtoCopyWith<DayCardDto> get copyWith => _$DayCardDtoCopyWithImpl<DayCard
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayCardDto&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.source, source) || other.source == source));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayCardDto&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.body, body) || other.body == body)&&(identical(other.source, source) || other.source == source));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,type,title,body,source);
+int get hashCode => Object.hash(runtimeType,id,type,body,source);
 
 @override
 String toString() {
-  return 'DayCardDto(id: $id, type: $type, title: $title, body: $body, source: $source)';
+  return 'DayCardDto(id: $id, type: $type, body: $body, source: $source)';
 }
 
 
@@ -49,7 +49,7 @@ abstract mixin class $DayCardDtoCopyWith<$Res>  {
   factory $DayCardDtoCopyWith(DayCardDto value, $Res Function(DayCardDto) _then) = _$DayCardDtoCopyWithImpl;
 @useResult
 $Res call({
- String id, String type, String title, String body, String source
+ String id, String type, String body, String source
 });
 
 
@@ -66,11 +66,10 @@ class _$DayCardDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayCardDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? title = null,Object? body = null,Object? source = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? body = null,Object? source = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
 as String,
@@ -158,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String type,  String title,  String body,  String source)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String type,  String body,  String source)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DayCardDto() when $default != null:
-return $default(_that.id,_that.type,_that.title,_that.body,_that.source);case _:
+return $default(_that.id,_that.type,_that.body,_that.source);case _:
   return orElse();
 
 }
@@ -179,10 +178,10 @@ return $default(_that.id,_that.type,_that.title,_that.body,_that.source);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String type,  String title,  String body,  String source)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String type,  String body,  String source)  $default,) {final _that = this;
 switch (_that) {
 case _DayCardDto():
-return $default(_that.id,_that.type,_that.title,_that.body,_that.source);case _:
+return $default(_that.id,_that.type,_that.body,_that.source);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +198,10 @@ return $default(_that.id,_that.type,_that.title,_that.body,_that.source);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String type,  String title,  String body,  String source)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String type,  String body,  String source)?  $default,) {final _that = this;
 switch (_that) {
 case _DayCardDto() when $default != null:
-return $default(_that.id,_that.type,_that.title,_that.body,_that.source);case _:
+return $default(_that.id,_that.type,_that.body,_that.source);case _:
   return null;
 
 }
@@ -214,13 +213,12 @@ return $default(_that.id,_that.type,_that.title,_that.body,_that.source);case _:
 @JsonSerializable()
 
 class _DayCardDto implements DayCardDto {
-  const _DayCardDto({required this.id, required this.type, required this.title, required this.body, required this.source});
+  const _DayCardDto({required this.id, required this.type, required this.body, required this.source});
   factory _DayCardDto.fromJson(Map<String, dynamic> json) => _$DayCardDtoFromJson(json);
 
 @override final  String id;
 /// Строковый тип из источника: quote | advice | basics | reading.
 @override final  String type;
-@override final  String title;
 @override final  String body;
 @override final  String source;
 
@@ -237,16 +235,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayCardDto&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.source, source) || other.source == source));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayCardDto&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.body, body) || other.body == body)&&(identical(other.source, source) || other.source == source));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,type,title,body,source);
+int get hashCode => Object.hash(runtimeType,id,type,body,source);
 
 @override
 String toString() {
-  return 'DayCardDto(id: $id, type: $type, title: $title, body: $body, source: $source)';
+  return 'DayCardDto(id: $id, type: $type, body: $body, source: $source)';
 }
 
 
@@ -257,7 +255,7 @@ abstract mixin class _$DayCardDtoCopyWith<$Res> implements $DayCardDtoCopyWith<$
   factory _$DayCardDtoCopyWith(_DayCardDto value, $Res Function(_DayCardDto) _then) = __$DayCardDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String type, String title, String body, String source
+ String id, String type, String body, String source
 });
 
 
@@ -274,11 +272,10 @@ class __$DayCardDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayCardDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? title = null,Object? body = null,Object? source = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? body = null,Object? source = null,}) {
   return _then(_DayCardDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
 as String,

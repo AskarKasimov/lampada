@@ -16,7 +16,6 @@ class _FakeRepository implements DayCardsRepository {
 DayCard _card(CardType type) => DayCard(
       id: type.name,
       type: type,
-      title: 't',
       body: 'b',
       source: 's',
     );
