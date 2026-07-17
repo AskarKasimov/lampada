@@ -27,3 +27,7 @@ final todayCardsProvider = FutureProvider<List<DayCard>>((ref) async {
     Failure(failure: final f) => throw f,
   };
 });
+
+/// Серия «Лампадка» — тихий фоновый индикатор, не KPI.
+/// TODO: реальный подсчёт по календарю посещений вместо заглушки.
+final streakDaysProvider = Provider<int>((ref) => 12);
