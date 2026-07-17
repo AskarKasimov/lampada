@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
@@ -14,12 +13,13 @@ abstract final class AppTheme {
         ),
       );
 
-  /// Курсивный serif для цитаты/мысли дня — единственное место, где
-  /// используется Lora, остальной UI — системный шрифт.
-  static TextStyle get quoteStyle => GoogleFonts.lora(
-        fontSize: 24,
-        height: 1.6,
-        fontStyle: FontStyle.italic,
-        color: AppColors.ink,
-      );
+  /// Курсивный serif (шрифт-ассет Lora-Italic.ttf) для цитаты/мысли дня —
+  /// единственное место, где используется Lora, остальной UI — системный шрифт.
+  static const quoteStyle = TextStyle(
+    fontFamily: 'Lora',
+    fontSize: 24,
+    height: 1.6,
+    fontStyle: FontStyle.italic,
+    color: AppColors.ink,
+  );
 }

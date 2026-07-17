@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
 import 'streak_flame.dart';
 
 /// Экран завершения сессии: сегодняшняя порция получена, можно остановиться.
@@ -25,12 +25,7 @@ class SessionDoneView extends StatelessWidget {
         Text(
           'Мысль дня получена.\nМожно остановиться — или вернуться завтра.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.lora(
-            fontSize: 22,
-            height: 1.55,
-            fontStyle: FontStyle.italic,
-            color: AppColors.ink,
-          ),
+          style: AppTheme.quoteStyle.copyWith(fontSize: 22, height: 1.55),
         ),
         const SizedBox(height: 20),
         Text(
