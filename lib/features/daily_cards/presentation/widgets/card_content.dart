@@ -6,6 +6,8 @@ import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
 
 /// Одна карточка дня: плашка-тип, курсивная мысль, источник.
+/// Вызывающий обязан передать `key: ValueKey(card.id)` — иначе
+/// AnimatedSwitcher не увидит смену карточки и не проиграет переход.
 class CardContent extends StatelessWidget {
   const CardContent({super.key, required this.card});
 
@@ -16,7 +18,6 @@ class CardContent extends StatelessWidget {
     final style = card.type.style;
 
     return Column(
-      key: ValueKey(card.id),
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(

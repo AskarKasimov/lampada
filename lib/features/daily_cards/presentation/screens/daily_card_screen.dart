@@ -85,16 +85,21 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                                     streakDays: streakDays,
                                     onRestart: _restart,
                                   )
-                                : CardContent(card: list[index]),
+                                : CardContent(
+                                    key: ValueKey(list[index].id),
+                                    card: list[index],
+                                  ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 20),
                       ProgressDots(
-                        count: list.length,
-                        currentIndex: index,
+                        // +1 — отдельная точка для экрана завершения дня.
+                        count: list.length + 1,
+                        currentIndex: _done ? list.length : index,
                         accentColors: [
                           for (final card in list) card.type.style.accent,
+                          AppColors.accent,
                         ],
                       ),
                       if (!_done) ...[
