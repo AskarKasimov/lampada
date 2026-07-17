@@ -33,31 +33,29 @@ void main() {
         child: const MaterialApp(home: DailyCardScreen()),
       );
 
+  // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
+  // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
+  Future<void> settleCard(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+  }
+
   testWidgets('проходит все карточки дня и доходит до экрана завершения',
       (tester) async {
     await tester.pumpWidget(buildApp());
-    await tester.pump();
-    // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
-    // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
-    await tester.pump(const Duration(milliseconds: 600));
+    await settleCard(tester);
 
     expect(find.text('Первая карточка'), findsOneWidget);
     expect(find.text('Дальше'), findsOneWidget);
 
     await tester.tap(find.text('Дальше'));
-    await tester.pump();
-    // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
-    // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
-    await tester.pump(const Duration(milliseconds: 600));
+    await settleCard(tester);
 
     expect(find.text('Последняя карточка'), findsOneWidget);
     expect(find.text('Готово'), findsOneWidget);
 
     await tester.tap(find.text('Готово'));
-    await tester.pump();
-    // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
-    // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
-    await tester.pump(const Duration(milliseconds: 600));
+    await settleCard(tester);
 
     expect(find.textContaining('Мысль дня получена'), findsOneWidget);
     expect(find.text('Пройти сначала'), findsOneWidget);
@@ -65,29 +63,58 @@ void main() {
 
   testWidgets('«Пройти сначала» возвращает к первой карточке', (tester) async {
     await tester.pumpWidget(buildApp());
-    await tester.pump();
-    // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
-    // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
-    await tester.pump(const Duration(milliseconds: 600));
+    await settleCard(tester);
 
     await tester.tap(find.text('Дальше'));
-    await tester.pump();
-    // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
-    // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
-    await tester.pump(const Duration(milliseconds: 600));
+    await settleCard(tester);
     await tester.tap(find.text('Готово'));
-    await tester.pump();
-    // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
-    // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
-    await tester.pump(const Duration(milliseconds: 600));
+    await settleCard(tester);
 
     await tester.tap(find.text('Пройти сначала'));
-    await tester.pump();
-    // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
-    // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
-    await tester.pump(const Duration(milliseconds: 600));
+    await settleCard(tester);
 
     expect(find.text('Первая карточка'), findsOneWidget);
     expect(find.text('Дальше'), findsOneWidget);
+  });
+
+  testWidgets('свайп влево листает на следующую карточку и до завершения',
+      (tester) async {
+    await tester.pumpWidget(buildApp());
+    await settleCard(tester);
+
+    await tester.fling(find.text('Первая карточка'), const Offset(-300, 0), 800);
+    await settleCard(tester);
+
+    expect(find.text('Последняя карточка'), findsOneWidget);
+
+    await tester.fling(find.text('Последняя карточка'), const Offset(-300, 0), 800);
+    await settleCard(tester);
+
+    expect(find.textContaining('Мысль дня получена'), findsOneWidget);
+  });
+
+  testWidgets('свайп вправо листает назад, в том числе с экрана завершения',
+      (tester) async {
+    await tester.pumpWidget(buildApp());
+    await settleCard(tester);
+
+    await tester.tap(find.text('Дальше'));
+    await settleCard(tester);
+    await tester.tap(find.text('Готово'));
+    await settleCard(tester);
+    expect(find.textContaining('Мысль дня получена'), findsOneWidget);
+
+    await tester.fling(find.textContaining('Мысль дня получена'), const Offset(300, 0), 800);
+    await settleCard(tester);
+    expect(find.text('Последняя карточка'), findsOneWidget);
+
+    await tester.fling(find.text('Последняя карточка'), const Offset(300, 0), 800);
+    await settleCard(tester);
+    expect(find.text('Первая карточка'), findsOneWidget);
+
+    // На первой карточке свайп вправо — некуда возвращаться, ничего не меняется.
+    await tester.fling(find.text('Первая карточка'), const Offset(300, 0), 800);
+    await settleCard(tester);
+    expect(find.text('Первая карточка'), findsOneWidget);
   });
 }

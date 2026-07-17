@@ -9,10 +9,15 @@ import '../widgets/progress_dots.dart';
 import '../widgets/session_done_view.dart';
 import '../widgets/streak_flame.dart';
 
+/// Порог скорости свайпа (лог.px/с), после которого жест засчитывается
+/// как «Дальше»/«Назад» — короткий вялый драг игнорируется.
+const _swipeVelocityThreshold = 300.0;
+
 /// Ядро продукта: ОДНА карточка на весь экран.
 /// «Дальше» — добровольно; после первой карточки сессия уже полноценна.
 /// На последней карточке — «Готово» и переход к экрану завершения дня.
-/// TODO: жесты (свайп), переход между днями.
+/// Листать можно свайпом влево/вправо — так же, как кнопкой.
+/// TODO: переход между днями.
 class DailyCardScreen extends ConsumerStatefulWidget {
   const DailyCardScreen({super.key});
 
@@ -32,10 +37,27 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
     }
   }
 
+  void _previous() {
+    if (_done) {
+      setState(() => _done = false);
+    } else if (_index > 0) {
+      setState(() => _index--);
+    }
+  }
+
   void _restart() => setState(() {
         _index = 0;
         _done = false;
       });
+
+  void _handleSwipe(DragEndDetails details, int cardCount) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity <= -_swipeVelocityThreshold) {
+      _next(cardCount);
+    } else if (velocity >= _swipeVelocityThreshold) {
+      _previous();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,30 +87,35 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                   child: Column(
                     children: [
                       Expanded(
-                        child: Center(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 500),
-                            transitionBuilder: (child, animation) =>
-                                FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: Tween(
-                                  begin: const Offset(0, 0.02),
-                                  end: Offset.zero,
-                                ).animate(animation),
-                                child: child,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onHorizontalDragEnd: (details) =>
+                              _handleSwipe(details, list.length),
+                          child: Center(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 500),
+                              transitionBuilder: (child, animation) =>
+                                  FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween(
+                                    begin: const Offset(0, 0.02),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
                               ),
+                              child: _done
+                                  ? SessionDoneView(
+                                      key: const ValueKey('done'),
+                                      streakDays: streakDays,
+                                      onRestart: _restart,
+                                    )
+                                  : CardContent(
+                                      key: ValueKey(list[index].id),
+                                      card: list[index],
+                                    ),
                             ),
-                            child: _done
-                                ? SessionDoneView(
-                                    key: const ValueKey('done'),
-                                    streakDays: streakDays,
-                                    onRestart: _restart,
-                                  )
-                                : CardContent(
-                                    key: ValueKey(list[index].id),
-                                    card: list[index],
-                                  ),
                           ),
                         ),
                       ),
