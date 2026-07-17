@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../providers/providers.dart';
+import '../theme/card_type_style.dart';
+import '../widgets/card_content.dart';
+import '../widgets/progress_dots.dart';
+import '../widgets/session_done_view.dart';
+import '../widgets/streak_flame.dart';
 
 /// Ядро продукта: ОДНА карточка на весь экран.
 /// «Дальше» — добровольно; после первой карточки сессия уже полноценна.
-/// TODO: дизайн, анимация перехода, жесты, завершение сессии.
+/// На последней карточке — «Готово» и переход к экрану завершения дня.
+/// TODO: жесты (свайп), переход между днями.
 class DailyCardScreen extends ConsumerStatefulWidget {
   const DailyCardScreen({super.key});
 
@@ -15,10 +22,25 @@ class DailyCardScreen extends ConsumerStatefulWidget {
 
 class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
   int _index = 0;
+  bool _done = false;
+
+  void _next(int cardCount) {
+    if (_index >= cardCount - 1) {
+      setState(() => _done = true);
+    } else {
+      setState(() => _index++);
+    }
+  }
+
+  void _restart() => setState(() {
+        _index = 0;
+        _done = false;
+      });
 
   @override
   Widget build(BuildContext context) {
     final cards = ref.watch(todayCardsProvider);
+    final streakDays = ref.watch(streakDaysProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -29,35 +51,106 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
           data: (list) {
             // Защита от RangeError, если данные обновились и список стал короче.
             final index = _index.clamp(0, list.length - 1);
-            final card = list[index];
             final isLast = index == list.length - 1;
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(card.title,
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 16),
-                  Text(card.body,
-                      style: Theme.of(context).textTheme.headlineSmall),
-                  const SizedBox(height: 16),
-                  Text(card.source,
-                      style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 48),
-                  if (!isLast)
-                    FilledButton(
-                      onPressed: () => setState(() => _index++),
-                      child: const Text('Дальше'),
-                    ),
-                  // TODO: состояние «день пройден» на последней карточке.
-                ],
-              ),
+
+            return Stack(
+              children: [
+                Positioned(
+                  top: 12,
+                  right: 24,
+                  child: _StreakBadge(days: streakDays),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 500),
+                            transitionBuilder: (child, animation) =>
+                                FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween(
+                                  begin: const Offset(0, 0.02),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            ),
+                            child: _done
+                                ? SessionDoneView(
+                                    key: const ValueKey('done'),
+                                    streakDays: streakDays,
+                                    onRestart: _restart,
+                                  )
+                                : CardContent(card: list[index]),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ProgressDots(
+                        count: list.length,
+                        currentIndex: index,
+                        accentColors: [
+                          for (final card in list) card.type.style.accent,
+                        ],
+                      ),
+                      if (!_done) ...[
+                        const SizedBox(height: 20),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 40,
+                              vertical: 14,
+                            ),
+                            shape: const StadiumBorder(),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: () => _next(list.length),
+                          child: Text(isLast ? 'Готово' : 'Дальше'),
+                        ),
+                      ] else
+                        const SizedBox(height: 20 + 48),
+                    ],
+                  ),
+                ),
+              ],
             );
           },
         ),
       ),
+    );
+  }
+}
+
+class _StreakBadge extends StatelessWidget {
+  const _StreakBadge({required this.days});
+
+  final int days;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const StreakFlame(),
+        const SizedBox(width: 6),
+        Text(
+          '$days',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }
