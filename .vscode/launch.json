@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Lampada (iOS Simulator)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "deviceId": "iphone",
+      "preLaunchTask": "boot-ios-simulator"
+    },
+    {
+      "name": "Lampada (текущее устройство)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart"
+    }
+  ]
+}

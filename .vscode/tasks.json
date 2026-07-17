@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // Бутит симулятор (если не запущен) и ждёт полной загрузки,
+      // чтобы flutter run сразу увидел устройство.
+      "label": "boot-ios-simulator",
+      "type": "shell",
+      "command": "xcrun simctl bootstatus 'iPhone 16 Pro' -b && open -a Simulator",
+      "problemMatcher": []
+    }
+  ]
+}
