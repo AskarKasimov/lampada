@@ -93,7 +93,12 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                               _handleSwipe(details, list.length),
                           child: Center(
                             child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 500),
+                              duration: const Duration(milliseconds: 350),
+                              // Старый текст уходит заметно быстрее нового —
+                              // иначе оба фейда идут одинаково долго и текст
+                              // на середине перехода накладывается друг на друга.
+                              reverseDuration: const Duration(milliseconds: 120),
+                              switchOutCurve: Curves.easeIn,
                               transitionBuilder: (child, animation) =>
                                   FadeTransition(
                                 opacity: animation,
