@@ -1,0 +1,50 @@
+// lib/features/home/presentation/widgets/today_status_chips.dart
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../daily_cards/domain/entities/day_card.dart';
+import '../../../daily_cards/presentation/theme/card_type_style.dart';
+
+/// Ряд чипов «Сегодня»: прочитанный тип — в цвете, непрочитанный — контур.
+class TodayStatusChips extends StatelessWidget {
+  const TodayStatusChips({
+    super.key,
+    required this.cards,
+    required this.readTypes,
+  });
+
+  final List<DayCard> cards;
+  final Set<CardType> readTypes;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: [
+        for (final card in cards) _chip(card.type, readTypes.contains(card.type)),
+      ],
+    );
+  }
+
+  Widget _chip(CardType type, bool read) {
+    final style = type.style;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+      decoration: BoxDecoration(
+        color: read ? style.tagBackground : Colors.transparent,
+        borderRadius: BorderRadius.circular(100),
+        border: read ? null : Border.all(color: AppColors.chipUnreadBorder),
+      ),
+      child: Text(
+        style.shortLabel,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: read ? style.tagForeground : AppColors.chipUnreadText,
+        ),
+      ),
+    );
+  }
+}
