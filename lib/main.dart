@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/daily_cards/presentation/providers/providers.dart';
-import 'features/daily_cards/presentation/screens/daily_card_screen.dart';
+import 'features/home/presentation/screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +26,7 @@ class LampadaApp extends StatelessWidget {
     return MaterialApp(
       title: 'Лампада',
       theme: AppTheme.light,
-      home: const DailyCardScreen(),
+      home: const HomeScreen(),
     );
   }
 }
