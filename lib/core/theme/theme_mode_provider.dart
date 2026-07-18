@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/daily_cards/presentation/providers/providers.dart';
 
-/// Режим темы приложения — персистится в shared_preferences.
-/// По умолчанию следует системной настройке; ручной выбор её переопределяет.
+/// Режим темы приложения — только светлая/тёмная (без системной как
+/// отдельного состояния). Персистится в shared_preferences; пока юзер
+/// ничего не выбрал, дефолт берётся из системной яркости платформы.
 final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
   ThemeModeNotifier.new,
 );
@@ -16,25 +17,21 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   ThemeMode build() {
     final raw = ref.watch(sharedPreferencesProvider).getString(_key);
     return switch (raw) {
-      'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
+      'light' => ThemeMode.light,
+      _ => _systemBrightness() == Brightness.dark
+          ? ThemeMode.dark
+          : ThemeMode.light,
     };
   }
 
-  /// Циклит system → light → dark → system и сохраняет выбор.
-  Future<void> cycle() async {
-    final next = switch (state) {
-      ThemeMode.system => ThemeMode.light,
-      ThemeMode.light => ThemeMode.dark,
-      ThemeMode.dark => ThemeMode.system,
-    };
+  Brightness _systemBrightness() =>
+      WidgetsBinding.instance.platformDispatcher.platformBrightness;
+
+  /// Переключает светлая ↔ тёмная и сохраняет выбор.
+  Future<void> toggle() async {
+    final next = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
     state = next;
-    final prefs = ref.read(sharedPreferencesProvider);
-    if (next == ThemeMode.system) {
-      await prefs.remove(_key);
-    } else {
-      await prefs.setString(_key, next.name);
-    }
+    await ref.read(sharedPreferencesProvider).setString(_key, next.name);
   }
 }

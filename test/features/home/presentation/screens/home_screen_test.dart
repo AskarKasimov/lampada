@@ -150,21 +150,26 @@ void main() {
     expect(chipText.style?.color, AppColorsExtension.dark.chipUnreadText);
   });
 
-  testWidgets('тумблер темы циклит system → light → dark на тап',
-      (tester) async {
+  testWidgets('тумблер темы переключает light ↔ dark на тап', (tester) async {
+    tester.view.platformDispatcher.platformBrightnessTestValue =
+        Brightness.light;
+    addTearDown(
+      tester.view.platformDispatcher.clearPlatformBrightnessTestValue,
+    );
+
     await tester.pumpWidget(
       await buildApp(const DayProgress(readTypes: {}, streakDays: 1)),
     );
     await tester.pump();
 
-    expect(find.byIcon(Icons.brightness_auto_outlined), findsOneWidget);
-
-    await tester.tap(find.byIcon(Icons.brightness_auto_outlined));
-    await tester.pump();
     expect(find.byIcon(Icons.light_mode_outlined), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.light_mode_outlined));
     await tester.pump();
     expect(find.byIcon(Icons.dark_mode_outlined), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.dark_mode_outlined));
+    await tester.pump();
+    expect(find.byIcon(Icons.light_mode_outlined), findsOneWidget);
   });
 }

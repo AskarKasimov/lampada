@@ -6,7 +6,7 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<ProviderContainer> build() async {
     SharedPreferences.setMockInitialValues({});
@@ -18,23 +18,30 @@ void main() {
     return container;
   }
 
-  test('по умолчанию — системный режим', () async {
+  tearDown(binding.platformDispatcher.clearPlatformBrightnessTestValue);
+
+  test('по умолчанию — светлая, если платформа светлая', () async {
+    binding.platformDispatcher.platformBrightnessTestValue = Brightness.light;
     final container = await build();
-    expect(container.read(themeModeProvider), ThemeMode.system);
+    expect(container.read(themeModeProvider), ThemeMode.light);
   });
 
-  test('cycle() идёт system → light → dark → system', () async {
+  test('по умолчанию — тёмная, если платформа тёмная', () async {
+    binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    final container = await build();
+    expect(container.read(themeModeProvider), ThemeMode.dark);
+  });
+
+  test('toggle() переключает светлая ↔ тёмная', () async {
+    binding.platformDispatcher.platformBrightnessTestValue = Brightness.light;
     final container = await build();
     final notifier = container.read(themeModeProvider.notifier);
 
-    await notifier.cycle();
-    expect(container.read(themeModeProvider), ThemeMode.light);
-
-    await notifier.cycle();
+    await notifier.toggle();
     expect(container.read(themeModeProvider), ThemeMode.dark);
 
-    await notifier.cycle();
-    expect(container.read(themeModeProvider), ThemeMode.system);
+    await notifier.toggle();
+    expect(container.read(themeModeProvider), ThemeMode.light);
   });
 
   test('выбор переживает пересоздание контейнера (те же prefs)', () async {
@@ -43,14 +50,14 @@ void main() {
     final first = ProviderContainer(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
     );
-    await first.read(themeModeProvider.notifier).cycle();
-    expect(first.read(themeModeProvider), ThemeMode.light);
+    await first.read(themeModeProvider.notifier).toggle();
+    expect(first.read(themeModeProvider), ThemeMode.dark);
     first.dispose();
 
     final second = ProviderContainer(
       overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
     );
     addTearDown(second.dispose);
-    expect(second.read(themeModeProvider), ThemeMode.light);
+    expect(second.read(themeModeProvider), ThemeMode.dark);
   });
 }
