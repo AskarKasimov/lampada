@@ -94,14 +94,10 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   @override
   Future<Result<DayProgress>> resetToday() async {
     try {
+      // Серия уже засчитана за сегодня — «Пройти снова» просто даёт
+      // перечитать карточки, без отката streakDays/lastCompleted.
       final dto = _forToday(_read());
-      final wasCompletedToday = dto.lastCompleted == _today;
-      final updated = dto.copyWith(
-        readTypes: const [],
-        streakDays:
-            wasCompletedToday ? dto.streakDays - 1 : dto.streakDays,
-        lastCompleted: wasCompletedToday ? '' : dto.lastCompleted,
-      );
+      final updated = dto.copyWith(readTypes: const []);
       await _write(updated);
       return Success(updated.toEntity());
     } on Exception catch (e) {

@@ -52,13 +52,14 @@ void main() {
     expect(p.streakDays, 1);
   });
 
-  test('resetToday чистит прочитанное и откатывает серию за сегодня', () async {
+  test('resetToday чистит прочитанное, серию за сегодня не откатывает',
+      () async {
     final repo = await build();
     await repo.markRead(CardType.quote);
     await repo.completeDay();
     final p = _unwrap(await repo.resetToday());
     expect(p.readTypes, isEmpty);
-    expect(p.streakDays, 0);
+    expect(p.streakDays, 1);
   });
 
   test('прогресс переживает пересоздание репозитория (те же prefs)', () async {
