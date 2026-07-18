@@ -35,14 +35,16 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
   late int _index = widget.startIndex;
   bool _done = false;
 
-  void _next(List<DayCard> list) {
+  Future<void> _next(List<DayCard> list) async {
     final index = _index.clamp(0, list.length - 1);
     final notifier = ref.read(dayProgressProvider.notifier);
     if (index >= list.length - 1) {
-      // Персист последовательно: markRead и completeDay пишут один ключ
-      // prefs (read-modify-write), параллельный запуск затёр бы отметку
-      // последней карточки. UI при этом не ждёт — состояние листается сразу.
-      notifier.markRead(list[index].type).then((_) => notifier.completeDay());
+      // Ждём персист (markRead, потом completeDay — тот же ключ prefs,
+      // параллельно затёрли бы друг друга) перед показом done-экрана.
+      // Иначе он на миг покажет старую серию, и цифра дёрнется после отрисовки.
+      await notifier.markRead(list[index].type);
+      await notifier.completeDay();
+      if (!mounted) return;
       setState(() => _done = true);
     } else {
       notifier.markRead(list[index].type);
@@ -132,33 +134,47 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                           ),
                         ),
                       ),
-                      if (!_done) ...[
-                        const SizedBox(height: 20),
-                        ProgressDots(
-                          count: list.length,
-                          currentIndex: index,
-                          accentColors: [
-                            for (final card in list) card.type.style.accent,
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.accent,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 40,
-                              vertical: 14,
-                            ),
-                            shape: const StadiumBorder(),
-                            textStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          onPressed: () => _next(list),
-                          child: Text(isLast ? 'Готово' : 'Дальше'),
-                        ),
-                      ],
+                      // AnimatedSize вместо мгновенного условного удаления —
+                      // иначе Expanded резко «прыгает» на освободившееся
+                      // место прямо во время фейда карточки в done-экран.
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        alignment: Alignment.topCenter,
+                        child: _done
+                            ? const SizedBox.shrink()
+                            : Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(height: 20),
+                                  ProgressDots(
+                                    count: list.length,
+                                    currentIndex: index,
+                                    accentColors: [
+                                      for (final card in list)
+                                        card.type.style.accent,
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.accent,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 40,
+                                        vertical: 14,
+                                      ),
+                                      shape: const StadiumBorder(),
+                                      textStyle: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    onPressed: () => _next(list),
+                                    child: Text(isLast ? 'Готово' : 'Дальше'),
+                                  ),
+                                ],
+                              ),
+                      ),
                     ],
                   ),
                 ),
