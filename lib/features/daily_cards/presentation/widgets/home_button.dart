@@ -17,10 +17,14 @@ class HomeButton extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onPressed,
-        child: const SizedBox(
+        child: SizedBox(
           width: 44,
           height: 44,
-          child: Icon(Icons.home_outlined, size: 20, color: AppColors.homeIcon),
+          child: Icon(
+            Icons.home_outlined,
+            size: 20,
+            color: AppColorsExtension.of(context).homeIcon,
+          ),
         ),
       ),
     );
