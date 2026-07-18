@@ -23,26 +23,28 @@ class TodayStatusChips extends StatelessWidget {
       runSpacing: 8,
       alignment: WrapAlignment.center,
       children: [
-        for (final card in cards) _chip(card.type, readTypes.contains(card.type)),
+        for (final card in cards)
+          _chip(context, card.type, readTypes.contains(card.type)),
       ],
     );
   }
 
-  Widget _chip(CardType type, bool read) {
-    final style = type.style;
+  Widget _chip(BuildContext context, CardType type, bool read) {
+    final style = type.styleFor(Theme.of(context).brightness);
+    final colors = AppColorsExtension.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
       decoration: BoxDecoration(
         color: read ? style.tagBackground : Colors.transparent,
         borderRadius: BorderRadius.circular(100),
-        border: read ? null : Border.all(color: AppColors.chipUnreadBorder),
+        border: read ? null : Border.all(color: colors.chipUnreadBorder),
       ),
       child: Text(
         style.shortLabel,
         style: TextStyle(
           fontSize: 11.5,
           fontWeight: FontWeight.w600,
-          color: read ? style.tagForeground : AppColors.chipUnreadText,
+          color: read ? style.tagForeground : colors.chipUnreadText,
         ),
       ),
     );
