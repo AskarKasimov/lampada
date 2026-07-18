@@ -71,7 +71,9 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Текущая серия ${progress.streakDays} дней',
+                  progress.streakDays == 0
+                      ? 'Начните сессию'
+                      : 'Текущая серия ${progress.streakDays} дней',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.homeSubtitle,

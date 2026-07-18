@@ -56,6 +56,16 @@ void main() {
     expect(find.text('Цитата'), findsOneWidget);
   });
 
+  testWidgets('серия 0 — «Начните сессию» вместо «0 дней»', (tester) async {
+    await tester.pumpWidget(
+      buildApp(const DayProgress(readTypes: {}, streakDays: 0)),
+    );
+    await tester.pump();
+
+    expect(find.text('Начните сессию'), findsOneWidget);
+    expect(find.textContaining('0 дней'), findsNothing);
+  });
+
   testWidgets('часть прочитана — CTA «Продолжить»', (tester) async {
     await tester.pumpWidget(
       buildApp(const DayProgress(readTypes: {CardType.quote}, streakDays: 3)),
