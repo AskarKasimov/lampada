@@ -14,4 +14,13 @@ abstract final class AppColors {
   /// Тёплый янтарный акцент: тёмный конец огонька лампадки и фон
   /// кнопки «Дальше».
   static const accent = Color(0xFFBE7C1C);
+
+  // Home-экран и вторичные подписи (посчитаны из oklch-токенов дизайна).
+  static const homeSubtitle = Color(0xFF806D61);
+  static const todayLabel = Color(0xFF7B6F67);
+  static const footer = Color(0xFF8A7D75);
+  static const link = Color(0xFF84776F);
+  static const homeIcon = Color(0xFF554438);
+  static const chipUnreadText = Color(0xFF887E78);
+  static const chipUnreadBorder = Color(0xFFD6CBC5);
 }
