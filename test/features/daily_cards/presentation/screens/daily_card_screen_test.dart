@@ -6,6 +6,7 @@ import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
+import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/daily_card_screen.dart';
 
@@ -64,7 +65,7 @@ void main() {
           dayProgressRepositoryProvider
               .overrideWithValue(_FakeProgressRepository()),
         ],
-        child: const MaterialApp(home: DailyCardScreen()),
+        child: MaterialApp(theme: AppTheme.light, home: const DailyCardScreen()),
       );
 
   // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle

@@ -74,6 +74,8 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
     final cards = ref.watch(todayCardsProvider);
     final progress = ref.watch(dayProgressProvider);
     final streakDays = progress.value?.streakDays ?? 0;
+    final colors = AppColorsExtension.of(context);
+    final brightness = Theme.of(context).brightness;
 
     return Scaffold(
       body: SafeArea(
@@ -152,13 +154,13 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                                     currentIndex: index,
                                     accentColors: [
                                       for (final card in list)
-                                        card.type.style.accent,
+                                        card.type.styleFor(brightness).accent,
                                     ],
                                   ),
                                   const SizedBox(height: 20),
                                   FilledButton(
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: AppColors.accent,
+                                      backgroundColor: colors.accent,
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 40,
                                         vertical: 14,
