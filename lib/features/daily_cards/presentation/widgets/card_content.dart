@@ -15,7 +15,8 @@ class CardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = card.type.style;
+    final style = card.type.styleFor(Theme.of(context).brightness);
+    final colors = AppColorsExtension.of(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -37,14 +38,18 @@ class CardContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 22),
-        Text(card.body, style: AppTheme.quoteStyle, textAlign: TextAlign.center),
+        Text(
+          card.body,
+          style: AppTheme.quoteStyle(context),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 16),
         Text(
           '— ${card.source}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             letterSpacing: 0.2,
-            color: AppColors.textSecondary,
+            color: colors.textSecondary,
           ),
         ),
       ],
