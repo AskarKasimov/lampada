@@ -60,4 +60,18 @@ void main() {
     expect(p.readTypes, isEmpty);
     expect(p.streakDays, 0);
   });
+
+  test('прогресс переживает пересоздание репозитория (те же prefs)', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final first = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
+    await first.markRead(CardType.quote);
+    await first.completeDay();
+
+    // Новый инстанс поверх тех же prefs — как перезапуск приложения.
+    final second = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
+    final p = _unwrap(await second.loadToday());
+    expect(p.readTypes, {CardType.quote});
+    expect(p.streakDays, 1);
+  });
 }
