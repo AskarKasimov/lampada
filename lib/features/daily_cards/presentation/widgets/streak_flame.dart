@@ -28,6 +28,7 @@ class _StreakFlameState extends State<StreakFlame>
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
     return FadeTransition(
       opacity: Tween(begin: 0.85, end: 1.0).animate(
         CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
@@ -37,14 +38,14 @@ class _StreakFlameState extends State<StreakFlame>
         height: widget.size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const RadialGradient(
-            center: Alignment(-0.3, -0.4),
-            colors: [AppColors.flameLight, AppColors.accent],
-            stops: [0.0, 0.7],
+          gradient: RadialGradient(
+            center: const Alignment(-0.3, -0.4),
+            colors: [colors.flameLight, colors.accent],
+            stops: const [0.0, 0.7],
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.accent.withValues(alpha: 0.55),
+              color: colors.accent.withValues(alpha: 0.55),
               blurRadius: widget.size * 0.8,
             ),
           ],
