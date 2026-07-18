@@ -9,6 +9,7 @@ import '../../../daily_cards/domain/entities/day_progress.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/daily_card_screen.dart';
 import '../../../daily_cards/presentation/widgets/streak_flame.dart';
+import '../widgets/theme_mode_toggle_button.dart';
 import '../widgets/today_status_chips.dart';
 
 /// Стартовый экран: серия, статус карточек дня, кнопка входа в сессию.
@@ -55,6 +56,7 @@ class HomeScreen extends ConsumerWidget {
     List<DayCard> cards,
     DayProgress progress,
   ) {
+    final colors = AppColorsExtension.of(context);
     return Stack(
       children: [
         Center(
@@ -67,26 +69,23 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
                 Text(
                   'Лампада',
-                  style: AppTheme.quoteStyle.copyWith(fontSize: 36),
+                  style: AppTheme.quoteStyle(context).copyWith(fontSize: 36),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   progress.streakDays == 0
                       ? 'Начните сессию'
                       : 'Текущая серия ${progress.streakDays} дней',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.homeSubtitle,
-                  ),
+                  style: TextStyle(fontSize: 13, color: colors.homeSubtitle),
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'СЕГОДНЯ',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.9,
-                    color: AppColors.todayLabel,
+                    color: colors.todayLabel,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -96,20 +95,20 @@ class HomeScreen extends ConsumerWidget {
                   TextButton(
                     onPressed: () =>
                         ref.read(dayProgressProvider.notifier).resetToday(),
-                    style: TextButton.styleFrom(foregroundColor: AppColors.link),
-                    child: const Text(
+                    style: TextButton.styleFrom(foregroundColor: colors.link),
+                    child: Text(
                       'Пройти снова',
                       style: TextStyle(
                         fontSize: 12,
                         decoration: TextDecoration.underline,
-                        decorationColor: AppColors.link,
+                        decorationColor: colors.link,
                       ),
                     ),
                   )
                 else
                   FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accent,
+                      backgroundColor: colors.accent,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 44,
                         vertical: 14,
@@ -127,14 +126,15 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
         ),
-        const Positioned(
+        const Positioned(top: 4, right: 12, child: ThemeModeToggleButton()),
+        Positioned(
           left: 0,
           right: 0,
           bottom: 36,
           child: Text(
             'по материалам «Азбуки веры»',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.footer),
+            style: TextStyle(fontSize: 12, color: colors.footer),
           ),
         ),
       ],
