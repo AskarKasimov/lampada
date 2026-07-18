@@ -18,6 +18,7 @@ class SessionDoneView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -26,23 +27,24 @@ class SessionDoneView extends StatelessWidget {
         Text(
           'Мысль дня получена.\nМожно остановиться — или вернуться завтра.',
           textAlign: TextAlign.center,
-          style: AppTheme.quoteStyle.copyWith(fontSize: 22, height: 1.55),
+          style:
+              AppTheme.quoteStyle(context).copyWith(fontSize: 22, height: 1.55),
         ),
         const SizedBox(height: 20),
         Text(
           'Текущая серия $streakDays дней',
-          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 10),
         TextButton(
           onPressed: onHome,
-          style: TextButton.styleFrom(foregroundColor: AppColors.link),
-          child: const Text(
+          style: TextButton.styleFrom(foregroundColor: colors.link),
+          child: Text(
             'На главный экран',
             style: TextStyle(
               fontSize: 13,
               decoration: TextDecoration.underline,
-              decorationColor: AppColors.link,
+              decorationColor: colors.link,
             ),
           ),
         ),
