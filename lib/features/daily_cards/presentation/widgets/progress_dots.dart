@@ -20,6 +20,7 @@ class ProgressDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -34,9 +35,7 @@ class ProgressDots extends StatelessWidget {
               shape: BoxShape.circle,
               color: i == currentIndex
                   ? accentColors[i]
-                  : (i < currentIndex
-                      ? AppColors.dotDone
-                      : AppColors.dotUpcoming),
+                  : (i < currentIndex ? colors.dotDone : colors.dotUpcoming),
             ),
           ),
         ],
