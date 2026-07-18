@@ -1,39 +1,52 @@
+// lib/features/daily_cards/presentation/screens/daily_card_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
+import '../widgets/home_button.dart';
 import '../widgets/progress_dots.dart';
 import '../widgets/session_done_view.dart';
-import '../widgets/streak_flame.dart';
 
 /// Порог скорости свайпа (лог.px/с), после которого жест засчитывается
 /// как «Дальше»/«Назад» — короткий вялый драг игнорируется.
 const _swipeVelocityThreshold = 300.0;
 
-/// Ядро продукта: ОДНА карточка на весь экран.
-/// «Дальше» — добровольно; после первой карточки сессия уже полноценна.
-/// На последней карточке — «Готово» и переход к экрану завершения дня.
-/// Листать можно свайпом влево/вправо — так же, как кнопкой.
-/// TODO: переход между днями.
+/// Ядро продукта: ОДНА карточка на весь экран. «Дальше» — добровольно.
+/// Прочитанные карточки отмечаются в прогрессе дня; на последней — «Готово»
+/// и экран завершения. Листать можно свайпом влево/вправо. Кнопка «домой»
+/// слева сверху и «На главный экран» на завершении — pop к Home.
 class DailyCardScreen extends ConsumerStatefulWidget {
-  const DailyCardScreen({super.key});
+  const DailyCardScreen({super.key, this.startIndex = 0});
+
+  /// Индекс карточки, с которой открыться (первая непрочитанная).
+  /// Ожидается валидным для списка дня; build дополнительно клампит его
+  /// от RangeError, если данные изменились.
+  final int startIndex;
 
   @override
   ConsumerState<DailyCardScreen> createState() => _DailyCardScreenState();
 }
 
 class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
-  int _index = 0;
+  late int _index = widget.startIndex;
   bool _done = false;
 
-  void _next(int cardCount) {
-    if (_index >= cardCount - 1) {
+  void _next(List<DayCard> list) {
+    final index = _index.clamp(0, list.length - 1);
+    final notifier = ref.read(dayProgressProvider.notifier);
+    if (index >= list.length - 1) {
+      // Персист последовательно: markRead и completeDay пишут один ключ
+      // prefs (read-modify-write), параллельный запуск затёр бы отметку
+      // последней карточки. UI при этом не ждёт — состояние листается сразу.
+      notifier.markRead(list[index].type).then((_) => notifier.completeDay());
       setState(() => _done = true);
     } else {
-      setState(() => _index++);
+      notifier.markRead(list[index].type);
+      setState(() => _index = index + 1);
     }
   }
 
@@ -45,15 +58,10 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
     }
   }
 
-  void _restart() => setState(() {
-        _index = 0;
-        _done = false;
-      });
-
-  void _handleSwipe(DragEndDetails details, int cardCount) {
+  void _handleSwipe(DragEndDetails details, List<DayCard> list) {
     final velocity = details.primaryVelocity ?? 0;
     if (velocity <= -_swipeVelocityThreshold) {
-      _next(cardCount);
+      _next(list);
     } else if (velocity >= _swipeVelocityThreshold) {
       _previous();
     }
@@ -62,7 +70,8 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
   @override
   Widget build(BuildContext context) {
     final cards = ref.watch(todayCardsProvider);
-    final streakDays = ref.watch(streakDaysProvider);
+    final progress = ref.watch(dayProgressProvider);
+    final streakDays = progress.value?.streakDays ?? 0;
 
     return Scaffold(
       body: SafeArea(
@@ -79,8 +88,8 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
               children: [
                 Positioned(
                   top: 12,
-                  right: 24,
-                  child: _StreakBadge(days: streakDays),
+                  left: 20,
+                  child: HomeButton(onPressed: () => Navigator.of(context).pop()),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
@@ -90,13 +99,12 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                         child: GestureDetector(
                           behavior: HitTestBehavior.translucent,
                           onHorizontalDragEnd: (details) =>
-                              _handleSwipe(details, list.length),
+                              _handleSwipe(details, list),
                           child: Center(
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 350),
-                              // Старый текст уходит заметно быстрее нового —
-                              // иначе оба фейда идут одинаково долго и текст
-                              // на середине перехода накладывается друг на друга.
+                              // Старый текст уходит быстрее нового — иначе оба
+                              // фейда идут одинаково и текст накладывается.
                               reverseDuration: const Duration(milliseconds: 120),
                               switchOutCurve: Curves.easeIn,
                               transitionBuilder: (child, animation) =>
@@ -114,7 +122,7 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                                   ? SessionDoneView(
                                       key: const ValueKey('done'),
                                       streakDays: streakDays,
-                                      onRestart: _restart,
+                                      onHome: () => Navigator.of(context).pop(),
                                     )
                                   : CardContent(
                                       key: ValueKey(list[index].id),
@@ -124,17 +132,15 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      ProgressDots(
-                        // +1 — отдельная точка для экрана завершения дня.
-                        count: list.length + 1,
-                        currentIndex: _done ? list.length : index,
-                        accentColors: [
-                          for (final card in list) card.type.style.accent,
-                          AppColors.accent,
-                        ],
-                      ),
                       if (!_done) ...[
+                        const SizedBox(height: 20),
+                        ProgressDots(
+                          count: list.length,
+                          currentIndex: index,
+                          accentColors: [
+                            for (final card in list) card.type.style.accent,
+                          ],
+                        ),
                         const SizedBox(height: 20),
                         FilledButton(
                           style: FilledButton.styleFrom(
@@ -149,11 +155,10 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          onPressed: () => _next(list.length),
+                          onPressed: () => _next(list),
                           child: Text(isLast ? 'Готово' : 'Дальше'),
                         ),
-                      ] else
-                        const SizedBox(height: 20 + 48),
+                      ],
                     ],
                   ),
                 ),
@@ -162,32 +167,6 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
           },
         ),
       ),
-    );
-  }
-}
-
-class _StreakBadge extends StatelessWidget {
-  const _StreakBadge({required this.days});
-
-  final int days;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const StreakFlame(),
-        const SizedBox(width: 6),
-        Text(
-          '$days',
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textSecondary,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-        ),
-      ],
     );
   }
 }

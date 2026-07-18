@@ -1,19 +1,20 @@
+// lib/features/daily_cards/presentation/widgets/session_done_view.dart
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'streak_flame.dart';
 
-/// Экран завершения сессии: сегодняшняя порция получена, можно остановиться.
+/// Экран завершения дня: порция получена, можно остановиться.
 class SessionDoneView extends StatelessWidget {
   const SessionDoneView({
     super.key,
     required this.streakDays,
-    required this.onRestart,
+    required this.onHome,
   });
 
   final int streakDays;
-  final VoidCallback onRestart;
+  final VoidCallback onHome;
 
   @override
   Widget build(BuildContext context) {
@@ -29,19 +30,19 @@ class SessionDoneView extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          'Лампадка горит $streakDays дней',
+          'Текущая серия $streakDays дней',
           style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 10),
         TextButton(
-          onPressed: onRestart,
-          style: TextButton.styleFrom(foregroundColor: AppColors.textTertiary),
+          onPressed: onHome,
+          style: TextButton.styleFrom(foregroundColor: AppColors.link),
           child: const Text(
-            'Пройти сначала',
+            'На главный экран',
             style: TextStyle(
               fontSize: 13,
               decoration: TextDecoration.underline,
-              decorationColor: AppColors.textTertiary,
+              decorationColor: AppColors.link,
             ),
           ),
         ),
