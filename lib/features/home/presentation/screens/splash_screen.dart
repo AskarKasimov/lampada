@@ -17,17 +17,23 @@ class SplashScreen extends ConsumerStatefulWidget {
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
+/// Даже когда данные из кэша приходят мгновенно, сплэш держим хотя бы
+/// это время — иначе брендинг просто мелькает.
+const _minSplashDuration = Duration(milliseconds: 700);
+
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  final _shownAt = DateTime.now();
   bool _navigated = false;
 
   void _tryNavigate(bool ready) {
     if (!ready || _navigated) return;
     _navigated = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    final wait = _minSplashDuration - DateTime.now().difference(_shownAt);
+    Future.delayed(wait.isNegative ? Duration.zero : wait, () {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 300),
+          transitionDuration: const Duration(milliseconds: 600),
           pageBuilder: (_, animation, secondary) => const HomeScreen(),
           transitionsBuilder: (_, animation, secondary, child) =>
               FadeTransition(opacity: animation, child: child),
