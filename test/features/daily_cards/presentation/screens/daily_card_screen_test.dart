@@ -56,14 +56,17 @@ class _FakeProgressRepository implements DayProgressRepository {
     _read = {};
     return Success(_current);
   }
+
+  Set<CardType> get readTypes => _read;
 }
 
 void main() {
-  Widget buildApp() => ProviderScope(
+  Widget buildApp({DayProgressRepository? progressRepository}) => ProviderScope(
         overrides: [
           dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
-          dayProgressRepositoryProvider
-              .overrideWithValue(_FakeProgressRepository()),
+          dayProgressRepositoryProvider.overrideWithValue(
+            progressRepository ?? _FakeProgressRepository(),
+          ),
         ],
         child: MaterialApp(theme: AppTheme.light, home: const DailyCardScreen()),
       );
@@ -128,5 +131,16 @@ void main() {
     await tester.fling(find.text('Последняя карточка'), const Offset(300, 0), 800);
     await settleCard(tester);
     expect(find.text('Первая карточка'), findsOneWidget);
+  });
+
+  testWidgets(
+      'карточка засчитывается прочитанной сразу при показе, без «Дальше»',
+      (tester) async {
+    final progressRepo = _FakeProgressRepository();
+    await tester.pumpWidget(buildApp(progressRepository: progressRepo));
+    await settleCard(tester);
+
+    expect(progressRepo.readTypes, contains(CardType.quote));
+    expect(progressRepo.readTypes, isNot(contains(CardType.advice)));
   });
 }

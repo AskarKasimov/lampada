@@ -34,6 +34,19 @@ class DailyCardScreen extends ConsumerStatefulWidget {
 class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
   late int _index = widget.startIndex;
   bool _done = false;
+  int? _markedIndex;
+
+  /// Засчитывает карточку прочитанной, как только она стала текущей —
+  /// не дожидаясь «Дальше». Иначе если уйти домой не долистав до конца,
+  /// уже просмотренная карточка осталась бы непрочитанной.
+  void _markCurrentAsRead(List<DayCard> list, int index) {
+    if (_markedIndex == index) return;
+    _markedIndex = index;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(dayProgressProvider.notifier).markRead(list[index].type);
+    });
+  }
 
   Future<void> _next(List<DayCard> list) async {
     final index = _index.clamp(0, list.length - 1);
@@ -87,6 +100,7 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
             // Защита от RangeError, если данные обновились и список стал короче.
             final index = _index.clamp(0, list.length - 1);
             final isLast = index == list.length - 1;
+            if (!_done) _markCurrentAsRead(list, index);
 
             return Stack(
               children: [
