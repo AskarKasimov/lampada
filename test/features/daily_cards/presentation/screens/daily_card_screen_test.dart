@@ -9,6 +9,8 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_progress_re
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/daily_card_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_action_button.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/session_done_view.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
   @override
@@ -77,33 +79,33 @@ void main() {
     await tester.pumpWidget(buildApp());
     await settleCard(tester);
 
-    expect(find.text('Первая карточка'), findsOneWidget);
-    expect(find.text('Дальше'), findsOneWidget);
+    expect(find.byKey(const Key('quote')), findsOneWidget);
+    expect(find.byType(DailyCardNextButton), findsOneWidget);
 
-    await tester.tap(find.text('Дальше'));
+    await tester.tap(find.byType(DailyCardNextButton));
     await settleCard(tester);
 
-    expect(find.text('Последняя карточка'), findsOneWidget);
-    expect(find.text('Готово'), findsOneWidget);
+    expect(find.byKey(const Key('advice')), findsOneWidget);
+    expect(find.byType(DailyCardDoneButton), findsOneWidget);
 
-    await tester.tap(find.text('Готово'));
+    await tester.tap(find.byType(DailyCardDoneButton));
     await settleCard(tester);
 
-    expect(find.textContaining('Мысль дня получена'), findsOneWidget);
-    expect(find.text('На главный экран'), findsOneWidget);
+    expect(find.byType(SessionDoneView), findsOneWidget);
+    expect(find.byType(SessionDoneHomeButton), findsOneWidget);
   });
 
   testWidgets('свайп влево листает вперёд и до завершения', (tester) async {
     await tester.pumpWidget(buildApp());
     await settleCard(tester);
 
-    await tester.fling(find.text('Первая карточка'), const Offset(-300, 0), 800);
+    await tester.fling(find.byKey(const Key('quote')), const Offset(-300, 0), 800);
     await settleCard(tester);
-    expect(find.text('Последняя карточка'), findsOneWidget);
+    expect(find.byKey(const Key('advice')), findsOneWidget);
 
-    await tester.fling(find.text('Последняя карточка'), const Offset(-300, 0), 800);
+    await tester.fling(find.byKey(const Key('advice')), const Offset(-300, 0), 800);
     await settleCard(tester);
-    expect(find.textContaining('Мысль дня получена'), findsOneWidget);
+    expect(find.byType(SessionDoneView), findsOneWidget);
   });
 
   testWidgets('свайп вправо возвращает назад, в том числе с завершения',
@@ -111,20 +113,20 @@ void main() {
     await tester.pumpWidget(buildApp());
     await settleCard(tester);
 
-    await tester.tap(find.text('Дальше'));
+    await tester.tap(find.byType(DailyCardNextButton));
     await settleCard(tester);
-    await tester.tap(find.text('Готово'));
+    await tester.tap(find.byType(DailyCardDoneButton));
     await settleCard(tester);
-    expect(find.textContaining('Мысль дня получена'), findsOneWidget);
+    expect(find.byType(SessionDoneView), findsOneWidget);
 
     await tester.fling(
-        find.textContaining('Мысль дня получена'), const Offset(300, 0), 800);
+        find.byType(SessionDoneView), const Offset(300, 0), 800);
     await settleCard(tester);
-    expect(find.text('Последняя карточка'), findsOneWidget);
+    expect(find.byKey(const Key('advice')), findsOneWidget);
 
-    await tester.fling(find.text('Последняя карточка'), const Offset(300, 0), 800);
+    await tester.fling(find.byKey(const Key('advice')), const Offset(300, 0), 800);
     await settleCard(tester);
-    expect(find.text('Первая карточка'), findsOneWidget);
+    expect(find.byKey(const Key('quote')), findsOneWidget);
   });
 
   testWidgets(

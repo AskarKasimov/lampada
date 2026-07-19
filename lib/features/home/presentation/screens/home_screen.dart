@@ -7,7 +7,10 @@ import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/domain/entities/day_progress.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/daily_card_screen.dart';
+import '../../../daily_cards/presentation/widgets/streak_label.dart';
 import '../widgets/brand_mark.dart';
+import '../widgets/home_cta_buttons.dart';
+import '../widgets/home_subtitle_empty.dart';
 import '../widgets/theme_mode_toggle_button.dart';
 import '../widgets/today_status_chips.dart';
 
@@ -63,12 +66,14 @@ class HomeScreen extends ConsumerWidget {
               children: [
                 const BrandMark(),
                 const SizedBox(height: 5),
-                Text(
-                  progress.streakDays == 0
-                      ? 'Начните сессию'
-                      : 'Текущая серия ${progress.streakDays} дней',
-                  style: TextStyle(fontSize: 13, color: colors.homeSubtitle),
-                ),
+                progress.streakDays == 0
+                    ? HomeSubtitleEmpty(
+                        style: TextStyle(fontSize: 13, color: colors.homeSubtitle),
+                      )
+                    : StreakLabel(
+                        days: progress.streakDays,
+                        style: TextStyle(fontSize: 13, color: colors.homeSubtitle),
+                      ),
                 const SizedBox(height: 24),
                 Text(
                   'СЕГОДНЯ',
@@ -83,34 +88,19 @@ class HomeScreen extends ConsumerWidget {
                 TodayStatusChips(cards: cards, readTypes: progress.readTypes),
                 const SizedBox(height: 24),
                 if (progress.allRead)
-                  TextButton(
+                  HomeReplayButton(
+                    color: colors.link,
                     onPressed: () => _replay(context),
-                    style: TextButton.styleFrom(foregroundColor: colors.link),
-                    child: Text(
-                      'Пройти снова',
-                      style: TextStyle(
-                        fontSize: 12,
-                        decoration: TextDecoration.underline,
-                        decorationColor: colors.link,
-                      ),
-                    ),
+                  )
+                else if (progress.readCount == 0)
+                  HomeStartButton(
+                    color: colors.accent,
+                    onPressed: () => _start(context, cards, progress),
                   )
                 else
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: colors.accent,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 44,
-                        vertical: 14,
-                      ),
-                      shape: const StadiumBorder(),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  HomeContinueButton(
+                    color: colors.accent,
                     onPressed: () => _start(context, cards, progress),
-                    child: Text(progress.readCount == 0 ? 'Начать' : 'Продолжить'),
                   ),
               ],
             ),

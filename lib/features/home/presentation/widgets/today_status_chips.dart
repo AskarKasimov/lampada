@@ -24,12 +24,26 @@ class TodayStatusChips extends StatelessWidget {
       alignment: WrapAlignment.center,
       children: [
         for (final card in cards)
-          _chip(context, card.type, readTypes.contains(card.type)),
+          TodayStatusChip(
+            key: ValueKey(card.type),
+            type: card.type,
+            read: readTypes.contains(card.type),
+          ),
       ],
     );
   }
+}
 
-  Widget _chip(BuildContext context, CardType type, bool read) {
+/// Один чип статуса — свой тип и `ValueKey(type)`, чтобы тесты находили
+/// конкретный чип по типу карточки, а не по надписи на нём.
+class TodayStatusChip extends StatelessWidget {
+  const TodayStatusChip({super.key, required this.type, required this.read});
+
+  final CardType type;
+  final bool read;
+
+  @override
+  Widget build(BuildContext context) {
     final style = type.styleFor(Theme.of(context).brightness);
     final colors = AppColorsExtension.of(context);
     return Container(

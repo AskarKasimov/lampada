@@ -12,7 +12,10 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repos
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/daily_card_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/streak_label.dart';
 import 'package:lampada/features/home/presentation/screens/home_screen.dart';
+import 'package:lampada/features/home/presentation/widgets/home_cta_buttons.dart';
+import 'package:lampada/features/home/presentation/widgets/home_subtitle_empty.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
@@ -89,9 +92,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Начать'), findsOneWidget);
-    expect(find.text('Текущая серия 12 дней'), findsOneWidget);
-    expect(find.text('Цитата'), findsOneWidget);
+    expect(find.byType(HomeStartButton), findsOneWidget);
+    final streak = tester.widget<StreakLabel>(find.byType(StreakLabel));
+    expect(streak.days, 12);
+    expect(find.byKey(const ValueKey(CardType.quote)), findsOneWidget);
   });
 
   testWidgets('серия 0 — «Начните сессию» вместо «0 дней»', (tester) async {
@@ -100,8 +104,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Начните сессию'), findsOneWidget);
-    expect(find.textContaining('0 дней'), findsNothing);
+    expect(find.byType(HomeSubtitleEmpty), findsOneWidget);
+    expect(find.byType(StreakLabel), findsNothing);
   });
 
   testWidgets('часть прочитана — CTA «Продолжить»', (tester) async {
@@ -112,7 +116,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Продолжить'), findsOneWidget);
+    expect(find.byType(HomeContinueButton), findsOneWidget);
   });
 
   testWidgets('всё прочитано — «Пройти снова», без CTA', (tester) async {
@@ -131,9 +135,9 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Пройти снова'), findsOneWidget);
-    expect(find.text('Начать'), findsNothing);
-    expect(find.text('Продолжить'), findsNothing);
+    expect(find.byType(HomeReplayButton), findsOneWidget);
+    expect(find.byType(HomeStartButton), findsNothing);
+    expect(find.byType(HomeContinueButton), findsNothing);
   });
 
   testWidgets('«Пройти снова» открывает карточки, прогресс не сбрасывает',
@@ -150,7 +154,7 @@ void main() {
     await tester.pumpWidget(await buildApp(allRead));
     await tester.pump();
 
-    await tester.tap(find.text('Пройти снова'));
+    await tester.tap(find.byType(HomeReplayButton));
     // StreakFlame крутится бесконечно — pumpAndSettle не осядет,
     // прокачиваем ровно на длительность перехода/анимации карточки.
     await tester.pump();
@@ -162,8 +166,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
-    // Прогресс не трогали — «Пройти снова» всё ещё на месте, не «Начать».
-    expect(find.text('Пройти снова'), findsOneWidget);
+    // Прогресс не трогали — replay-кнопка всё ещё на месте, не CTA.
+    expect(find.byType(HomeReplayButton), findsOneWidget);
+    expect(find.byType(HomeStartButton), findsNothing);
+    expect(find.byType(HomeContinueButton), findsNothing);
   });
 
   testWidgets(
@@ -177,13 +183,18 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Начать'), findsOneWidget);
+    expect(find.byType(HomeStartButton), findsOneWidget);
     expect(find.byIcon(Icons.dark_mode_outlined), findsOneWidget);
 
-    final context = tester.element(find.text('Начать'));
+    final context = tester.element(find.byType(HomeStartButton));
     expect(Theme.of(context).brightness, Brightness.dark);
 
-    final chipText = tester.widget<Text>(find.text('Цитата'));
+    final chipText = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey(CardType.quote)),
+        matching: find.byType(Text),
+      ),
+    );
     expect(chipText.style?.color, AppColorsExtension.dark.chipUnreadText);
   });
 

@@ -7,6 +7,7 @@ import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
+import '../widgets/daily_card_action_button.dart';
 import '../widgets/home_button.dart';
 import '../widgets/progress_dots.dart';
 import '../widgets/session_done_view.dart';
@@ -172,22 +173,15 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 20),
-                                  FilledButton(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: colors.accent,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 40,
-                                        vertical: 14,
-                                      ),
-                                      shape: const StadiumBorder(),
-                                      textStyle: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    onPressed: () => _next(list),
-                                    child: Text(isLast ? 'Готово' : 'Дальше'),
-                                  ),
+                                  isLast
+                                      ? DailyCardDoneButton(
+                                          color: colors.accent,
+                                          onPressed: () => _next(list),
+                                        )
+                                      : DailyCardNextButton(
+                                          color: colors.accent,
+                                          onPressed: () => _next(list),
+                                        ),
                                 ],
                               ),
                       ),
