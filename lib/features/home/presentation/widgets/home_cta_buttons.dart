@@ -1,32 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Общий стиль главной CTA Home — различаются только виджеты-варианты
-/// ниже, каждый со своим типом для тестов (`find.byType`).
-class _HomeCtaStyle extends StatelessWidget {
-  const _HomeCtaStyle({
-    required this.label,
-    required this.color,
-    required this.onPressed,
-  });
-
-  final String label;
-  final Color color;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton(
-      style: FilledButton.styleFrom(
-        backgroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 14),
-        shape: const StadiumBorder(),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-      ),
-      onPressed: onPressed,
-      child: Text(label),
-    );
-  }
-}
+import '../../../../core/widgets/app_link_button.dart';
+import '../../../../core/widgets/app_primary_button.dart';
 
 /// Сегодня ничего не прочитано — запускает сессию с первой карточки.
 class HomeStartButton extends StatelessWidget {
@@ -40,8 +15,12 @@ class HomeStartButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) =>
-      _HomeCtaStyle(label: 'Начать', color: color, onPressed: onPressed);
+  Widget build(BuildContext context) => AppPrimaryButton(
+        label: 'Начать',
+        color: color,
+        onPressed: onPressed,
+        horizontalPadding: 44,
+      );
 }
 
 /// Часть карточек уже прочитана — продолжает с первой непрочитанной.
@@ -56,8 +35,12 @@ class HomeContinueButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) =>
-      _HomeCtaStyle(label: 'Продолжить', color: color, onPressed: onPressed);
+  Widget build(BuildContext context) => AppPrimaryButton(
+        label: 'Продолжить',
+        color: color,
+        onPressed: onPressed,
+        horizontalPadding: 44,
+      );
 }
 
 /// Всё прочитано сегодня — перечитать карточки заново, не трогая прогресс.
@@ -72,18 +55,10 @@ class HomeReplayButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(foregroundColor: color),
-      child: Text(
-        'Пройти снова',
-        style: TextStyle(
-          fontSize: 12,
-          decoration: TextDecoration.underline,
-          decorationColor: color,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppLinkButton(
+        label: 'Пройти снова',
+        color: color,
+        onPressed: onPressed,
+        fontSize: 12,
+      );
 }

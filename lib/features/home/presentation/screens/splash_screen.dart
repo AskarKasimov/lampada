@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_link_button.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../widgets/brand_mark.dart';
 import 'home_screen.dart';
@@ -67,20 +68,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     style: TextStyle(fontSize: 13, color: colors.homeSubtitle),
                   ),
                   const SizedBox(height: 12),
-                  TextButton(
+                  AppLinkButton(
+                    label: 'Повторить',
+                    color: colors.link,
+                    fontSize: 12,
                     onPressed: () {
                       ref.invalidate(todayCardsProvider);
                       ref.invalidate(dayProgressProvider);
                     },
-                    style: TextButton.styleFrom(foregroundColor: colors.link),
-                    child: Text(
-                      'Повторить',
-                      style: TextStyle(
-                        fontSize: 12,
-                        decoration: TextDecoration.underline,
-                        decorationColor: colors.link,
-                      ),
-                    ),
                   ),
                 ],
               ],

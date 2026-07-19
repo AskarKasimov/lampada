@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_pill_badge.dart';
 import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
 
@@ -66,21 +67,11 @@ class _CardContentState extends State<CardContent> {
     return Column(
       mainAxisSize: MainAxisSize.max,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: style.tagBackground,
-            borderRadius: BorderRadius.circular(100),
-          ),
-          child: Text(
-            style.label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-              color: style.tagForeground,
-            ),
-          ),
+        AppPillBadge(
+          label: style.label,
+          background: style.tagBackground,
+          foreground: style.tagForeground,
+          letterSpacing: 0.2,
         ),
         const SizedBox(height: 22),
         Expanded(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/theme/card_type_style.dart';
 
@@ -45,21 +46,13 @@ class TodayStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = type.styleFor(Theme.of(context).brightness);
     final colors = AppColorsExtension.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-      decoration: BoxDecoration(
-        color: read ? style.tagBackground : Colors.transparent,
-        borderRadius: BorderRadius.circular(100),
-        border: read ? null : Border.all(color: colors.chipUnreadBorder),
-      ),
-      child: Text(
-        style.shortLabel,
-        style: TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w600,
-          color: read ? style.tagForeground : colors.chipUnreadText,
-        ),
-      ),
+    return AppPillBadge(
+      label: style.shortLabel,
+      background: read ? style.tagBackground : Colors.transparent,
+      foreground: read ? style.tagForeground : colors.chipUnreadText,
+      border: read ? null : Border.all(color: colors.chipUnreadBorder),
+      horizontalPadding: 13,
+      fontSize: 11.5,
     );
   }
 }
