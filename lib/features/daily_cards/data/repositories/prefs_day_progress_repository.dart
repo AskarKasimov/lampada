@@ -90,18 +90,4 @@ class PrefsDayProgressRepository implements DayProgressRepository {
       return Failure(AppFailure('Не удалось обновить серию', cause: e));
     }
   }
-
-  @override
-  Future<Result<DayProgress>> resetToday() async {
-    try {
-      // Серия уже засчитана за сегодня — «Пройти снова» просто даёт
-      // перечитать карточки, без отката streakDays/lastCompleted.
-      final dto = _forToday(_read());
-      final updated = dto.copyWith(readTypes: const []);
-      await _write(updated);
-      return Success(updated.toEntity());
-    } on Exception catch (e) {
-      return Failure(AppFailure('Не удалось сбросить прогресс', cause: e));
-    }
-  }
 }

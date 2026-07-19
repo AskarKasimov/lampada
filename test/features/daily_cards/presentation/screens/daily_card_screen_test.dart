@@ -51,12 +51,6 @@ class _FakeProgressRepository implements DayProgressRepository {
     return Success(_current);
   }
 
-  @override
-  Future<Result<DayProgress>> resetToday() async {
-    _read = {};
-    return Success(_current);
-  }
-
   Set<CardType> get readTypes => _read;
 }
 

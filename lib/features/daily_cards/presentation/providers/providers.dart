@@ -46,7 +46,7 @@ final dayProgressRepositoryProvider = Provider<DayProgressRepository>(
 );
 
 /// Прогресс текущего дня. Экраны читают состояние и вызывают методы
-/// markRead/completeDay/resetToday — репозиторий напрямую не трогают.
+/// markRead/completeDay — репозиторий напрямую не трогают.
 final dayProgressProvider =
     AsyncNotifierProvider<DayProgressNotifier, DayProgress>(
   DayProgressNotifier.new,
@@ -75,5 +75,4 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
 
   Future<void> markRead(CardType type) => _apply(_repo.markRead(type));
   Future<void> completeDay() => _apply(_repo.completeDay());
-  Future<void> resetToday() => _apply(_repo.resetToday());
 }

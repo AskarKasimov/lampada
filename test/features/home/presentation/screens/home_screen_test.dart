@@ -11,6 +11,7 @@ import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/daily_card_screen.dart';
 import 'package:lampada/features/home/presentation/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,8 +36,6 @@ class _FakeProgressRepository implements DayProgressRepository {
       Success(_progress);
   @override
   Future<Result<DayProgress>> completeDay() async => Success(_progress);
-  @override
-  Future<Result<DayProgress>> resetToday() async => Success(_progress);
 }
 
 /// Мини-копия `LampadaApp` — та же связка `theme`/`darkTheme`/`themeMode`
@@ -65,13 +64,21 @@ void main() {
       initialThemeMode == null ? {} : {'theme_mode': initialThemeMode},
     );
     final prefs = await SharedPreferences.getInstance();
-    return ProviderScope(
+    final container = ProviderContainer(
       overrides: [
         dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
         dayProgressRepositoryProvider
             .overrideWithValue(_FakeProgressRepository(progress)),
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
+    );
+    // HomeScreen читает через requireValue — как в проде, где за ним всегда
+    // стоит SplashScreen. Прогреваем провайдеры до первого build, иначе
+    // первый кадр ловит AsyncLoading и requireValue падает.
+    await container.read(todayCardsProvider.future);
+    await container.read(dayProgressProvider.future);
+    return UncontrolledProviderScope(
+      container: container,
       child: const _TestApp(),
     );
   }
@@ -127,6 +134,36 @@ void main() {
     expect(find.text('Пройти снова'), findsOneWidget);
     expect(find.text('Начать'), findsNothing);
     expect(find.text('Продолжить'), findsNothing);
+  });
+
+  testWidgets('«Пройти снова» открывает карточки, прогресс не сбрасывает',
+      (tester) async {
+    const allRead = DayProgress(
+      readTypes: {
+        CardType.quote,
+        CardType.advice,
+        CardType.basics,
+        CardType.reading,
+      },
+      streakDays: 5,
+    );
+    await tester.pumpWidget(await buildApp(allRead));
+    await tester.pump();
+
+    await tester.tap(find.text('Пройти снова'));
+    // StreakFlame крутится бесконечно — pumpAndSettle не осядет,
+    // прокачиваем ровно на длительность перехода/анимации карточки.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.byType(DailyCardScreen), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(DailyCardScreen))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    // Прогресс не трогали — «Пройти снова» всё ещё на месте, не «Начать».
+    expect(find.text('Пройти снова'), findsOneWidget);
   });
 
   testWidgets(

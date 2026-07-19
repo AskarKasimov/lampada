@@ -15,8 +15,4 @@ abstract interface class DayProgressRepository {
 
   /// Завершить день: серия +1 (не более одного раза в сутки).
   Future<Result<DayProgress>> completeDay();
-
-  /// Сбросить сегодняшний прогресс («Пройти снова») — даёт перечитать
-  /// карточки заново. Серию, уже засчитанную за сегодня, не откатывает.
-  Future<Result<DayProgress>> resetToday();
 }

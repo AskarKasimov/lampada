@@ -30,6 +30,12 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  /// «Пройти снова»: перечитать карточки для себя, не трогая прогресс —
+  /// день остаётся отмеченным прочитанным навсегда, чипсы не сбиваются.
+  Future<void> _replay(BuildContext context) => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const DailyCardScreen()),
+      );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cards = ref.watch(todayCardsProvider).requireValue;
@@ -78,8 +84,7 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
                 if (progress.allRead)
                   TextButton(
-                    onPressed: () =>
-                        ref.read(dayProgressProvider.notifier).resetToday(),
+                    onPressed: () => _replay(context),
                     style: TextButton.styleFrom(foregroundColor: colors.link),
                     child: Text(
                       'Пройти снова',
