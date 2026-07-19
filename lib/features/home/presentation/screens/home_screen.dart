@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/domain/entities/day_progress.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/daily_card_screen.dart';
-import '../../../daily_cards/presentation/widgets/streak_flame.dart';
+import '../widgets/brand_mark.dart';
 import '../widgets/theme_mode_toggle_button.dart';
 import '../widgets/today_status_chips.dart';
 
@@ -33,20 +32,11 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cardsAsync = ref.watch(todayCardsProvider);
-    final progressAsync = ref.watch(dayProgressProvider);
+    final cards = ref.watch(todayCardsProvider).requireValue;
+    final progress = ref.watch(dayProgressProvider).requireValue;
 
     return Scaffold(
-      body: SafeArea(
-        child: (cardsAsync.isLoading || progressAsync.isLoading)
-            ? const Center(child: CircularProgressIndicator())
-            : _content(
-                context,
-                ref,
-                cardsAsync.requireValue,
-                progressAsync.requireValue,
-              ),
-      ),
+      body: SafeArea(child: _content(context, ref, cards, progress)),
     );
   }
 
@@ -65,12 +55,7 @@ class HomeScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const StreakFlame(size: 18),
-                const SizedBox(height: 24),
-                Text(
-                  'Лампада',
-                  style: AppTheme.quoteStyle(context).copyWith(fontSize: 36),
-                ),
+                const BrandMark(),
                 const SizedBox(height: 5),
                 Text(
                   progress.streakDays == 0

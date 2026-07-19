@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'features/daily_cards/presentation/providers/providers.dart';
-import 'features/home/presentation/screens/home_screen.dart';
+import 'features/home/presentation/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +29,7 @@ class LampadaApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ref.watch(themeModeProvider),
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }
