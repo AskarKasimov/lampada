@@ -127,16 +127,6 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
         const Positioned(top: 4, right: 12, child: ThemeModeToggleButton()),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 36,
-          child: Text(
-            'по материалам «Азбуки веры»',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: colors.footer),
-          ),
-        ),
       ],
     );
   }

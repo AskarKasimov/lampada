@@ -5,7 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'streak_flame.dart';
 
-/// Экран завершения дня: порция получена, можно остановиться.
+/// Экран завершения дня: порция получена.
 class SessionDoneView extends StatelessWidget {
   const SessionDoneView({
     super.key,
@@ -25,7 +25,7 @@ class SessionDoneView extends StatelessWidget {
         const StreakFlame(size: 14),
         const SizedBox(height: 20),
         Text(
-          'Мысль дня получена.\nМожно остановиться — или вернуться завтра.',
+          'Мысль дня получена\nУвидимся завтра!',
           textAlign: TextAlign.center,
           style:
               AppTheme.quoteStyle(context).copyWith(fontSize: 22, height: 1.55),
