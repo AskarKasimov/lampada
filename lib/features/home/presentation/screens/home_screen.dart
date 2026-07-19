@@ -40,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cards = ref.watch(todayCardsProvider).requireValue;
+    final cards = ref.watch(todayCardsProvider).requireValue.cards;
     final progress = ref.watch(dayProgressProvider).requireValue;
 
     return Scaffold(

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
+import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/core/theme/app_theme.dart';
@@ -14,20 +15,21 @@ import 'package:lampada/features/daily_cards/presentation/widgets/session_done_v
 
 class _FakeCardsRepository implements DayCardsRepository {
   @override
-  Future<Result<List<DayCard>>> getCardsFor(DateTime date) async => Success([
-        const DayCard(
+  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+      Success(TodayCards(cards: const [
+        DayCard(
           id: 'quote',
           type: CardType.quote,
           body: 'Первая карточка',
           source: 'Источник 1',
         ),
-        const DayCard(
+        DayCard(
           id: 'advice',
           type: CardType.advice,
           body: 'Последняя карточка',
           source: 'Источник 2',
         ),
-      ]);
+      ]));
 }
 
 /// In-memory прогресс — экран его читает и обновляет.

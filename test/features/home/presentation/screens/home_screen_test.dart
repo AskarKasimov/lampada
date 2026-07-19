@@ -7,6 +7,7 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/core/theme/theme_mode_provider.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
+import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
@@ -19,12 +20,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
   @override
-  Future<Result<List<DayCard>>> getCardsFor(DateTime date) async => Success([
-        const DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
-        const DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
-        const DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
-        const DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
-      ]);
+  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+      Success(TodayCards(cards: const [
+        DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
+        DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
+        DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
+        DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
+      ]));
 }
 
 class _FakeProgressRepository implements DayProgressRepository {

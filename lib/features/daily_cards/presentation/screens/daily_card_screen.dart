@@ -96,7 +96,8 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           // TODO: спокойный экран ошибки, не стектрейс.
           error: (e, _) => Center(child: Text('$e')),
-          data: (list) {
+          data: (today) {
+            final list = today.cards;
             // Защита от RangeError, если данные обновились и список стал короче.
             final index = _index.clamp(0, list.length - 1);
             final isLast = index == list.length - 1;

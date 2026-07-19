@@ -1,5 +1,5 @@
 import '../../../../core/result/result.dart';
-import '../entities/day_card.dart';
+import '../entities/today_cards.dart';
 import '../repositories/day_cards_repository.dart';
 
 /// Карточки дня в фиксированном порядке показа (порядок enum [CardType]).
@@ -9,11 +9,14 @@ class GetTodayCards {
 
   final DayCardsRepository _repository;
 
-  Future<Result<List<DayCard>>> call(DateTime date) async {
+  Future<Result<TodayCards>> call(DateTime date) async {
     final result = await _repository.getCardsFor(date);
     return switch (result) {
-      Success(value: final cards) => Success(
-          [...cards]..sort((a, b) => a.type.index.compareTo(b.type.index)),
+      Success(value: final today) => Success(
+          today.copyWith(
+            cards: [...today.cards]
+              ..sort((a, b) => a.type.index.compareTo(b.type.index)),
+          ),
         ),
       Failure(failure: final f) => Failure(f),
     };

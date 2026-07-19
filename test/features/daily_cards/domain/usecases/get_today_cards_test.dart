@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
+import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/usecases/get_today_cards.dart';
 
@@ -9,8 +10,8 @@ class _FakeRepository implements DayCardsRepository {
   final List<DayCard> cards;
 
   @override
-  Future<Result<List<DayCard>>> getCardsFor(DateTime date) async =>
-      Success(cards);
+  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+      Success(TodayCards(cards: cards));
 }
 
 DayCard _card(CardType type) => DayCard(
@@ -34,8 +35,8 @@ void main() {
 
     final result = await usecase(DateTime(2026, 7, 7));
 
-    expect(result, isA<Success<List<DayCard>>>());
-    final cards = (result as Success<List<DayCard>>).value;
+    expect(result, isA<Success<TodayCards>>());
+    final cards = (result as Success<TodayCards>).value.cards;
     expect(cards.map((c) => c.type).toList(), [
       CardType.quote,
       CardType.advice,
