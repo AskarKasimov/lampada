@@ -17,6 +17,13 @@ class _FakeDatasource implements DayCardsRemoteDatasource {
   }
 }
 
+class _NeverCalledDatasource implements DayCardsRemoteDatasource {
+  @override
+  Future<List<DayCardDto>> fetch(DateTime date) async {
+    throw StateError('fetch не должен зваться, если кэш свежий');
+  }
+}
+
 const _card = DayCardDto(
   id: 'quote-2026-07-19',
   type: 'quote',
@@ -45,6 +52,19 @@ void main() {
     final cards = (result as Success<List<DayCard>>).value;
     expect(cards.single.id, 'quote-2026-07-19');
     expect(prefs.getString('day_cards_cache'), isNotNull);
+  });
+
+  test('кэш есть за запрошенную дату → сеть не дёргаем', () async {
+    final prefs = await _emptyPrefs();
+    final warmup = AzbykaDayCardsRepository(_FakeDatasource([_card]), prefs);
+    await warmup.getCardsFor(DateTime(2026, 7, 19));
+
+    final repo = AzbykaDayCardsRepository(_NeverCalledDatasource(), prefs);
+    final result = await repo.getCardsFor(DateTime(2026, 7, 19));
+
+    expect(result, isA<Success<List<DayCard>>>());
+    final cards = (result as Success<List<DayCard>>).value;
+    expect(cards.single.id, 'quote-2026-07-19');
   });
 
   test('ошибка сети + есть кэш → отдаёт кэш', () async {
