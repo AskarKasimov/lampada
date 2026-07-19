@@ -1,4 +1,3 @@
-// ignore_for_file: unused_field
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,18 +20,29 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   AzbykaDayCardsRepository(
     this._remote,
     this._prefs, {
+    Duration budget = const Duration(seconds: 7),
+    Duration attemptTimeout = const Duration(seconds: 3),
     List<Duration> retryDelays = const [
       Duration(seconds: 1),
       Duration(seconds: 1),
     ],
-  }) : _retryDelays = retryDelays;
+  })  : _budget = budget,
+        _attemptTimeout = attemptTimeout,
+        _retryDelays = retryDelays;
 
   final DayCardsRemoteDatasource _remote;
   final SharedPreferences _prefs;
-  // Используется в следующей задаче (retry loop).
+
+  /// Жёсткий потолок на весь цикл попыток. Сплэш не должен висеть дольше:
+  /// в мёртвой сети (captive portal) это ровно то время, что видит юзер.
+  final Duration _budget;
+  final Duration _attemptTimeout;
   final List<Duration> _retryDelays;
 
   static const _cacheKey = 'day_cards_cache';
+
+  /// Меньше этого остатка попытку не начинаем — она гарантированно не успеет.
+  static const _minAttempt = Duration(milliseconds: 500);
 
   @override
   Future<Result<TodayCards>> getCardsFor(DateTime date) async {
@@ -41,20 +51,35 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       return Success(TodayCards(cards: _toEntities(cache.cards)));
     }
 
+    final elapsed = Stopwatch()..start();
     FailureKind lastKind = FailureKind.unknown;
     Object? lastCause;
-    try {
-      final dtos = await _remote.fetch(
-        date,
-        timeout: const Duration(seconds: 3),
-      );
-      await _writeCache(date, dtos);
-      return Success(TodayCards(cards: _toEntities(dtos)));
-    } on RemoteFetchException catch (e) {
-      lastKind = e.kind;
-      lastCause = e.cause;
-    } on Exception catch (e) {
-      lastCause = e;
+
+    for (var attempt = 0; attempt <= _retryDelays.length; attempt++) {
+      final left = _budget - elapsed.elapsed;
+      if (left < _minAttempt) break;
+
+      try {
+        final dtos = await _remote.fetch(
+          date,
+          timeout: left < _attemptTimeout ? left : _attemptTimeout,
+        );
+        await _writeCache(date, dtos);
+        return Success(TodayCards(cards: _toEntities(dtos)));
+      } on RemoteFetchException catch (e) {
+        lastKind = e.kind;
+        lastCause = e.cause;
+        // Вёрстка поменялась — повтор даст ту же ошибку, только сожжёт бюджет.
+        if (e.kind == FailureKind.unknown) break;
+      } on Exception catch (e) {
+        lastKind = FailureKind.unknown;
+        lastCause = e;
+        break;
+      }
+
+      if (attempt < _retryDelays.length) {
+        await Future<void>.delayed(_retryDelays[attempt]);
+      }
     }
 
     if (cache != null) {

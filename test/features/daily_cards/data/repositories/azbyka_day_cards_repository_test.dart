@@ -30,6 +30,41 @@ class _NeverCalledDatasource implements DayCardsRemoteDatasource {
   }
 }
 
+/// Считает попытки и запоминает выданные таймауты.
+class _CountingDatasource implements DayCardsRemoteDatasource {
+  _CountingDatasource(this._error);
+  final Exception _error;
+
+  int calls = 0;
+  final List<Duration> timeouts = [];
+
+  @override
+  Future<List<DayCardDto>> fetch(
+    DateTime date, {
+    required Duration timeout,
+  }) async {
+    calls++;
+    timeouts.add(timeout);
+    throw _error;
+  }
+}
+
+/// Съедает весь выданный таймаут и падает — так ведёт себя живая, но не
+/// отвечающая сеть (captive portal). Нужен, чтобы бюджет реально тратился.
+class _SlowDatasource implements DayCardsRemoteDatasource {
+  final List<Duration> timeouts = [];
+
+  @override
+  Future<List<DayCardDto>> fetch(
+    DateTime date, {
+    required Duration timeout,
+  }) async {
+    timeouts.add(timeout);
+    await Future<void>.delayed(timeout);
+    throw const RemoteFetchException(FailureKind.network, 'таймаут');
+  }
+}
+
 const _card = DayCardDto(
   id: 'quote-2026-07-19',
   type: 'quote',
@@ -47,7 +82,11 @@ AzbykaDayCardsRepository _repo(
   DayCardsRemoteDatasource remote,
   SharedPreferences prefs,
 ) =>
-    AzbykaDayCardsRepository(remote, prefs, retryDelays: const []);
+    AzbykaDayCardsRepository(
+      remote,
+      prefs,
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -118,5 +157,49 @@ void main() {
 
     expect(result, isA<Failure<TodayCards>>());
     expect((result as Failure<TodayCards>).failure.kind, FailureKind.unknown);
+  });
+
+  test('сетевая ошибка ретраится — три попытки', () async {
+    final prefs = await _emptyPrefs();
+    final remote = _CountingDatasource(
+      const RemoteFetchException(FailureKind.network, 'нет сети'),
+    );
+
+    await _repo(remote, prefs).getCardsFor(DateTime(2026, 7, 19));
+
+    expect(remote.calls, 3);
+  });
+
+  test('битая разметка не ретраится — одна попытка', () async {
+    final prefs = await _emptyPrefs();
+    final remote = _CountingDatasource(
+      const RemoteFetchException(FailureKind.unknown, 'вёрстка'),
+    );
+
+    await _repo(remote, prefs).getCardsFor(DateTime(2026, 7, 19));
+
+    expect(remote.calls, 1);
+  });
+
+  test('бюджет режет таймаут и обрывает цикл раньше retryDelays', () async {
+    final prefs = await _emptyPrefs();
+    // Фейк «висящей» сети: съедает весь выданный таймаут, потом падает.
+    // Мгновенно падающий фейк бюджет не расходует и клампинг не проверил бы.
+    final remote = _SlowDatasource();
+    final repo = AzbykaDayCardsRepository(
+      remote,
+      prefs,
+      budget: const Duration(milliseconds: 1500),
+      attemptTimeout: const Duration(milliseconds: 900),
+      retryDelays: const [Duration.zero, Duration.zero],
+    );
+
+    await repo.getCardsFor(DateTime(2026, 7, 19));
+
+    // retryDelays разрешают 3 попытки, бюджета хватило на 2.
+    expect(remote.timeouts, hasLength(2));
+    expect(remote.timeouts.first, const Duration(milliseconds: 900));
+    // Второй достался остаток бюджета, а не полный attemptTimeout.
+    expect(remote.timeouts.last, lessThan(const Duration(milliseconds: 900)));
   });
 }
