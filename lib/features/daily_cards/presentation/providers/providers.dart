@@ -6,7 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/result/result.dart';
-import '../../data/repositories/mock_day_cards_repository.dart';
+import '../../data/datasources/day_cards_remote_datasource.dart';
+import '../../data/repositories/azbyka_day_cards_repository.dart';
 import '../../data/repositories/prefs_day_progress_repository.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
@@ -15,7 +16,10 @@ import '../../domain/repositories/day_progress_repository.dart';
 import '../../domain/usecases/get_today_cards.dart';
 
 final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
-  (ref) => const MockDayCardsRepository(),
+  (ref) => AzbykaDayCardsRepository(
+    AzbykaDayCardsRemoteDatasource(),
+    ref.watch(sharedPreferencesProvider),
+  ),
 );
 
 final getTodayCardsProvider = Provider<GetTodayCards>(
