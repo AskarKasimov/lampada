@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart';
 
 void main() {
@@ -28,7 +29,10 @@ void main() {
 
   test('парсит все 4 карточки дня из реальной страницы', () async {
     final datasource = buildDatasource();
-    final cards = await datasource.fetch(DateTime(2026, 7, 19));
+    final cards = await datasource.fetch(
+      DateTime(2026, 7, 19),
+      timeout: const Duration(seconds: 3),
+    );
 
     expect(
       cards.map((c) => c.type).toSet(),
@@ -63,11 +67,56 @@ void main() {
     expect(reading.body.split('\n\n').length, 2);
   });
 
-  test('бросает HttpException при не-200 ответе', () async {
+  test('не-200 → RemoteFetchException с kind server', () async {
     final datasource = buildDatasource(statusCode: 500);
-    expect(
-      () => datasource.fetch(DateTime(2026, 7, 19)),
-      throwsA(isA<HttpException>()),
+
+    await expectLater(
+      () => datasource.fetch(
+        DateTime(2026, 7, 19),
+        timeout: const Duration(seconds: 3),
+      ),
+      throwsA(
+        isA<RemoteFetchException>()
+            .having((e) => e.kind, 'kind', FailureKind.server),
+      ),
+    );
+  });
+
+  test('битая разметка → RemoteFetchException с kind unknown', () async {
+    final client = MockClient(
+      (request) async => http.Response('<html><body></body></html>', 200),
+    );
+    final datasource = AzbykaDayCardsRemoteDatasource(client: client);
+
+    await expectLater(
+      () => datasource.fetch(
+        DateTime(2026, 7, 19),
+        timeout: const Duration(seconds: 3),
+      ),
+      throwsA(
+        isA<RemoteFetchException>()
+            .having((e) => e.kind, 'kind', FailureKind.unknown),
+      ),
+    );
+  });
+
+  test('ответ не пришёл за таймаут → RemoteFetchException с kind network',
+      () async {
+    final client = MockClient((request) async {
+      await Future<void>.delayed(const Duration(seconds: 1));
+      return http.Response('', 200);
+    });
+    final datasource = AzbykaDayCardsRemoteDatasource(client: client);
+
+    await expectLater(
+      () => datasource.fetch(
+        DateTime(2026, 7, 19),
+        timeout: const Duration(milliseconds: 10),
+      ),
+      throwsA(
+        isA<RemoteFetchException>()
+            .having((e) => e.kind, 'kind', FailureKind.network),
+      ),
     );
   });
 }

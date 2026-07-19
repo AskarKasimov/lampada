@@ -30,7 +30,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       return Success(cache.cards.map((dto) => dto.toEntity()).toList());
     }
     try {
-      final dtos = await _remote.fetch(date);
+      final dtos = await _remote.fetch(date, timeout: const Duration(seconds: 3));
       await _writeCache(date, dtos);
       return Success(dtos.map((dto) => dto.toEntity()).toList());
     } on Exception catch (e) {

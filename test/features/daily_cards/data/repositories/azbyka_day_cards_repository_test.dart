@@ -11,7 +11,7 @@ class _FakeDatasource implements DayCardsRemoteDatasource {
   final Object _result; // List<DayCardDto> или Exception
 
   @override
-  Future<List<DayCardDto>> fetch(DateTime date) async {
+  Future<List<DayCardDto>> fetch(DateTime date, {required Duration timeout}) async {
     if (_result is Exception) throw _result;
     return _result as List<DayCardDto>;
   }
@@ -19,7 +19,7 @@ class _FakeDatasource implements DayCardsRemoteDatasource {
 
 class _NeverCalledDatasource implements DayCardsRemoteDatasource {
   @override
-  Future<List<DayCardDto>> fetch(DateTime date) async {
+  Future<List<DayCardDto>> fetch(DateTime date, {required Duration timeout}) async {
     throw StateError('fetch не должен зваться, если кэш свежий');
   }
 }

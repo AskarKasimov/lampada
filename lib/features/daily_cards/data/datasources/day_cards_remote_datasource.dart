@@ -1,15 +1,31 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import '../../../../core/result/result.dart';
 import '../dto/day_card_dto.dart';
+
+/// Сбой похода в сеть с уже определённым видом. Знание про `dart:io` и `http`
+/// заканчивается здесь — репозиторий выше видит только [FailureKind].
+class RemoteFetchException implements Exception {
+  const RemoteFetchException(this.kind, this.cause);
+
+  final FailureKind kind;
+  final Object cause;
+
+  @override
+  String toString() => 'RemoteFetchException(${kind.name}, $cause)';
+}
 
 /// Источник дневного контента. Реализация ниже скрейпит azbyka.ru —
 /// абстракция позволяет подменить её в тестах репозитория.
 abstract interface class DayCardsRemoteDatasource {
-  Future<List<DayCardDto>> fetch(DateTime date);
+  /// [timeout] задаёт вызывающий: бюджетом на загрузку владеет репозиторий,
+  /// датасорс лишь исполняет отведённое ему время.
+  Future<List<DayCardDto>> fetch(DateTime date, {required Duration timeout});
 }
 
 /// Скрейпит https://azbyka.ru/days/{yyyy-MM-dd} — вся дневная разметка
@@ -23,28 +39,49 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   static const _defaultSource = 'Азбука веры';
 
   @override
-  Future<List<DayCardDto>> fetch(DateTime date) async {
+  Future<List<DayCardDto>> fetch(
+    DateTime date, {
+    required Duration timeout,
+  }) async {
     final dateStr = _formatDate(date);
     final uri = Uri.parse('https://azbyka.ru/days/$dateStr');
-    final response = await _client.get(uri);
+
+    final http.Response response;
+    try {
+      response = await _client.get(uri).timeout(timeout);
+    } on TimeoutException catch (e) {
+      throw RemoteFetchException(FailureKind.network, e);
+    } on SocketException catch (e) {
+      throw RemoteFetchException(FailureKind.network, e);
+    } on http.ClientException catch (e) {
+      throw RemoteFetchException(FailureKind.network, e);
+    }
+
     if (response.statusCode != 200) {
-      throw HttpException(
-        'azbyka.ru вернул ${response.statusCode}',
-        uri: uri,
+      throw RemoteFetchException(
+        FailureKind.server,
+        HttpException('azbyka.ru вернул ${response.statusCode}', uri: uri),
       );
     }
-    final doc = html_parser.parse(response.body);
-    return [
-      _quoteCard(doc, dateStr),
-      _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet p'),
-      _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy p'),
-      _sectionCard(
-        doc,
-        dateStr,
-        type: 'reading',
-        selector: '#pritcha .brif p',
-      ),
-    ];
+
+    try {
+      final doc = html_parser.parse(response.body);
+      return [
+        _quoteCard(doc, dateStr),
+        _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet p'),
+        _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy p'),
+        _sectionCard(
+          doc,
+          dateStr,
+          type: 'reading',
+          selector: '#pritcha .brif p',
+        ),
+      ];
+    } on FormatException catch (e) {
+      // Селекторы не нашли блок — на azbyka.ru поменялась вёрстка.
+      // Ретраить бессмысленно, поэтому unknown, а не server.
+      throw RemoteFetchException(FailureKind.unknown, e);
+    }
   }
 
   DayCardDto _quoteCard(Document doc, String dateStr) {
