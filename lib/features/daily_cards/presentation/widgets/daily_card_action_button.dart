@@ -1,4 +1,3 @@
-// lib/features/daily_cards/presentation/widgets/daily_card_action_button.dart
 import 'package:flutter/material.dart';
 
 /// Общий стиль кнопки под карточкой — различаются только виджеты-варианты

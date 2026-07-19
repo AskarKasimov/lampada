@@ -1,4 +1,3 @@
-// lib/features/daily_cards/presentation/widgets/streak_label.dart
 import 'package:flutter/material.dart';
 
 /// «Текущая серия N дней» — общий текст для Home и экрана завершения дня.

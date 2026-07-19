@@ -1,4 +1,3 @@
-// lib/features/daily_cards/presentation/providers/providers.dart
 //
 // Единственное место, где presentation видит data:
 // здесь склеиваются repository → usecase и провайдер прогресса.

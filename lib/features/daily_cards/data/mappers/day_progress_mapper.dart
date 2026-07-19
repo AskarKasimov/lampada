@@ -1,4 +1,3 @@
-// lib/features/daily_cards/data/mappers/day_progress_mapper.dart
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../dto/day_progress_dto.dart';

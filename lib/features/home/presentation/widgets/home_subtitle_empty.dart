@@ -1,4 +1,3 @@
-// lib/features/home/presentation/widgets/home_subtitle_empty.dart
 import 'package:flutter/material.dart';
 
 /// Подпись Home, когда за сегодня ещё ничего не прочитано.

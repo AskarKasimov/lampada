@@ -1,5 +1,3 @@
-// lib/core/result/result.dart
-
 /// Ошибка уровня приложения. Не пересекает границу domain как исключение —
 /// всегда упакована в [Failure].
 class AppFailure implements Exception {

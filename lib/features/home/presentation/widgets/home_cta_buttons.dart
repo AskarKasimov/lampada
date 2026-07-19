@@ -1,4 +1,3 @@
-// lib/features/home/presentation/widgets/home_cta_buttons.dart
 import 'package:flutter/material.dart';
 
 /// Общий стиль главной CTA Home — различаются только виджеты-варианты

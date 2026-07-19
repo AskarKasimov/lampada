@@ -1,4 +1,3 @@
-// lib/features/daily_cards/domain/entities/day_progress.dart
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'day_card.dart';

@@ -1,4 +1,3 @@
-// lib/features/daily_cards/presentation/widgets/session_done_view.dart
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
