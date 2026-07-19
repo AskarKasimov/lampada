@@ -13,7 +13,9 @@ iOS — первый приоритет, Android — второй.
 ### 1. Feature-first
 
 Каждая возможность — папка `lib/features/<фича>/` со слоями `domain`, `data`,
-`presentation`. Общее — в `lib/core/`. Эталон: `lib/features/daily_cards/`.
+`presentation`. Общее — в `lib/core/` (тема — `core/theme/`, переиспользуемые
+виджеты — `core/widgets/`: `AppPrimaryButton`, `AppPillBadge`, `AppLinkButton`).
+Эталон: `lib/features/daily_cards/`.
 
 ### 2. Направление зависимостей: presentation → domain ← data
 
@@ -33,9 +35,14 @@ iOS — первый приоритет, Android — второй.
 ### 4. Ошибки — через Result, не исключения
 
 Usecase и репозиторий возвращают `Result<T>` (`lib/core/result/result.dart`).
-Репозиторий сам получает данные (отдельного datasource-слоя нет) и гасит
-исключения:
-`lib/features/daily_cards/data/repositories/mock_day_cards_repository.dart`.
+Репозиторий — единственное место, где исключения data-слоя гасятся и
+превращаются в `Failure`. Для удалённых источников заводится отдельный
+datasource, репозиторий сверху добавляет кэш/фоллбэк:
+`lib/features/daily_cards/data/datasources/day_cards_remote_datasource.dart` +
+`lib/features/daily_cards/data/repositories/azbyka_day_cards_repository.dart`.
+Для локального стораджа (prefs) отдельный datasource не нужен — репозиторий
+обращается к `SharedPreferences` напрямую:
+`lib/features/daily_cards/data/repositories/prefs_day_progress_repository.dart`.
 
 ### 5. Riverpod
 
@@ -62,5 +69,11 @@ Entity — freezed без JSON (`domain/entities/`). DTO — freezed + `fromJson
 
 ## Статус
 
-Скаффолд. Мок-контент. Реальный парсинг Азбуки, пуши, календарь — следующие
-итерации.
+Рабочий MVP на iOS. Контент — реальный скрейпинг `azbyka.ru/days/{дата}`
+(`AzbykaDayCardsRemoteDatasource`), с кэшем последнего успешного набора
+карточек в `SharedPreferences` и фоллбэком на кэш при сетевой ошибке.
+Прогресс дня и серия (streak) — тоже в `SharedPreferences`. Светлая/тёмная
+тема с переключателем на Home. Общий UI-кит вынесен в `lib/core/widgets/`.
+
+Ещё не сделано: пуши-напоминания, календарь/история прошлых дней, человечный
+экран ошибки (сейчас `throw` наружу из провайдера), Android — не тестировался.
