@@ -55,7 +55,13 @@ class PrefsDayProgressRepository implements DayProgressRepository {
     try {
       return Success(_forToday(_read()).toEntity());
     } on Exception catch (e) {
-      return Failure(AppFailure('Не удалось загрузить прогресс дня', cause: e));
+      return Failure(
+        AppFailure(
+          'Не удалось загрузить прогресс дня',
+          kind: FailureKind.unknown,
+          cause: e,
+        ),
+      );
     }
   }
 
@@ -69,7 +75,13 @@ class PrefsDayProgressRepository implements DayProgressRepository {
       await _write(updated);
       return Success(updated.toEntity());
     } on Exception catch (e) {
-      return Failure(AppFailure('Не удалось сохранить прогресс', cause: e));
+      return Failure(
+        AppFailure(
+          'Не удалось сохранить прогресс',
+          kind: FailureKind.unknown,
+          cause: e,
+        ),
+      );
     }
   }
 
@@ -86,7 +98,13 @@ class PrefsDayProgressRepository implements DayProgressRepository {
       await _write(dto);
       return Success(dto.toEntity());
     } on Exception catch (e) {
-      return Failure(AppFailure('Не удалось обновить серию', cause: e));
+      return Failure(
+        AppFailure(
+          'Не удалось обновить серию',
+          kind: FailureKind.unknown,
+          cause: e,
+        ),
+      );
     }
   }
 }

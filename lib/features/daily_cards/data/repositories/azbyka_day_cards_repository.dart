@@ -37,7 +37,13 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       if (cache != null) {
         return Success(cache.cards.map((dto) => dto.toEntity()).toList());
       }
-      return Failure(AppFailure('Не удалось загрузить карточки дня', cause: e));
+      return Failure(
+        AppFailure(
+          'Не удалось загрузить карточки дня',
+          kind: FailureKind.unknown,
+          cause: e,
+        ),
+      );
     }
   }
 
