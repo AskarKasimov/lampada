@@ -14,12 +14,16 @@ String _filler(int length) {
   return buffer.toString().substring(0, length);
 }
 
-DayCard _card(String body) => DayCard(
+DayCard _card(String body, {CardType type = CardType.advice}) => DayCard(
       id: 'test',
-      type: CardType.advice,
+      type: type,
       body: body,
       source: 'Тестовый источник',
     );
+
+const _questionHint =
+    'Пусть этот вопрос поживёт с вами весь день — в дороге, в очереди, '
+    'в тишине перед сном.';
 
 // Ширина/высота как у телефона — иначе дефолтная тестовая поверхность
 // (~800px) не даёт длинному тексту перенестись на достаточно строк,
@@ -78,5 +82,22 @@ void main() {
     await tester.pump();
 
     expect(find.byIcon(Icons.keyboard_arrow_down), findsNothing);
+  });
+
+  testWidgets('карточка вопроса — фиксированное напутствие под текстом',
+      (tester) async {
+    final card = _card('В чём смысл поста?', type: CardType.question);
+    await tester.pumpWidget(_buildApp(card));
+    await tester.pump();
+
+    expect(find.text(_questionHint), findsOneWidget);
+  });
+
+  testWidgets('на остальных типах напутствия нет', (tester) async {
+    final card = _card(_filler(50));
+    await tester.pumpWidget(_buildApp(card));
+    await tester.pump();
+
+    expect(find.text(_questionHint), findsNothing);
   });
 }

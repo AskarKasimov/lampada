@@ -20,6 +20,13 @@ class CardContent extends StatefulWidget {
   State<CardContent> createState() => _CardContentState();
 }
 
+/// Постоянное напутствие на карточке вопроса дня: вопрос не ждёт немедленного
+/// ответа, а сопровождает весь день. Фиксировано и не зависит от контента —
+/// не данные, а голос интерфейса, поэтому живёт в presentation, а не в DTO.
+const _questionDayHint =
+    'Пусть этот вопрос поживёт с вами весь день — в дороге, в очереди, '
+    'в тишине перед сном.';
+
 class _CardContentState extends State<CardContent> {
   final _scrollController = ScrollController();
   bool _hasMoreBelow = false;
@@ -93,6 +100,18 @@ class _CardContentState extends State<CardContent> {
                                 .copyWith(fontSize: fontSize),
                             textAlign: TextAlign.center,
                           ),
+                          if (card.type == CardType.question) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              _questionDayHint,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                height: 1.4,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           Text(
                             '— ${card.source}',
