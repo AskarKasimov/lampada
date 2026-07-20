@@ -20,7 +20,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   AzbykaDayCardsRepository(
     this._remote,
     this._prefs, {
-    Duration budget = const Duration(seconds: 7),
+    Duration budget = const Duration(seconds: 10),
     Duration attemptTimeout = const Duration(seconds: 3),
     List<Duration> retryDelays = const [
       Duration(seconds: 1),
@@ -33,8 +33,10 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   final DayCardsRemoteDatasource _remote;
   final SharedPreferences _prefs;
 
-  /// Жёсткий потолок на весь цикл попыток. Сплэш не должен висеть дольше:
-  /// в мёртвой сети (captive portal) это ровно то время, что видит юзер.
+  /// Жёсткий потолок на весь цикл попыток: в мёртвой сети (captive portal)
+  /// это ровно то время, что видит юзер. Держится на 10 секундах, потому что
+  /// сплэш через 3 секунды показывает спиннер — ожидание с индикатором
+  /// читается как работа, без него неподвижный логотип выглядит зависанием.
   final Duration _budget;
   final Duration _attemptTimeout;
   final List<Duration> _retryDelays;

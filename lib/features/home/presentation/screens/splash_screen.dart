@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../daily_cards/presentation/providers/providers.dart';
-import '../widgets/brand_mark.dart';
+import '../widgets/brand_loading_view.dart';
 import 'home_screen.dart';
 
 /// Первый экран приложения: качает карточки дня и прогресс, показывая
@@ -53,7 +53,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     );
 
     return const Scaffold(
-      body: SafeArea(child: Center(child: BrandMark())),
+      body: SafeArea(child: BrandLoadingView()),
     );
   }
 }

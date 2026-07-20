@@ -9,6 +9,7 @@ import '../../../daily_cards/domain/entities/today_cards.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/daily_card_screen.dart';
 import '../../../daily_cards/presentation/widgets/streak_label.dart';
+import '../widgets/brand_loading_view.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/home_cta_buttons.dart';
 import '../widgets/home_offline_view.dart';
@@ -81,7 +82,7 @@ class HomeScreen extends ConsumerWidget {
     // Загрузка. Своего состояния не заводим: «Повторить» возвращает провайдер
     // в loading прямо под юзером, и без этой ветки requireValue тут падал.
     return const Scaffold(
-      body: SafeArea(child: Center(child: BrandMark())),
+      body: SafeArea(child: BrandLoadingView()),
     );
   }
 
