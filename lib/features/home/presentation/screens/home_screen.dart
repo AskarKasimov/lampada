@@ -13,6 +13,7 @@ import '../widgets/brand_mark.dart';
 import '../widgets/home_cta_buttons.dart';
 import '../widgets/home_offline_view.dart';
 import '../widgets/home_subtitle_empty.dart';
+import '../widgets/stale_cache_notice.dart';
 import '../widgets/theme_mode_toggle_button.dart';
 import '../widgets/today_status_chips.dart';
 
@@ -122,6 +123,13 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 TodayStatusChips(cards: cards, readTypes: progress.readTypes),
+                if (today.staleDate != null) ...[
+                  const SizedBox(height: 12),
+                  StaleCacheNotice(
+                    staleDate: today.staleDate!,
+                    onRefresh: () => ref.invalidate(todayCardsProvider),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 if (progress.allRead)
                   HomeReplayButton(

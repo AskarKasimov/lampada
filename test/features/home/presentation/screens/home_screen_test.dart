@@ -17,6 +17,7 @@ import 'package:lampada/features/home/presentation/screens/home_screen.dart';
 import 'package:lampada/features/home/presentation/widgets/home_cta_buttons.dart';
 import 'package:lampada/features/home/presentation/widgets/home_offline_view.dart';
 import 'package:lampada/features/home/presentation/widgets/home_subtitle_empty.dart';
+import 'package:lampada/features/home/presentation/widgets/stale_cache_notice.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
@@ -50,6 +51,21 @@ class _FailingCardsRepository implements DayCardsRepository {
   @override
   Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
       Failure(AppFailure('нет карточек', kind: kind));
+}
+
+class _StaleCardsRepository implements DayCardsRepository {
+  @override
+  Future<Result<TodayCards>> getCardsFor(DateTime date) async => Success(
+        TodayCards(
+          cards: const [
+            DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
+            DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
+            DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
+            DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
+          ],
+          staleDate: DateTime(2026, 7, 19),
+        ),
+      );
 }
 
 /// Мини-копия `LampadaApp` — та же связка `theme`/`darkTheme`/`themeMode`
@@ -289,5 +305,35 @@ void main() {
 
     // Репозиторий по-прежнему падает — офлайн-вид остаётся, без крешей.
     expect(find.byType(HomeOfflineView), findsOneWidget);
+  });
+
+  testWidgets('кэш за другую дату — пометка «Офлайн», Home остаётся полным',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        dayCardsRepositoryProvider.overrideWithValue(_StaleCardsRepository()),
+        dayProgressRepositoryProvider.overrideWithValue(
+          _FakeProgressRepository(
+            const DayProgress(readTypes: {}, streakDays: 4),
+          ),
+        ),
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+    );
+    await container.read(todayCardsProvider.future);
+    await container.read(dayProgressProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: const _TestApp()),
+    );
+    await tester.pump();
+
+    expect(find.byType(StaleCacheNotice), findsOneWidget);
+    expect(find.text('Офлайн · карточки за 19 июля'), findsOneWidget);
+    // Контент на месте: чипы и CTA никуда не делись.
+    expect(find.byType(HomeStartButton), findsOneWidget);
+    expect(find.byKey(const ValueKey(CardType.quote)), findsOneWidget);
   });
 }
