@@ -32,7 +32,6 @@ class _FakeCardsRepository implements DayCardsRepository {
       ]));
 }
 
-/// In-memory прогресс — экран его читает и обновляет.
 class _FakeProgressRepository implements DayProgressRepository {
   Set<CardType> _read = {};
   int _streak = 0;
@@ -191,7 +190,6 @@ void main() {
     expect(find.byType(SessionDoneView), findsNothing);
     expect(find.text('Это карточки за 19 июля'), findsOneWidget);
 
-    // Прогресс дня не тронут вообще.
     expect(progress.readTypes, isEmpty);
     expect(progress.streakDays, 0);
   });

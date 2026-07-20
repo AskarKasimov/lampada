@@ -9,9 +9,8 @@ abstract interface class DayProgressRepository {
   /// список прочитанного пуст (новый день), серия сохраняется.
   Future<Result<DayProgress>> loadToday();
 
-  /// Отметить тип карточки прочитанным сегодня.
   Future<Result<DayProgress>> markRead(CardType type);
 
-  /// Завершить день: серия +1 (не более одного раза в сутки).
+  /// Серия +1, не более одного раза в сутки.
   Future<Result<DayProgress>> completeDay();
 }

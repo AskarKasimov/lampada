@@ -6,11 +6,8 @@ import '../../../../core/widgets/app_pill_badge.dart';
 import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
 
-/// Одна карточка дня: плашка-тип (pinned, не скроллится), курсивная мысль
-/// (скроллится, если не помещается — короткий текст остаётся по центру
-/// как раньше) и источник. Вызывающий обязан передать
-/// `key: ValueKey(card.id)` — иначе AnimatedSwitcher не увидит смену
-/// карточки, а скролл предыдущей карточки не сбросится на новую.
+/// Одна карточка дня. Вызывающий обязан передать `key: ValueKey(card.id)` —
+/// иначе AnimatedSwitcher не увидит смену карточки и не сбросит скролл.
 class CardContent extends StatefulWidget {
   const CardContent({super.key, required this.card});
 
@@ -20,9 +17,8 @@ class CardContent extends StatefulWidget {
   State<CardContent> createState() => _CardContentState();
 }
 
-/// Постоянное напутствие на карточке вопроса дня: вопрос не ждёт немедленного
-/// ответа, а сопровождает весь день. Фиксировано и не зависит от контента —
-/// не данные, а голос интерфейса, поэтому живёт в presentation, а не в DTO.
+/// Фиксировано и не зависит от контента — голос интерфейса, а не данные,
+/// поэтому живёт в presentation, а не в DTO.
 const _questionDayHint =
     'Пусть этот вопрос поживёт с вами весь день — в дороге, в очереди, '
     'в тишине перед сном.';

@@ -1,6 +1,5 @@
-//
-// Единственное место, где presentation видит data:
-// здесь склеиваются repository → usecase и провайдер прогресса.
+// Единственное место, где presentation видит data: тут repository → usecase
+// и провайдер прогресса склеиваются в DI-граф.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,8 +53,7 @@ final completeDayProvider = Provider<CompleteDay>(
   (ref) => CompleteDay(ref.watch(dayProgressRepositoryProvider)),
 );
 
-/// Прогресс текущего дня. Экраны читают состояние и вызывают методы
-/// markRead/completeDay — репозиторий напрямую не трогают.
+/// Прогресс дня: экраны вызывают markRead/completeDay, репозиторий напрямую не трогают.
 final dayProgressProvider =
     AsyncNotifierProvider<DayProgressNotifier, DayProgress>(
   DayProgressNotifier.new,
@@ -86,9 +84,8 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     }
   }
 
-  /// Решение «засчитывать ли сессию» принимает usecase, не нотифаер: это
-  /// доменное правило, и жить оно должно там же, где его можно проверить без
-  /// Riverpod. Здесь остаётся только проводка.
+  /// Решение «засчитывать ли сессию» — за usecase, не нотифаером: доменное
+  /// правило должно жить там, где его можно проверить без Riverpod.
   Future<void> markRead(CardType type) async {
     final session = _session;
     if (session == null) return;

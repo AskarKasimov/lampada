@@ -16,16 +16,11 @@ import '../widgets/session_done_view.dart';
 /// как «Дальше»/«Назад» — короткий вялый драг игнорируется.
 const _swipeVelocityThreshold = 300.0;
 
-/// Ядро продукта: ОДНА карточка на весь экран. «Дальше» — добровольно.
-/// Прочитанные карточки отмечаются в прогрессе дня; на последней — «Готово»
-/// и экран завершения. Листать можно свайпом влево/вправо. Кнопка «домой»
-/// слева сверху и «На главный экран» на завершении — pop к Home.
+/// Экран одной карточки дня: свайп или «Дальше», на последней — «Готово» и экран завершения.
 class DailyCardScreen extends ConsumerStatefulWidget {
   const DailyCardScreen({super.key, this.startIndex = 0});
 
   /// Индекс карточки, с которой открыться (первая непрочитанная).
-  /// Ожидается валидным для списка дня; build дополнительно клампит его
-  /// от RangeError, если данные изменились.
   final int startIndex;
 
   @override
@@ -37,9 +32,8 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
   bool _done = false;
   int? _markedIndex;
 
-  /// Засчитывает карточку прочитанной, как только она стала текущей —
-  /// не дожидаясь «Дальше». Иначе если уйти домой не долистав до конца,
-  /// уже просмотренная карточка осталась бы непрочитанной.
+  /// Засчитывает карточку прочитанной сразу, не дожидаясь «Дальше» — иначе,
+  /// уйдя домой раньше конца, оставили бы просмотренную карточку непрочитанной.
   void _markCurrentAsRead(List<DayCard> list, int index) {
     if (_markedIndex == index) return;
     _markedIndex = index;
@@ -53,9 +47,9 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
     final index = _index.clamp(0, list.length - 1);
     final notifier = ref.read(dayProgressProvider.notifier);
     if (index >= list.length - 1) {
-      // Ждём персист (markRead, потом completeDay — тот же ключ prefs,
-      // параллельно затёрли бы друг друга) перед показом done-экрана.
-      // Иначе он на миг покажет старую серию, и цифра дёрнется после отрисовки.
+      // Ждём персист перед показом done-экрана (markRead и completeDay пишут
+      // в один ключ prefs — параллельно затёрли бы друг друга), иначе на миг
+      // мелькнёт старая серия.
       await notifier.markRead(list[index].type);
       await notifier.completeDay();
       if (!mounted) return;
@@ -83,10 +77,8 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
     }
   }
 
-  /// Экран завершения в двух видах. На карточках за другой день огонька и
-  /// серии нет: день не засчитан, обещать «огонёк зажжён» было бы неправдой.
-  /// Ключ у обоих один — для `AnimatedSwitcher` это одна и та же позиция,
-  /// смена вида не должна выглядеть как новый переход.
+  /// Обычный экран завершения или [SessionDoneStaleView] для чужого дня.
+  /// Общий ValueKey — чтобы `AnimatedSwitcher` не принял смену вида за новый переход.
   Widget _doneView(BuildContext context, TodayCards today, int streakDays) {
     void onHome() => Navigator.of(context).pop();
     final staleDate = today.staleDate;

@@ -30,7 +30,6 @@ class _NeverCalledDatasource implements DayCardsRemoteDatasource {
   }
 }
 
-/// Считает попытки и запоминает выданные таймауты.
 class _CountingDatasource implements DayCardsRemoteDatasource {
   _CountingDatasource(this._error);
   final Exception _error;
@@ -183,7 +182,6 @@ void main() {
 
   test('бюджет режет таймаут и обрывает цикл раньше retryDelays', () async {
     final prefs = await _emptyPrefs();
-    // Фейк «висящей» сети: съедает весь выданный таймаут, потом падает.
     // Мгновенно падающий фейк бюджет не расходует и клампинг не проверил бы.
     final remote = _SlowDatasource();
     final repo = AzbykaDayCardsRepository(

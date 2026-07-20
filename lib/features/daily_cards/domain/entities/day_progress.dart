@@ -4,8 +4,8 @@ import 'day_card.dart';
 
 part 'day_progress.freezed.dart';
 
-/// Прогресс текущего дня: какие типы карточек уже прочитаны сегодня
-/// и длина серии («Лампадка»). Без JSON — это domain-модель.
+/// Прогресс дня: прочитанные сегодня типы карточек и длина серии
+/// («Лампадка»). Domain-модель, без JSON.
 @freezed
 abstract class DayProgress with _$DayProgress {
   const DayProgress._();

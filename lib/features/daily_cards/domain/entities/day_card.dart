@@ -2,11 +2,11 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'day_card.freezed.dart';
 
-/// Тип карточки. Порядок значений enum = фиксированный порядок показа
-/// внутри дня: от простого к сложному.
+/// Порядок значений enum = фиксированный порядок показа внутри дня:
+/// от простого к сложному.
 enum CardType { quote, advice, basics, reading, question }
 
-/// Одна единица дневного контента. Ровно одна карточка на экран.
+/// Единица дневного контента: одна карточка — один экран.
 @freezed
 abstract class DayCard with _$DayCard {
   const factory DayCard({

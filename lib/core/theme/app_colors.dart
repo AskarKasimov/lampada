@@ -35,7 +35,6 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   /// кнопки «Дальше».
   final Color accent;
 
-  // Home-экран и вторичные подписи (посчитаны из oklch-токенов дизайна).
   final Color homeSubtitle;
   final Color todayLabel;
   final Color footer;
@@ -91,8 +90,8 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     homeButtonBackground: Color(0x14FFFFFF),
   );
 
-  /// Палитра активной темы; `light`, если тема её не регистрировала
-  /// (например, тестовый `MaterialApp` без явного `theme:`).
+  /// Fallback на `light`, если тема её не регистрировала (например,
+  /// тестовый `MaterialApp` без явного `theme:`).
   static AppColorsExtension of(BuildContext context) =>
       Theme.of(context).extension<AppColorsExtension>() ?? light;
 

@@ -12,12 +12,10 @@ import '../datasources/day_cards_remote_datasource.dart';
 import '../dto/day_card_dto.dart';
 import '../mappers/day_card_mapper.dart';
 
-/// Скрейпит день через [DayCardsRemoteDatasource]. Если в кэше уже лежит
-/// набор карточек за запрошенную дату — сеть не дёргаем вовсе. При ошибке
-/// сети (или если разметка страницы поменялась) отдаёт последний успешно
-/// закэшированный набор карточек, даже если он за другую дату — лучше
-/// устаревшие карточки, чем ничего. Единственное место, где исключения
-/// data-слоя превращаются в Failure.
+/// Скрейпит день через [DayCardsRemoteDatasource]. Кэш за нужную дату —
+/// сеть не трогаем. При сетевой ошибке или сломанной вёрстке отдаём последний
+/// закэшированный набор, даже за другую дату — лучше устаревшее, чем ничего.
+/// Единственное место, где исключения data-слоя превращаются в Failure.
 class AzbykaDayCardsRepository implements DayCardsRepository {
   AzbykaDayCardsRepository(
     this._remote,
@@ -35,10 +33,9 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   final DayCardsRemoteDatasource _remote;
   final SharedPreferences _prefs;
 
-  /// Жёсткий потолок на весь цикл попыток: в мёртвой сети (captive portal)
-  /// это ровно то время, что видит юзер. Держится на 10 секундах, потому что
-  /// сплэш через 3 секунды показывает спиннер — ожидание с индикатором
-  /// читается как работа, без него неподвижный логотип выглядит зависанием.
+  /// Потолок на весь цикл попыток — время, которое видит юзер в мёртвой сети
+  /// (captive portal). 10 секунд, потому что сплэш показывает спиннер через
+  /// 3с: с индикатором ожидание читается как работа, без него — как зависание.
   final Duration _budget;
   final Duration _attemptTimeout;
   final List<Duration> _retryDelays;

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
-/// Тлеющий огонёк лампадки — тихий фоновый индикатор серии, не KPI.
-/// Плавно пульсирует, не привлекая лишнего внимания.
+/// Тлеющий огонёк лампадки — тихий индикатор серии (не KPI), плавно пульсирует.
 class StreakFlame extends StatefulWidget {
   const StreakFlame({super.key, this.size = 10});
 

@@ -89,16 +89,15 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
           'за ${elapsed.elapsedMilliseconds}мс суммарно');
       return cards;
     } on FormatException catch (e) {
-      // Селекторы не нашли блок — на azbyka.ru поменялась вёрстка.
-      // Ретраить бессмысленно, поэтому unknown, а не server.
+      // Вёрстка azbyka.ru поменялась — ретраить бессмысленно,
+      // поэтому unknown, а не server.
       netLog('разметка не разобралась → unknown: $e');
       throw RemoteFetchException(FailureKind.unknown, e);
     }
   }
 
-  /// «Вопрос дня» — виджет с общим `class="widget"` (таких на странице
-  /// несколько), поэтому цепляемся за уникальный класс ссылки `az-qod-link`,
-  /// а не за контейнер. На странице лежит только текст вопроса — ответ живёт
+  /// Виджет «Вопрос дня» имеет общий `class="widget"` с другими блоками,
+  /// поэтому цепляемся за уникальный класс ссылки `az-qod-link`. Ответ живёт
   /// на отдельной странице по этой же ссылке и здесь не запрашивается.
   DayCardDto _questionCard(Document doc, String dateStr) {
     final link = doc.querySelector('a.az-qod-link');
@@ -174,8 +173,8 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         .toList();
   }
 
-  /// <br> не даёт пробела в Element.text — без замены соседние
-  /// предложения слипаются. Заменяем на \n через реэкспорт фрагмента.
+  /// <br> не даёт пробела в Element.text — заменяем на \n, иначе соседние
+  /// предложения слипаются.
   static String _textWithBreaks(Element el) {
     final withBreaks = el.innerHtml
         .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');

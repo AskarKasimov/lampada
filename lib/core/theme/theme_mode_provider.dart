@@ -28,7 +28,6 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   Brightness _systemBrightness() =>
       WidgetsBinding.instance.platformDispatcher.platformBrightness;
 
-  /// Переключает светлая ↔ тёмная и сохраняет выбор.
   Future<void> toggle() async {
     final next = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
     state = next;

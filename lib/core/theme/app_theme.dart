@@ -28,7 +28,7 @@ abstract final class AppTheme {
 
   /// Курсивный serif (шрифт-ассет Lora-Italic.ttf) для цитаты/мысли дня —
   /// единственное место, где используется Lora, остальной UI — системный
-  /// шрифт. Цвет берётся из палитры активной темы.
+  /// шрифт.
   static TextStyle quoteStyle(BuildContext context) => TextStyle(
         fontFamily: 'Lora',
         fontSize: 24,

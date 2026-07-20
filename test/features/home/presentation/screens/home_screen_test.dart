@@ -70,9 +70,8 @@ class _StaleCardsRepository implements DayCardsRepository {
       );
 }
 
-/// Мини-копия `LampadaApp` — та же связка `theme`/`darkTheme`/`themeMode`
-/// через `themeModeProvider`, что и в проде, чтобы тесты реально проверяли
-/// связку провайдера с MaterialApp, а не подменяли её захардкоженным флагом.
+/// Мини-копия `LampadaApp`: та же связка `theme`/`darkTheme`/`themeMode`
+/// через `themeModeProvider`, что и в проде — не хардкодим флаг темы.
 class _TestApp extends ConsumerWidget {
   const _TestApp();
 
@@ -105,8 +104,8 @@ void main() {
       ],
     );
     // Прогреваем провайдеры до первого build, чтобы тест сразу видел готовый
-    // Home, а не кадр загрузки. Для падающего провайдера так делать нельзя —
-    // см. buildOfflineApp.
+    // Home, а не кадр загрузки. Для падающего провайдера так нельзя — см.
+    // buildOfflineApp.
     await container.read(todayCardsProvider.future);
     await container.read(dayProgressProvider.future);
     return UncontrolledProviderScope(
@@ -115,10 +114,9 @@ void main() {
     );
   }
 
-  /// Без прогрева через `todayCardsProvider.future`: у падающего провайдера
-  /// этот future не резолвится вовсе и тест виснет намертво. Пампим и даём
-  /// провайдеру самому пройти loading → error — заодно проверяется реальный
-  /// переход, а не подсунутое состояние.
+  /// Без прогрева: у падающего провайдера `todayCardsProvider.future` не
+  /// резолвится вовсе, и прогрев повесил бы тест. Пампим и даём провайдеру
+  /// самому пройти loading → error.
   Future<Widget> buildOfflineApp(FailureKind kind) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
@@ -219,7 +217,6 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
-    // Прогресс не трогали — replay-кнопка всё ещё на месте, не CTA.
     expect(find.byType(HomeReplayButton), findsOneWidget);
     expect(find.byType(HomeStartButton), findsNothing);
     expect(find.byType(HomeContinueButton), findsNothing);
@@ -284,7 +281,6 @@ void main() {
     expect(find.text('Нет подключения к интернету'), findsOneWidget);
     expect(find.text('Включите Wi-Fi или мобильную сеть'), findsOneWidget);
     expect(find.text('Повторить'), findsOneWidget);
-    // Карточек нет — ни чипов, ни кнопки старта.
     expect(find.byType(HomeStartButton), findsNothing);
   });
 
@@ -336,7 +332,6 @@ void main() {
 
     expect(find.byType(StaleCacheNotice), findsOneWidget);
     expect(find.text('Офлайн · карточки за 19 июля'), findsOneWidget);
-    // Контент на месте: чипы и CTA никуда не делись.
     expect(find.byType(HomeStartButton), findsOneWidget);
     expect(find.byKey(const ValueKey(CardType.quote)), findsOneWidget);
   });

@@ -4,8 +4,8 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 
-/// Кириллический наполнитель заданной длины — для проверки
-/// шрифт/скролл-порогов без привязки к реальному контенту с azbyka.ru.
+/// Кириллический наполнитель заданной длины — не привязывает шрифт/скролл-
+/// пороги к реальному контенту с azbyka.ru.
 String _filler(int length) {
   final buffer = StringBuffer();
   while (buffer.length < length) {
@@ -25,9 +25,8 @@ const _questionHint =
     'Пусть этот вопрос поживёт с вами весь день — в дороге, в очереди, '
     'в тишине перед сном.';
 
-// Ширина/высота как у телефона — иначе дефолтная тестовая поверхность
-// (~800px) не даёт длинному тексту перенестись на достаточно строк,
-// чтобы гарантированно переполнить 300px высоты.
+// Ширина/высота как у телефона — дефолтная тестовая поверхность (~800px)
+// не даёт длинному тексту перенестись на строки, чтобы переполнить 300px.
 Widget _buildApp(DayCard card) => MaterialApp(
       theme: AppTheme.light,
       home: Scaffold(

@@ -58,7 +58,6 @@ void main() {
     await first.markRead(CardType.quote);
     await first.completeDay();
 
-    // Новый инстанс поверх тех же prefs — как перезапуск приложения.
     final second = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
     final p = _unwrap(await second.loadToday());
     expect(p.readTypes, {CardType.quote});

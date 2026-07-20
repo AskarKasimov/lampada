@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
-/// Ряд точек-индикаторов прогресса по карточкам дня: пройденные — тусклые,
-/// текущая — крупная и в цвете своего типа, будущие — едва заметные.
+/// Точки прогресса по карточкам дня: текущая — крупная и в цвете своего типа,
+/// пройденные тусклые, будущие едва заметны.
 class ProgressDots extends StatelessWidget {
   const ProgressDots({
     super.key,

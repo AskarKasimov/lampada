@@ -24,8 +24,6 @@ class CardTypeStyle {
 }
 
 extension CardTypeStyleX on CardType {
-  /// Стиль карточки для текущей яркости темы — у каждого типа свой
-  /// набор цветов на светлую и тёмную тему.
   CardTypeStyle styleFor(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     return switch (this) {
