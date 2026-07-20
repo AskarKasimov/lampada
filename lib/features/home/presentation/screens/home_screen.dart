@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/lamp_glow.dart';
+import '../../../../core/widgets/lamp_level.dart';
+import '../../../../core/widgets/lampada_mark.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/domain/entities/day_progress.dart';
 import '../../../daily_cards/domain/entities/today_cards.dart';
@@ -10,10 +13,11 @@ import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/daily_card_screen.dart';
 import '../../../daily_cards/presentation/widgets/streak_label.dart';
 import '../widgets/brand_loading_view.dart';
-import '../widgets/brand_mark.dart';
+import '../widgets/brand_wordmark.dart';
 import '../widgets/home_cta_buttons.dart';
 import '../widgets/home_offline_view.dart';
 import '../widgets/home_subtitle_empty.dart';
+import '../widgets/kiot_frame.dart';
 import '../widgets/stale_cache_notice.dart';
 import '../widgets/theme_mode_toggle_button.dart';
 import '../widgets/today_status_chips.dart';
@@ -94,15 +98,29 @@ class HomeScreen extends ConsumerWidget {
   ) {
     final cards = today.cards;
     final colors = AppColorsExtension.of(context);
+    final level = LampLevel.forStreak(progress.streakDays);
+
     return Stack(
       children: [
+        // Слой 1: свет. Ниже всех — он подсвечивает сцену, а не лежит на ней.
+        LampGlow(level: level),
+
+        // Слой 2: обвод киота.
+        const Positioned.fill(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: KiotFrame(),
+          ),
+        ),
+
+        // Слой 3: контент. Лампада — последней, у самого низа колонки.
         Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 36),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const BrandMark(),
+                const BrandWordmark(),
                 const SizedBox(height: 5),
                 progress.streakDays == 0
                     ? HomeSubtitleEmpty(
@@ -147,6 +165,8 @@ class HomeScreen extends ConsumerWidget {
                     color: colors.accent,
                     onPressed: () => _start(context, cards, progress),
                   ),
+                const SizedBox(height: 32),
+                LampadaMark(size: 26, level: level, heroTag: 'lampada'),
               ],
             ),
           ),
