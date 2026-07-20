@@ -27,10 +27,22 @@ class _LampGlowState extends State<LampGlow>
   /// (`LampadaMark`): кратные периоды сложились бы в общий пульс, и сцена
   /// читалась бы как дышащий уведомлятор — ровно тот геймифицированный тон,
   /// от которого уходили.
-  late final _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 4000),
-  )..repeat(reverse: true);
+  ///
+  /// Создаётся в [initState], а не ленивым инициализатором поля: при
+  /// [LampLevel.unlit] сборка выходит первой строкой и до контроллера не
+  /// дотрагивается, поэтому ленивое поле впервые инициализировалось бы прямо
+  /// в [dispose] — а там `AnimationController` уже не может дотянуться до
+  /// `TickerMode` в снятом дереве и роняет экран.
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4000),
+    )..repeat(reverse: true);
+  }
 
   /// Доля кратчайшей стороны, до которой достаёт свет.
   double get _radius => switch (widget.level) {
