@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/domain/entities/day_progress.dart';
+import '../../../daily_cards/domain/entities/today_cards.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/daily_card_screen.dart';
 import '../../../daily_cards/presentation/widgets/streak_label.dart';
 import '../widgets/brand_mark.dart';
 import '../widgets/home_cta_buttons.dart';
+import '../widgets/home_offline_view.dart';
 import '../widgets/home_subtitle_empty.dart';
 import '../widgets/theme_mode_toggle_button.dart';
 import '../widgets/today_status_chips.dart';
@@ -40,20 +43,54 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cards = ref.watch(todayCardsProvider).requireValue.cards;
-    final progress = ref.watch(dayProgressProvider).requireValue;
+    final cardsAsync = ref.watch(todayCardsProvider);
+    final progressAsync = ref.watch(dayProgressProvider);
 
-    return Scaffold(
-      body: SafeArea(child: _content(context, ref, cards, progress)),
+    final today = cardsAsync.value;
+    final progress = progressAsync.value;
+
+    // Контент важнее ошибки: если карточки на руках есть, показываем их, даже
+    // когда последнее обновление упало.
+    if (today != null && progress != null) {
+      return Scaffold(
+        body: SafeArea(child: _content(context, ref, today, progress)),
+      );
+    }
+
+    if (cardsAsync.hasError || progressAsync.hasError) {
+      // Сбой прогресса (SharedPreferences) отдельного вида не получает —
+      // показываем то же офлайн-состояние с нейтральным текстом.
+      final kind = switch (cardsAsync.error) {
+        AppFailure(kind: final k) => k,
+        _ => FailureKind.unknown,
+      };
+      return Scaffold(
+        body: SafeArea(
+          child: HomeOfflineView(
+            kind: kind,
+            onRetry: () {
+              ref.invalidate(todayCardsProvider);
+              ref.invalidate(dayProgressProvider);
+            },
+          ),
+        ),
+      );
+    }
+
+    // Загрузка. Своего состояния не заводим: «Повторить» возвращает провайдер
+    // в loading прямо под юзером, и без этой ветки requireValue тут падал.
+    return const Scaffold(
+      body: SafeArea(child: Center(child: BrandMark())),
     );
   }
 
   Widget _content(
     BuildContext context,
     WidgetRef ref,
-    List<DayCard> cards,
+    TodayCards today,
     DayProgress progress,
   ) {
+    final cards = today.cards;
     final colors = AppColorsExtension.of(context);
     return Stack(
       children: [
