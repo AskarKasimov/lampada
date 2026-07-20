@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_link_button.dart';
@@ -34,6 +35,45 @@ class SessionDoneView extends StatelessWidget {
         const SizedBox(height: 20),
         StreakLabel(
           days: streakDays,
+          style: TextStyle(fontSize: 14, color: colors.textSecondary),
+        ),
+        const SizedBox(height: 10),
+        SessionDoneHomeButton(color: colors.link, onPressed: onHome),
+      ],
+    );
+  }
+}
+
+/// Конец сессии на карточках за другой день. Ни огонька, ни серии: день не
+/// засчитан, потому что сегодняшний контент юзеру не показывали. Обещать здесь
+/// «огонёк зажжён» — та же тихая неправда, ради которой заведена пометка на
+/// Home.
+class SessionDoneStaleView extends StatelessWidget {
+  const SessionDoneStaleView({
+    super.key,
+    required this.staleDate,
+    required this.onHome,
+  });
+
+  final DateTime staleDate;
+  final VoidCallback onHome;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Это карточки за ${russianDayMonth(staleDate)}',
+          textAlign: TextAlign.center,
+          style:
+              AppTheme.quoteStyle(context).copyWith(fontSize: 22, height: 1.55),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Сегодняшние появятся, когда будет интернет',
+          textAlign: TextAlign.center,
           style: TextStyle(fontSize: 14, color: colors.textSecondary),
         ),
         const SizedBox(height: 10),

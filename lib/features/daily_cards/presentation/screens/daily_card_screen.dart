@@ -96,7 +96,8 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           // TODO: спокойный экран ошибки, не стектрейс.
           error: (e, _) => Center(child: Text('$e')),
-          data: (list) {
+          data: (today) {
+            final list = today.cards;
             // Защита от RangeError, если данные обновились и список стал короче.
             final index = _index.clamp(0, list.length - 1);
             final isLast = index == list.length - 1;
@@ -137,11 +138,19 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                                 ),
                               ),
                               child: _done
-                                  ? SessionDoneView(
-                                      key: const ValueKey('done'),
-                                      streakDays: streakDays,
-                                      onHome: () => Navigator.of(context).pop(),
-                                    )
+                                  ? (today.staleDate != null
+                                      ? SessionDoneStaleView(
+                                          key: const ValueKey('done'),
+                                          staleDate: today.staleDate!,
+                                          onHome: () =>
+                                              Navigator.of(context).pop(),
+                                        )
+                                      : SessionDoneView(
+                                          key: const ValueKey('done'),
+                                          streakDays: streakDays,
+                                          onHome: () =>
+                                              Navigator.of(context).pop(),
+                                        ))
                                   : CardContent(
                                       key: ValueKey(list[index].id),
                                       card: list[index],

@@ -7,6 +7,7 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/core/theme/theme_mode_provider.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
+import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
@@ -14,17 +15,20 @@ import 'package:lampada/features/daily_cards/presentation/screens/daily_card_scr
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_label.dart';
 import 'package:lampada/features/home/presentation/screens/home_screen.dart';
 import 'package:lampada/features/home/presentation/widgets/home_cta_buttons.dart';
+import 'package:lampada/features/home/presentation/widgets/home_offline_view.dart';
 import 'package:lampada/features/home/presentation/widgets/home_subtitle_empty.dart';
+import 'package:lampada/features/home/presentation/widgets/stale_cache_notice.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
   @override
-  Future<Result<List<DayCard>>> getCardsFor(DateTime date) async => Success([
-        const DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
-        const DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
-        const DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
-        const DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
-      ]);
+  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+      Success(TodayCards(cards: const [
+        DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
+        DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
+        DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
+        DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
+      ]));
 }
 
 class _FakeProgressRepository implements DayProgressRepository {
@@ -38,6 +42,30 @@ class _FakeProgressRepository implements DayProgressRepository {
       Success(_progress);
   @override
   Future<Result<DayProgress>> completeDay() async => Success(_progress);
+}
+
+class _FailingCardsRepository implements DayCardsRepository {
+  _FailingCardsRepository(this.kind);
+  final FailureKind kind;
+
+  @override
+  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+      Failure(AppFailure('нет карточек', kind: kind));
+}
+
+class _StaleCardsRepository implements DayCardsRepository {
+  @override
+  Future<Result<TodayCards>> getCardsFor(DateTime date) async => Success(
+        TodayCards(
+          cards: const [
+            DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
+            DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
+            DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
+            DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
+          ],
+          staleDate: DateTime(2026, 7, 19),
+        ),
+      );
 }
 
 /// Мини-копия `LampadaApp` — та же связка `theme`/`darkTheme`/`themeMode`
@@ -74,13 +102,35 @@ void main() {
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
     );
-    // HomeScreen читает через requireValue — как в проде, где за ним всегда
-    // стоит SplashScreen. Прогреваем провайдеры до первого build, иначе
-    // первый кадр ловит AsyncLoading и requireValue падает.
+    // Прогреваем провайдеры до первого build, чтобы тест сразу видел готовый
+    // Home, а не кадр загрузки. Для падающего провайдера так делать нельзя —
+    // см. buildOfflineApp.
     await container.read(todayCardsProvider.future);
     await container.read(dayProgressProvider.future);
     return UncontrolledProviderScope(
       container: container,
+      child: const _TestApp(),
+    );
+  }
+
+  /// Без прогрева через `todayCardsProvider.future`: у падающего провайдера
+  /// этот future не резолвится вовсе и тест виснет намертво. Пампим и даём
+  /// провайдеру самому пройти loading → error — заодно проверяется реальный
+  /// переход, а не подсунутое состояние.
+  Future<Widget> buildOfflineApp(FailureKind kind) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    return ProviderScope(
+      overrides: [
+        dayCardsRepositoryProvider
+            .overrideWithValue(_FailingCardsRepository(kind)),
+        dayProgressRepositoryProvider.overrideWithValue(
+          _FakeProgressRepository(
+            const DayProgress(readTypes: {}, streakDays: 0),
+          ),
+        ),
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
       child: const _TestApp(),
     );
   }
@@ -218,5 +268,72 @@ void main() {
     await tester.tap(find.byIcon(Icons.dark_mode_outlined));
     await tester.pump();
     expect(find.byIcon(Icons.light_mode_outlined), findsOneWidget);
+  });
+
+  testWidgets('нет сети и кэша пуст — офлайн-вид с советом про Wi-Fi',
+      (tester) async {
+    await tester.pumpWidget(await buildOfflineApp(FailureKind.network));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(HomeOfflineView), findsOneWidget);
+    expect(find.text('Нет подключения к интернету'), findsOneWidget);
+    expect(find.text('Включите Wi-Fi или мобильную сеть'), findsOneWidget);
+    expect(find.text('Повторить'), findsOneWidget);
+    // Карточек нет — ни чипов, ни кнопки старта.
+    expect(find.byType(HomeStartButton), findsNothing);
+  });
+
+  testWidgets('сервер лёг — текст про Азбуку, без совета включить Wi-Fi',
+      (tester) async {
+    await tester.pumpWidget(await buildOfflineApp(FailureKind.server));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Азбука веры сейчас недоступна'), findsOneWidget);
+    expect(find.text('Включите Wi-Fi или мобильную сеть'), findsNothing);
+  });
+
+  testWidgets('«Повторить» перезапрашивает карточки', (tester) async {
+    await tester.pumpWidget(await buildOfflineApp(FailureKind.network));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Повторить'));
+    await tester.pump();
+    await tester.pump();
+
+    // Репозиторий по-прежнему падает — офлайн-вид остаётся, без крешей.
+    expect(find.byType(HomeOfflineView), findsOneWidget);
+  });
+
+  testWidgets('кэш за другую дату — пометка «Офлайн», Home остаётся полным',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        dayCardsRepositoryProvider.overrideWithValue(_StaleCardsRepository()),
+        dayProgressRepositoryProvider.overrideWithValue(
+          _FakeProgressRepository(
+            const DayProgress(readTypes: {}, streakDays: 4),
+          ),
+        ),
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+    );
+    await container.read(todayCardsProvider.future);
+    await container.read(dayProgressProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: const _TestApp()),
+    );
+    await tester.pump();
+
+    expect(find.byType(StaleCacheNotice), findsOneWidget);
+    expect(find.text('Офлайн · карточки за 19 июля'), findsOneWidget);
+    // Контент на месте: чипы и CTA никуда не делись.
+    expect(find.byType(HomeStartButton), findsOneWidget);
+    expect(find.byKey(const ValueKey(CardType.quote)), findsOneWidget);
   });
 }

@@ -1,15 +1,32 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import '../../../../core/log/net_log.dart';
+import '../../../../core/result/result.dart';
 import '../dto/day_card_dto.dart';
+
+/// Сбой похода в сеть с уже определённым видом. Знание про `dart:io` и `http`
+/// заканчивается здесь — репозиторий выше видит только [FailureKind].
+class RemoteFetchException implements Exception {
+  const RemoteFetchException(this.kind, this.cause);
+
+  final FailureKind kind;
+  final Object cause;
+
+  @override
+  String toString() => 'RemoteFetchException(${kind.name}, $cause)';
+}
 
 /// Источник дневного контента. Реализация ниже скрейпит azbyka.ru —
 /// абстракция позволяет подменить её в тестах репозитория.
 abstract interface class DayCardsRemoteDatasource {
-  Future<List<DayCardDto>> fetch(DateTime date);
+  /// [timeout] задаёт вызывающий: бюджетом на загрузку владеет репозиторий,
+  /// датасорс лишь исполняет отведённое ему время.
+  Future<List<DayCardDto>> fetch(DateTime date, {required Duration timeout});
 }
 
 /// Скрейпит https://azbyka.ru/days/{yyyy-MM-dd} — вся дневная разметка
@@ -23,28 +40,58 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   static const _defaultSource = 'Азбука веры';
 
   @override
-  Future<List<DayCardDto>> fetch(DateTime date) async {
+  Future<List<DayCardDto>> fetch(
+    DateTime date, {
+    required Duration timeout,
+  }) async {
     final dateStr = _formatDate(date);
     final uri = Uri.parse('https://azbyka.ru/days/$dateStr');
-    final response = await _client.get(uri);
+    final elapsed = Stopwatch()..start();
+    netLog('GET $uri (отведено ${timeout.inMilliseconds}мс)');
+
+    final http.Response response;
+    try {
+      response = await _client.get(uri).timeout(timeout);
+    } on TimeoutException catch (e) {
+      netLog('таймаут на ${elapsed.elapsedMilliseconds}мс → network');
+      throw RemoteFetchException(FailureKind.network, e);
+    } on SocketException catch (e) {
+      netLog('сокет упал на ${elapsed.elapsedMilliseconds}мс → network: $e');
+      throw RemoteFetchException(FailureKind.network, e);
+    } on http.ClientException catch (e) {
+      netLog('клиент упал на ${elapsed.elapsedMilliseconds}мс → network: $e');
+      throw RemoteFetchException(FailureKind.network, e);
+    }
+
+    netLog(
+      'ответ ${response.statusCode}, ${response.bodyBytes.length}Б '
+      'за ${elapsed.elapsedMilliseconds}мс',
+    );
+
     if (response.statusCode != 200) {
-      throw HttpException(
-        'azbyka.ru вернул ${response.statusCode}',
-        uri: uri,
+      throw RemoteFetchException(
+        FailureKind.server,
+        HttpException('azbyka.ru вернул ${response.statusCode}', uri: uri),
       );
     }
-    final doc = html_parser.parse(response.body);
-    return [
-      _quoteCard(doc, dateStr),
-      _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet p'),
-      _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy p'),
-      _sectionCard(
-        doc,
-        dateStr,
-        type: 'reading',
-        selector: '#pritcha .brif p',
-      ),
-    ];
+
+    try {
+      final doc = html_parser.parse(response.body);
+      final cards = [
+        _quoteCard(doc, dateStr),
+        _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet'),
+        _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy'),
+        _sectionCard(doc, dateStr, type: 'reading', selector: '#pritcha .brif'),
+      ];
+      netLog('разобрано ${cards.length} карточек '
+          'за ${elapsed.elapsedMilliseconds}мс суммарно');
+      return cards;
+    } on FormatException catch (e) {
+      // Селекторы не нашли блок — на azbyka.ru поменялась вёрстка.
+      // Ретраить бессмысленно, поэтому unknown, а не server.
+      netLog('разметка не разобралась → unknown: $e');
+      throw RemoteFetchException(FailureKind.unknown, e);
+    }
   }
 
   DayCardDto _quoteCard(Document doc, String dateStr) {
@@ -69,13 +116,13 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     required String type,
     required String selector,
   }) {
-    final paragraphs = doc
-        .querySelectorAll(selector)
-        .map(_textWithBreaks)
-        .where((t) => t.isNotEmpty)
-        .toList();
-    if (paragraphs.isEmpty) {
+    final container = doc.querySelector(selector);
+    if (container == null) {
       throw FormatException('блок "$type" не найден на странице ($selector)');
+    }
+    final paragraphs = _paragraphsFrom(container);
+    if (paragraphs.isEmpty) {
+      throw FormatException('блок "$type" пуст ($selector)');
     }
     return DayCardDto(
       id: '$type-$dateStr',
@@ -83,6 +130,28 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       body: paragraphs.join('\n\n'),
       source: _defaultSource,
     );
+  }
+
+  /// Абзацы блока. Азбука верстает эти секции двумя способами, и день ото дня
+  /// они меняются: то текст разложен по <p>, то лежит в контейнере голым и
+  /// разделён <br>. Знаем только один вариант — приложение уходит в вечный
+  /// офлайн в тот день, когда придёт второй.
+  static List<String> _paragraphsFrom(Element container) {
+    // Заголовок секции («Практический совет») — не контент.
+    container.querySelector('h2')?.remove();
+
+    final tagged = container
+        .querySelectorAll('p')
+        .map(_textWithBreaks)
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (tagged.isNotEmpty) return tagged;
+
+    return _textWithBreaks(container)
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
   }
 
   /// <br> не даёт пробела в Element.text — без замены соседние

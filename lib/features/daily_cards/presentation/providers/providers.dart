@@ -10,6 +10,7 @@ import '../../data/repositories/azbyka_day_cards_repository.dart';
 import '../../data/repositories/prefs_day_progress_repository.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
+import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
 import '../../domain/usecases/get_today_cards.dart';
@@ -26,11 +27,10 @@ final getTodayCardsProvider = Provider<GetTodayCards>(
 );
 
 /// Карточки сегодняшнего дня в порядке показа.
-final todayCardsProvider = FutureProvider<List<DayCard>>((ref) async {
+final todayCardsProvider = FutureProvider<TodayCards>((ref) async {
   final result = await ref.watch(getTodayCardsProvider)(DateTime.now());
   return switch (result) {
-    Success(value: final cards) => cards,
-    // TODO: человечный экран ошибки вместо проброса.
+    Success(value: final today) => today,
     Failure(failure: final f) => throw f,
   };
 });
@@ -72,6 +72,16 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     }
   }
 
-  Future<void> markRead(CardType type) => _apply(_repo.markRead(type));
-  Future<void> completeDay() => _apply(_repo.completeDay());
+  /// Показан кэш за другой день. Прогресс дня отражает сегодняшний контент,
+  /// а не факт свайпов: сегодняшних карточек юзер не видел, значит день не
+  /// пройден и серия не растёт. Гейт стоит здесь, а не на экране — иначе
+  /// правило пришлось бы повторять на каждом вызове markRead/completeDay.
+  bool get _staleSession =>
+      ref.read(todayCardsProvider).value?.staleDate != null;
+
+  Future<void> markRead(CardType type) =>
+      _staleSession ? Future<void>.value() : _apply(_repo.markRead(type));
+
+  Future<void> completeDay() =>
+      _staleSession ? Future<void>.value() : _apply(_repo.completeDay());
 }
