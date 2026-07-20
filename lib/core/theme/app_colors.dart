@@ -21,6 +21,9 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     required this.chipUnreadText,
     required this.chipUnreadBorder,
     required this.homeButtonBackground,
+    required this.kiotLine,
+    required this.lampBody,
+    required this.lampUnlit,
   });
 
   final Color background;
@@ -50,6 +53,17 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   /// логики «еле заметно».
   final Color homeButtonBackground;
 
+  /// Линия арки киота — тонкая, на грани заметности: рамка обязана читаться
+  /// как обвод сцены, а не как границы контейнера.
+  final Color kiotLine;
+
+  /// Металл чаши лампады в горящем состоянии.
+  final Color lampBody;
+
+  /// Чаша при стрике 0. Холоднее и глуше [lampBody]: погасшая лампада должна
+  /// остаться узнаваемым предметом, а не превратиться в чёрную дыру.
+  final Color lampUnlit;
+
   static const light = AppColorsExtension(
     background: Color(0xFFFAF0E3),
     ink: Color(0xFF362418),
@@ -67,6 +81,9 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     chipUnreadText: Color(0xFF887E78),
     chipUnreadBorder: Color(0xFFD6CBC5),
     homeButtonBackground: Color(0x0D000000),
+    kiotLine: Color(0x33776559),
+    lampBody: Color(0xFF7A6455),
+    lampUnlit: Color(0xFFA99B93),
   );
 
   /// Тёплый тёмно-коричневый фон («комната при свече ночью»), не
@@ -88,6 +105,9 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     chipUnreadText: Color(0xFFA79686),
     chipUnreadBorder: Color(0xFF4A3C30),
     homeButtonBackground: Color(0x14FFFFFF),
+    kiotLine: Color(0x3DC9B8A8),
+    lampBody: Color(0xFFC2A98F),
+    lampUnlit: Color(0xFF6B5B4D),
   );
 
   /// Fallback на `light`, если тема её не регистрировала (например,
@@ -113,6 +133,9 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     Color? chipUnreadText,
     Color? chipUnreadBorder,
     Color? homeButtonBackground,
+    Color? kiotLine,
+    Color? lampBody,
+    Color? lampUnlit,
   }) =>
       AppColorsExtension(
         background: background ?? this.background,
@@ -132,6 +155,9 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
         chipUnreadBorder: chipUnreadBorder ?? this.chipUnreadBorder,
         homeButtonBackground:
             homeButtonBackground ?? this.homeButtonBackground,
+        kiotLine: kiotLine ?? this.kiotLine,
+        lampBody: lampBody ?? this.lampBody,
+        lampUnlit: lampUnlit ?? this.lampUnlit,
       );
 
   @override
