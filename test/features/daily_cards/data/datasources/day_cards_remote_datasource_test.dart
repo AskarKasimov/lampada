@@ -17,6 +17,8 @@ import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
 String _page({
   String quoteBody = 'QUOTE',
   String quoteAuthorHtml = '<a href="/x">AUTHOR</a>',
+  String questionHtml =
+      "<a class='az-qod-link' href='https://azbyka.ru/vopros/x/'>QUESTION</a>",
   String adviceHtml = '<p>ADVICE</p>',
   String basicsHtml = '<p>BASICS</p>',
   String parableHtml = '<p>PARABLE</p>',
@@ -28,6 +30,10 @@ String _page({
       <p>$quoteBody</p>
       <p>$quoteAuthorHtml</p>
     </div>
+  </div>
+  <div class="widget">
+    <div class="widget-title">Вопрос дня</div>
+    <div class="box">$questionHtml</div>
   </div>
   <div id="sovet" class="block info advice">
     <h2>Практический совет</h2>
@@ -84,6 +90,8 @@ void main() {
         _datasourceServing(
           _page(
             quoteBody: 'ЦИТАТА',
+            questionHtml:
+                "<a class='az-qod-link' href='https://azbyka.ru/vopros/x/'>ВОПРОС</a>",
             adviceHtml: '<p>СОВЕТ</p>',
             basicsHtml: '<p>ОСНОВЫ</p>',
             parableHtml: '<p>ПРИТЧА</p>',
@@ -92,8 +100,9 @@ void main() {
       );
 
       expect(cards.map((c) => c.type).toList(),
-          ['quote', 'advice', 'basics', 'reading']);
+          ['quote', 'question', 'advice', 'basics', 'reading']);
       expect(_cardOfType(cards, 'quote').body, 'ЦИТАТА');
+      expect(_cardOfType(cards, 'question').body, 'ВОПРОС');
       expect(_cardOfType(cards, 'advice').body, 'СОВЕТ');
       expect(_cardOfType(cards, 'basics').body, 'ОСНОВЫ');
       expect(_cardOfType(cards, 'reading').body, 'ПРИТЧА');
@@ -104,6 +113,7 @@ void main() {
 
       expect(cards.map((c) => c.id).toSet(), {
         'quote-2026-07-19',
+        'question-2026-07-19',
         'advice-2026-07-19',
         'basics-2026-07-19',
         'reading-2026-07-19',
@@ -130,9 +140,32 @@ void main() {
     test('у остальных карточек источник всегда «Азбука веры»', () async {
       final cards = await _fetch(_datasourceServing(_page()));
 
-      for (final type in ['advice', 'basics', 'reading']) {
+      for (final type in ['question', 'advice', 'basics', 'reading']) {
         expect(_cardOfType(cards, type).source, 'Азбука веры');
       }
+    });
+  });
+
+  group('вопрос дня', () {
+    test('текст вопроса — это текст ссылки az-qod-link', () async {
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(
+            questionHtml: "<a class='az-qod-link' href='https://azbyka.ru/x'>"
+                'В чём смысл поста?</a>',
+          ),
+        ),
+      );
+
+      expect(_cardOfType(cards, 'question').body, 'В чём смысл поста?');
+    });
+
+    test('блока нет вовсе → RemoteFetchException с kind unknown', () async {
+      await expectLater(
+        () => _fetch(_datasourceServing(_page(questionHtml: ''))),
+        throwsA(isA<RemoteFetchException>()
+            .having((e) => e.kind, 'kind', FailureKind.unknown)),
+      );
     });
   });
 
@@ -186,7 +219,7 @@ void main() {
     // день. 19 июля секции размечены через <p>, 20 июля притча пришла голым
     // текстом с <br>: два дня закрывают обе формы на настоящей разметке.
     for (final date in ['2026-07-19', '2026-07-20']) {
-      test('$date разбирается в четыре непустые карточки', () async {
+      test('$date разбирается в пять непустых карточек', () async {
         final cards = await _fetch(
           _datasourceServing(
             _loadFixture(date),
@@ -196,7 +229,7 @@ void main() {
         );
 
         expect(cards.map((c) => c.type).toList(),
-            ['quote', 'advice', 'basics', 'reading']);
+            ['quote', 'question', 'advice', 'basics', 'reading']);
         for (final card in cards) {
           expect(card.id, '${card.type}-$date');
           expect(card.body.trim(), isNotEmpty, reason: 'пустая ${card.type}');

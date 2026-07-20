@@ -44,4 +44,15 @@ void main() {
     expect(style.tagBackground, const Color(0xFF3D2B14));
     expect(style.tagForeground, const Color(0xFFF4CFA0));
   });
+
+  test('CardType.question — ярлык «Вопрос дня», короткая подпись «Вопрос»',
+      () {
+    final light = CardType.question.styleFor(Brightness.light);
+    final dark = CardType.question.styleFor(Brightness.dark);
+
+    expect(light.label, 'Вопрос дня');
+    expect(light.shortLabel, 'Вопрос');
+    expect(dark.label, 'Вопрос дня');
+    expect(dark.shortLabel, 'Вопрос');
+  });
 }

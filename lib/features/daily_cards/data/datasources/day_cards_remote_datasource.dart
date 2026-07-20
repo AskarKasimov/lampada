@@ -80,6 +80,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       final doc = html_parser.parse(response.body);
       final cards = [
         _quoteCard(doc, dateStr),
+        _questionCard(doc, dateStr),
         _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet'),
         _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy'),
         _sectionCard(doc, dateStr, type: 'reading', selector: '#pritcha .brif'),
@@ -93,6 +94,24 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       netLog('разметка не разобралась → unknown: $e');
       throw RemoteFetchException(FailureKind.unknown, e);
     }
+  }
+
+  /// «Вопрос дня» — виджет с общим `class="widget"` (таких на странице
+  /// несколько), поэтому цепляемся за уникальный класс ссылки `az-qod-link`,
+  /// а не за контейнер. На странице лежит только текст вопроса — ответ живёт
+  /// на отдельной странице по этой же ссылке и здесь не запрашивается.
+  DayCardDto _questionCard(Document doc, String dateStr) {
+    final link = doc.querySelector('a.az-qod-link');
+    final body = link?.text.trim() ?? '';
+    if (body.isEmpty) {
+      throw const FormatException('блок "Вопрос дня" не найден на странице');
+    }
+    return DayCardDto(
+      id: 'question-$dateStr',
+      type: 'question',
+      body: body,
+      source: _defaultSource,
+    );
   }
 
   DayCardDto _quoteCard(Document doc, String dateStr) {
