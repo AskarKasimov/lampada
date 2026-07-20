@@ -79,14 +79,9 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       final doc = html_parser.parse(response.body);
       final cards = [
         _quoteCard(doc, dateStr),
-        _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet p'),
-        _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy p'),
-        _sectionCard(
-          doc,
-          dateStr,
-          type: 'reading',
-          selector: '#pritcha .brif p',
-        ),
+        _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet'),
+        _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy'),
+        _sectionCard(doc, dateStr, type: 'reading', selector: '#pritcha .brif'),
       ];
       netLog('разобрано ${cards.length} карточек '
           'за ${elapsed.elapsedMilliseconds}мс суммарно');
@@ -121,13 +116,13 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     required String type,
     required String selector,
   }) {
-    final paragraphs = doc
-        .querySelectorAll(selector)
-        .map(_textWithBreaks)
-        .where((t) => t.isNotEmpty)
-        .toList();
-    if (paragraphs.isEmpty) {
+    final container = doc.querySelector(selector);
+    if (container == null) {
       throw FormatException('блок "$type" не найден на странице ($selector)');
+    }
+    final paragraphs = _paragraphsFrom(container);
+    if (paragraphs.isEmpty) {
+      throw FormatException('блок "$type" пуст ($selector)');
     }
     return DayCardDto(
       id: '$type-$dateStr',
@@ -135,6 +130,28 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       body: paragraphs.join('\n\n'),
       source: _defaultSource,
     );
+  }
+
+  /// Абзацы блока. Азбука верстает эти секции двумя способами, и день ото дня
+  /// они меняются: то текст разложен по <p>, то лежит в контейнере голым и
+  /// разделён <br>. Знаем только один вариант — приложение уходит в вечный
+  /// офлайн в тот день, когда придёт второй.
+  static List<String> _paragraphsFrom(Element container) {
+    // Заголовок секции («Практический совет») — не контент.
+    container.querySelector('h2')?.remove();
+
+    final tagged = container
+        .querySelectorAll('p')
+        .map(_textWithBreaks)
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (tagged.isNotEmpty) return tagged;
+
+    return _textWithBreaks(container)
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
   }
 
   /// <br> не даёт пробела в Element.text — без замены соседние
