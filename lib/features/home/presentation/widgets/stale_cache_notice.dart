@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_link_button.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
@@ -16,26 +17,10 @@ class StaleCacheNotice extends StatelessWidget {
   final DateTime staleDate;
   final VoidCallback onRefresh;
 
-  static const _months = [
-    'января',
-    'февраля',
-    'марта',
-    'апреля',
-    'мая',
-    'июня',
-    'июля',
-    'августа',
-    'сентября',
-    'октября',
-    'ноября',
-    'декабря',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    final label = 'Офлайн · карточки за '
-        '${staleDate.day} ${_months[staleDate.month - 1]}';
+    final label = 'Офлайн · карточки за ${russianDayMonth(staleDate)}';
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

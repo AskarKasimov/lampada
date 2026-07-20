@@ -138,11 +138,19 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                                 ),
                               ),
                               child: _done
-                                  ? SessionDoneView(
-                                      key: const ValueKey('done'),
-                                      streakDays: streakDays,
-                                      onHome: () => Navigator.of(context).pop(),
-                                    )
+                                  ? (today.staleDate != null
+                                      ? SessionDoneStaleView(
+                                          key: const ValueKey('done'),
+                                          staleDate: today.staleDate!,
+                                          onHome: () =>
+                                              Navigator.of(context).pop(),
+                                        )
+                                      : SessionDoneView(
+                                          key: const ValueKey('done'),
+                                          streakDays: streakDays,
+                                          onHome: () =>
+                                              Navigator.of(context).pop(),
+                                        ))
                                   : CardContent(
                                       key: ValueKey(list[index].id),
                                       card: list[index],

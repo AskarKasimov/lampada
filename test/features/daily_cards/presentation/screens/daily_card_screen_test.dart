@@ -56,6 +56,31 @@ class _FakeProgressRepository implements DayProgressRepository {
   }
 
   Set<CardType> get readTypes => _read;
+  int get streakDays => _streak;
+}
+
+/// Тот же набор, но помеченный кэшем за другую дату.
+class _StaleCardsRepository implements DayCardsRepository {
+  @override
+  Future<Result<TodayCards>> getCardsFor(DateTime date) async => Success(
+        TodayCards(
+          cards: const [
+            DayCard(
+              id: 'quote',
+              type: CardType.quote,
+              body: 'Первая карточка',
+              source: 'Источник 1',
+            ),
+            DayCard(
+              id: 'advice',
+              type: CardType.advice,
+              body: 'Последняя карточка',
+              source: 'Источник 2',
+            ),
+          ],
+          staleDate: DateTime(2026, 7, 19),
+        ),
+      );
 }
 
 void main() {
@@ -140,5 +165,34 @@ void main() {
 
     expect(progressRepo.readTypes, contains(CardType.quote));
     expect(progressRepo.readTypes, isNot(contains(CardType.advice)));
+  });
+
+  testWidgets('карточки за другой день: свой done-экран, серия не растёт',
+      (tester) async {
+    final progress = _FakeProgressRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dayCardsRepositoryProvider.overrideWithValue(_StaleCardsRepository()),
+          dayProgressRepositoryProvider.overrideWithValue(progress),
+        ],
+        child: MaterialApp(theme: AppTheme.light, home: const DailyCardScreen()),
+      ),
+    );
+    await settleCard(tester);
+
+    await tester.tap(find.byType(DailyCardNextButton));
+    await settleCard(tester);
+    await tester.tap(find.byType(DailyCardDoneButton));
+    await settleCard(tester);
+
+    expect(find.byType(SessionDoneStaleView), findsOneWidget);
+    // Обещания «огонёк зажжён» тут быть не должно.
+    expect(find.byType(SessionDoneView), findsNothing);
+    expect(find.text('Это карточки за 19 июля'), findsOneWidget);
+
+    // Прогресс дня не тронут вообще.
+    expect(progress.readTypes, isEmpty);
+    expect(progress.streakDays, 0);
   });
 }
