@@ -111,16 +111,17 @@ class _CardContentState extends State<CardContent> {
                                 color: colors.textSecondary,
                               ),
                             ),
-                          ],
-                          const SizedBox(height: 16),
-                          Text(
-                            '— ${card.source}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              letterSpacing: 0.2,
-                              color: colors.textSecondary,
+                          ] else ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              '— ${card.source}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                letterSpacing: 0.2,
+                                color: colors.textSecondary,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),

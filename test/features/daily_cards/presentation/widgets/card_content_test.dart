@@ -93,6 +93,15 @@ void main() {
     expect(find.text(_questionHint), findsOneWidget);
   });
 
+  testWidgets('карточка вопроса — без подписи источника, перегруз ни к чему',
+      (tester) async {
+    final card = _card('В чём смысл поста?', type: CardType.question);
+    await tester.pumpWidget(_buildApp(card));
+    await tester.pump();
+
+    expect(find.textContaining(card.source), findsNothing);
+  });
+
   testWidgets('на остальных типах напутствия нет', (tester) async {
     final card = _card(_filler(50));
     await tester.pumpWidget(_buildApp(card));
