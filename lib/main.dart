@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'features/daily_cards/presentation/providers/providers.dart';
+import 'features/daily_cards/presentation/widgets/refresh_on_resume.dart';
 import 'features/home/presentation/screens/splash_screen.dart';
 
 void main() async {
@@ -28,6 +29,10 @@ class LampadaApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ref.watch(themeModeProvider),
+      // Через builder, а не обёрткой вокруг home: сплэш уходит на Home
+      // через pushReplacement, и обёртка вокруг home: умерла бы вместе с
+      // маршрутом сплэша. builder оборачивает Navigator и живёт всегда.
+      builder: (context, child) => RefreshOnResume(child: child!),
       home: const SplashScreen(),
     );
   }
