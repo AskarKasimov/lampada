@@ -53,7 +53,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     );
 
     return const Scaffold(
-      body: SafeArea(child: BrandLoadingView()),
+      body: SafeArea(child: BrandLoadingView(heroTag: 'lampada')),
     );
   }
 }

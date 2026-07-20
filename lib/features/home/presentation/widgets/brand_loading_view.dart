@@ -12,9 +12,14 @@ class BrandLoadingView extends StatefulWidget {
   const BrandLoadingView({
     super.key,
     this.spinnerDelay = const Duration(seconds: 3),
+    this.heroTag,
   });
 
   final Duration spinnerDelay;
+
+  /// Задаётся только splash-экраном: оттуда лампада перелетает на Home.
+  /// В офлайн-виде и на промежуточных загрузках перелёта нет.
+  final Object? heroTag;
 
   @override
   State<BrandLoadingView> createState() => _BrandLoadingViewState();
@@ -45,7 +50,7 @@ class _BrandLoadingViewState extends State<BrandLoadingView> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const BrandMark(),
+          BrandMark(heroTag: widget.heroTag),
           const SizedBox(height: 28),
           // Место под спиннер держим всегда — иначе брендинг дёргается вверх
           // ровно в тот момент, когда юзер на него смотрит.
