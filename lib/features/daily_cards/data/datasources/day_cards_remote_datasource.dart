@@ -5,6 +5,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import '../../../../core/log/net_log.dart';
 import '../../../../core/result/result.dart';
 import '../dto/day_card_dto.dart';
 
@@ -45,17 +46,27 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   }) async {
     final dateStr = _formatDate(date);
     final uri = Uri.parse('https://azbyka.ru/days/$dateStr');
+    final elapsed = Stopwatch()..start();
+    netLog('GET $uri (отведено ${timeout.inMilliseconds}мс)');
 
     final http.Response response;
     try {
       response = await _client.get(uri).timeout(timeout);
     } on TimeoutException catch (e) {
+      netLog('таймаут на ${elapsed.elapsedMilliseconds}мс → network');
       throw RemoteFetchException(FailureKind.network, e);
     } on SocketException catch (e) {
+      netLog('сокет упал на ${elapsed.elapsedMilliseconds}мс → network: $e');
       throw RemoteFetchException(FailureKind.network, e);
     } on http.ClientException catch (e) {
+      netLog('клиент упал на ${elapsed.elapsedMilliseconds}мс → network: $e');
       throw RemoteFetchException(FailureKind.network, e);
     }
+
+    netLog(
+      'ответ ${response.statusCode}, ${response.bodyBytes.length}Б '
+      'за ${elapsed.elapsedMilliseconds}мс',
+    );
 
     if (response.statusCode != 200) {
       throw RemoteFetchException(
@@ -66,7 +77,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
 
     try {
       final doc = html_parser.parse(response.body);
-      return [
+      final cards = [
         _quoteCard(doc, dateStr),
         _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet p'),
         _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy p'),
@@ -77,9 +88,13 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
           selector: '#pritcha .brif p',
         ),
       ];
+      netLog('разобрано ${cards.length} карточек '
+          'за ${elapsed.elapsedMilliseconds}мс суммарно');
+      return cards;
     } on FormatException catch (e) {
       // Селекторы не нашли блок — на azbyka.ru поменялась вёрстка.
       // Ретраить бессмысленно, поэтому unknown, а не server.
+      netLog('разметка не разобралась → unknown: $e');
       throw RemoteFetchException(FailureKind.unknown, e);
     }
   }

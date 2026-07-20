@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/log/net_log.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/today_cards.dart';
@@ -49,7 +50,14 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   @override
   Future<Result<TodayCards>> getCardsFor(DateTime date) async {
     final cache = _readCache();
+    netLog(
+      'запрошено ${_dateKey(date)}, в кэше '
+      '${cache == null ? 'пусто' : cache.date}, '
+      'бюджет ${_budget.inMilliseconds}мс, '
+      'попыток максимум ${_retryDelays.length + 1}',
+    );
     if (cache != null && cache.date == _dateKey(date)) {
+      netLog('кэш за нужную дату — сеть не трогаем');
       return Success(TodayCards(cards: _toEntities(cache.cards)));
     }
 
@@ -59,23 +67,35 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
 
     for (var attempt = 0; attempt <= _retryDelays.length; attempt++) {
       final left = _budget - elapsed.elapsed;
-      if (left < _minAttempt) break;
+      if (left < _minAttempt) {
+        netLog('бюджет исчерпан (осталось ${left.inMilliseconds}мс) — стоп');
+        break;
+      }
 
       try {
+        netLog('попытка ${attempt + 1}, остаток бюджета '
+            '${left.inMilliseconds}мс');
         final dtos = await _remote.fetch(
           date,
           timeout: left < _attemptTimeout ? left : _attemptTimeout,
         );
         await _writeCache(date, dtos);
+        netLog('успех на попытке ${attempt + 1} за '
+            '${elapsed.elapsedMilliseconds}мс — отдаём свежие');
         return Success(TodayCards(cards: _toEntities(dtos)));
       } on RemoteFetchException catch (e) {
         lastKind = e.kind;
         lastCause = e.cause;
+        netLog('попытка ${attempt + 1} провалилась: ${e.kind.name}');
         // Вёрстка поменялась — повтор даст ту же ошибку, только сожжёт бюджет.
-        if (e.kind == FailureKind.unknown) break;
+        if (e.kind == FailureKind.unknown) {
+          netLog('вид unknown — не ретраим');
+          break;
+        }
       } on Exception catch (e) {
         lastKind = FailureKind.unknown;
         lastCause = e;
+        netLog('неожиданное исключение, не ретраим: $e');
         break;
       }
 
@@ -85,6 +105,8 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     }
 
     if (cache != null) {
+      netLog('всё упало за ${elapsed.elapsedMilliseconds}мс — '
+          'отдаём кэш за ${cache.date} как stale');
       return Success(
         TodayCards(
           cards: _toEntities(cache.cards),
@@ -92,6 +114,8 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
         ),
       );
     }
+    netLog('всё упало за ${elapsed.elapsedMilliseconds}мс, кэша нет — '
+        'офлайн-экран, kind=${lastKind.name}, причина: $lastCause');
     return Failure(
       AppFailure(
         'Не удалось загрузить карточки дня',
