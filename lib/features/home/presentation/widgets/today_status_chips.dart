@@ -16,22 +16,38 @@ class TodayStatusChips extends StatelessWidget {
   final List<DayCard> cards;
   final Set<CardType> readTypes;
 
+  /// При 5 типах карточек естественный перенос `Wrap` кладёт 4 в первую
+  /// строку и одну — «Чтение» — сиротой во вторую, вразнобой. Делим сами:
+  /// первой строке достаётся большая половина, остаток — второй. Полагаться
+  /// на перенос по ширине нельзя — он зависит от масштаба шрифта и экрана.
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
+    if (cards.length <= 4) return _row(context, cards);
+
+    final firstRowSize = (cards.length / 2).ceil();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        for (final card in cards)
-          TodayStatusChip(
-            key: ValueKey(card.type),
-            type: card.type,
-            read: readTypes.contains(card.type),
-          ),
+        _row(context, cards.take(firstRowSize).toList()),
+        const SizedBox(height: 8),
+        _row(context, cards.skip(firstRowSize).toList()),
       ],
     );
   }
+
+  Widget _row(BuildContext context, List<DayCard> row) => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: [
+          for (final card in row)
+            TodayStatusChip(
+              key: ValueKey(card.type),
+              type: card.type,
+              read: readTypes.contains(card.type),
+            ),
+        ],
+      );
 }
 
 /// Один чип статуса — свой тип и `ValueKey(type)`, чтобы тесты находили
