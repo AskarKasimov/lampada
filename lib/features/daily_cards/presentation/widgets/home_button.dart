@@ -10,8 +10,9 @@ class HomeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
     return Material(
-      color: Colors.black.withValues(alpha: 0.05),
+      color: colors.homeButtonBackground,
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -22,7 +23,7 @@ class HomeButton extends StatelessWidget {
           child: Icon(
             Icons.home_outlined,
             size: 20,
-            color: AppColorsExtension.of(context).homeIcon,
+            color: colors.homeIcon,
           ),
         ),
       ),

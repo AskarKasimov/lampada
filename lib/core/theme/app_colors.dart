@@ -20,6 +20,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     required this.homeIcon,
     required this.chipUnreadText,
     required this.chipUnreadBorder,
+    required this.homeButtonBackground,
   });
 
   final Color background;
@@ -43,6 +44,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color chipUnreadText;
   final Color chipUnreadBorder;
 
+  /// Фон круглой кнопки «на главный экран» — еле заметный тонированный
+  /// круг, не заявленный в дизайн-токенах отдельно. Раньше был хардкодом
+  /// `Colors.black.withValues(alpha: 0.05)` прямо в виджете; на тёмном фоне
+  /// чёрный на 5% почти не виден, поэтому на dark используем белый той же
+  /// логики «еле заметно».
+  final Color homeButtonBackground;
+
   static const light = AppColorsExtension(
     background: Color(0xFFFAF0E3),
     ink: Color(0xFF362418),
@@ -59,6 +67,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     homeIcon: Color(0xFF554438),
     chipUnreadText: Color(0xFF887E78),
     chipUnreadBorder: Color(0xFFD6CBC5),
+    homeButtonBackground: Color(0x0D000000),
   );
 
   /// Тёплый тёмно-коричневый фон («комната при свече ночью»), не
@@ -79,6 +88,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     homeIcon: Color(0xFFEFDFCB),
     chipUnreadText: Color(0xFFA79686),
     chipUnreadBorder: Color(0xFF4A3C30),
+    homeButtonBackground: Color(0x14FFFFFF),
   );
 
   /// Палитра активной темы; `light`, если тема её не регистрировала
@@ -103,6 +113,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     Color? homeIcon,
     Color? chipUnreadText,
     Color? chipUnreadBorder,
+    Color? homeButtonBackground,
   }) =>
       AppColorsExtension(
         background: background ?? this.background,
@@ -120,6 +131,8 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
         homeIcon: homeIcon ?? this.homeIcon,
         chipUnreadText: chipUnreadText ?? this.chipUnreadText,
         chipUnreadBorder: chipUnreadBorder ?? this.chipUnreadBorder,
+        homeButtonBackground:
+            homeButtonBackground ?? this.homeButtonBackground,
       );
 
   @override
