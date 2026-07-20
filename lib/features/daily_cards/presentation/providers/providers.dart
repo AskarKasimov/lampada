@@ -72,6 +72,16 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     }
   }
 
-  Future<void> markRead(CardType type) => _apply(_repo.markRead(type));
-  Future<void> completeDay() => _apply(_repo.completeDay());
+  /// Показан кэш за другой день. Прогресс дня отражает сегодняшний контент,
+  /// а не факт свайпов: сегодняшних карточек юзер не видел, значит день не
+  /// пройден и серия не растёт. Гейт стоит здесь, а не на экране — иначе
+  /// правило пришлось бы повторять на каждом вызове markRead/completeDay.
+  bool get _staleSession =>
+      ref.read(todayCardsProvider).value?.staleDate != null;
+
+  Future<void> markRead(CardType type) =>
+      _staleSession ? Future<void>.value() : _apply(_repo.markRead(type));
+
+  Future<void> completeDay() =>
+      _staleSession ? Future<void>.value() : _apply(_repo.completeDay());
 }
