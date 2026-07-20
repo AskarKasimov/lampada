@@ -80,10 +80,10 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       final doc = html_parser.parse(response.body);
       final cards = [
         _quoteCard(doc, dateStr),
-        _questionCard(doc, dateStr),
         _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet'),
         _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy'),
         _sectionCard(doc, dateStr, type: 'reading', selector: '#pritcha .brif'),
+        _questionCard(doc, dateStr),
       ];
       netLog('разобрано ${cards.length} карточек '
           'за ${elapsed.elapsedMilliseconds}мс суммарно');

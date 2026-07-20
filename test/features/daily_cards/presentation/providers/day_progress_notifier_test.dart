@@ -9,10 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _cards = [
   DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
-  DayCard(id: 'qu', type: CardType.question, body: 'b', source: 's'),
   DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
   DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
   DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
+  DayCard(id: 'qu', type: CardType.question, body: 'b', source: 's'),
 ];
 
 class _StaleCardsRepository implements DayCardsRepository {

@@ -24,7 +24,7 @@ DayCard _card(CardType type) => DayCard(
 void main() {
   test(
       'возвращает карточки строго в порядке '
-      'quote → question → advice → basics → reading', () async {
+      'quote → advice → basics → reading → question', () async {
     // Репозиторий отдаёт вперемешку — usecase обязан отсортировать.
     final repo = _FakeRepository([
       _card(CardType.reading),
@@ -41,10 +41,10 @@ void main() {
     final cards = (result as Success<TodayCards>).value.cards;
     expect(cards.map((c) => c.type).toList(), [
       CardType.quote,
-      CardType.question,
       CardType.advice,
       CardType.basics,
       CardType.reading,
+      CardType.question,
     ]);
   });
 }

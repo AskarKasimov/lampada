@@ -4,7 +4,7 @@ part 'day_card.freezed.dart';
 
 /// Тип карточки. Порядок значений enum = фиксированный порядок показа
 /// внутри дня: от простого к сложному.
-enum CardType { quote, question, advice, basics, reading }
+enum CardType { quote, advice, basics, reading, question }
 
 /// Одна единица дневного контента. Ровно одна карточка на экран.
 @freezed

@@ -100,7 +100,7 @@ void main() {
       );
 
       expect(cards.map((c) => c.type).toList(),
-          ['quote', 'question', 'advice', 'basics', 'reading']);
+          ['quote', 'advice', 'basics', 'reading', 'question']);
       expect(_cardOfType(cards, 'quote').body, 'ЦИТАТА');
       expect(_cardOfType(cards, 'question').body, 'ВОПРОС');
       expect(_cardOfType(cards, 'advice').body, 'СОВЕТ');
@@ -229,7 +229,7 @@ void main() {
         );
 
         expect(cards.map((c) => c.type).toList(),
-            ['quote', 'question', 'advice', 'basics', 'reading']);
+            ['quote', 'advice', 'basics', 'reading', 'question']);
         for (final card in cards) {
           expect(card.id, '${card.type}-$date');
           expect(card.body.trim(), isNotEmpty, reason: 'пустая ${card.type}');

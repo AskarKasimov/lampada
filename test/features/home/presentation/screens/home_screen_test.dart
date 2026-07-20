@@ -25,10 +25,10 @@ class _FakeCardsRepository implements DayCardsRepository {
   Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
       Success(TodayCards(cards: const [
         DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
-        DayCard(id: 'qu', type: CardType.question, body: 'b', source: 's'),
         DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
         DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
         DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
+        DayCard(id: 'qu', type: CardType.question, body: 'b', source: 's'),
       ]));
 }
 
@@ -60,10 +60,10 @@ class _StaleCardsRepository implements DayCardsRepository {
         TodayCards(
           cards: const [
             DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
-            DayCard(id: 'qu', type: CardType.question, body: 'b', source: 's'),
             DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
             DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
             DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
+            DayCard(id: 'qu', type: CardType.question, body: 'b', source: 's'),
           ],
           staleDate: DateTime(2026, 7, 19),
         ),
@@ -176,10 +176,10 @@ void main() {
         const DayProgress(
           readTypes: {
             CardType.quote,
-            CardType.question,
             CardType.advice,
             CardType.basics,
             CardType.reading,
+            CardType.question,
           },
           streakDays: 5,
         ),
@@ -197,10 +197,10 @@ void main() {
     const allRead = DayProgress(
       readTypes: {
         CardType.quote,
-        CardType.question,
         CardType.advice,
         CardType.basics,
         CardType.reading,
+        CardType.question,
       },
       streakDays: 5,
     );

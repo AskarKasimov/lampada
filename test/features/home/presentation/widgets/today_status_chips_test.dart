@@ -19,10 +19,10 @@ void main() {
       (tester) async {
     await tester.pumpWidget(_buildApp([
       _card(CardType.quote),
-      _card(CardType.question),
       _card(CardType.advice),
       _card(CardType.basics),
       _card(CardType.reading),
+      _card(CardType.question),
     ]));
     await tester.pump();
 
@@ -31,14 +31,14 @@ void main() {
     expect(wraps[0].children, hasLength(3));
     expect(wraps[1].children, hasLength(2));
 
-    // «Чтение» — в нижней строке, а не одна в верхней.
+    // «Вопрос» — последний в списке, в нижней строке, не одна в верхней.
     final firstRowY = tester.getTopLeft(find.byWidget(wraps[0])).dy;
     final secondRowY = tester.getTopLeft(find.byWidget(wraps[1])).dy;
     expect(secondRowY, greaterThan(firstRowY));
     expect(
       find.descendant(
         of: find.byWidget(wraps[1]),
-        matching: find.byKey(const ValueKey(CardType.reading)),
+        matching: find.byKey(const ValueKey(CardType.question)),
       ),
       findsOneWidget,
     );
