@@ -13,7 +13,9 @@ import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
+import '../../domain/usecases/complete_day.dart';
 import '../../domain/usecases/get_today_cards.dart';
+import '../../domain/usecases/record_card_read.dart';
 
 final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
   (ref) => AzbykaDayCardsRepository(
@@ -44,6 +46,14 @@ final dayProgressRepositoryProvider = Provider<DayProgressRepository>(
   (ref) => PrefsDayProgressRepository(ref.watch(sharedPreferencesProvider)),
 );
 
+final recordCardReadProvider = Provider<RecordCardRead>(
+  (ref) => RecordCardRead(ref.watch(dayProgressRepositoryProvider)),
+);
+
+final completeDayProvider = Provider<CompleteDay>(
+  (ref) => CompleteDay(ref.watch(dayProgressRepositoryProvider)),
+);
+
 /// Прогресс текущего дня. Экраны читают состояние и вызывают методы
 /// markRead/completeDay — репозиторий напрямую не трогают.
 final dayProgressProvider =
@@ -53,6 +63,10 @@ final dayProgressProvider =
 
 class DayProgressNotifier extends AsyncNotifier<DayProgress> {
   DayProgressRepository get _repo => ref.read(dayProgressRepositoryProvider);
+
+  /// Набор, по которому сейчас идёт сессия. Null — карточки ещё не загрузились
+  /// или упали; записывать в прогресс тогда нечего.
+  TodayCards? get _session => ref.read(todayCardsProvider).value;
 
   @override
   Future<DayProgress> build() async {
@@ -72,16 +86,20 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     }
   }
 
-  /// Показан кэш за другой день. Прогресс дня отражает сегодняшний контент,
-  /// а не факт свайпов: сегодняшних карточек юзер не видел, значит день не
-  /// пройден и серия не растёт. Гейт стоит здесь, а не на экране — иначе
-  /// правило пришлось бы повторять на каждом вызове markRead/completeDay.
-  bool get _staleSession =>
-      ref.read(todayCardsProvider).value?.staleDate != null;
+  /// Решение «засчитывать ли сессию» принимает usecase, не нотифаер: это
+  /// доменное правило, и жить оно должно там же, где его можно проверить без
+  /// Riverpod. Здесь остаётся только проводка.
+  Future<void> markRead(CardType type) async {
+    final session = _session;
+    if (session == null) return;
+    await _apply(
+      ref.read(recordCardReadProvider)(type, session: session),
+    );
+  }
 
-  Future<void> markRead(CardType type) =>
-      _staleSession ? Future<void>.value() : _apply(_repo.markRead(type));
-
-  Future<void> completeDay() =>
-      _staleSession ? Future<void>.value() : _apply(_repo.completeDay());
+  Future<void> completeDay() async {
+    final session = _session;
+    if (session == null) return;
+    await _apply(ref.read(completeDayProvider)(session: session));
+  }
 }
