@@ -4,7 +4,7 @@ import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_link_button.dart';
-import 'streak_flame.dart';
+import '../../../../core/widgets/lampada_mark.dart';
 import 'streak_label.dart';
 
 /// Экран завершения дня: порция получена.
@@ -24,7 +24,7 @@ class SessionDoneView extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const StreakFlame(size: 14),
+        const LampadaMark(size: 16),
         const SizedBox(height: 20),
         Text(
           'Огонёк на сегодня зажжён\nУвидимся завтра',

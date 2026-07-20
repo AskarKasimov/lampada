@@ -206,7 +206,7 @@ void main() {
     await tester.pump();
 
     await tester.tap(find.byType(HomeReplayButton));
-    // StreakFlame крутится бесконечно — pumpAndSettle не осядет,
+    // LampadaMark крутится бесконечно — pumpAndSettle не осядет,
     // прокачиваем ровно на длительность перехода/анимации карточки.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));

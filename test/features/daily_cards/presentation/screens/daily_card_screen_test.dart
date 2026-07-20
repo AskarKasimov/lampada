@@ -93,7 +93,7 @@ void main() {
         child: MaterialApp(theme: AppTheme.light, home: const DailyCardScreen()),
       );
 
-  // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
+  // LampadaMark крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
   // никогда не осядет. Прокачиваем ровно на длительность анимации карточки.
   Future<void> settleCard(WidgetTester tester) async {
     await tester.pump();
