@@ -24,15 +24,20 @@ class _RefreshOnResumeState extends ConsumerState<RefreshOnResume> {
   @override
   void initState() {
     super.initState();
-    _listener = AppLifecycleListener(onResume: _refreshIfStale);
+    _listener = AppLifecycleListener(onResume: _refresh);
   }
 
-  /// Инвалидируем только когда есть что чинить — иначе каждое открытие
-  /// приложения дёргало бы провайдер впустую.
-  void _refreshIfStale() {
-    final cards = ref.read(todayCardsProvider);
-    final needsRefresh = cards.hasError || cards.value?.staleDate != null;
-    if (!needsRefresh) return;
+  /// Перезапрашиваем безусловно. Соблазн дёргать провайдер только при ошибке
+  /// или при `staleDate != null` — ложная экономия: набор, полученный вчера за
+  /// вчера, выглядит совершенно свежим, а по самому [TodayCards] дату, за
+  /// которую он взят, не узнать. С таким гейтом приложение, пролежавшее ночь
+  /// в фоне, показывало бы вчерашний контент как сегодняшний, без пометки, и
+  /// с невыброшенным вчерашним прогрессом.
+  ///
+  /// Платить за это почти нечем: при совпадении даты репозиторий отдаёт кэш и
+  /// в сеть не ходит, а `loadToday` заодно сбрасывает прочитанное за прошлый
+  /// день.
+  void _refresh() {
     ref.invalidate(todayCardsProvider);
     ref.invalidate(dayProgressProvider);
   }

@@ -72,12 +72,19 @@ void main() {
     expect(repo.calls, 2);
   });
 
-  testWidgets('возврат при свежем наборе ничего не дёргает', (tester) async {
+  testWidgets('возврат перезапрашивает даже свежий набор — сутки могли смениться',
+      (tester) async {
+    // Набор, полученный вчера за вчера, выглядит свежим: staleDate у него
+    // null, ошибки нет. Отличить его от сегодняшнего по самому TodayCards
+    // невозможно — там нет даты, за которую он взят. Поэтому спрашиваем
+    // всегда: при совпадении даты репозиторий отдаёт кэш, не трогая сеть,
+    // так что лишний запрос почти ничего не стоит.
     final repo = _FreshRepository();
-    await pumpWithRepo(tester, repo);
+    final container = await pumpWithRepo(tester, repo);
 
     await resume(tester);
+    await container.read(todayCardsProvider.future);
 
-    expect(repo.calls, 1);
+    expect(repo.calls, 2);
   });
 }
