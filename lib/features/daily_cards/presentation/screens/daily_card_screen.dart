@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/day_card.dart';
+import '../../domain/entities/today_cards.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
@@ -82,6 +83,27 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
     }
   }
 
+  /// Экран завершения в двух видах. На карточках за другой день огонька и
+  /// серии нет: день не засчитан, обещать «огонёк зажжён» было бы неправдой.
+  /// Ключ у обоих один — для `AnimatedSwitcher` это одна и та же позиция,
+  /// смена вида не должна выглядеть как новый переход.
+  Widget _doneView(BuildContext context, TodayCards today, int streakDays) {
+    void onHome() => Navigator.of(context).pop();
+    final staleDate = today.staleDate;
+    if (staleDate != null) {
+      return SessionDoneStaleView(
+        key: const ValueKey('done'),
+        staleDate: staleDate,
+        onHome: onHome,
+      );
+    }
+    return SessionDoneView(
+      key: const ValueKey('done'),
+      streakDays: streakDays,
+      onHome: onHome,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cards = ref.watch(todayCardsProvider);
@@ -138,19 +160,7 @@ class _DailyCardScreenState extends ConsumerState<DailyCardScreen> {
                                 ),
                               ),
                               child: _done
-                                  ? (today.staleDate != null
-                                      ? SessionDoneStaleView(
-                                          key: const ValueKey('done'),
-                                          staleDate: today.staleDate!,
-                                          onHome: () =>
-                                              Navigator.of(context).pop(),
-                                        )
-                                      : SessionDoneView(
-                                          key: const ValueKey('done'),
-                                          streakDays: streakDays,
-                                          onHome: () =>
-                                              Navigator.of(context).pop(),
-                                        ))
+                                  ? _doneView(context, today, streakDays)
                                   : CardContent(
                                       key: ValueKey(list[index].id),
                                       card: list[index],
