@@ -5,6 +5,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
 import '../../../../core/result/result.dart';
 import '../dto/day_card_dto.dart';
@@ -44,7 +45,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     DateTime date, {
     required Duration timeout,
   }) async {
-    final dateStr = _formatDate(date);
+    final dateStr = dateKey(date);
     final uri = Uri.parse('https://azbyka.ru/days/$dateStr');
     final elapsed = Stopwatch()..start();
     netLog('GET $uri (отведено ${timeout.inMilliseconds}мс)');
@@ -160,12 +161,5 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     final withBreaks = el.innerHtml
         .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
     return html_parser.parseFragment(withBreaks).text?.trim() ?? '';
-  }
-
-  static String _formatDate(DateTime d) {
-    final y = d.year.toString().padLeft(4, '0');
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '$y-$m-$day';
   }
 }

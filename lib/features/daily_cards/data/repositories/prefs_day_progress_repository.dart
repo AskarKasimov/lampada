@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
@@ -20,13 +21,7 @@ class PrefsDayProgressRepository implements DayProgressRepository {
 
   static const _key = 'day_progress';
 
-  String get _today {
-    final d = _clock();
-    final y = d.year.toString().padLeft(4, '0');
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '$y-$m-$day';
-  }
+  String get _today => dateKey(_clock());
 
   DayProgressDto _read() {
     final raw = _prefs.getString(_key);

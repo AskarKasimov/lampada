@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/entities/day_card.dart';
@@ -51,12 +52,12 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   Future<Result<TodayCards>> getCardsFor(DateTime date) async {
     final cache = _readCache();
     netLog(
-      'запрошено ${_dateKey(date)}, в кэше '
+      'запрошено ${dateKey(date)}, в кэше '
       '${cache == null ? 'пусто' : cache.date}, '
       'бюджет ${_budget.inMilliseconds}мс, '
       'попыток максимум ${_retryDelays.length + 1}',
     );
-    if (cache != null && cache.date == _dateKey(date)) {
+    if (cache != null && cache.date == dateKey(date)) {
       netLog('кэш за нужную дату — сеть не трогаем');
       return Success(TodayCards(cards: _toEntities(cache.cards)));
     }
@@ -130,7 +131,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
 
   Future<void> _writeCache(DateTime date, List<DayCardDto> dtos) {
     final json = jsonEncode({
-      'date': _dateKey(date),
+      'date': dateKey(date),
       'cards': dtos.map((d) => d.toJson()).toList(),
     });
     return _prefs.setString(_cacheKey, json);
@@ -144,12 +145,5 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
         .map((c) => DayCardDto.fromJson(c as Map<String, dynamic>))
         .toList();
     return (date: map['date'] as String, cards: cards);
-  }
-
-  static String _dateKey(DateTime d) {
-    final y = d.year.toString().padLeft(4, '0');
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '$y-$m-$day';
   }
 }
