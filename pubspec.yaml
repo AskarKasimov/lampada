@@ -54,6 +54,8 @@ dev_dependencies:
   build_runner: ^2.15.0
   freezed: ^3.2.5
   json_serializable: ^6.14.0
+  flutter_launcher_icons: ^0.14.4
+  image: ^4.9.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -101,3 +103,25 @@ flutter:
       fonts:
         - asset: assets/fonts/Lora-Italic.ttf
           style: italic
+
+# Иконка приложения. Два исходника из одного рисунка:
+#   icon_foreground.png — огонёк на прозрачном фоне, слой Android adaptive;
+#   icon_ios.png        — он же, уже положенный на фон, вообще без альфы.
+#
+# iOS-версия готовится скриптом `dart run tool/make_ios_icon.dart`, а не ключом
+# `remove_alpha_ios`: тот не композитит альфу, а выставляет её в 255, и мусорный
+# RGB из прозрачных пикселей исходника вылезал наружу зелёными пятнами.
+#
+# ВНИМАНИЕ при перегенерации. `dart run flutter_launcher_icons` заодно портит
+# ios/Runner.xcodeproj/project.pbxproj: пишет `AppIcon` в булев ключ
+# ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS вместо YES.
+# Имя иконки и так уже лежит в ASSETCATALOG_COMPILER_APPICON_NAME, так что
+# правка бесполезная — откатить pbxproj после генерации.
+flutter_launcher_icons:
+  image_path: "assets/icon/icon_ios.png"
+  android: true
+  ios: true
+  adaptive_icon_background: "#5C4838"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  # Исходник уже нарисован с полями — штатный отступ 16% ужал бы огонёк ещё раз.
+  adaptive_icon_foreground_inset: 0
