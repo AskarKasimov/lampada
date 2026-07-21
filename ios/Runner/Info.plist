@@ -24,9 +24,6 @@
 		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
-		<!-- Своего шифрования нет: наружу ходим только по HTTPS средствами системы,
-	     а это освобождённый случай. Без ключа App Store Connect задаёт вопрос
-	     про экспортные ограничения при каждой загрузке сборки. -->
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
 		<key>LSRequiresIPhoneOS</key>
@@ -58,9 +55,6 @@
 		<string>LaunchScreen</string>
 		<key>UIMainStoryboardFile</key>
 		<string>Main</string>
-		<!-- Только портрет. Вёрстка одноколоночная и рассчитана на портрет; в
-	     альбомной раскладке карточка и сцена красного угла разъезжаются, а
-	     ревьюер устройство повернёт обязательно. -->
 		<key>UISupportedInterfaceOrientations</key>
 		<array>
 			<string>UIInterfaceOrientationPortrait</string>

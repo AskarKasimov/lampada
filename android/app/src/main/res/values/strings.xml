@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Подпись под иконкой. Строкой в манифесте было "lampada" — латиницей и
-         строчными, у русского юзера это читается как недоделка. -->
     <string name="app_name">Лампада</string>
 </resources>
