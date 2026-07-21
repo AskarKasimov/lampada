@@ -24,6 +24,11 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Своего шифрования нет: наружу ходим только по HTTPS средствами системы,
+	     а это освобождённый случай. Без ключа App Store Connect задаёт вопрос
+	     про экспортные ограничения при каждой загрузке сборки. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
