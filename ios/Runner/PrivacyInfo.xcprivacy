@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Ничего не собираем и никого не отслеживаем: прогресс дня и серия лежат
+	     в SharedPreferences на самом устройстве и наружу не уходят, аналитики
+	     и рекламных SDK в приложении нет.
+
+	     Required-reason API объявляет не этот файл: NSUserDefaults описан в
+	     манифесте плагина shared_preferences_foundation, движок Flutter везёт
+	     свой. Здесь — только то, за что отвечает само приложение. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>
