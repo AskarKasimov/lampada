@@ -13,11 +13,9 @@ import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
 String _page({
   String quoteBody = 'QUOTE',
   String quoteAuthorHtml = '<a href="/x">AUTHOR</a>',
-  String questionHtml =
-      "<a class='az-qod-link' href='https://azbyka.ru/vopros/x/'>QUESTION</a>",
   String adviceHtml = '<p>ADVICE</p>',
   String basicsHtml = '<p>BASICS</p>',
-  String parableHtml = '<p>PARABLE</p>',
+  String? readingsHtml,
 }) =>
     '''
 <html><body>
@@ -27,10 +25,6 @@ String _page({
       <p>$quoteAuthorHtml</p>
     </div>
   </div>
-  <div class="widget">
-    <div class="widget-title">Вопрос дня</div>
-    <div class="box">$questionHtml</div>
-  </div>
   <div id="sovet" class="block info advice">
     <h2>Практический совет</h2>
     $adviceHtml
@@ -39,12 +33,27 @@ String _page({
     <h2>Основы православия</h2>
     $basicsHtml
   </div>
-  <div id="pritcha" class="block info">
-    <h2>Притча дня</h2>
-    <div class="brif">$parableHtml</div>
+  <div id="chteniya" class="block readings">
+    <h2>Чтения Священного Писания</h2>
+    <div class="readings-inner"><div class="readings-text">${readingsHtml ?? _liturgyOnlyReadings}</div></div>
   </div>
 </body></html>
 ''';
+
+String _bibref(String slug, String label) =>
+    '<a class="bibref" href="https://azbyka.ru/biblia/?$slug">$label</a>';
+
+/// Будний день: Апостол и Евангелие подряд, пометки «Лит.» нет.
+final _liturgyOnlyReadings =
+    '${_bibref('1Cor.14:6-19', '1Кор.14:6-19')} (зач. 155). '
+    '${_bibref('Mt.20:17-28', 'Мф.20:17–28')} (зач. 81).';
+
+/// Праздник: сперва утреня, затем «Лит.». Евангелие утрени идёт ПЕРВЫМ и без
+/// отсечки по «Лит.» перехватило бы выбор.
+final _matinsAndLiturgyReadings = 'Утр. – '
+    '${_bibref('Jn.10:9-16', 'Ин.10:9–16')} (зач. 36). Лит. – '
+    '${_bibref('Gal.1:11-19', 'Гал.1:11–19')} (зач. 200). '
+    '${_bibref('Jn.10:1-9', 'Ин.10:1–9')} (зач. 35).';
 
 const _timeout = Duration(seconds: 3);
 final _date = DateTime(2026, 7, 19);
@@ -86,22 +95,18 @@ void main() {
         _datasourceServing(
           _page(
             quoteBody: 'ЦИТАТА',
-            questionHtml:
-                "<a class='az-qod-link' href='https://azbyka.ru/vopros/x/'>ВОПРОС</a>",
             adviceHtml: '<p>СОВЕТ</p>',
             basicsHtml: '<p>ОСНОВЫ</p>',
-            parableHtml: '<p>ПРИТЧА</p>',
           ),
         ),
       );
 
       expect(cards.map((c) => c.type).toList(),
-          ['quote', 'advice', 'basics', 'reading', 'question']);
+          ['quote', 'advice', 'basics', 'reading']);
       expect(_cardOfType(cards, 'quote').body, 'ЦИТАТА');
-      expect(_cardOfType(cards, 'question').body, 'ВОПРОС');
       expect(_cardOfType(cards, 'advice').body, 'СОВЕТ');
       expect(_cardOfType(cards, 'basics').body, 'ОСНОВЫ');
-      expect(_cardOfType(cards, 'reading').body, 'ПРИТЧА');
+      expect(_cardOfType(cards, 'reading').body, 'Мф.20:17–28');
     });
 
     test('id складывается из типа и запрошенной даты', () async {
@@ -109,7 +114,6 @@ void main() {
 
       expect(cards.map((c) => c.id).toSet(), {
         'quote-2026-07-19',
-        'question-2026-07-19',
         'advice-2026-07-19',
         'basics-2026-07-19',
         'reading-2026-07-19',
@@ -136,32 +140,130 @@ void main() {
     test('у остальных карточек источник всегда «Азбука веры»', () async {
       final cards = await _fetch(_datasourceServing(_page()));
 
-      for (final type in ['question', 'advice', 'basics', 'reading']) {
+      for (final type in ['advice', 'basics', 'reading']) {
         expect(_cardOfType(cards, type).source, 'Азбука веры');
       }
     });
   });
 
-  group('вопрос дня', () {
-    test('текст вопроса — это текст ссылки az-qod-link', () async {
+  group('выбор чтения дня', () {
+    test('будний день: берётся Евангелие, а не Апостол', () async {
+      final cards = await _fetch(_datasourceServing(_page()));
+
+      final reading = _cardOfType(cards, 'reading');
+      expect(reading.reference, 'Mt.20:17-28');
+      expect(reading.body, 'Мф.20:17–28');
+    });
+
+    test('с пометкой «Лит.» утреня пропускается', () async {
+      // Евангелие утрени (Ин.10:9–16) стоит первым и без отсечки победило бы.
+      final cards = await _fetch(
+        _datasourceServing(_page(readingsHtml: _matinsAndLiturgyReadings)),
+      );
+
+      expect(_cardOfType(cards, 'reading').reference, 'Jn.10:1-9');
+    });
+
+    test('пометка «Лит.» ссылкой тоже отсекает утреню', () async {
+      // Живая вёрстка Азбуки: `<a href="/liturgiya">Лит</a>.` — точка лежит
+      // в соседнем узле. Поиск «Лит.» по тексту одного узла промахивался,
+      // и в ридер уходило Евангелие утрени.
       final cards = await _fetch(
         _datasourceServing(
           _page(
-            questionHtml: "<a class='az-qod-link' href='https://azbyka.ru/x'>"
-                'В чём смысл поста?</a>',
+            readingsHtml: 'Утр. – '
+                '${_bibref('Jn.10:9-16', 'Ин.10:9–16')} (зач. 36). '
+                '<a href="https://azbyka.ru/liturgiya">Лит</a>. &ndash; '
+                '${_bibref('Gal.1:11-19', 'Гал.1:11–19')} (зач. 200). '
+                '${_bibref('Jn.10:1-9', 'Ин.10:1–9')} (зач. 35).',
           ),
         ),
       );
 
-      expect(_cardOfType(cards, 'question').body, 'В чём смысл поста?');
+      expect(_cardOfType(cards, 'reading').reference, 'Jn.10:1-9');
     });
 
-    test('блока нет вовсе → RemoteFetchException с kind unknown', () async {
-      await expectLater(
-        () => _fetch(_datasourceServing(_page(questionHtml: ''))),
-        throwsA(isA<RemoteFetchException>()
-            .having((e) => e.kind, 'kind', FailureKind.unknown)),
+    test('чтения без Евангелия — карточки чтения нет', () async {
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(readingsHtml: _bibref('1Cor.14:6-19', '1Кор.14:6-19')),
+        ),
       );
+
+      expect(cards.map((c) => c.type), isNot(contains('reading')));
+    });
+
+    test('типографское тире в ссылке нормализуется в дефис', () async {
+      // Иначе ридер уйдёт за отрывком по ссылке, которой Азбука не знает.
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(readingsHtml: _bibref('Lk.7:36–50', 'Лк.7:36–50')),
+        ),
+      );
+
+      expect(_cardOfType(cards, 'reading').reference, 'Lk.7:36-50');
+    });
+
+    test('только у карточки чтения есть reference', () async {
+      final cards = await _fetch(_datasourceServing(_page()));
+
+      for (final card in cards.where((c) => c.type != 'reading')) {
+        expect(card.reference, isNull, reason: 'у ${card.type} лишний reference');
+      }
+    });
+  });
+
+  // FR-005: Азбука публикует не все разделы каждый день, и раньше пропажа
+  // любого из пяти уводила приложение в офлайн-экран при живом интернете.
+  group('неполный день', () {
+    test('пропавшая секция выпадает, остальные на месте', () async {
+      final cards = await _fetch(
+        _datasourceServing(_page(adviceHtml: '', basicsHtml: '')),
+      );
+
+      expect(cards.map((c) => c.type), ['quote', 'reading']);
+    });
+
+    test('порядок уцелевших карточек не сбивается', () async {
+      final cards = await _fetch(_datasourceServing(_page(basicsHtml: '')));
+
+      expect(cards.map((c) => c.type),
+          ['quote', 'advice', 'reading']);
+    });
+
+    test('день из одной цитаты — валидный день', () async {
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(
+            adviceHtml: '',
+            basicsHtml: '',
+            readingsHtml: '',
+          ),
+        ),
+      );
+
+      expect(cards.map((c) => c.type), ['quote']);
+      expect(cards.single.body, 'QUOTE');
+    });
+
+    test('пустая секция считается пропавшей, а не ломает день', () async {
+      final cards = await _fetch(_datasourceServing(_page(readingsHtml: '   ')));
+
+      expect(cards.map((c) => c.type), ['quote', 'advice', 'basics']);
+    });
+
+    test('цитата без абзаца с автором не роняет разбор', () async {
+      // paragraphs[1] без проверки длины падал бы RangeError, а не пропуском.
+      final cards = await _fetch(
+        _datasourceServing('''
+<html><body>
+  <div class="widget quote-of-day"><div class="box"><p>ОДИН АБЗАЦ</p></div></div>
+</body></html>
+'''),
+      );
+
+      expect(cards.single.body, 'ОДИН АБЗАЦ');
+      expect(cards.single.source, 'Азбука веры');
     });
   });
 
@@ -180,11 +282,11 @@ void main() {
       // Этот вариант уводил приложение в вечный офлайн-экран при живом интернете.
       final cards = await _fetch(
         _datasourceServing(
-          _page(parableHtml: 'ПЕРВЫЙ<br>ВТОРОЙ<br>ТРЕТИЙ'),
+          _page(basicsHtml: 'ПЕРВЫЙ<br>ВТОРОЙ<br>ТРЕТИЙ'),
         ),
       );
 
-      expect(_cardOfType(cards, 'reading').body, 'ПЕРВЫЙ\n\nВТОРОЙ\n\nТРЕТИЙ');
+      expect(_cardOfType(cards, 'basics').body, 'ПЕРВЫЙ\n\nВТОРОЙ\n\nТРЕТИЙ');
     });
 
     test('<br> внутри <p> тоже даёт перенос, а не слипшийся текст', () async {
@@ -193,6 +295,41 @@ void main() {
       );
 
       expect(_cardOfType(cards, 'advice').body, 'СТРОКА\nЕЩЁ');
+    });
+
+    test('ответ списком <ul><li> попадает в карточку вместе с вопросом',
+        () async {
+      // Так Азбука сверстала «совет дня» 31 июля: вопрос абзацем, весь ответ
+      // списком. Сбор одних <p> возвращал непустой результат, поэтому карточка
+      // показывала вопрос БЕЗ ответа и выглядела рабочей.
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(
+            adviceHtml: '<p><strong>МОЖНО ЛИ?</strong></p>'
+                '<ul><li>МОЖНО РАДИ ОДНОГО</li>'
+                '<li>МОЖНО РАДИ ДРУГОГО</li>'
+                '<li>А ВОТ ЭТО ЗАПРЕЩЕНО</li></ul>',
+          ),
+        ),
+      );
+
+      final advice = _cardOfType(cards, 'advice').body;
+      expect(advice, contains('МОЖНО ЛИ?'));
+      expect(advice, contains('МОЖНО РАДИ ОДНОГО'));
+      expect(advice, contains('МОЖНО РАДИ ДРУГОГО'));
+      expect(advice, contains('А ВОТ ЭТО ЗАПРЕЩЕНО'));
+      expect(advice.split('\n\n'), hasLength(4));
+    });
+
+    test('кривое вложенное <p><p> не задваивает текст', () async {
+      // Именно так приходит разметка Азбуки: <p><p><strong>…</strong></p>.
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(adviceHtml: '<p><p><strong>ОДИН РАЗ</strong></p></p>'),
+        ),
+      );
+
+      expect(_cardOfType(cards, 'advice').body, 'ОДИН РАЗ');
     });
 
     test('заголовок секции не утекает в текст карточки', () async {
@@ -224,7 +361,7 @@ void main() {
         );
 
         expect(cards.map((c) => c.type).toList(),
-            ['quote', 'advice', 'basics', 'reading', 'question']);
+            ['quote', 'advice', 'basics', 'reading']);
         for (final card in cards) {
           expect(card.id, '${card.type}-$date');
           expect(card.body.trim(), isNotEmpty, reason: 'пустая ${card.type}');
@@ -233,8 +370,7 @@ void main() {
       });
     }
 
-    test('20 июля притча разбита на абзацы, а не слиплась в простыню',
-        () async {
+    test('20 июля чтение — евангельский отрывок со ссылкой', () async {
       final cards = await _fetch(
         _datasourceServing(
           _loadFixture('2026-07-20'),
@@ -243,10 +379,9 @@ void main() {
         DateTime(2026, 7, 20),
       );
 
-      expect(
-        _cardOfType(cards, 'reading').body.split('\n\n').length,
-        greaterThan(1),
-      );
+      final reading = _cardOfType(cards, 'reading');
+      expect(reading.reference, matches(RegExp(r'^(Mt|Mk|Lk|Jn)\.\d+:\d+')));
+      expect(reading.body, isNotEmpty);
     });
   });
 
@@ -259,17 +394,10 @@ void main() {
       );
     });
 
-    test('блока нет вовсе → RemoteFetchException с kind unknown', () async {
+    test('ни одной секции на странице → unknown: это сломанная вёрстка,'
+        ' а не неполный день', () async {
       await expectLater(
         () => _fetch(_datasourceServing('<html><body></body></html>')),
-        throwsA(isA<RemoteFetchException>()
-            .having((e) => e.kind, 'kind', FailureKind.unknown)),
-      );
-    });
-
-    test('блок на месте, но пустой → тоже unknown', () async {
-      await expectLater(
-        () => _fetch(_datasourceServing(_page(parableHtml: '   '))),
         throwsA(isA<RemoteFetchException>()
             .having((e) => e.kind, 'kind', FailureKind.unknown)),
       );

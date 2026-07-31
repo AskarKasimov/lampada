@@ -87,22 +87,6 @@ extension CardTypeStyleX on CardType {
               tagBackground: Color(0xFFFBDCDB),
               tagForeground: Color(0xFF6A2B2E),
             ),
-      // Замыкает день: не факт из источника, а приглашение подумать самому.
-      CardType.question => isDark
-          ? const CardTypeStyle(
-              label: 'Вопрос дня',
-              shortLabel: 'Вопрос',
-              accent: Color(0xFFB79EE8),
-              tagBackground: Color(0xFF2B2040),
-              tagForeground: Color(0xFFDCC9F5),
-            )
-          : const CardTypeStyle(
-              label: 'Вопрос дня',
-              shortLabel: 'Вопрос',
-              accent: Color(0xFF8E6BC4),
-              tagBackground: Color(0xFFE8E0F5),
-              tagForeground: Color(0xFF3D2570),
-            ),
     };
   }
 }

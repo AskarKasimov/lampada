@@ -13,6 +13,9 @@ abstract class DayCardDto with _$DayCardDto {
     required String type,
     required String body,
     required String source,
+
+    /// Ссылка на отрывок (`Jn.10:1-9`) — только у карточки чтения.
+    String? reference,
   }) = _DayCardDto;
 
   factory DayCardDto.fromJson(Map<String, dynamic> json) =>

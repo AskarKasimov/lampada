@@ -12,7 +12,6 @@ const _cards = [
   DayCard(id: 'a', type: CardType.advice, body: 'b', source: 's'),
   DayCard(id: 'ba', type: CardType.basics, body: 'b', source: 's'),
   DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
-  DayCard(id: 'qu', type: CardType.question, body: 'b', source: 's'),
 ];
 
 class _StaleCardsRepository implements DayCardsRepository {
@@ -51,11 +50,10 @@ void main() {
     for (final card in _cards) {
       await notifier.markRead(card.type);
     }
-    await notifier.completeDay();
-
+    
     final progress = container.read(dayProgressProvider).requireValue;
-    expect(progress.allRead, isTrue);
-    expect(progress.streakDays, 1);
+    expect(progress.allReadOf(_cards.map((c) => c.type)), isTrue);
+    expect(progress.isLit(DateTime.now()), isTrue);
   });
 
   test('карточки за другой день: ни прогресс, ни серия не двигаются', () async {
@@ -65,12 +63,11 @@ void main() {
     for (final card in _cards) {
       await notifier.markRead(card.type);
     }
-    await notifier.completeDay();
-
+    
     // Сегодняшний контент юзер не видел — день не пройден.
     final progress = container.read(dayProgressProvider).requireValue;
     expect(progress.readCount, 0);
-    expect(progress.streakDays, 0);
+    expect(progress.visitedDays, isEmpty);
   });
 
   test('stale-сессия ничего не пишет в shared_preferences', () async {
@@ -86,7 +83,7 @@ void main() {
     await container.read(todayCardsProvider.future);
     await container.read(dayProgressProvider.future);
 
-    await container.read(dayProgressProvider.notifier).completeDay();
+    await container.read(dayProgressProvider.notifier).markRead(CardType.quote);
 
     expect(prefs.getString('day_progress'), isNull);
   });

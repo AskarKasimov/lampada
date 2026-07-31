@@ -17,12 +17,6 @@ class CardContent extends StatefulWidget {
   State<CardContent> createState() => _CardContentState();
 }
 
-/// Фиксировано и не зависит от контента — голос интерфейса, а не данные,
-/// поэтому живёт в presentation, а не в DTO.
-const _questionDayHint =
-    'Пусть этот вопрос поживёт с вами весь день — в дороге, в очереди, '
-    'в тишине перед сном.';
-
 class _CardContentState extends State<CardContent> {
   final _scrollController = ScrollController();
   bool _hasMoreBelow = false;
@@ -96,28 +90,15 @@ class _CardContentState extends State<CardContent> {
                                 .copyWith(fontSize: fontSize),
                             textAlign: TextAlign.center,
                           ),
-                          if (card.type == CardType.question) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              _questionDayHint,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 13,
-                                height: 1.4,
-                                color: colors.textSecondary,
-                              ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '— ${card.source}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              letterSpacing: 0.2,
+                              color: colors.textSecondary,
                             ),
-                          ] else ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              '— ${card.source}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                letterSpacing: 0.2,
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ],
+                          ),
                         ],
                       ),
                     ),

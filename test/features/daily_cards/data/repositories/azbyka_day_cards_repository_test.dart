@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart';
@@ -100,7 +102,40 @@ void main() {
     final today = (result as Success<TodayCards>).value;
     expect(today.cards.single.id, 'quote-2026-07-19');
     expect(today.staleDate, isNull);
-    expect(prefs.getString('day_cards_cache'), isNotNull);
+    // Кэш подневный: ключ включает дату, иначе календарь не смог бы
+    // держать больше одного дня.
+    expect(prefs.getString('day_cards_cache_v2:2026-07-19'), isNotNull);
+    expect(prefs.getStringList('day_cards_cached_dates_v2'), ['2026-07-19']);
+  });
+
+  test('кэш держит несколько дней одновременно', () async {
+    final prefs = await _emptyPrefs();
+    await _repo(_FakeDatasource([_card]), prefs)
+        .getCardsFor(DateTime(2026, 7, 19));
+    await _repo(_FakeDatasource([_card]), prefs)
+        .getCardsFor(DateTime(2026, 7, 20));
+
+    // Раньше один общий ключ помнил ровно последний день, и шаг назад
+    // по календарю снова шёл в сеть.
+    final result = await _repo(_NeverCalledDatasource(), prefs)
+        .getCardsFor(DateTime(2026, 7, 19));
+
+    expect(result, isA<Success<TodayCards>>());
+    expect(prefs.getStringList('day_cards_cached_dates_v2'),
+        ['2026-07-19', '2026-07-20']);
+  });
+
+  test('индекс кэша отсортирован по дате, а не по порядку записи', () async {
+    // По последнему элементу выбирается stale-день: «последний» обязан
+    // значить «самый поздний».
+    final prefs = await _emptyPrefs();
+    await _repo(_FakeDatasource([_card]), prefs)
+        .getCardsFor(DateTime(2026, 7, 20));
+    await _repo(_FakeDatasource([_card]), prefs)
+        .getCardsFor(DateTime(2026, 7, 19));
+
+    expect(prefs.getStringList('day_cards_cached_dates_v2'),
+        ['2026-07-19', '2026-07-20']);
   });
 
   test('кэш есть за запрошенную дату → сеть не дёргаем', () async {
@@ -199,5 +234,32 @@ void main() {
     expect(remote.timeouts.first, const Duration(milliseconds: 900));
     // Второй достался остаток бюджета, а не полный attemptTimeout.
     expect(remote.timeouts.last, lessThan(const Duration(milliseconds: 900)));
+  });
+
+  test('запись кэша с неизвестным типом карточки — промах, а не сбой', () async {
+    // Эта ловушка кусала дважды и оба раза выглядела как «источник недоступен»:
+    // маппер разворачивает тип через CardType.values.byName, тот бросает
+    // ArgumentError (это Error, не Exception), и разбор падал НА КЭШЕ, не
+    // доходя до сети. Так удаление «вопроса дня» дало офлайн-экран при живом
+    // интернете.
+    SharedPreferences.setMockInitialValues({
+      'flutter.day_cards_cache_v2:2026-07-19': jsonEncode([
+        {
+          'id': 'question-2026-07-19',
+          'type': 'question',
+          'body': 'body',
+          'source': 'source',
+        },
+      ]),
+      'flutter.day_cards_cached_dates_v2': ['2026-07-19'],
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final remote = _FakeDatasource([_card]);
+
+    final result = await _repo(remote, prefs).getCardsFor(DateTime(2026, 7, 19));
+
+    expect(result, isA<Success<TodayCards>>());
+    expect((result as Success<TodayCards>).value.cards.single.id,
+        'quote-2026-07-19');
   });
 }

@@ -6,7 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'features/daily_cards/presentation/providers/providers.dart';
 import 'features/daily_cards/presentation/widgets/refresh_on_resume.dart';
-import 'features/home/presentation/screens/splash_screen.dart';
+import 'features/shell/presentation/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

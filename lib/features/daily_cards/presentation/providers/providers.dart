@@ -3,16 +3,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/format/date_key.dart';
+import '../../../../core/log/net_log.dart';
 import '../../../../core/result/result.dart';
 import '../../data/datasources/day_cards_remote_datasource.dart';
 import '../../data/repositories/azbyka_day_cards_repository.dart';
+import '../../data/repositories/prefs_course_progress_repository.dart';
 import '../../data/repositories/prefs_day_progress_repository.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
+import '../../domain/repositories/course_progress_repository.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
-import '../../domain/usecases/complete_day.dart';
+import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
 import '../../domain/usecases/record_card_read.dart';
 
@@ -27,14 +31,38 @@ final getTodayCardsProvider = Provider<GetTodayCards>(
   (ref) => GetTodayCards(ref.watch(dayCardsRepositoryProvider)),
 );
 
-/// Карточки сегодняшнего дня в порядке показа.
-final todayCardsProvider = FutureProvider<TodayCards>((ref) async {
-  final result = await ref.watch(getTodayCardsProvider)(DateTime.now());
+/// Карточки произвольного дня. Ключ — `yyyy-MM-dd`, а не DateTime: у family
+/// ключ сравнивается по значению, а два DateTime одной даты с разным временем
+/// дали бы два разных запроса.
+final dayCardsProvider =
+    FutureProvider.family<TodayCards, String>((ref, dateKey) async {
+  final result = await ref.watch(getTodayCardsProvider)(DateTime.parse(dateKey));
   return switch (result) {
-    Success(value: final today) => today,
+    Success(value: final day) => day,
     Failure(failure: final f) => throw f,
   };
 });
+
+/// Карточки сегодняшнего дня. Обёртка над [dayCardsProvider], а не свой
+/// запрос: иначе «Сегодня» и прогресс тянули бы одну и ту же дату дважды.
+final todayCardsProvider = FutureProvider<TodayCards>(
+  (ref) => ref.watch(dayCardsProvider(dateKey(DateTime.now())).future),
+);
+
+/// Дата, открытая на вкладке «Сегодня». Полоска недели переключает её,
+/// вкладка целиком следует за ней. Нормализована до полуночи, чтобы
+/// сравнения дат не зависели от времени суток.
+final selectedDateProvider =
+    NotifierProvider<SelectedDateNotifier, DateTime>(SelectedDateNotifier.new);
+
+class SelectedDateNotifier extends Notifier<DateTime> {
+  static DateTime _atMidnight(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  @override
+  DateTime build() => _atMidnight(DateTime.now());
+
+  void select(DateTime date) => state = _atMidnight(date);
+}
 
 /// Инициализируется в main() через override.
 final sharedPreferencesProvider = Provider<SharedPreferences>(
@@ -49,11 +77,33 @@ final recordCardReadProvider = Provider<RecordCardRead>(
   (ref) => RecordCardRead(ref.watch(dayProgressRepositoryProvider)),
 );
 
-final completeDayProvider = Provider<CompleteDay>(
-  (ref) => CompleteDay(ref.watch(dayProgressRepositoryProvider)),
+final courseProgressRepositoryProvider = Provider<CourseProgressRepository>(
+  (ref) => PrefsCourseProgressRepository(ref.watch(sharedPreferencesProvider)),
 );
 
-/// Прогресс дня: экраны вызывают markRead/completeDay, репозиторий напрямую не трогают.
+final getCourseTopicProvider = Provider<GetCourseTopic>(
+  (ref) => GetCourseTopic(
+    ref.watch(courseProgressRepositoryProvider),
+    ref.watch(dayCardsRepositoryProvider),
+  ),
+);
+
+/// Карточка «Основы» для текущей темы курса.
+///
+/// Null вместо ошибки: курс — улучшение поверх дня, и если тема не доехала,
+/// показать «Основы» за сегодняшнюю дату лучше, чем уронить весь экран.
+final courseTopicProvider = FutureProvider<DayCard?>((ref) async {
+  final result = await ref.watch(getCourseTopicProvider)();
+  return switch (result) {
+    Success(value: final card) => card,
+    Failure(failure: final f) => () {
+        netLog('курс не доехал, показываем «Основы» за дату: $f');
+        return null;
+      }(),
+  };
+});
+
+/// Прогресс дня: экраны вызывают markRead, репозиторий напрямую не трогают.
 final dayProgressProvider =
     AsyncNotifierProvider<DayProgressNotifier, DayProgress>(
   DayProgressNotifier.new,
@@ -64,7 +114,12 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
 
   /// Набор, по которому сейчас идёт сессия. Null — карточки ещё не загрузились
   /// или упали; записывать в прогресс тогда нечего.
-  TodayCards? get _session => ref.read(todayCardsProvider).value;
+  ///
+  /// Читаем инстанс family напрямую, а не обёртку [todayCardsProvider]:
+  /// обёртку никто не watch-ит, поэтому она вечно висела бы в loading,
+  /// и прогресс молча не записывался бы.
+  TodayCards? get _session =>
+      ref.read(dayCardsProvider(dateKey(DateTime.now()))).value;
 
   @override
   Future<DayProgress> build() async {
@@ -92,11 +147,11 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     await _apply(
       ref.read(recordCardReadProvider)(type, session: session),
     );
-  }
-
-  Future<void> completeDay() async {
-    final session = _session;
-    if (session == null) return;
-    await _apply(ref.read(completeDayProvider)(session: session));
+    // Прочитали «Основы» — курс сдвигается на следующую тему, но не чаще
+    // раза в день: это тема в день, а не тема за каждое открытие карточки.
+    if (type == CardType.basics && session.staleDate == null) {
+      await ref.read(courseProgressRepositoryProvider).advanceForToday();
+      ref.invalidate(courseTopicProvider);
+    }
   }
 }

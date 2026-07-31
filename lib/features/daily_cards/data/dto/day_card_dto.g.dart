@@ -11,6 +11,7 @@ _DayCardDto _$DayCardDtoFromJson(Map<String, dynamic> json) => _DayCardDto(
   type: json['type'] as String,
   body: json['body'] as String,
   source: json['source'] as String,
+  reference: json['reference'] as String?,
 );
 
 Map<String, dynamic> _$DayCardDtoToJson(_DayCardDto instance) =>
@@ -19,4 +20,5 @@ Map<String, dynamic> _$DayCardDtoToJson(_DayCardDto instance) =>
       'type': instance.type,
       'body': instance.body,
       'source': instance.source,
+      'reference': instance.reference,
     };

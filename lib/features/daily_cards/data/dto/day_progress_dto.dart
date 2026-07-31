@@ -14,10 +14,9 @@ abstract class DayProgressDto with _$DayProgressDto {
     /// Имена прочитанных сегодня типов (CardType.name).
     required List<String> readTypes,
 
-    required int streakDays,
-
-    /// Дата (yyyy-MM-dd) последнего засчитанного в серию дня; '' — не было.
-    required String lastCompleted,
+    /// Даты (yyyy-MM-dd) с активностью. Серия выводится из них, а не хранится
+    /// числом: счётчик было негде сбрасывать, и он только рос.
+    @Default(<String>[]) List<String> visitedDays,
   }) = _DayProgressDto;
 
   factory DayProgressDto.fromJson(Map<String, dynamic> json) =>

@@ -21,10 +21,6 @@ DayCard _card(String body, {CardType type = CardType.advice}) => DayCard(
       source: 'Тестовый источник',
     );
 
-const _questionHint =
-    'Пусть этот вопрос поживёт с вами весь день — в дороге, в очереди, '
-    'в тишине перед сном.';
-
 // Ширина/высота как у телефона — дефолтная тестовая поверхность (~800px)
 // не даёт длинному тексту перенестись на строки, чтобы переполнить 300px.
 Widget _buildApp(DayCard card) => MaterialApp(
@@ -83,29 +79,12 @@ void main() {
     expect(find.byIcon(Icons.keyboard_arrow_down), findsNothing);
   });
 
-  testWidgets('карточка вопроса — фиксированное напутствие под текстом',
-      (tester) async {
-    final card = _card('В чём смысл поста?', type: CardType.question);
-    await tester.pumpWidget(_buildApp(card));
-    await tester.pump();
 
-    expect(find.text(_questionHint), findsOneWidget);
-  });
-
-  testWidgets('карточка вопроса — без подписи источника, перегруз ни к чему',
-      (tester) async {
-    final card = _card('В чём смысл поста?', type: CardType.question);
-    await tester.pumpWidget(_buildApp(card));
-    await tester.pump();
-
-    expect(find.textContaining(card.source), findsNothing);
-  });
-
-  testWidgets('на остальных типах напутствия нет', (tester) async {
+  testWidgets('под текстом всегда подпись источника', (tester) async {
     final card = _card(_filler(50));
     await tester.pumpWidget(_buildApp(card));
     await tester.pump();
 
-    expect(find.text(_questionHint), findsNothing);
+    expect(find.text('— Тестовый источник'), findsOneWidget);
   });
 }

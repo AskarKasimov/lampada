@@ -36,8 +36,11 @@ class _RefreshOnResumeState extends ConsumerState<RefreshOnResume> {
   /// Платить за безусловность почти нечем: при совпадении даты репозиторий
   /// отдаёт кэш без похода в сеть, а `loadToday` заодно сбрасывает
   /// прочитанное за прошлый день.
+  /// Инвалидируем саму family, а не обёртку [todayCardsProvider]: обёртка
+  /// лишь читает `dayCardsProvider(сегодня)`, и её сброс перечитал бы тот же
+  /// закэшированный инстанс, не сходив в сеть.
   void _refresh() {
-    ref.invalidate(todayCardsProvider);
+    ref.invalidate(dayCardsProvider);
     ref.invalidate(dayProgressProvider);
   }
 

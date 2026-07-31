@@ -7,8 +7,17 @@ void main() {
     expect(AppColorsExtension.light.background, const Color(0xFFFAF0E3));
     expect(AppColorsExtension.dark.background, const Color(0xFF1E1712));
     expect(AppColorsExtension.light.ink, isNot(AppColorsExtension.dark.ink));
-    expect(AppColorsExtension.light.accent, const Color(0xFFBE7C1C));
-    expect(AppColorsExtension.dark.accent, const Color(0xFFE0983A));
+    // Конкретные значения акцента не фиксируем: они подбираются под порог
+    // контраста, и это стережёт app_colors_contrast_test.dart. Здесь важно
+    // лишь то, что темы не совпадают и акцент тёплый.
+    expect(
+      AppColorsExtension.light.accent,
+      isNot(AppColorsExtension.dark.accent),
+    );
+    for (final colors in [AppColorsExtension.light, AppColorsExtension.dark]) {
+      expect(colors.accent.r, greaterThan(colors.accent.b),
+          reason: 'акцент должен остаться тёплым');
+    }
   });
 
   testWidgets(

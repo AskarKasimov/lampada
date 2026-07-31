@@ -5,6 +5,25 @@
 String russianDayMonth(DateTime date) =>
     '${date.day} ${_monthsGenitive[date.month - 1]}';
 
+/// «Июль 2026» — заголовок месяца в календаре.
+String russianMonthYear(DateTime date) =>
+    '${_monthsNominative[date.month - 1]} ${date.year}';
+
+const _monthsNominative = [
+  'Январь',
+  'Февраль',
+  'Март',
+  'Апрель',
+  'Май',
+  'Июнь',
+  'Июль',
+  'Август',
+  'Сентябрь',
+  'Октябрь',
+  'Ноябрь',
+  'Декабрь',
+];
+
 const _monthsGenitive = [
   'января',
   'февраля',

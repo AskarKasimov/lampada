@@ -9,5 +9,6 @@ extension DayCardDtoMapper on DayCardDto {
         type: CardType.values.byName(type),
         body: body,
         source: source,
+        reference: reference,
       );
 }
