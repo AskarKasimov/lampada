@@ -22,8 +22,8 @@ class BasicsHeroBlock extends StatelessWidget {
   String get _title {
     final number = int.tryParse(card.id.replaceFirst('basics-topic-', ''));
     return number == null
-        ? 'Основы православия'
-        : 'Основы православия №$number';
+        ? 'Основы веры'
+        : 'Основы веры №$number';
   }
 
   @override

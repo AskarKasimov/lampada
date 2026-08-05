@@ -230,7 +230,7 @@ class _Header extends ConsumerWidget {
     final isToday = dateKey(selected) == dateKey(today);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       child: Column(
         children: [
           WeekStrip(
@@ -383,7 +383,12 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     return ListView(
       // Снизу оставляем место под плавающую капсулу навигации: контент
       // уходит под неё, и без запаса последний блок оказался бы закрыт.
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, kFloatingNavInset),
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        kFloatingNavInset + 32,
+      ),
       children: [
         if (day.staleDate != null) ...[
           StaleCacheNotice(

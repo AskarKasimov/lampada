@@ -208,6 +208,23 @@ void main() {
       expect(find.text('Последняя карточка'), findsOneWidget);
     });
 
+    testWidgets('дата отделена от карточек и навбара запасом', (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead(_cards.map((card) => card.type).toSet());
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      final dateBottom = tester.getBottomLeft(find.text('Сегодня')).dy;
+      final readingTop = tester.getTopLeft(find.byType(ReadingHeroBlock)).dy;
+      expect(readingTop - dateBottom, greaterThanOrEqualTo(22));
+
+      final list = tester.widget<ListView>(find.byType(ListView));
+      expect(
+        list.padding,
+        const EdgeInsets.fromLTRB(20, 12, 20, kFloatingNavInset + 32),
+      );
+    });
+
     testWidgets('прочитанные блоки видны и после прохождения дня',
         (tester) async {
       // Раньше пройденный день встречал экраном завершения с «Пройти снова»,
@@ -629,6 +646,6 @@ void main() {
       ),
     );
 
-    expect(find.text('Основы православия №42'), findsOneWidget);
+    expect(find.text('Основы веры №42'), findsOneWidget);
   });
 }
