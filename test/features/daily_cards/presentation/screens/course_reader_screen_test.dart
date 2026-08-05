@@ -40,6 +40,7 @@ class _CourseCardsRepository implements DayCardsRepository {
 
 class _ProgressRepository implements DayProgressRepository {
   final readTypes = <CardType>{};
+  final markReadCalls = <CardType>[];
 
   @override
   Future<Result<DayProgress>> loadToday() async =>
@@ -47,6 +48,7 @@ class _ProgressRepository implements DayProgressRepository {
 
   @override
   Future<Result<DayProgress>> markRead(CardType type) async {
+    markReadCalls.add(type);
     readTypes.add(type);
     return Success(DayProgress(readTypes: readTypes, visitedDays: const {}));
   }
@@ -114,6 +116,7 @@ void main() {
 
     expect(find.text('Тема 2'), findsOneWidget);
     expect(progress.readTypes, {CardType.basics});
+    expect(progress.markReadCalls, [CardType.basics]);
   });
 
   testWidgets('a right swipe from the current topic stays on that topic', (
