@@ -128,12 +128,12 @@ void main() {
     expect(find.text('Основы веры'), findsOneWidget);
   });
 
-  testWidgets('a left swipe shows the immediately preceding topic', (
+  testWidgets('a right swipe shows the immediately preceding topic', (
     tester,
   ) async {
     await pumpReader(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(-500, 0));
+    await tester.drag(find.byType(PageView), const Offset(500, 0));
     await tester.pumpAndSettle();
 
     expect(find.text('Тема 2'), findsOneWidget);
@@ -141,12 +141,12 @@ void main() {
     expect(progress.markReadCalls, [CardType.basics]);
   });
 
-  testWidgets('a right swipe from the current topic stays on that topic', (
+  testWidgets('a left swipe from the current topic stays on that topic', (
     tester,
   ) async {
     await pumpReader(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.drag(find.byType(PageView), const Offset(-500, 0));
     await tester.pumpAndSettle();
 
     expect(find.text('Тема 3'), findsOneWidget);
@@ -159,7 +159,7 @@ void main() {
     cards = _CourseCardsRepository(failuresRemaining: {2: 1});
     await pumpReader(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(-500, 0));
+    await tester.drag(find.byType(PageView), const Offset(500, 0));
     await tester.pumpAndSettle();
 
     expect(find.text('Тема недоступна'), findsOneWidget);
@@ -190,7 +190,7 @@ void main() {
       );
       await pumpReader(tester, currentTopic: firstTopic);
 
-      await tester.drag(find.byType(PageView), const Offset(-500, 0));
+      await tester.drag(find.byType(PageView), const Offset(500, 0));
       await tester.pumpAndSettle();
 
       expect(find.text('Тема 1'), findsOneWidget);

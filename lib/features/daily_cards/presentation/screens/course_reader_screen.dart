@@ -12,7 +12,7 @@ import '../widgets/card_content.dart';
 
 /// Полноэкранное чтение личного курса «Основы веры».
 ///
-/// Нулевая страница — текущая тема. Движение влево открывает только уже
+/// Нулевая страница — текущая тема. Движение вправо открывает только уже
 /// пройденные темы, поэтому будущие части курса здесь недоступны.
 class CourseReaderScreen extends ConsumerStatefulWidget {
   const CourseReaderScreen({super.key, required this.currentTopic});
@@ -124,6 +124,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
               padding: const EdgeInsets.fromLTRB(34, 48, 34, 24),
               child: PageView.builder(
                 controller: _controller,
+                reverse: true,
                 itemCount: _currentTopicNumber,
                 onPageChanged: (page) => setState(() => _index = page),
                 itemBuilder: (context, page) => _contentForPage(page, colors),
