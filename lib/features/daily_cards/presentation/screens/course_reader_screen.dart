@@ -10,6 +10,8 @@ import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
 
+const _dismissVelocity = 700.0;
+
 /// Полноэкранное чтение личного курса «Основы веры».
 ///
 /// Нулевая страница — текущая тема. Движение вправо открывает только уже
@@ -50,6 +52,12 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         ref.read(dayProgressProvider.notifier).markRead(CardType.basics);
       }
     });
+  }
+
+  void _handleVerticalDrag(DragEndDetails details) {
+    if ((details.primaryVelocity ?? 0) >= _dismissVelocity) {
+      Navigator.of(context).pop();
+    }
   }
 
   int _topicForPage(int page) => _currentTopicNumber - page;
@@ -122,49 +130,53 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     final currentCard = _cardForPage(_index);
 
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(34, 48, 34, 24),
-              child: PageView.builder(
-                controller: _controller,
-                reverse: true,
-                itemCount: _currentTopicNumber,
-                onPageChanged: (page) => setState(() => _index = page),
-                itemBuilder: (context, page) => _contentForPage(page, colors),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onVerticalDragEnd: _handleVerticalDrag,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(34, 48, 34, 24),
+                child: PageView.builder(
+                  controller: _controller,
+                  reverse: true,
+                  itemCount: _currentTopicNumber,
+                  onPageChanged: (page) => setState(() => _index = page),
+                  itemBuilder: (context, page) => _contentForPage(page, colors),
+                ),
               ),
-            ),
-            Positioned(
-              top: 0,
-              left: 8,
-              child: currentCard == null
-                  ? const SizedBox.square(dimension: 40)
-                  : BookmarkButton(
-                      bookmark: _bookmarkFor(currentCard, brightness),
-                    ),
-            ),
-            Positioned(
-              top: 11,
-              left: 56,
-              right: 56,
-              child: Text(
-                'Основы веры',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: colors.ink),
+              Positioned(
+                top: 0,
+                left: 8,
+                child: currentCard == null
+                    ? const SizedBox.square(dimension: 40)
+                    : BookmarkButton(
+                        bookmark: _bookmarkFor(currentCard, brightness),
+                      ),
               ),
-            ),
-            Positioned(
-              top: 0,
-              right: 8,
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close),
-                color: colors.homeIcon,
-                tooltip: 'Закрыть',
+              Positioned(
+                top: 11,
+                left: 56,
+                right: 56,
+                child: Text(
+                  'Основы веры',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: colors.ink),
+                ),
               ),
-            ),
-          ],
+              Positioned(
+                top: 0,
+                right: 8,
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                  color: colors.homeIcon,
+                  tooltip: 'Закрыть',
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

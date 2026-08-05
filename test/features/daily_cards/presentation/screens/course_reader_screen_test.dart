@@ -86,7 +86,10 @@ void main() {
     progress = _ProgressRepository();
   });
 
-  Widget buildApp({DayCard currentTopic = _currentTopic}) => ProviderScope(
+  Widget buildApp({
+    DayCard currentTopic = _currentTopic,
+    bool showLauncher = false,
+  }) => ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       dayCardsRepositoryProvider.overrideWithValue(cards),
@@ -97,7 +100,21 @@ void main() {
     ],
     child: MaterialApp(
       theme: AppTheme.light,
-      home: CourseReaderScreen(currentTopic: currentTopic),
+      home: showLauncher
+          ? Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          CourseReaderScreen(currentTopic: currentTopic),
+                    ),
+                  ),
+                  child: const Text('Открыть основы'),
+                ),
+              ),
+            )
+          : CourseReaderScreen(currentTopic: currentTopic),
     ),
   );
 
@@ -134,6 +151,22 @@ void main() {
     await pumpReader(tester);
 
     expect(find.text('Основы'), findsNothing);
+  });
+
+  testWidgets('a fast downward swipe closes the course reader', (tester) async {
+    await tester.pumpWidget(buildApp(showLauncher: true));
+    await tester.tap(find.text('Открыть основы'));
+    await tester.pumpAndSettle();
+
+    await tester.fling(
+      find.byType(CourseReaderScreen),
+      const Offset(0, 300),
+      1000,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseReaderScreen), findsNothing);
+    expect(find.text('Открыть основы'), findsOneWidget);
   });
 
   testWidgets('a right swipe shows the immediately preceding topic', (
