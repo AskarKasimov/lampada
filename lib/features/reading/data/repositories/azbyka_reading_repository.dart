@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/log/net_log.dart';
+import '../../../../core/network/network_status.dart';
 import '../../../../core/result/result.dart';
 import '../../../daily_cards/data/datasources/day_cards_remote_datasource.dart'
     show RemoteFetchException;
@@ -24,13 +25,16 @@ class AzbykaReadingRepository implements ReadingRepository {
     this._prefs, {
     Duration budget = const Duration(seconds: 12),
     List<Duration> retryDelays = const [Duration(seconds: 1)],
+    NetworkStatus? networkStatus,
   })  : _budget = budget,
-        _retryDelays = retryDelays;
+        _retryDelays = retryDelays,
+        _networkStatus = networkStatus;
 
   final ReadingRemoteDatasource _remote;
   final SharedPreferences _prefs;
   final Duration _budget;
   final List<Duration> _retryDelays;
+  final NetworkStatus? _networkStatus;
 
   /// Версия в ключе, а не в теле записи: поля толкования у стиха
   /// необязательные, поэтому запись предыдущей схемы разбиралась БЕЗ ошибки
@@ -45,6 +49,17 @@ class AzbykaReadingRepository implements ReadingRepository {
     if (cached != null) {
       netLog('чтение $reference из кэша — сеть не трогаем');
       return Success(cached.toEntity());
+    }
+
+    if (_networkStatus != null && !await _networkStatus.isOnline()) {
+      netLog('сети нет — не запускаем попытки загрузки чтения $reference');
+      return Failure(
+        AppFailure(
+          'Не удалось загрузить чтение дня',
+          kind: FailureKind.network,
+          cause: StateError('Нет активного сетевого подключения'),
+        ),
+      );
     }
 
     final elapsed = Stopwatch()..start();

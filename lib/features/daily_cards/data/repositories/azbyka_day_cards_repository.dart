@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
+import '../../../../core/network/network_status.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/today_cards.dart';
@@ -13,8 +14,8 @@ import '../dto/day_card_dto.dart';
 import '../mappers/day_card_mapper.dart';
 
 /// Скрейпит день через [DayCardsRemoteDatasource]. Кэш за нужную дату —
-/// сеть не трогаем. При сетевой ошибке или сломанной вёрстке отдаём последний
-/// закэшированный набор, даже за другую дату — лучше устаревшее, чем ничего.
+/// сеть не трогаем. При сетевой ошибке или сломанной вёрстке без кэша нужной
+/// даты честно отдаём Failure: чужой день нельзя выдавать за выбранный.
 /// Единственное место, где исключения data-слоя превращаются в Failure.
 class AzbykaDayCardsRepository implements DayCardsRepository {
   AzbykaDayCardsRepository(
@@ -26,9 +27,11 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       Duration(seconds: 1),
       Duration(seconds: 1),
     ],
+    NetworkStatus? networkStatus,
   })  : _budget = budget,
         _attemptTimeout = attemptTimeout,
-        _retryDelays = retryDelays;
+        _retryDelays = retryDelays,
+        _networkStatus = networkStatus;
 
   final DayCardsRemoteDatasource _remote;
   final SharedPreferences _prefs;
@@ -39,6 +42,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   final Duration _budget;
   final Duration _attemptTimeout;
   final List<Duration> _retryDelays;
+  final NetworkStatus? _networkStatus;
 
   /// Кэш подневный: календарь листает прошлые дни, а один общий ключ держал
   /// ровно последний загруженный день и на шаг назад уже ничего не помнил.
@@ -49,11 +53,11 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   /// НА КЭШЕ, не доходя до сети. Ровно это и случилось, когда убрали
   /// «вопрос дня»: приложение показывало офлайн-экран при живом интернете.
   /// Меняется набор [CardType] или поля DTO — версия растёт.
-  static const _cachePrefix = 'day_cards_cache_v2:';
+  static const _cachePrefix = 'day_cards_cache_v3:';
 
   /// Даты в кэше, старые слева. Отдельный индекс, потому что SharedPreferences
   /// не умеет перечислять ключи по префиксу без чтения всего хранилища.
-  static const _cacheIndexKey = 'day_cards_cached_dates_v2';
+  static const _cacheIndexKey = 'day_cards_cached_dates_v3';
 
   /// Потолок кэша. Дни хранят распарсенный текст, не разметку, так что это
   /// сотни килобайт — но расти бесконечно ему всё равно незачем.
@@ -63,7 +67,10 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   static const _minAttempt = Duration(milliseconds: 500);
 
   @override
-  Future<Result<TodayCards>> getCardsFor(DateTime date) async {
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async {
     final exact = _readCache(dateKey(date));
     netLog(
       'запрошено ${dateKey(date)}, в кэше '
@@ -71,9 +78,20 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       'бюджет ${_budget.inMilliseconds}мс, '
       'попыток максимум ${_retryDelays.length + 1}',
     );
-    if (exact != null) {
+    if (exact != null && !forceRefresh) {
       netLog('кэш за нужную дату — сеть не трогаем');
       return Success(TodayCards(cards: exact));
+    }
+
+    if (_networkStatus != null && !await _networkStatus.isOnline()) {
+      netLog('сети нет — не запускаем попытки загрузки карточек');
+      return Failure(
+        AppFailure(
+          'Не удалось загрузить карточки дня',
+          kind: FailureKind.network,
+          cause: StateError('Нет активного сетевого подключения'),
+        ),
+      );
     }
 
     final elapsed = Stopwatch()..start();
@@ -119,24 +137,9 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       }
     }
 
-    // Лучше устаревшее, чем ничего: отдаём последний известный день,
-    // пометив его чужой датой — UI обязан это показать.
-    final fallbackDate = _cachedDates().lastOrNull;
-    if (fallbackDate != null) {
-      final fallback = _readCache(fallbackDate);
-      if (fallback != null) {
-        netLog('всё упало за ${elapsed.elapsedMilliseconds}мс — '
-            'отдаём кэш за $fallbackDate как stale');
-        return Success(
-          TodayCards(
-            cards: fallback,
-            staleDate: DateTime.parse(fallbackDate),
-          ),
-        );
-      }
-    }
-    netLog('всё упало за ${elapsed.elapsedMilliseconds}мс, кэша нет — '
-        'офлайн-экран, kind=${lastKind.name}, причина: $lastCause');
+    netLog('всё упало за ${elapsed.elapsedMilliseconds}мс, кэша за '
+        '${dateKey(date)} нет — офлайн-экран, kind=${lastKind.name}, '
+        'причина: $lastCause');
     return Failure(
       AppFailure(
         'Не удалось загрузить карточки дня',

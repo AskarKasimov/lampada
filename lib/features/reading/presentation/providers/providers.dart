@@ -1,6 +1,7 @@
 // Единственное место, где presentation фичи видит data.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/network/network_status_provider.dart';
 import '../../../../core/result/result.dart';
 import '../../../daily_cards/presentation/providers/providers.dart'
     show sharedPreferencesProvider;
@@ -14,6 +15,7 @@ final readingRepositoryProvider = Provider<ReadingRepository>(
   (ref) => AzbykaReadingRepository(
     AzbykaReadingRemoteDatasource(),
     ref.watch(sharedPreferencesProvider),
+    networkStatus: ref.watch(networkStatusProvider),
   ),
 );
 

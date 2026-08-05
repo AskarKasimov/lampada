@@ -7,8 +7,8 @@ import '../providers/providers.dart';
 ///
 /// Закрывает ровно тот путь, который провоцирует офлайн-состояние: увидел
 /// «включите Wi-Fi» → ушёл в Настройки → вернулся. Жать «Повторить» после
-/// этого не нужно. `connectivity_plus` ради этого не заводим — жизненного
-/// цикла достаточно.
+/// этого не нужно. Репозиторий перед сетевым запросом сам быстро отсекает
+/// явный офлайн через общий статус сети.
 class RefreshOnResume extends ConsumerStatefulWidget {
   const RefreshOnResume({super.key, required this.child});
 

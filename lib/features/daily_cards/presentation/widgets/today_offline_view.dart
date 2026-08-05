@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/russian_date.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_link_button.dart';
@@ -11,10 +12,12 @@ import '../../../../core/widgets/brand_mark.dart';
 class TodayOfflineView extends StatelessWidget {
   const TodayOfflineView({
     super.key,
+    required this.date,
     required this.kind,
     required this.onRetry,
   });
 
+  final DateTime date;
   final FailureKind kind;
   final VoidCallback onRetry;
 
@@ -44,11 +47,17 @@ class TodayOfflineView extends StatelessWidget {
             const BrandMark(),
             const SizedBox(height: 24),
             Text(
-              copy.title,
+              'Карточки за ${russianDayMonth(date)} не загружены',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: colors.ink),
             ),
             const SizedBox(height: 6),
+            Text(
+              copy.title,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: colors.homeSubtitle),
+            ),
+            const SizedBox(height: 4),
             Text(
               copy.hint,
               textAlign: TextAlign.center,

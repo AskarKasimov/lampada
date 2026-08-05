@@ -16,6 +16,7 @@ String _page({
   String adviceHtml = '<p>ADVICE</p>',
   String basicsHtml = '<p>BASICS</p>',
   String? readingsHtml,
+  String? questionHtml,
 }) =>
     '''
 <html><body>
@@ -37,6 +38,12 @@ String _page({
     <h2>Чтения Священного Писания</h2>
     <div class="readings-inner"><div class="readings-text">${readingsHtml ?? _liturgyOnlyReadings}</div></div>
   </div>
+  ${questionHtml == null ? '' : '''
+  <div class="widget">
+    <div class="widget-title">Вопрос дня</div>
+    <div class="box">$questionHtml</div>
+  </div>
+  '''}
 </body></html>
 ''';
 
@@ -118,6 +125,25 @@ void main() {
         'basics-2026-07-19',
         'reading-2026-07-19',
       });
+    });
+
+    test('ссылка «Вопрос дня» становится карточкой вопроса', () async {
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(
+            questionHtml: '''
+              <a class="az-qod-link" href="https://azbyka.ru/vopros/why/">
+                Почему важно прощать?
+              </a>
+            ''',
+          ),
+        ),
+      );
+
+      final question = _cardOfType(cards, 'question');
+      expect(question.id, 'question-2026-07-19');
+      expect(question.body, 'Почему важно прощать?');
+      expect(question.source, 'Азбука веры');
     });
 
     test('автор цитаты становится источником карточки', () async {
@@ -361,7 +387,7 @@ void main() {
         );
 
         expect(cards.map((c) => c.type).toList(),
-            ['quote', 'advice', 'basics', 'reading']);
+            ['quote', 'advice', 'basics', 'reading', 'question']);
         for (final card in cards) {
           expect(card.id, '${card.type}-$date');
           expect(card.body.trim(), isNotEmpty, reason: 'пустая ${card.type}');

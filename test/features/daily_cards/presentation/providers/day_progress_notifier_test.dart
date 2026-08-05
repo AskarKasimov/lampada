@@ -16,13 +16,19 @@ const _cards = [
 
 class _StaleCardsRepository implements DayCardsRepository {
   @override
-  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async =>
       Success(TodayCards(cards: _cards, staleDate: DateTime(2026, 7, 19)));
 }
 
 class _FreshCardsRepository implements DayCardsRepository {
   @override
-  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async =>
       const Success(TodayCards(cards: _cards));
 }
 

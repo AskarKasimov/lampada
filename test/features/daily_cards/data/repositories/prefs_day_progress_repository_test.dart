@@ -107,15 +107,15 @@ void main() {
     expect(p.isLit(fixedNow), isTrue);
   });
 
-  test('прогресс с исчезнувшим типом карточки читается, а не падает', () async {
-    // Прогресс — данные юзера, их нельзя терять из-за того, что мы убрали тип.
+  test('прогресс с неизвестным типом карточки читается, а не падает', () async {
+    // Прогресс — данные юзера, их нельзя терять из-за неизвестного типа.
     // Раньше CardType.values.byName бросал тут ArgumentError (Error, не
-    // Exception), и после удаления «вопроса дня» экран «Сегодня» уходил в
-    // офлайн при живом интернете и уже загруженных карточках.
+    // Exception), и экран «Сегодня» уходил в офлайн при живом интернете и
+    // уже загруженных карточках.
     SharedPreferences.setMockInitialValues({
       'flutter.day_progress': jsonEncode({
         'date': dateKey(DateTime.now()),
-        'readTypes': ['quote', 'question', 'advice'],
+        'readTypes': ['quote', 'legacy', 'advice'],
         'visitedDays': <String>[],
       }),
     });
@@ -126,5 +126,22 @@ void main() {
     expect(result, isA<Success<DayProgress>>());
     final progress = (result as Success<DayProgress>).value;
     expect(progress.readTypes, {CardType.quote, CardType.advice});
+  });
+
+  test('сохранённый вопрос дня остаётся прочитанным', () async {
+    SharedPreferences.setMockInitialValues({
+      'flutter.day_progress': jsonEncode({
+        'date': dateKey(DateTime.now()),
+        'readTypes': ['question'],
+        'visitedDays': <String>[],
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    final result = await PrefsDayProgressRepository(prefs).loadToday();
+
+    expect(result, isA<Success<DayProgress>>());
+    final progress = (result as Success<DayProgress>).value;
+    expect(progress.readTypes, {CardType.question});
   });
 }

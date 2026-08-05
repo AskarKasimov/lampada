@@ -15,8 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DayCardDto {
 
- String get id;/// Строковый тип из источника:
-/// quote | advice | basics | question | reading.
+ String get id;/// Строковый тип из источника: quote | advice | basics | reading | question.
  String get type; String get body; String get source;/// Ссылка на отрывок (`Jn.10:1-9`) — только у карточки чтения.
  String? get reference;
 /// Create a copy of DayCardDto
@@ -220,8 +219,7 @@ class _DayCardDto implements DayCardDto {
   factory _DayCardDto.fromJson(Map<String, dynamic> json) => _$DayCardDtoFromJson(json);
 
 @override final  String id;
-/// Строковый тип из источника:
-/// quote | advice | basics | question | reading.
+/// Строковый тип из источника: quote | advice | basics | reading | question.
 @override final  String type;
 @override final  String body;
 @override final  String source;

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
+import '../../../../core/network/network_status_provider.dart';
 import '../../../../core/result/result.dart';
 import '../../data/datasources/day_cards_remote_datasource.dart';
 import '../../data/repositories/azbyka_day_cards_repository.dart';
@@ -24,6 +25,7 @@ final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
   (ref) => AzbykaDayCardsRepository(
     AzbykaDayCardsRemoteDatasource(),
     ref.watch(sharedPreferencesProvider),
+    networkStatus: ref.watch(networkStatusProvider),
   ),
 );
 
@@ -90,14 +92,14 @@ final getCourseTopicProvider = Provider<GetCourseTopic>(
 
 /// Карточка «Основы» для текущей темы курса.
 ///
-/// Null вместо ошибки: курс — улучшение поверх дня, и если тема не доехала,
-/// показать «Основы» за сегодняшнюю дату лучше, чем уронить весь экран.
+/// Null вместо ошибки: если личная тема не доехала, экран остаётся доступен,
+/// а календарные «Основы» не выдаются за последовательный курс.
 final courseTopicProvider = FutureProvider<DayCard?>((ref) async {
   final result = await ref.watch(getCourseTopicProvider)();
   return switch (result) {
     Success(value: final card) => card,
     Failure(failure: final f) => () {
-        netLog('курс не доехал, показываем «Основы» за дату: $f');
+        netLog('курс не доехал, скрываем личную тему: $f');
         return null;
       }(),
   };

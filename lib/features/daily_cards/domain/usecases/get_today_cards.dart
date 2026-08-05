@@ -9,8 +9,14 @@ class GetTodayCards {
 
   final DayCardsRepository _repository;
 
-  Future<Result<TodayCards>> call(DateTime date) async {
-    final result = await _repository.getCardsFor(date);
+  Future<Result<TodayCards>> call(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async {
+    final result = await _repository.getCardsFor(
+      date,
+      forceRefresh: forceRefresh,
+    );
     return switch (result) {
       Success(value: final today) => Success(
           today.copyWith(

@@ -4,15 +4,13 @@ import '../../../../core/format/date_key.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/streak_flame.dart';
 
-/// Порог скорости горизонтального свайпа для перелистывания недели.
-const _weekSwipeVelocity = 250.0;
-
-/// Полоска недели над карточками дня: навигация по прошлым и будущим дням
-/// (FR-018, FR-021) и единственное место, где видна «Лампадка» (FR-019).
+/// Полоска недели над карточками дня и единственное место, где видна
+/// «Лампадка» (FR-019). Дни листаются жестом по экрану, а здесь остаётся
+/// быстрый переход тапом.
 ///
 /// Заменила отдельную вкладку календаря: ради переключения дня открывать
 /// целый экран было лишним шагом, а неделя помещается над контентом.
-class WeekStrip extends StatefulWidget {
+class WeekStrip extends StatelessWidget {
   const WeekStrip({
     super.key,
     required this.selected,
@@ -28,78 +26,34 @@ class WeekStrip extends StatefulWidget {
   final Set<String> litDays;
   final void Function(DateTime day) onSelect;
 
-  @override
-  State<WeekStrip> createState() => _WeekStripState();
-}
-
-class _WeekStripState extends State<WeekStrip> {
-  /// Понедельник показываемой недели. Своё состояние, а не производное от
-  /// [WeekStrip.selected]: листать неделю можно, не меняя выбранный день.
-  late DateTime _weekStart = _mondayOf(widget.selected);
-
-  @override
-  void didUpdateWidget(WeekStrip old) {
-    super.didUpdateWidget(old);
-    // Выбор уехал за пределы показанной недели (например, «сегодня»
-    // из другого месяца) — подтягиваем неделю за ним.
-    if (!_containsSelected) {
-      _weekStart = _mondayOf(widget.selected);
-    }
-  }
-
-  bool get _containsSelected {
-    final diff = widget.selected.difference(_weekStart).inDays;
-    return diff >= 0 && diff < 7;
-  }
-
   /// Неделя начинается с понедельника, как в русском календаре.
   static DateTime _mondayOf(DateTime d) =>
       DateTime(d.year, d.month, d.day - (d.weekday - 1));
 
-  void _shiftWeek(int weeks) => setState(
-    () => _weekStart = DateTime(
-      _weekStart.year,
-      _weekStart.month,
-      _weekStart.day + weeks * 7,
-    ),
-  );
-
-  void _handleSwipe(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (velocity <= -_weekSwipeVelocity) {
-      _shiftWeek(1);
-    } else if (velocity >= _weekSwipeVelocity) {
-      _shiftWeek(-1);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final weekStart = _mondayOf(selected);
     final days = [
       for (var i = 0; i < 7; i++)
-        DateTime(_weekStart.year, _weekStart.month, _weekStart.day + i),
+        DateTime(weekStart.year, weekStart.month, weekStart.day + i),
     ];
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragEnd: _handleSwipe,
-      child: Row(
-        children: [
-          for (final day in days)
-            Expanded(
-              child: _DayCell(
-                day: day,
-                isSelected: dateKey(day) == dateKey(widget.selected),
-                isToday: dateKey(day) == dateKey(widget.today),
-                isLit: widget.litDays.contains(dateKey(day)),
-                // Будущие дни листать можно, но контента там ещё нет —
-                // приглушаем, чтобы не выглядели доступными наравне с прошлым.
-                isFuture: day.isAfter(widget.today),
-                onTap: () => widget.onSelect(day),
-              ),
+    return Row(
+      children: [
+        for (final day in days)
+          Expanded(
+            child: _DayCell(
+              day: day,
+              isSelected: dateKey(day) == dateKey(selected),
+              isToday: dateKey(day) == dateKey(today),
+              isLit: litDays.contains(dateKey(day)),
+              // Будущие дни листать можно, но контента там ещё нет —
+              // приглушаем, чтобы не выглядели доступными наравне с прошлым.
+              isFuture: day.isAfter(today),
+              onTap: () => onSelect(day),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }

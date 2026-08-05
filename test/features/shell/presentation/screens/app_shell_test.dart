@@ -21,7 +21,10 @@ import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dar
 
 class _FakeCardsRepository implements DayCardsRepository {
   @override
-  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async =>
       Success(TodayCards(cards: const [
         DayCard(
           id: 'quote',

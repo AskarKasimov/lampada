@@ -77,7 +77,7 @@ class ReadingHeroBlock extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Евангелие по одному стиху за раз,\nс толкованием к каждому',
+                'Стих из Евангелия с толкованием',
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.45,
