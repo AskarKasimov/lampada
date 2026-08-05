@@ -16,6 +16,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_act
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_card_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reading_hero_block.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/session_done_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/domain/repositories/reading_repository.dart';
@@ -284,6 +285,30 @@ void main() {
   });
 
   group('полноэкранный просмотр', () {
+    testWidgets('финальный экран не меняет высоту области карточки',
+        (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.tap(find.byType(DayCardBlock).first);
+      await settle(tester);
+
+      final pageView = find.descendant(
+        of: find.byType(CardViewerScreen),
+        matching: find.byType(PageView),
+      );
+      final before = tester.getSize(pageView).height;
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+
+      expect(find.byType(SessionDoneView), findsOneWidget);
+      expect(tester.getSize(pageView).height, before);
+    });
+
     testWidgets('тап по курсу открывает и засчитывает тему', (tester) async {
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});

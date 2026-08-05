@@ -136,6 +136,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
     final onDonePage = _index >= widget.cards.length;
+    final bookmarkIndex = onDonePage ? widget.cards.length - 1 : _index;
 
     return Scaffold(
       body: GestureDetector(
@@ -170,7 +171,13 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                       ),
                     ),
                   ),
-                  if (!onDonePage) _footer(colors, brightness),
+                  Visibility(
+                    visible: !onDonePage,
+                    maintainAnimation: true,
+                    maintainSize: true,
+                    maintainState: true,
+                    child: _footer(colors, brightness),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -186,14 +193,22 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                   tooltip: 'Закрыть',
                 ),
               ),
-              if (!onDonePage)
-                Positioned(
-                  top: 0,
-                  left: 8,
+              Positioned(
+                top: 0,
+                left: 8,
+                child: Visibility(
+                  visible: !onDonePage,
+                  maintainAnimation: true,
+                  maintainSize: true,
+                  maintainState: true,
                   child: BookmarkButton(
-                    bookmark: _bookmarkFor(widget.cards[_index], brightness),
+                    bookmark: _bookmarkFor(
+                      widget.cards[bookmarkIndex],
+                      brightness,
+                    ),
                   ),
                 ),
+              ),
             ],
           ),
         ),
