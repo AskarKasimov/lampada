@@ -18,30 +18,29 @@ class PrefsBookmarksRepository implements BookmarksRepository {
   static const _key = 'bookmarks';
 
   @override
-  Future<Result<List<Bookmark>>> load() async => _guard(_read);
+  Future<Result<List<Bookmark>>> load() => _guard(() async => _read());
 
   @override
-  Future<Result<List<Bookmark>>> save(Bookmark bookmark) async => _guard(() {
-        final current = _read();
-        // Пересохранение того же id не двоит запись, а поднимает её наверх.
-        final next = [
-          bookmark,
-          ...current.where((b) => b.id != bookmark.id),
-        ];
-        _write(next);
-        return next;
-      });
+  Future<Result<List<Bookmark>>> save(Bookmark bookmark) => _guard(() async {
+    final current = _read();
+    // Пересохранение того же id не двоит запись, а поднимает её наверх.
+    final next = [bookmark, ...current.where((b) => b.id != bookmark.id)];
+    await _write(next);
+    return next;
+  });
 
   @override
-  Future<Result<List<Bookmark>>> remove(String id) async => _guard(() {
-        final next = _read().where((b) => b.id != id).toList();
-        _write(next);
-        return next;
-      });
+  Future<Result<List<Bookmark>>> remove(String id) => _guard(() async {
+    final next = _read().where((b) => b.id != id).toList();
+    await _write(next);
+    return next;
+  });
 
-  Future<Result<List<Bookmark>>> _guard(List<Bookmark> Function() op) async {
+  Future<Result<List<Bookmark>>> _guard(
+    Future<List<Bookmark>> Function() op,
+  ) async {
     try {
-      return Success(op());
+      return Success(await op());
     } on Exception catch (e) {
       return Failure(
         AppFailure(
@@ -65,10 +64,11 @@ class PrefsBookmarksRepository implements BookmarksRepository {
     return list;
   }
 
-  void _write(List<Bookmark> bookmarks) {
-    _prefs.setString(
+  Future<void> _write(List<Bookmark> bookmarks) async {
+    final written = await _prefs.setString(
       _key,
       jsonEncode(bookmarks.map((b) => b.toDto().toJson()).toList()),
     );
+    if (!written) throw Exception('Не удалось сохранить закладки');
   }
 }

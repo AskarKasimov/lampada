@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/bookmarks/data/repositories/prefs_bookmarks_repository.dart';
 import 'package:lampada/features/bookmarks/domain/entities/bookmark.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 Bookmark _bookmark(
   String id, {
@@ -21,6 +24,25 @@ Bookmark _bookmark(
 
 List<Bookmark> _value(Result<List<Bookmark>> r) =>
     (r as Success<List<Bookmark>>).value;
+
+class _DeferredStore extends SharedPreferencesStorePlatform {
+  final _write = Completer<bool>();
+
+  void completeWrite() => _write.complete(true);
+
+  @override
+  Future<bool> clear() async => true;
+
+  @override
+  Future<Map<String, Object>> getAll() async => {};
+
+  @override
+  Future<bool> remove(String key) async => true;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) =>
+      _write.future;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -92,5 +114,24 @@ void main() {
         PrefsBookmarksRepository(await SharedPreferences.getInstance());
 
     expect(await broken.load(), isA<Failure<List<Bookmark>>>());
+  });
+
+  test('save ждёт завершения платформенной записи', () async {
+    final store = _DeferredStore();
+    SharedPreferences.resetStatic();
+    SharedPreferencesStorePlatform.instance = store;
+    final deferred = PrefsBookmarksRepository(
+      await SharedPreferences.getInstance(),
+    );
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    var completed = false;
+    final saving = deferred.save(_bookmark('a')).then((_) => completed = true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(completed, isFalse);
+    store.completeWrite();
+    await saving;
+    expect(completed, isTrue);
   });
 }

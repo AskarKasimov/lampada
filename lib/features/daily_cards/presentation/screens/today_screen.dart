@@ -72,6 +72,7 @@ class TodayScreen extends ConsumerWidget {
         _ => FailureKind.unknown,
       };
       return TodayOfflineView(
+        date: selected,
         kind: kind,
         onRetry: () {
           ref.invalidate(dayCardsProvider(key));

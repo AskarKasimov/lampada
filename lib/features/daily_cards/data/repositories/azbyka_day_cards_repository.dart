@@ -13,8 +13,8 @@ import '../dto/day_card_dto.dart';
 import '../mappers/day_card_mapper.dart';
 
 /// Скрейпит день через [DayCardsRemoteDatasource]. Кэш за нужную дату —
-/// сеть не трогаем. При сетевой ошибке или сломанной вёрстке отдаём последний
-/// закэшированный набор, даже за другую дату — лучше устаревшее, чем ничего.
+/// сеть не трогаем. При сетевой ошибке или сломанной вёрстке без кэша нужной
+/// даты честно отдаём Failure: чужой день нельзя выдавать за выбранный.
 /// Единственное место, где исключения data-слоя превращаются в Failure.
 class AzbykaDayCardsRepository implements DayCardsRepository {
   AzbykaDayCardsRepository(
@@ -119,24 +119,9 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       }
     }
 
-    // Лучше устаревшее, чем ничего: отдаём последний известный день,
-    // пометив его чужой датой — UI обязан это показать.
-    final fallbackDate = _cachedDates().lastOrNull;
-    if (fallbackDate != null) {
-      final fallback = _readCache(fallbackDate);
-      if (fallback != null) {
-        netLog('всё упало за ${elapsed.elapsedMilliseconds}мс — '
-            'отдаём кэш за $fallbackDate как stale');
-        return Success(
-          TodayCards(
-            cards: fallback,
-            staleDate: DateTime.parse(fallbackDate),
-          ),
-        );
-      }
-    }
-    netLog('всё упало за ${elapsed.elapsedMilliseconds}мс, кэша нет — '
-        'офлайн-экран, kind=${lastKind.name}, причина: $lastCause');
+    netLog('всё упало за ${elapsed.elapsedMilliseconds}мс, кэша за '
+        '${dateKey(date)} нет — офлайн-экран, kind=${lastKind.name}, '
+        'причина: $lastCause');
     return Failure(
       AppFailure(
         'Не удалось загрузить карточки дня',

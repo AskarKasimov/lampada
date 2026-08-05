@@ -40,6 +40,17 @@ class GetCourseTopic {
       case Failure(failure: final f):
         return Failure(f);
       case Success(value: final TodayCards day):
+        // Fallback-кэш относится к другой дате. Выдать его за тему [topic]
+        // означало бы незаметно подменить личный курс случайными «Основами».
+        // Провайдер оставит обычную карточку дня, пока тема не загрузится.
+        if (day.staleDate != null) {
+          return Failure(
+            AppFailure(
+              'Не удалось загрузить тему $topic',
+              kind: FailureKind.unknown,
+            ),
+          );
+        }
         final basics =
             day.cards.where((c) => c.type == CardType.basics).firstOrNull;
         if (basics == null) {

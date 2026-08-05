@@ -153,7 +153,7 @@ void main() {
     expect(today.staleDate, isNull);
   });
 
-  test('сеть упала + кэш за другую дату → Success со staleDate', () async {
+  test('сеть упала + кэш только за другую дату → Failure', () async {
     final prefs = await _emptyPrefs();
     await _repo(_FakeDatasource([_card]), prefs)
         .getCardsFor(DateTime(2026, 7, 18));
@@ -163,10 +163,7 @@ void main() {
       prefs,
     ).getCardsFor(DateTime(2026, 7, 19));
 
-    expect(result, isA<Success<TodayCards>>());
-    final today = (result as Success<TodayCards>).value;
-    expect(today.cards.single.id, 'quote-2026-07-19');
-    expect(today.staleDate, DateTime(2026, 7, 18));
+    expect(result, isA<Failure<TodayCards>>());
   });
 
   test('сеть упала + кэша нет → Failure с kind network', () async {
