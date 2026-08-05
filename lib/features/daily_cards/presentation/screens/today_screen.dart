@@ -50,6 +50,13 @@ class CalendarPageMapper {
 
   int pageForDate(DateTime date) => initialPage + dayOffset(initialDate, date);
 
+  static CalendarPageTransition transitionFor({
+    required int currentPage,
+    required int targetPage,
+  }) => (currentPage - targetPage).abs() <= 1
+      ? CalendarPageTransition.animate
+      : CalendarPageTransition.jump;
+
   static int dayOffset(DateTime from, DateTime to) =>
       _dayNumber(to) - _dayNumber(from);
 
@@ -57,6 +64,8 @@ class CalendarPageMapper {
       DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
       Duration.millisecondsPerDay;
 }
+
+enum CalendarPageTransition { animate, jump }
 
 class _TodayScreenState extends ConsumerState<TodayScreen> {
   late final CalendarPageMapper _pageMapper;
@@ -78,7 +87,17 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   void _syncPage(DateTime date) {
     if (!_pageController.hasClients) return;
     final target = _pageMapper.pageForDate(date);
-    if (_pageController.page?.round() == target) return;
+    final current = _pageController.page?.round();
+    if (current == target) return;
+    if (current == null ||
+        CalendarPageMapper.transitionFor(
+              currentPage: current,
+              targetPage: target,
+            ) ==
+            CalendarPageTransition.jump) {
+      _pageController.jumpToPage(target);
+      return;
+    }
     _pageController.animateToPage(
       target,
       duration: const Duration(milliseconds: 250),
