@@ -92,14 +92,14 @@ final getCourseTopicProvider = Provider<GetCourseTopic>(
 
 /// Карточка «Основы» для текущей темы курса.
 ///
-/// Null вместо ошибки: курс — улучшение поверх дня, и если тема не доехала,
-/// показать «Основы» за сегодняшнюю дату лучше, чем уронить весь экран.
+/// Null вместо ошибки: если личная тема не доехала, экран остаётся доступен,
+/// а календарные «Основы» не выдаются за последовательный курс.
 final courseTopicProvider = FutureProvider<DayCard?>((ref) async {
   final result = await ref.watch(getCourseTopicProvider)();
   return switch (result) {
     Success(value: final card) => card,
     Failure(failure: final f) => () {
-        netLog('курс не доехал, показываем «Основы» за дату: $f');
+        netLog('курс не доехал, скрываем личную тему: $f');
         return null;
       }(),
   };

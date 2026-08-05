@@ -13,6 +13,7 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_action_button.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/basics_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_card_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reading_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
@@ -45,6 +46,13 @@ const _cards = [
   ),
 ];
 
+const _basics = DayCard(
+  id: 'basics',
+  type: CardType.basics,
+  body: 'О вере и жизни христианина',
+  source: 'Азбука веры',
+);
+
 /// Ридер не должен ходить в сеть из виджет-тестов.
 class _FakeReadingRepository implements ReadingRepository {
   @override
@@ -58,12 +66,15 @@ class _FakeReadingRepository implements ReadingRepository {
 }
 
 class _FakeCardsRepository implements DayCardsRepository {
+  _FakeCardsRepository({this.cards = _cards});
+
   final requested = <String>[];
+  final List<DayCard> cards;
 
   @override
   Future<Result<TodayCards>> getCardsFor(DateTime date) async {
     requested.add(dateKey(date));
-    return const Success(TodayCards(cards: _cards));
+    return Success(TodayCards(cards: cards));
   }
 }
 
@@ -154,6 +165,27 @@ void main() {
   }
 
   group('вкладка «Сегодня»', () {
+    testWidgets('показывает последовательный курс отдельной карточкой',
+        (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({
+          CardType.quote,
+          CardType.advice,
+          CardType.reading,
+          CardType.basics,
+        });
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(cards: [..._cards, _basics]),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      expect(find.byType(BasicsHeroBlock), findsOneWidget);
+      expect(find.text('ПОСЛЕДОВАТЕЛЬНЫЙ КУРС'), findsOneWidget);
+    });
+
     testWidgets('показывает полоску недели и блоки дня', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
@@ -194,6 +226,25 @@ void main() {
   });
 
   group('полноэкранный просмотр', () {
+    testWidgets('тап по курсу открывает и засчитывает тему', (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(cards: [..._cards, _basics]),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(find.byType(BasicsHeroBlock));
+      await settle(tester);
+
+      expect(find.byType(CardViewerScreen), findsOneWidget);
+      expect(find.text(_basics.body), findsOneWidget);
+      expect(progress.readTypes, contains(CardType.basics));
+    });
+
     testWidgets('тап по блоку открывает карточку без таб-бара',
         (tester) async {
       await tester.pumpWidget(buildApp());
@@ -377,6 +428,35 @@ void main() {
       );
     });
 
+    testWidgets('скрывает календарные основы на другом дне', (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({
+          CardType.quote,
+          CardType.advice,
+          CardType.reading,
+          CardType.basics,
+        });
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(cards: [..._cards, _basics]),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.fling(
+        find.byType(PageView),
+        const Offset(-400, 0),
+        1000,
+      );
+      await settle(tester);
+
+      final calendarBasics = find.byWidgetPredicate(
+        (widget) => widget is DayCardBlock && widget.card.type == CardType.basics,
+      );
+      expect(calendarBasics.hitTestable(), findsNothing);
+    });
+
     testWidgets('открывает дату, выбранную до показа экрана', (tester) async {
       final repo = _FakeCardsRepository();
       final selected = DateTime(2026, 1, 1);
@@ -533,5 +613,22 @@ void main() {
 
       expect(find.byType(CardViewerScreen), findsNothing);
     });
+  });
+
+  testWidgets('указывает номер темы в заголовке личного курса', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: BasicsHeroBlock(
+            card: _basics.copyWith(id: 'basics-topic-42'),
+            isRead: false,
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Основы православия №42'), findsOneWidget);
   });
 }

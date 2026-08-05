@@ -12,6 +12,7 @@ import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
 import '../providers/providers.dart';
+import '../widgets/basics_hero_block.dart';
 import '../widgets/day_card_block.dart';
 import '../widgets/reading_hero_block.dart';
 import '../widgets/stale_cache_notice.dart';
@@ -171,7 +172,7 @@ class _SelectedDayContent extends ConsumerWidget {
     if (day != null && progress != null) {
       return _DayBlocks(
         date: selected,
-        day: _withCourseTopic(ref, selected, day, isSelected),
+        day: _withCourseTopic(ref, selected, day),
         progress: progress,
         isSelected: isSelected,
       );
@@ -197,19 +198,16 @@ class _SelectedDayContent extends ConsumerWidget {
 
   /// Подменяет «Основы» дня на текущую тему курса.
   ///
-  /// Только для сегодняшней даты: курс — это личный прогресс, а листая
-  /// прошлые дни в полоске недели, юзер смотрит именно тот день, каким он был.
-  /// Тема не доехала — остаются «Основы» за дату, и экран цел.
-  TodayCards _withCourseTopic(
-    WidgetRef ref,
-    DateTime date,
-    TodayCards day,
-    bool isSelected,
-  ) {
-    if (!isSelected) return day;
+  /// Только для сегодняшней даты: курс — это личный прогресс. Если тема не
+  /// доехала, скрываем календарные «Основы», чтобы не выдать их за курс.
+  TodayCards _withCourseTopic(WidgetRef ref, DateTime date, TodayCards day) {
     if (dateKey(date) != dateKey(DateTime.now())) return day;
     final topic = ref.watch(courseTopicProvider).value;
-    if (topic == null) return day;
+    if (topic == null) {
+      return day.copyWith(
+        cards: day.cards.where((c) => c.type != CardType.basics).toList(),
+      );
+    }
 
     final index = day.cards.indexWhere((c) => c.type == CardType.basics);
     if (index < 0) return day;
@@ -294,22 +292,30 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   DayCard? get _reading =>
       day.cards.where((c) => c.type == CardType.reading).firstOrNull;
 
-  List<DayCard> get _pages =>
-      day.cards.where((c) => c.type != CardType.reading).toList();
+  /// Личный курс показываем только на сегодняшнем дне: на остальных датах
+  /// календарная тема «Основ» не должна притворяться продолжением курса.
+  DayCard? get _basics => _isToday
+      ? day.cards.where((c) => c.type == CardType.basics).firstOrNull
+      : null;
+
+  List<DayCard> get _pages => day.cards
+      .where((c) => c.type != CardType.reading && c.type != CardType.basics)
+      .toList();
 
   void _open(BuildContext context, WidgetRef ref, DayCard card) {
     if (card.type == CardType.reading) {
       _openReader(context, ref, card);
       return;
     }
+    final pages = card.type == CardType.basics ? [card] : _pages;
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => CardViewerScreen(
-          cards: _pages,
-          startIndex: _pages.indexOf(card),
+          cards: pages,
+          startIndex: pages.indexOf(card),
           recordProgress: _recordProgress,
-          reading: _reading,
+          reading: card.type == CardType.basics ? null : _reading,
         ),
       ),
     );
@@ -361,9 +367,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     _maybeAutoOpen();
-    final cards = day.cards;
+    final reading = _reading;
+    final basics = _basics;
+    final rest = _pages;
 
-    if (cards.isEmpty) {
+    if (reading == null && basics == null && rest.isEmpty) {
       return Center(
         child: Text(
           'За этот день карточек нет',
@@ -371,11 +379,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ),
       );
     }
-
-    // Чтение поднято наверх и вынесено из общего ряда: до правки самое
-    // ценное в приложении лежало последним из одинаковых прямоугольников.
-    final reading = _reading;
-    final rest = _pages;
 
     return ListView(
       // Снизу оставляем место под плавающую капсулу навигации: контент
@@ -388,6 +391,14 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             onRefresh: () => ref.invalidate(dayCardsProvider(dateKey(date))),
           ),
           const SizedBox(height: 12),
+        ],
+        if (basics != null) ...[
+          BasicsHeroBlock(
+            card: basics,
+            isRead: _isRead(basics),
+            onTap: () => _open(context, ref, basics),
+          ),
+          const SizedBox(height: 26),
         ],
         if (reading != null) ...[
           ReadingHeroBlock(
