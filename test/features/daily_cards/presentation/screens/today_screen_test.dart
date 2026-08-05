@@ -504,6 +504,17 @@ void main() {
       expect(pages.pageForDate(DateTime(2026, 3, 9)), 1);
     });
 
+    test('соседний день листается, а далёкий открывается сразу', () {
+      expect(
+        CalendarPageMapper.transitionFor(currentPage: 10, targetPage: 11),
+        CalendarPageTransition.animate,
+      );
+      expect(
+        CalendarPageMapper.transitionFor(currentPage: 10, targetPage: 13),
+        CalendarPageTransition.jump,
+      );
+    });
+
     testWidgets('свайп влево открывает следующий день', (tester) async {
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
