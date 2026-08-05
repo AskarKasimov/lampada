@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_link_button.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/entities/day_card.dart';
@@ -58,6 +59,48 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     return ref.watch(courseTopicByNumberProvider(_topicForPage(page))).value;
   }
 
+  Widget _contentForPage(int page, AppColorsExtension colors) {
+    if (page == 0) {
+      return CardContent(
+        key: ValueKey(widget.currentTopic.id),
+        card: widget.currentTopic,
+      );
+    }
+
+    final topic = _topicForPage(page);
+    return ref
+        .watch(courseTopicByNumberProvider(topic))
+        .when(
+          data: (card) => CardContent(key: ValueKey(card.id), card: card),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Тема недоступна',
+                  style: TextStyle(fontSize: 14, color: colors.ink),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Не удалось загрузить эту тему',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: colors.homeSubtitle),
+                ),
+                const SizedBox(height: 12),
+                AppLinkButton(
+                  label: 'Повторить',
+                  color: colors.link,
+                  fontSize: 12,
+                  onPressed: () =>
+                      ref.invalidate(courseTopicByNumberProvider(topic)),
+                ),
+              ],
+            ),
+          ),
+        );
+  }
+
   Bookmark _bookmarkFor(DayCard card, Brightness brightness) => Bookmark(
     id: card.id,
     kind: BookmarkKind.card,
@@ -83,13 +126,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                 controller: _controller,
                 itemCount: _currentTopicNumber,
                 onPageChanged: (page) => setState(() => _index = page),
-                itemBuilder: (context, page) {
-                  final card = _cardForPage(page);
-                  if (card == null) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  return CardContent(key: ValueKey(card.id), card: card);
-                },
+                itemBuilder: (context, page) => _contentForPage(page, colors),
               ),
             ),
             Positioned(
@@ -100,6 +137,16 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   : BookmarkButton(
                       bookmark: _bookmarkFor(currentCard, brightness),
                     ),
+            ),
+            Positioned(
+              top: 11,
+              left: 56,
+              right: 56,
+              child: Text(
+                'Основы веры',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: colors.ink),
+              ),
             ),
             Positioned(
               top: 0,

@@ -14,7 +14,11 @@ import 'package:lampada/features/daily_cards/presentation/screens/course_reader_
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _CourseCardsRepository implements DayCardsRepository {
+  _CourseCardsRepository({Map<int, int> failuresRemaining = const {}})
+    : failuresRemaining = Map.of(failuresRemaining);
+
   final requestedTopics = <int>[];
+  final Map<int, int> failuresRemaining;
 
   @override
   Future<Result<TodayCards>> getCardsFor(
@@ -23,6 +27,13 @@ class _CourseCardsRepository implements DayCardsRepository {
   }) async {
     final topic = date.difference(DateTime(2026)).inDays + 1;
     requestedTopics.add(topic);
+    final failures = failuresRemaining[topic] ?? 0;
+    if (failures > 0) {
+      failuresRemaining[topic] = failures - 1;
+      return Failure(
+        AppFailure('Тема $topic недоступна', kind: FailureKind.network),
+      );
+    }
     return Success(
       TodayCards(
         cards: [
@@ -75,23 +86,26 @@ void main() {
     progress = _ProgressRepository();
   });
 
-  Widget buildApp() => ProviderScope(
+  Widget buildApp({DayCard currentTopic = _currentTopic}) => ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       dayCardsRepositoryProvider.overrideWithValue(cards),
       dayProgressRepositoryProvider.overrideWithValue(progress),
       dayCardsProvider(
         dateKey(DateTime.now()),
-      ).overrideWithValue(const AsyncData(TodayCards(cards: [_currentTopic]))),
+      ).overrideWithValue(AsyncData(TodayCards(cards: [currentTopic]))),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
-      home: const CourseReaderScreen(currentTopic: _currentTopic),
+      home: CourseReaderScreen(currentTopic: currentTopic),
     ),
   );
 
-  Future<void> pumpReader(WidgetTester tester) async {
-    await tester.pumpWidget(buildApp());
+  Future<void> pumpReader(
+    WidgetTester tester, {
+    DayCard currentTopic = _currentTopic,
+  }) async {
+    await tester.pumpWidget(buildApp(currentTopic: currentTopic));
     await tester.pump();
     await tester.pump();
   }
@@ -104,6 +118,14 @@ void main() {
     expect(find.text('Тема 3'), findsOneWidget);
     expect(progress.readTypes, {CardType.basics});
     expect(cards.requestedTopics, contains(2));
+  });
+
+  testWidgets('keeps the course title visible in the reader header', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    expect(find.text('Основы веры'), findsOneWidget);
   });
 
   testWidgets('a left swipe shows the immediately preceding topic', (
@@ -130,4 +152,50 @@ void main() {
     expect(find.text('Тема 3'), findsOneWidget);
     expect(find.text('Тема 2'), findsNothing);
   });
+
+  testWidgets('a failed historical topic can retry without reloading others', (
+    tester,
+  ) async {
+    cards = _CourseCardsRepository(failuresRemaining: {2: 1});
+    await pumpReader(tester);
+
+    await tester.drag(find.byType(PageView), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Тема недоступна'), findsOneWidget);
+    expect(find.text('Повторить'), findsOneWidget);
+    final topicOneRequestsBeforeRetry = cards.requestedTopics
+        .where((topic) => topic == 1)
+        .length;
+
+    await tester.tap(find.text('Повторить'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Тема 2'), findsOneWidget);
+    expect(cards.requestedTopics.where((topic) => topic == 2), hasLength(2));
+    expect(
+      cards.requestedTopics.where((topic) => topic == 1),
+      hasLength(topicOneRequestsBeforeRetry),
+    );
+  });
+
+  testWidgets(
+    'the first course topic has no earlier page or topic zero request',
+    (tester) async {
+      const firstTopic = DayCard(
+        id: 'basics-topic-1',
+        type: CardType.basics,
+        body: 'Тема 1',
+        source: 'Азбука веры',
+      );
+      await pumpReader(tester, currentTopic: firstTopic);
+
+      await tester.drag(find.byType(PageView), const Offset(-500, 0));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Тема 1'), findsOneWidget);
+      expect(cards.requestedTopics, isEmpty);
+      expect(cards.requestedTopics, isNot(contains(0)));
+    },
+  );
 }
