@@ -31,7 +31,12 @@ abstract interface class DayCardsRemoteDatasource {
 }
 
 /// Скрейпит https://azbyka.ru/days/{yyyy-MM-dd} — вся дневная разметка
-/// (цитата/совет/основы/притча) лежит на одной странице.
+/// (цитата/совет/основы/чтения) лежит на одной странице.
+///
+/// Отсутствующая секция карточку не создаёт, но и день не роняет: Азбука
+/// публикует не все разделы каждый день, а раньше пропажа любого из пяти
+/// уводила приложение в офлайн-экран при живом интернете. Сбоем считается
+/// только страница, где не нашлось ни одной секции.
 class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   AzbykaDayCardsRemoteDatasource({http.Client? client})
       : _client = client ?? http.Client();
@@ -82,10 +87,16 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         _quoteCard(doc, dateStr),
         _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet'),
         _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy'),
-        _sectionCard(doc, dateStr, type: 'reading', selector: '#pritcha .brif'),
-        _questionCard(doc, dateStr),
-      ];
+        _readingCard(doc, dateStr),
+      ].nonNulls.toList();
+
+      // Пустая страница — это уже сломанная вёрстка, а не неполный день.
+      if (cards.isEmpty) {
+        throw const FormatException('ни одной секции дня на странице');
+      }
+
       netLog('разобрано ${cards.length} карточек '
+          '(${cards.map((c) => c.type).join(', ')}) '
           'за ${elapsed.elapsedMilliseconds}мс суммарно');
       return cards;
     } on FormatException catch (e) {
@@ -96,31 +107,113 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     }
   }
 
-  /// Виджет «Вопрос дня» имеет общий `class="widget"` с другими блоками,
-  /// поэтому цепляемся за уникальный класс ссылки `az-qod-link`. Ответ живёт
-  /// на отдельной странице по этой же ссылке и здесь не запрашивается.
-  DayCardDto _questionCard(Document doc, String dateStr) {
-    final link = doc.querySelector('a.az-qod-link');
-    final body = link?.text.trim() ?? '';
-    if (body.isEmpty) {
-      throw const FormatException('блок "Вопрос дня" не найден на странице');
+  /// Карточка чтения дня несёт только ссылку на отрывок — стихи и толкование
+  /// лежат на других страницах Азбуки и грузятся ридером по требованию.
+  DayCardDto? _readingCard(Document doc, String dateStr) {
+    final block = doc.querySelector('#chteniya');
+    if (block == null) {
+      netLog('нет секции "reading" (#chteniya) — пропускаем');
+      return null;
+    }
+    final link = _liturgyGospelLink(block);
+    if (link == null) {
+      netLog('в #chteniya нет евангельского чтения — пропускаем');
+      return null;
+    }
+    final reference = _referenceFrom(link);
+    if (reference == null) {
+      netLog('ссылка чтения не разобралась: ${link.attributes['href']}');
+      return null;
     }
     return DayCardDto(
-      id: 'question-$dateStr',
-      type: 'question',
-      body: body,
+      id: 'reading-$dateStr',
+      type: 'reading',
+      // Текст ссылки — уже человекочитаемое «Ин.10:1–9».
+      body: link.text.trim(),
       source: _defaultSource,
+      reference: reference,
     );
   }
 
-  DayCardDto _quoteCard(Document doc, String dateStr) {
+  /// Первое евангельское чтение литургии.
+  ///
+  /// Пометка «Лит.» отделяет литургийные чтения от утрени. Утреня для
+  /// новоначального избыточна, а её Евангелие стоит в блоке ПЕРВЫМ и без
+  /// этой отсечки перехватывало бы выбор. Дней без пометки большинство —
+  /// там литургийное чтение и есть первое в блоке. Чтения святому идут
+  /// после основного, поэтому «первое подходящее» — верное правило.
+  static Element? _liturgyGospelLink(Element block) {
+    var afterLiturgy = false;
+    Element? firstGospel;
+    Element? firstAfterLiturgy;
+
+    void walk(Node node) {
+      if (node is Text) {
+        if (_liturgyMarker.hasMatch(node.text)) afterLiturgy = true;
+        return;
+      }
+      if (node is! Element) return;
+      // Азбука верстает пометку ссылкой: `<a href="/liturgiya">Лит</a>.` —
+      // точка оказывается в соседнем узле, и поиск «Лит.» по тексту одного
+      // узла промахивался. Тогда выбиралось Евангелие УТРЕНИ, потому что оно
+      // стоит в блоке первым.
+      if (node.localName == 'a' &&
+          (node.attributes['href'] ?? '').contains('/liturgiya')) {
+        afterLiturgy = true;
+      }
+      if (node.classes.contains('bibref') && _isGospelLink(node)) {
+        firstGospel ??= node;
+        if (afterLiturgy) firstAfterLiturgy ??= node;
+      }
+      for (final child in node.nodes) {
+        walk(child);
+      }
+    }
+
+    for (final child in block.nodes) {
+      walk(child);
+    }
+    return firstAfterLiturgy ?? firstGospel;
+  }
+
+  static final _liturgyMarker = RegExp(r'Лит\s*\.');
+
+  /// Апостол и ветхозаветные паремии в ридер не идут: по продуктовому решению
+  /// показываем только Евангелие дня.
+  static const _gospelSlugs = {'Mt', 'Mk', 'Lk', 'Jn'};
+
+  static final _referencePattern =
+      RegExp(r'\?([A-Za-z0-9]+)\.(\d+:\d+(?:[-–]\d+(?::\d+)?)?)');
+
+  static bool _isGospelLink(Element link) {
+    final match = _referencePattern.firstMatch(link.attributes['href'] ?? '');
+    return match != null && _gospelSlugs.contains(match.group(1));
+  }
+
+  /// `https://azbyka.ru/biblia/?Jn.10:1-9` → `Jn.10:1-9`. Тире нормализуем:
+  /// в ссылках Азбуки встречается и дефис, и типографское «–».
+  static String? _referenceFrom(Element link) {
+    final match = _referencePattern.firstMatch(link.attributes['href'] ?? '');
+    if (match == null) return null;
+    return '${match.group(1)}.${match.group(2)!.replaceAll('–', '-')}';
+  }
+
+  DayCardDto? _quoteCard(Document doc, String dateStr) {
     final box = doc.querySelector('div.widget.quote-of-day .box');
     final paragraphs = box?.querySelectorAll('p') ?? const <Element>[];
-    if (paragraphs.length < 2) {
-      throw const FormatException('блок "Цитата дня" не найден на странице');
+    if (paragraphs.isEmpty) {
+      netLog('нет секции "quote" — пропускаем');
+      return null;
     }
     final body = _textWithBreaks(paragraphs[0]);
-    final author = paragraphs[1].querySelector('a')?.text.trim();
+    if (body.isEmpty) {
+      netLog('секция "quote" пуста — пропускаем');
+      return null;
+    }
+    // Второй абзац с автором необязателен: цитата без подписи — всё ещё
+    // цитата, а индекс без проверки падал бы на такой вёрстке.
+    final author =
+        paragraphs.length > 1 ? paragraphs[1].querySelector('a')?.text.trim() : null;
     return DayCardDto(
       id: 'quote-$dateStr',
       type: 'quote',
@@ -129,7 +222,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     );
   }
 
-  DayCardDto _sectionCard(
+  DayCardDto? _sectionCard(
     Document doc,
     String dateStr, {
     required String type,
@@ -137,11 +230,13 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   }) {
     final container = doc.querySelector(selector);
     if (container == null) {
-      throw FormatException('блок "$type" не найден на странице ($selector)');
+      netLog('нет секции "$type" ($selector) — пропускаем');
+      return null;
     }
     final paragraphs = _paragraphsFrom(container);
     if (paragraphs.isEmpty) {
-      throw FormatException('блок "$type" пуст ($selector)');
+      netLog('секция "$type" пуста ($selector) — пропускаем');
+      return null;
     }
     return DayCardDto(
       id: '$type-$dateStr',
@@ -151,20 +246,31 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     );
   }
 
-  /// Абзацы блока. Азбука верстает эти секции двумя способами, и день ото дня
-  /// они меняются: то текст разложен по <p>, то лежит в контейнере голым и
-  /// разделён <br>. Знаем только один вариант — приложение уходит в вечный
-  /// офлайн в тот день, когда придёт второй.
+  /// Абзацы блока. Азбука верстает эти секции по-разному и меняет разметку
+  /// день ото дня — знание одного варианта каждый раз выходит боком:
+  ///
+  /// * текст разложен по `<p>`;
+  /// * текст лежит в контейнере голым и разделён `<br>`;
+  /// * вопрос в `<p>`, а весь ответ — списком `<ul><li>`.
+  ///
+  /// Третий вариант ловил нас молча и хуже всех: сбора одних `<p>` хватало,
+  /// чтобы вернуть непустой результат, поэтому «совет дня» показывал вопрос
+  /// без ответа и выглядел рабочим.
+  ///
+  /// Поэтому собираем в порядке документа и `<p>`, и `<li>`. Элемент с
+  /// вложенными `p`/`ul`/`ol` пропускаем: у Азбуки встречается кривое
+  /// `<p><p>…</p></p>`, и без этой отсечки текст задваивался бы.
   static List<String> _paragraphsFrom(Element container) {
     // Заголовок секции («Практический совет») — не контент.
     container.querySelector('h2')?.remove();
 
-    final tagged = container
-        .querySelectorAll('p')
-        .map(_textWithBreaks)
-        .where((t) => t.isNotEmpty)
-        .toList();
-    if (tagged.isNotEmpty) return tagged;
+    final parts = <String>[];
+    for (final el in container.querySelectorAll('p, li')) {
+      if (el.querySelector('p, li, ul, ol') != null) continue;
+      final text = _textWithBreaks(el);
+      if (text.isNotEmpty) parts.add(text);
+    }
+    if (parts.isNotEmpty) return parts;
 
     return _textWithBreaks(container)
         .split('\n')

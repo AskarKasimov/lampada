@@ -17,8 +17,9 @@ mixin _$DayProgressDto {
 
 /// Дата (yyyy-MM-dd), к которой относится [readTypes].
  String get date;/// Имена прочитанных сегодня типов (CardType.name).
- List<String> get readTypes; int get streakDays;/// Дата (yyyy-MM-dd) последнего засчитанного в серию дня; '' — не было.
- String get lastCompleted;
+ List<String> get readTypes;/// Даты (yyyy-MM-dd) с активностью. Серия выводится из них, а не хранится
+/// числом: счётчик было негде сбрасывать, и он только рос.
+ List<String> get visitedDays;
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +32,16 @@ $DayProgressDtoCopyWith<DayProgressDto> get copyWith => _$DayProgressDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayProgressDto&&(identical(other.date, date) || other.date == date)&&const DeepCollectionEquality().equals(other.readTypes, readTypes)&&(identical(other.streakDays, streakDays) || other.streakDays == streakDays)&&(identical(other.lastCompleted, lastCompleted) || other.lastCompleted == lastCompleted));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayProgressDto&&(identical(other.date, date) || other.date == date)&&const DeepCollectionEquality().equals(other.readTypes, readTypes)&&const DeepCollectionEquality().equals(other.visitedDays, visitedDays));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,date,const DeepCollectionEquality().hash(readTypes),streakDays,lastCompleted);
+int get hashCode => Object.hash(runtimeType,date,const DeepCollectionEquality().hash(readTypes),const DeepCollectionEquality().hash(visitedDays));
 
 @override
 String toString() {
-  return 'DayProgressDto(date: $date, readTypes: $readTypes, streakDays: $streakDays, lastCompleted: $lastCompleted)';
+  return 'DayProgressDto(date: $date, readTypes: $readTypes, visitedDays: $visitedDays)';
 }
 
 
@@ -51,7 +52,7 @@ abstract mixin class $DayProgressDtoCopyWith<$Res>  {
   factory $DayProgressDtoCopyWith(DayProgressDto value, $Res Function(DayProgressDto) _then) = _$DayProgressDtoCopyWithImpl;
 @useResult
 $Res call({
- String date, List<String> readTypes, int streakDays, String lastCompleted
+ String date, List<String> readTypes, List<String> visitedDays
 });
 
 
@@ -68,13 +69,12 @@ class _$DayProgressDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? date = null,Object? readTypes = null,Object? streakDays = null,Object? lastCompleted = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? date = null,Object? readTypes = null,Object? visitedDays = null,}) {
   return _then(_self.copyWith(
 date: null == date ? _self.date : date // ignore: cast_nullable_to_non_nullable
 as String,readTypes: null == readTypes ? _self.readTypes : readTypes // ignore: cast_nullable_to_non_nullable
-as List<String>,streakDays: null == streakDays ? _self.streakDays : streakDays // ignore: cast_nullable_to_non_nullable
-as int,lastCompleted: null == lastCompleted ? _self.lastCompleted : lastCompleted // ignore: cast_nullable_to_non_nullable
-as String,
+as List<String>,visitedDays: null == visitedDays ? _self.visitedDays : visitedDays // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 
@@ -159,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String date,  List<String> readTypes,  int streakDays,  String lastCompleted)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String date,  List<String> readTypes,  List<String> visitedDays)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DayProgressDto() when $default != null:
-return $default(_that.date,_that.readTypes,_that.streakDays,_that.lastCompleted);case _:
+return $default(_that.date,_that.readTypes,_that.visitedDays);case _:
   return orElse();
 
 }
@@ -180,10 +180,10 @@ return $default(_that.date,_that.readTypes,_that.streakDays,_that.lastCompleted)
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String date,  List<String> readTypes,  int streakDays,  String lastCompleted)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String date,  List<String> readTypes,  List<String> visitedDays)  $default,) {final _that = this;
 switch (_that) {
 case _DayProgressDto():
-return $default(_that.date,_that.readTypes,_that.streakDays,_that.lastCompleted);case _:
+return $default(_that.date,_that.readTypes,_that.visitedDays);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -200,10 +200,10 @@ return $default(_that.date,_that.readTypes,_that.streakDays,_that.lastCompleted)
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String date,  List<String> readTypes,  int streakDays,  String lastCompleted)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String date,  List<String> readTypes,  List<String> visitedDays)?  $default,) {final _that = this;
 switch (_that) {
 case _DayProgressDto() when $default != null:
-return $default(_that.date,_that.readTypes,_that.streakDays,_that.lastCompleted);case _:
+return $default(_that.date,_that.readTypes,_that.visitedDays);case _:
   return null;
 
 }
@@ -215,7 +215,7 @@ return $default(_that.date,_that.readTypes,_that.streakDays,_that.lastCompleted)
 @JsonSerializable()
 
 class _DayProgressDto implements DayProgressDto {
-  const _DayProgressDto({required this.date, required final  List<String> readTypes, required this.streakDays, required this.lastCompleted}): _readTypes = readTypes;
+  const _DayProgressDto({required this.date, required final  List<String> readTypes, final  List<String> visitedDays = const <String>[]}): _readTypes = readTypes,_visitedDays = visitedDays;
   factory _DayProgressDto.fromJson(Map<String, dynamic> json) => _$DayProgressDtoFromJson(json);
 
 /// Дата (yyyy-MM-dd), к которой относится [readTypes].
@@ -229,9 +229,17 @@ class _DayProgressDto implements DayProgressDto {
   return EqualUnmodifiableListView(_readTypes);
 }
 
-@override final  int streakDays;
-/// Дата (yyyy-MM-dd) последнего засчитанного в серию дня; '' — не было.
-@override final  String lastCompleted;
+/// Даты (yyyy-MM-dd) с активностью. Серия выводится из них, а не хранится
+/// числом: счётчик было негде сбрасывать, и он только рос.
+ final  List<String> _visitedDays;
+/// Даты (yyyy-MM-dd) с активностью. Серия выводится из них, а не хранится
+/// числом: счётчик было негде сбрасывать, и он только рос.
+@override@JsonKey() List<String> get visitedDays {
+  if (_visitedDays is EqualUnmodifiableListView) return _visitedDays;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_visitedDays);
+}
+
 
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
@@ -246,16 +254,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayProgressDto&&(identical(other.date, date) || other.date == date)&&const DeepCollectionEquality().equals(other._readTypes, _readTypes)&&(identical(other.streakDays, streakDays) || other.streakDays == streakDays)&&(identical(other.lastCompleted, lastCompleted) || other.lastCompleted == lastCompleted));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayProgressDto&&(identical(other.date, date) || other.date == date)&&const DeepCollectionEquality().equals(other._readTypes, _readTypes)&&const DeepCollectionEquality().equals(other._visitedDays, _visitedDays));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,date,const DeepCollectionEquality().hash(_readTypes),streakDays,lastCompleted);
+int get hashCode => Object.hash(runtimeType,date,const DeepCollectionEquality().hash(_readTypes),const DeepCollectionEquality().hash(_visitedDays));
 
 @override
 String toString() {
-  return 'DayProgressDto(date: $date, readTypes: $readTypes, streakDays: $streakDays, lastCompleted: $lastCompleted)';
+  return 'DayProgressDto(date: $date, readTypes: $readTypes, visitedDays: $visitedDays)';
 }
 
 
@@ -266,7 +274,7 @@ abstract mixin class _$DayProgressDtoCopyWith<$Res> implements $DayProgressDtoCo
   factory _$DayProgressDtoCopyWith(_DayProgressDto value, $Res Function(_DayProgressDto) _then) = __$DayProgressDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String date, List<String> readTypes, int streakDays, String lastCompleted
+ String date, List<String> readTypes, List<String> visitedDays
 });
 
 
@@ -283,13 +291,12 @@ class __$DayProgressDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? date = null,Object? readTypes = null,Object? streakDays = null,Object? lastCompleted = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? date = null,Object? readTypes = null,Object? visitedDays = null,}) {
   return _then(_DayProgressDto(
 date: null == date ? _self.date : date // ignore: cast_nullable_to_non_nullable
 as String,readTypes: null == readTypes ? _self._readTypes : readTypes // ignore: cast_nullable_to_non_nullable
-as List<String>,streakDays: null == streakDays ? _self.streakDays : streakDays // ignore: cast_nullable_to_non_nullable
-as int,lastCompleted: null == lastCompleted ? _self.lastCompleted : lastCompleted // ignore: cast_nullable_to_non_nullable
-as String,
+as List<String>,visitedDays: null == visitedDays ? _self._visitedDays : visitedDays // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 

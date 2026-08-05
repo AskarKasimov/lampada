@@ -21,17 +21,16 @@ class PrefsDayProgressRepository implements DayProgressRepository {
 
   static const _key = 'day_progress';
 
+  /// Сколько дней активности держим. Календарь листают на месяцы, не на годы,
+  /// а prefs — не база: неограниченный список рос бы вечно.
+  static const _maxVisitedDays = 400;
+
   String get _today => dateKey(_clock());
 
   DayProgressDto _read() {
     final raw = _prefs.getString(_key);
     if (raw == null) {
-      return DayProgressDto(
-        date: _today,
-        readTypes: const [],
-        streakDays: 0,
-        lastCompleted: '',
-      );
+      return DayProgressDto(date: _today, readTypes: const []);
     }
     return DayProgressDto.fromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
@@ -40,7 +39,7 @@ class PrefsDayProgressRepository implements DayProgressRepository {
       _prefs.setString(_key, jsonEncode(dto.toJson()));
 
   /// Приводит DTO к сегодняшнему дню: если дата не сегодня —
-  /// список прочитанного обнуляется, серия сохраняется.
+  /// список прочитанного обнуляется, посещённые дни сохраняются.
   DayProgressDto _forToday(DayProgressDto dto) => dto.date == _today
       ? dto
       : dto.copyWith(date: _today, readTypes: const []);
@@ -64,8 +63,12 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   Future<Result<DayProgress>> markRead(CardType type) async {
     try {
       final dto = _forToday(_read());
+      final visited = {...dto.visitedDays, _today}.toList()..sort();
       final updated = dto.copyWith(
         readTypes: {...dto.readTypes, type.name}.toList(),
+        visitedDays: visited.length > _maxVisitedDays
+            ? visited.sublist(visited.length - _maxVisitedDays)
+            : visited,
       );
       await _write(updated);
       return Success(updated.toEntity());
@@ -73,29 +76,6 @@ class PrefsDayProgressRepository implements DayProgressRepository {
       return Failure(
         AppFailure(
           'Не удалось сохранить прогресс',
-          kind: FailureKind.unknown,
-          cause: e,
-        ),
-      );
-    }
-  }
-
-  @override
-  Future<Result<DayProgress>> completeDay() async {
-    try {
-      var dto = _forToday(_read());
-      if (dto.lastCompleted != _today) {
-        dto = dto.copyWith(
-          streakDays: dto.streakDays + 1,
-          lastCompleted: _today,
-        );
-      }
-      await _write(dto);
-      return Success(dto.toEntity());
-    } on Exception catch (e) {
-      return Failure(
-        AppFailure(
-          'Не удалось обновить серию',
           kind: FailureKind.unknown,
           cause: e,
         ),

@@ -15,7 +15,12 @@ T _$identity<T>(T value) => value;
 mixin _$DayCard {
 
  String get id; CardType get type; String get body;/// Источник на Азбуке веры (автор/страница).
- String get source;
+ String get source;/// Машинная ссылка на отрывок (`Jn.10:1-9`) — только у [CardType.reading],
+/// у остальных null. По ней ридер лениво догружает стихи и толкование:
+/// тянуть их вместе с днём значило бы утроить сетевой путь ради экрана,
+/// до которого доходит меньшинство сессий. В [body] при этом лежит
+/// человекочитаемое «Ин.10:1–9».
+ String? get reference;
 /// Create a copy of DayCard
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +31,16 @@ $DayCardCopyWith<DayCard> get copyWith => _$DayCardCopyWithImpl<DayCard>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayCard&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.body, body) || other.body == body)&&(identical(other.source, source) || other.source == source));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayCard&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.body, body) || other.body == body)&&(identical(other.source, source) || other.source == source)&&(identical(other.reference, reference) || other.reference == reference));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,type,body,source);
+int get hashCode => Object.hash(runtimeType,id,type,body,source,reference);
 
 @override
 String toString() {
-  return 'DayCard(id: $id, type: $type, body: $body, source: $source)';
+  return 'DayCard(id: $id, type: $type, body: $body, source: $source, reference: $reference)';
 }
 
 
@@ -46,7 +51,7 @@ abstract mixin class $DayCardCopyWith<$Res>  {
   factory $DayCardCopyWith(DayCard value, $Res Function(DayCard) _then) = _$DayCardCopyWithImpl;
 @useResult
 $Res call({
- String id, CardType type, String body, String source
+ String id, CardType type, String body, String source, String? reference
 });
 
 
@@ -63,13 +68,14 @@ class _$DayCardCopyWithImpl<$Res>
 
 /// Create a copy of DayCard
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? body = null,Object? source = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? body = null,Object? source = null,Object? reference = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CardType,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
-as String,
+as String,reference: freezed == reference ? _self.reference : reference // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -154,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  CardType type,  String body,  String source)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  CardType type,  String body,  String source,  String? reference)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DayCard() when $default != null:
-return $default(_that.id,_that.type,_that.body,_that.source);case _:
+return $default(_that.id,_that.type,_that.body,_that.source,_that.reference);case _:
   return orElse();
 
 }
@@ -175,10 +181,10 @@ return $default(_that.id,_that.type,_that.body,_that.source);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  CardType type,  String body,  String source)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  CardType type,  String body,  String source,  String? reference)  $default,) {final _that = this;
 switch (_that) {
 case _DayCard():
-return $default(_that.id,_that.type,_that.body,_that.source);case _:
+return $default(_that.id,_that.type,_that.body,_that.source,_that.reference);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +201,10 @@ return $default(_that.id,_that.type,_that.body,_that.source);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  CardType type,  String body,  String source)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  CardType type,  String body,  String source,  String? reference)?  $default,) {final _that = this;
 switch (_that) {
 case _DayCard() when $default != null:
-return $default(_that.id,_that.type,_that.body,_that.source);case _:
+return $default(_that.id,_that.type,_that.body,_that.source,_that.reference);case _:
   return null;
 
 }
@@ -210,7 +216,7 @@ return $default(_that.id,_that.type,_that.body,_that.source);case _:
 
 
 class _DayCard implements DayCard {
-  const _DayCard({required this.id, required this.type, required this.body, required this.source});
+  const _DayCard({required this.id, required this.type, required this.body, required this.source, this.reference});
   
 
 @override final  String id;
@@ -218,6 +224,12 @@ class _DayCard implements DayCard {
 @override final  String body;
 /// Источник на Азбуке веры (автор/страница).
 @override final  String source;
+/// Машинная ссылка на отрывок (`Jn.10:1-9`) — только у [CardType.reading],
+/// у остальных null. По ней ридер лениво догружает стихи и толкование:
+/// тянуть их вместе с днём значило бы утроить сетевой путь ради экрана,
+/// до которого доходит меньшинство сессий. В [body] при этом лежит
+/// человекочитаемое «Ин.10:1–9».
+@override final  String? reference;
 
 /// Create a copy of DayCard
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +241,16 @@ _$DayCardCopyWith<_DayCard> get copyWith => __$DayCardCopyWithImpl<_DayCard>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayCard&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.body, body) || other.body == body)&&(identical(other.source, source) || other.source == source));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayCard&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.body, body) || other.body == body)&&(identical(other.source, source) || other.source == source)&&(identical(other.reference, reference) || other.reference == reference));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,type,body,source);
+int get hashCode => Object.hash(runtimeType,id,type,body,source,reference);
 
 @override
 String toString() {
-  return 'DayCard(id: $id, type: $type, body: $body, source: $source)';
+  return 'DayCard(id: $id, type: $type, body: $body, source: $source, reference: $reference)';
 }
 
 
@@ -249,7 +261,7 @@ abstract mixin class _$DayCardCopyWith<$Res> implements $DayCardCopyWith<$Res> {
   factory _$DayCardCopyWith(_DayCard value, $Res Function(_DayCard) _then) = __$DayCardCopyWithImpl;
 @override @useResult
 $Res call({
- String id, CardType type, String body, String source
+ String id, CardType type, String body, String source, String? reference
 });
 
 
@@ -266,13 +278,14 @@ class __$DayCardCopyWithImpl<$Res>
 
 /// Create a copy of DayCard
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? body = null,Object? source = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? body = null,Object? source = null,Object? reference = freezed,}) {
   return _then(_DayCard(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as CardType,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
-as String,
+as String,reference: freezed == reference ? _self.reference : reference // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

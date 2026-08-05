@@ -12,14 +12,16 @@ _DayProgressDto _$DayProgressDtoFromJson(Map<String, dynamic> json) =>
       readTypes: (json['readTypes'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
-      streakDays: (json['streakDays'] as num).toInt(),
-      lastCompleted: json['lastCompleted'] as String,
+      visitedDays:
+          (json['visitedDays'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
     );
 
 Map<String, dynamic> _$DayProgressDtoToJson(_DayProgressDto instance) =>
     <String, dynamic>{
       'date': instance.date,
       'readTypes': instance.readTypes,
-      'streakDays': instance.streakDays,
-      'lastCompleted': instance.lastCompleted,
+      'visitedDays': instance.visitedDays,
     };

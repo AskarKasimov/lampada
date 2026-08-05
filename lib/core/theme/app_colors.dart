@@ -50,22 +50,38 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   /// логики «еле заметно».
   final Color homeButtonBackground;
 
+  /// Светлая тема. Значения выверены по WCAG 2.1 против [background]:
+  /// весь текст держит AA (>=4.5:1), точки прогресса — 3:1 как UI-элемент.
+  ///
+  /// Прошлый набор проваливал AA в восьми местах, и хуже всего — надпись на
+  /// основной кнопке (3.06:1). По §6 это единственный высококонтрастный
+  /// элемент экрана, а по факту он был самым слабым.
+  ///
+  /// Приглушённые роли (link / todayLabel / homeSubtitle / chipUnreadText /
+  /// textTertiary) сведены к ОДНОМУ значению: по отдельности они отличались
+  /// на доли процента яркости, то есть иерархию не создавали, а пять токенов
+  /// вместо одного мешали держать контраст под контролем. Имена оставлены —
+  /// они говорят о назначении, а не о цвете.
   static const light = AppColorsExtension(
     background: Color(0xFFFAF0E3),
-    ink: Color(0xFF362418),
-    textSecondary: Color(0xFF776559),
-    textTertiary: Color(0xFF89766A),
-    dotDone: Color(0xFFA99B93),
+    ink: Color(0xFF362418), // 13.10:1
+    textSecondary: Color(0xFF776559), // 4.92:1
+    textTertiary: Color(0xFF79695E), // 4.67:1
+    dotDone: Color(0xFF968982), // 3.01:1 — состояние, дублировать нечем
     dotUpcoming: Color(0xFFE0D5CE),
     flameLight: Color(0xFFFECE96),
-    accent: Color(0xFFBE7C1C),
-    homeSubtitle: Color(0xFF806D61),
-    todayLabel: Color(0xFF7B6F67),
-    footer: Color(0xFF8A7D75),
-    link: Color(0xFF84776F),
-    homeIcon: Color(0xFF554438),
-    chipUnreadText: Color(0xFF887E78),
-    chipUnreadBorder: Color(0xFFD6CBC5),
+    accent: Color(0xFF966116), // 4.64:1 и к фону, и под надпись пергаментом
+    homeSubtitle: Color(0xFF79695E), // 4.67:1
+    todayLabel: Color(0xFF79695E), // 4.67:1
+    footer: Color(0xFF79695E), // 4.67:1
+    link: Color(0xFF79695E), // 4.67:1
+    homeIcon: Color(0xFF554438), // 8.21:1
+    chipUnreadText: Color(0xFF79695E), // 4.67:1
+    // 2.09:1 — сознательное отступление от 3:1. Рамка блока не единственный
+    // признак карточки (есть плашка типа, галочка, сам текст), а контур на
+    // 3:1 читается жирной обводкой и воюет с «тонкими линиями» §6. Прошлые
+    // 1.41:1 не были видны вовсе — это и починено.
+    chipUnreadBorder: Color(0xFFB5A69C),
     homeButtonBackground: Color(0x0D000000),
   );
 

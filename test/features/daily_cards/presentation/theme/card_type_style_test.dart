@@ -45,14 +45,13 @@ void main() {
     expect(style.tagForeground, const Color(0xFFF4CFA0));
   });
 
-  test('CardType.question — ярлык «Вопрос дня», короткая подпись «Вопрос»',
-      () {
-    final light = CardType.question.styleFor(Brightness.light);
-    final dark = CardType.question.styleFor(Brightness.dark);
-
-    expect(light.label, 'Вопрос дня');
-    expect(light.shortLabel, 'Вопрос');
-    expect(dark.label, 'Вопрос дня');
-    expect(dark.shortLabel, 'Вопрос');
+  test('у каждого типа есть непустой ярлык и короткая подпись', () {
+    for (final type in CardType.values) {
+      for (final brightness in Brightness.values) {
+        final style = type.styleFor(brightness);
+        expect(style.label, isNotEmpty, reason: 'нет ярлыка у $type');
+        expect(style.shortLabel, isNotEmpty, reason: 'нет подписи у $type');
+      }
+    }
   });
 }
