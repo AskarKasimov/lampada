@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_link_button.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
+import '../../domain/course_calendar.dart';
 import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
@@ -128,6 +129,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
     final currentCard = _cardForPage(_index);
+    final visibleTopic = _topicForPage(_index);
 
     return Scaffold(
       body: GestureDetector(
@@ -137,7 +139,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(34, 48, 34, 24),
+                padding: const EdgeInsets.fromLTRB(34, 48, 34, 48),
                 child: PageView.builder(
                   controller: _controller,
                   reverse: true,
@@ -163,6 +165,19 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   'Основы веры',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: colors.ink),
+                ),
+              ),
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: 8,
+                child: IgnorePointer(
+                  child: Text(
+                    '${visibleTopic > 1 ? '← Предыдущие темы · ' : ''}'
+                    'Тема $visibleTopic из $courseTopicCount',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                  ),
                 ),
               ),
               Positioned(
