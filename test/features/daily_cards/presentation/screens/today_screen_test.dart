@@ -91,6 +91,15 @@ class _FakeProgressRepository implements DayProgressRepository {
   void seedVisited(Set<String> days) => _visited = days;
 }
 
+class _SelectedDateNotifier extends SelectedDateNotifier {
+  _SelectedDateNotifier(this.date);
+
+  final DateTime date;
+
+  @override
+  DateTime build() => date;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -104,6 +113,7 @@ void main() {
   Widget buildApp({
     DayCardsRepository? cardsRepository,
     DayProgressRepository? progressRepository,
+    DateTime? selectedDate,
   }) =>
       ProviderScope(
         overrides: [
@@ -113,6 +123,10 @@ void main() {
               .overrideWithValue(progressRepository ?? _FakeProgressRepository()),
           readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
           sharedPreferencesProvider.overrideWithValue(prefs),
+          if (selectedDate != null)
+            selectedDateProvider.overrideWith(
+              () => _SelectedDateNotifier(selectedDate),
+            ),
         ],
         child: MaterialApp(
           theme: AppTheme.light,
@@ -314,6 +328,83 @@ void main() {
   });
 
   group('переключение даты', () {
+    testWidgets('календарная полоска не листается вместе с карточками',
+        (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      expect(
+        find.descendant(
+          of: find.byType(PageView),
+          matching: find.byType(WeekStrip),
+        ),
+        findsNothing,
+      );
+      expect(find.byType(WeekStrip), findsOneWidget);
+    });
+
+    test('страницы сохраняют соседние календарные даты через DST', () {
+      final pages = CalendarPageMapper(
+        DateTime(2026, 3, 8),
+        initialPage: 0,
+      );
+
+      expect(pages.dateForPage(1), DateTime(2026, 3, 9));
+      expect(pages.pageForDate(DateTime(2026, 3, 9)), 1);
+    });
+
+    testWidgets('свайп влево открывает следующий день', (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.fling(
+        find.byType(PageView),
+        const Offset(-400, 0),
+        1000,
+      );
+      await settle(tester);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TodayScreen)),
+      );
+      expect(
+        dateKey(container.read(selectedDateProvider)),
+        dateKey(DateTime.now().add(const Duration(days: 1))),
+      );
+    });
+
+    testWidgets('открывает дату, выбранную до показа экрана', (tester) async {
+      final repo = _FakeCardsRepository();
+      final selected = DateTime(2026, 1, 1);
+      await tester.pumpWidget(
+        buildApp(cardsRepository: repo, selectedDate: selected),
+      );
+      await settle(tester);
+
+      expect(repo.requested, contains(dateKey(selected)));
+    });
+
+    testWidgets('предзагружает карточки соседних страниц',
+        (tester) async {
+      final repo = _FakeCardsRepository();
+      await tester.pumpWidget(buildApp(cardsRepository: repo));
+      await settle(tester);
+
+      final today = DateTime.now();
+      expect(
+        repo.requested,
+        contains(dateKey(today.add(const Duration(days: 1)))),
+      );
+      expect(
+        repo.requested,
+        contains(dateKey(today.subtract(const Duration(days: 1)))),
+      );
+    });
+
     testWidgets('тап по дню недели запрашивает карточки этой даты',
         (tester) async {
       final repo = _FakeCardsRepository();

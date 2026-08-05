@@ -24,26 +24,136 @@ import 'card_viewer_screen.dart';
 /// Календарь отдельной вкладкой не живёт — неделя сверху закрывает навигацию
 /// по датам (FR-018, FR-021). Сам контент открывается полноэкранно поверх
 /// шелла: под таб-баром «одна мысль на экране» из §6 не получается.
-class TodayScreen extends ConsumerWidget {
+class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(selectedDateProvider);
-    final key = dateKey(selected);
-    final cardsAsync = ref.watch(dayCardsProvider(key));
-    final progressAsync = ref.watch(dayProgressProvider);
+  ConsumerState<TodayScreen> createState() => _TodayScreenState();
+}
 
-    final day = cardsAsync.value;
-    final progress = progressAsync.value;
+/// Сопоставляет страницы [PageView] с календарными днями без зависимости от
+/// длины суток в локальном часовом поясе.
+class CalendarPageMapper {
+  const CalendarPageMapper(this.initialDate, {this.initialPage = 10000});
+
+  final DateTime initialDate;
+  final int initialPage;
+
+  DateTime dateForPage(int page) => DateTime(
+    initialDate.year,
+    initialDate.month,
+    initialDate.day + page - initialPage,
+  );
+
+  int pageForDate(DateTime date) =>
+      initialPage + dayOffset(initialDate, date);
+
+  static int dayOffset(DateTime from, DateTime to) =>
+      _dayNumber(to) - _dayNumber(from);
+
+  static int _dayNumber(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
+}
+
+class _TodayScreenState extends ConsumerState<TodayScreen> {
+  late final CalendarPageMapper _pageMapper;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageMapper = CalendarPageMapper(ref.read(selectedDateProvider));
+    _pageController = PageController(initialPage: _pageMapper.initialPage);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _syncPage(DateTime date) {
+    if (!_pageController.hasClients) return;
+    final target = _pageMapper.pageForDate(date);
+    if (_pageController.page?.round() == target) return;
+    _pageController.animateToPage(
+      target,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = ref.watch(selectedDateProvider);
+    final progress = ref.watch(dayProgressProvider).value;
+    final selectedPage = _pageMapper.pageForDate(selected);
+    ref.watch(
+      dayCardsProvider(dateKey(_pageMapper.dateForPage(selectedPage - 1))),
+    );
+    ref.watch(
+      dayCardsProvider(dateKey(_pageMapper.dateForPage(selectedPage + 1))),
+    );
+    ref.listen<DateTime>(selectedDateProvider, (_, selected) {
+      _syncPage(selected);
+    });
 
     return Column(
       children: [
         _Header(selected: selected, progress: progress),
         Expanded(
-          child: _body(context, ref, selected, key, cardsAsync, day, progress),
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (page) => ref
+                .read(selectedDateProvider.notifier)
+                .select(_pageMapper.dateForPage(page)),
+            itemBuilder: (context, page) => _TodayDayPage(
+              date: _pageMapper.dateForPage(page),
+            ),
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _TodayDayPage extends ConsumerWidget {
+  const _TodayDayPage({required this.date});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedDateProvider);
+    final isSelected = dateKey(selected) == dateKey(date);
+    final isNeighbour = CalendarPageMapper.dayOffset(selected, date).abs() == 1;
+    return isSelected || isNeighbour
+        ? _SelectedDayContent(date: date, isSelected: isSelected)
+        : const BrandLoadingView();
+  }
+}
+
+class _SelectedDayContent extends ConsumerWidget {
+  const _SelectedDayContent({required this.date, required this.isSelected});
+
+  final DateTime date;
+  final bool isSelected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = dateKey(date);
+    final cardsAsync = ref.watch(dayCardsProvider(key));
+    final day = cardsAsync.value;
+    final progress = ref.watch(dayProgressProvider).value;
+    return _body(
+      context,
+      ref,
+      date,
+      key,
+      cardsAsync,
+      day,
+      progress,
     );
   }
 
@@ -61,8 +171,9 @@ class TodayScreen extends ConsumerWidget {
     if (day != null && progress != null) {
       return _DayBlocks(
         date: selected,
-        day: _withCourseTopic(ref, selected, day),
+        day: _withCourseTopic(ref, selected, day, isSelected),
         progress: progress,
+        isSelected: isSelected,
       );
     }
 
@@ -89,7 +200,13 @@ class TodayScreen extends ConsumerWidget {
   /// Только для сегодняшней даты: курс — это личный прогресс, а листая
   /// прошлые дни в полоске недели, юзер смотрит именно тот день, каким он был.
   /// Тема не доехала — остаются «Основы» за дату, и экран цел.
-  TodayCards _withCourseTopic(WidgetRef ref, DateTime date, TodayCards day) {
+  TodayCards _withCourseTopic(
+    WidgetRef ref,
+    DateTime date,
+    TodayCards day,
+    bool isSelected,
+  ) {
+    if (!isSelected) return day;
     if (dateKey(date) != dateKey(DateTime.now())) return day;
     final topic = ref.watch(courseTopicProvider).value;
     if (topic == null) return day;
@@ -146,11 +263,13 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.date,
     required this.day,
     required this.progress,
+    required this.isSelected,
   });
 
   final DateTime date;
   final TodayCards day;
   final DayProgress progress;
+  final bool isSelected;
 
   @override
   ConsumerState<_DayBlocks> createState() => _DayBlocksState();
@@ -223,6 +342,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   /// спроса — это уже не «одна мысль за 15 секунд». К нему ведёт блок-герой.
   void _maybeAutoOpen() {
     if (_autoOpened) return;
+    if (!widget.isSelected) return;
     if (!_recordProgress) return;
 
     final pages = _pages;
