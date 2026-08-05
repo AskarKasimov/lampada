@@ -37,8 +37,8 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   /// Цикл «системная → светлая → тёмная → системная». Оставлен для мест,
   /// где переключатель одним тапом (например, будущий виджет-тумблер).
   Future<void> toggle() => select(switch (state) {
-        ThemeMode.system => ThemeMode.light,
-        ThemeMode.light => ThemeMode.dark,
-        ThemeMode.dark => ThemeMode.system,
-      });
+    ThemeMode.system => ThemeMode.light,
+    ThemeMode.light => ThemeMode.dark,
+    ThemeMode.dark => ThemeMode.system,
+  });
 }

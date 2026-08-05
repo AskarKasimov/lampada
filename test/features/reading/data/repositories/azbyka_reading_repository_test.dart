@@ -55,8 +55,7 @@ class _FailingDatasource implements ReadingRemoteDatasource {
   Future<DailyReadingDto> fetch(
     String reference, {
     required Duration timeout,
-  }) async =>
-      throw const RemoteFetchException(FailureKind.unknown, 'нет сети');
+  }) async => throw const RemoteFetchException(FailureKind.unknown, 'нет сети');
 }
 
 class _OfflineNetworkStatus implements NetworkStatus {
@@ -82,8 +81,10 @@ void main() {
     final prefs = await prefsWith({'reading_cache:$_reference': _legacyCache});
     final remote = _FakeDatasource();
 
-    final result =
-        await AzbykaReadingRepository(remote, prefs).getReading(_reference);
+    final result = await AzbykaReadingRepository(
+      remote,
+      prefs,
+    ).getReading(_reference);
 
     expect(remote.calls, 1, reason: 'старый кэш приняли за свежий');
     final reading = valueOf(result);
@@ -136,8 +137,10 @@ void main() {
     final prefs = await prefsWith({'reading_cache_v2:$_reference': 'не json'});
     final remote = _FakeDatasource();
 
-    final result =
-        await AzbykaReadingRepository(remote, prefs).getReading(_reference);
+    final result = await AzbykaReadingRepository(
+      remote,
+      prefs,
+    ).getReading(_reference);
 
     expect(remote.calls, 1);
     expect(valueOf(result).verses.single.text, 'СВЕЖИЙ СТИХ');

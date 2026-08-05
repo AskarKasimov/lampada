@@ -11,13 +11,13 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:shared_preferences/shared_preferences.dart';
 
 Bookmark _bookmark(String id, {String text = 'Сохранённая мысль'}) => Bookmark(
-      id: id,
-      kind: BookmarkKind.card,
-      text: text,
-      source: 'Иоанн Лествичник',
-      label: 'Цитата дня',
-      savedAt: DateTime(2026, 7, 28),
-    );
+  id: id,
+  kind: BookmarkKind.card,
+  text: text,
+  source: 'Иоанн Лествичник',
+  label: 'Цитата дня',
+  savedAt: DateTime(2026, 7, 28),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -30,12 +30,16 @@ void main() {
   });
 
   Widget wrap(Widget child) => ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-        child: MaterialApp(theme: AppTheme.light, home: Scaffold(body: child)),
-      );
+    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    child: MaterialApp(
+      theme: AppTheme.light,
+      home: Scaffold(body: child),
+    ),
+  );
 
-  testWidgets('пустая копилка — тёплое состояние без назидания',
-      (tester) async {
+  testWidgets('пустая копилка — тёплое состояние без назидания', (
+    tester,
+  ) async {
     await tester.pumpWidget(wrap(const BookmarksScreen()));
     await tester.pumpAndSettle();
 
@@ -77,8 +81,9 @@ void main() {
   });
 
   group('кнопка сохранения', () {
-    testWidgets('переключает состояние и подтверждает сохранение',
-        (tester) async {
+    testWidgets('переключает состояние и подтверждает сохранение', (
+      tester,
+    ) async {
       await tester.pumpWidget(wrap(BookmarkButton(bookmark: _bookmark('q'))));
       await tester.pumpAndSettle();
 
@@ -109,8 +114,9 @@ void main() {
       expect(container.read(bookmarksProvider).value, isEmpty);
     });
 
-    testWidgets('момент сохранения ставится при нажатии, а не при сборке',
-        (tester) async {
+    testWidgets('момент сохранения ставится при нажатии, а не при сборке', (
+      tester,
+    ) async {
       // В карточку кладётся заглушка epoch — иначе список сортировался бы
       // по времени отрисовки.
       await tester.pumpWidget(wrap(BookmarkButton(bookmark: _bookmark('q'))));

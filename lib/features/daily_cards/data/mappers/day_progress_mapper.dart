@@ -12,10 +12,10 @@ extension DayProgressDtoMapper on DayProgressDto {
   /// записанным `question` уводил «Сегодня» в офлайн-экран при живом
   /// интернете и загруженных карточках.
   DayProgress toEntity() => DayProgress(
-        readTypes: readTypes
-            .map((name) => CardType.values.asNameMap()[name])
-            .nonNulls
-            .toSet(),
-        visitedDays: visitedDays.toSet(),
-      );
+    readTypes: readTypes
+        .map((name) => CardType.values.asNameMap()[name])
+        .nonNulls
+        .toSet(),
+    visitedDays: visitedDays.toSet(),
+  );
 }

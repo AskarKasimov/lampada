@@ -30,7 +30,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     Future.delayed(wait.isNegative ? Duration.zero : wait, () {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
+        PageRouteBuilder<void>(
           transitionDuration: const Duration(milliseconds: 600),
           pageBuilder: (_, animation, secondary) => const AppShell(),
           transitionsBuilder: (_, animation, secondary, child) =>
@@ -52,8 +52,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           (progressAsync.hasValue || progressAsync.hasError),
     );
 
-    return const Scaffold(
-      body: SafeArea(child: BrandLoadingView()),
-    );
+    return const Scaffold(body: SafeArea(child: BrandLoadingView()));
   }
 }

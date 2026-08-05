@@ -27,8 +27,9 @@ class PassageRef {
   final int toChapter;
   final int toVerse;
 
-  static final _pattern =
-      RegExp(r'^([A-Za-z0-9]+)\.(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$');
+  static final _pattern = RegExp(
+    r'^([A-Za-z0-9]+)\.(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$',
+  );
 
   /// null, если строка не похожа на ссылку — вызывающий переведёт это в сбой.
   static PassageRef? tryParse(String reference) {
@@ -37,10 +38,8 @@ class PassageRef {
     final fromChapter = int.parse(m.group(2)!);
     final fromVerse = int.parse(m.group(3)!);
     // Межглавный отрывок `16:20-17:9` даёт вторую главу; `10:1-9` — нет.
-    final toChapter =
-        m.group(4) == null ? fromChapter : int.parse(m.group(4)!);
-    final toVerse =
-        m.group(5) == null ? fromVerse : int.parse(m.group(5)!);
+    final toChapter = m.group(4) == null ? fromChapter : int.parse(m.group(4)!);
+    final toVerse = m.group(5) == null ? fromVerse : int.parse(m.group(5)!);
     return PassageRef(
       book: m.group(1)!,
       fromChapter: fromChapter,
@@ -70,7 +69,7 @@ abstract interface class ReadingRemoteDatasource {
 /// и ловить её расхождения с сайтом.
 class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
   AzbykaReadingRemoteDatasource({http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   final http.Client _client;
 
@@ -80,12 +79,7 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
 
   /// Русские сокращения книг — ими Феофилакт размечает стихи в тексте
   /// («Ин.10:1 . …»), тогда как ссылки Азбуки используют латинский slug.
-  static const _russianAbbr = {
-    'Mt': 'Мф',
-    'Mk': 'Мк',
-    'Lk': 'Лк',
-    'Jn': 'Ин',
-  };
+  static const _russianAbbr = {'Mt': 'Мф', 'Mk': 'Мк', 'Lk': 'Лк', 'Jn': 'Ин'};
 
   @override
   Future<DailyReadingDto> fetch(
@@ -200,9 +194,11 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
       if (text.isEmpty) continue;
       result.add(VerseDto(number: number, chapter: chapter, text: text));
     }
-    result.sort((a, b) => a.chapter == b.chapter
-        ? a.number.compareTo(b.number)
-        : a.chapter.compareTo(b.chapter));
+    result.sort(
+      (a, b) => a.chapter == b.chapter
+          ? a.number.compareTo(b.number)
+          : a.chapter.compareTo(b.chapter),
+    );
     return result;
   }
 
@@ -285,8 +281,9 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
   /// подзаголовки, их пропускаем.
   static int? _verseNumberOf(Element paragraph, PassageRef ref) {
     for (final a in paragraph.querySelectorAll('a[href]')) {
-      final m = RegExp(r'\?([A-Za-z0-9]+)\.(\d+):(\d+)')
-          .firstMatch(a.attributes['href']!);
+      final m = RegExp(
+        r'\?([A-Za-z0-9]+)\.(\d+):(\d+)',
+      ).firstMatch(a.attributes['href']!);
       if (m == null) continue;
       if (m.group(1) != ref.book) continue;
       if (int.parse(m.group(2)!) != ref.fromChapter) continue;

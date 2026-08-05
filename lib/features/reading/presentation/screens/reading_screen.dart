@@ -20,11 +20,7 @@ import '../widgets/verse_view.dart';
 /// в приложении, где юзер уходит в длинную последовательность, и таб-бар под
 /// ней только мешал бы.
 class ReadingScreen extends ConsumerStatefulWidget {
-  const ReadingScreen({
-    super.key,
-    required this.reference,
-    this.onFinished,
-  });
+  const ReadingScreen({required this.reference, super.key, this.onFinished});
 
   /// Машинная ссылка отрывка из карточки дня: `Jn.10:1-9`.
   final String reference;
@@ -83,7 +79,8 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
       id: 'verse-${widget.reference}-${verse.chapter}:${verse.number}',
       kind: BookmarkKind.verse,
       text: verse.text,
-      source: '${reading.label.split('.').first}.'
+      source:
+          '${reading.label.split('.').first}.'
           '${verse.chapter}:${verse.number}',
       label: 'Стих',
       savedAt: DateTime.fromMillisecondsSinceEpoch(0),
@@ -131,8 +128,10 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
             itemBuilder: (context, index) {
               final verse = reading.verses[index];
               return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 34,
+                  vertical: 24,
+                ),
                 child: Center(
                   child: VerseView(
                     verse: verse,
@@ -140,10 +139,10 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
                     // покрыты не все, и обещать кнопкой пустоту незачем.
                     onOpenInterpretation: verse.hasInterpretation
                         ? () => InterpretationSheet.show(
-                              context,
-                              verse: verse,
-                              author: reading.interpretationAuthor,
-                            )
+                            context,
+                            verse: verse,
+                            author: reading.interpretationAuthor,
+                          )
                         : null,
                   ),
                 ),

@@ -25,8 +25,10 @@ final getDailyReadingProvider = Provider<GetDailyReading>(
 
 /// Чтение по ссылке отрывка. Family, а не единичный провайдер: календарь
 /// открывает чужие дни, и отрывок там свой.
-final dailyReadingProvider =
-    FutureProvider.family<DailyReading, String>((ref, reference) async {
+final dailyReadingProvider = FutureProvider.family<DailyReading, String>((
+  ref,
+  reference,
+) async {
   final result = await ref.watch(getDailyReadingProvider)(reference);
   return switch (result) {
     Success(value: final reading) => reading,

@@ -8,9 +8,9 @@ import '../../domain/entities/bookmark.dart';
 /// Запись копилки. Текст — главный вес (§6), дата и источник приглушены.
 class BookmarkTile extends StatelessWidget {
   const BookmarkTile({
-    super.key,
     required this.bookmark,
     required this.onRemove,
+    super.key,
   });
 
   final Bookmark bookmark;
@@ -35,8 +35,9 @@ class BookmarkTile extends StatelessWidget {
           children: [
             Text(
               bookmark.text,
-              style: AppTheme.quoteStyle(context)
-                  .copyWith(fontSize: 17, height: 1.5),
+              style: AppTheme.quoteStyle(
+                context,
+              ).copyWith(fontSize: 17, height: 1.5),
             ),
             const SizedBox(height: 10),
             Text(

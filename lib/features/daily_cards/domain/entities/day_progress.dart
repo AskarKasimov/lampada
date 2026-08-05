@@ -81,8 +81,9 @@ abstract class DayProgress with _$DayProgress {
 
   /// Разница в календарных днях. Через UTC — иначе переход на летнее время
   /// даёт 23- и 25-часовые сутки, и `inDays` округляется не туда.
-  static int _gap(DateTime from, DateTime to) =>
-      DateTime.utc(to.year, to.month, to.day)
-          .difference(DateTime.utc(from.year, from.month, from.day))
-          .inDays;
+  static int _gap(DateTime from, DateTime to) => DateTime.utc(
+    to.year,
+    to.month,
+    to.day,
+  ).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
 }

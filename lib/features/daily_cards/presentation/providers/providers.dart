@@ -36,9 +36,13 @@ final getTodayCardsProvider = Provider<GetTodayCards>(
 /// Карточки произвольного дня. Ключ — `yyyy-MM-dd`, а не DateTime: у family
 /// ключ сравнивается по значению, а два DateTime одной даты с разным временем
 /// дали бы два разных запроса.
-final dayCardsProvider =
-    FutureProvider.family<TodayCards, String>((ref, dateKey) async {
-  final result = await ref.watch(getTodayCardsProvider)(DateTime.parse(dateKey));
+final dayCardsProvider = FutureProvider.family<TodayCards, String>((
+  ref,
+  dateKey,
+) async {
+  final result = await ref.watch(getTodayCardsProvider)(
+    DateTime.parse(dateKey),
+  );
   return switch (result) {
     Success(value: final day) => day,
     Failure(failure: final f) => throw f,
@@ -54,8 +58,9 @@ final todayCardsProvider = FutureProvider<TodayCards>(
 /// Дата, открытая на вкладке «Сегодня». Полоска недели переключает её,
 /// вкладка целиком следует за ней. Нормализована до полуночи, чтобы
 /// сравнения дат не зависели от времени суток.
-final selectedDateProvider =
-    NotifierProvider<SelectedDateNotifier, DateTime>(SelectedDateNotifier.new);
+final selectedDateProvider = NotifierProvider<SelectedDateNotifier, DateTime>(
+  SelectedDateNotifier.new,
+);
 
 class SelectedDateNotifier extends Notifier<DateTime> {
   static DateTime _atMidnight(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -68,7 +73,8 @@ class SelectedDateNotifier extends Notifier<DateTime> {
 
 /// Инициализируется в main() через override.
 final sharedPreferencesProvider = Provider<SharedPreferences>(
-  (ref) => throw UnimplementedError('override sharedPreferencesProvider in main()'),
+  (ref) =>
+      throw UnimplementedError('override sharedPreferencesProvider in main()'),
 );
 
 final dayProgressRepositoryProvider = Provider<DayProgressRepository>(
@@ -99,9 +105,9 @@ final courseTopicProvider = FutureProvider<DayCard?>((ref) async {
   return switch (result) {
     Success(value: final card) => card,
     Failure(failure: final f) => () {
-        netLog('курс не доехал, скрываем личную тему: $f');
-        return null;
-      }(),
+      netLog('курс не доехал, скрываем личную тему: $f');
+      return null;
+    }(),
   };
 });
 
@@ -115,9 +121,9 @@ final courseTopicByNumberProvider = FutureProvider.family<DayCard, int>(
     return switch (result) {
       Success(value: final card) => card,
       Failure(failure: final f) => () {
-          netLog('тема курса $topic не доехала: $f');
-          throw f;
-        }(),
+        netLog('тема курса $topic не доехала: $f');
+        throw f;
+      }(),
     };
   },
   // Здесь retry управляется кнопкой конкретной исторической страницы.
@@ -127,8 +133,8 @@ final courseTopicByNumberProvider = FutureProvider.family<DayCard, int>(
 /// Прогресс дня: экраны вызывают markRead, репозиторий напрямую не трогают.
 final dayProgressProvider =
     AsyncNotifierProvider<DayProgressNotifier, DayProgress>(
-  DayProgressNotifier.new,
-);
+      DayProgressNotifier.new,
+    );
 
 class DayProgressNotifier extends AsyncNotifier<DayProgress> {
   DayProgressRepository get _repo => ref.read(dayProgressRepositoryProvider);
@@ -165,9 +171,7 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
   Future<void> markRead(CardType type) async {
     final session = _session;
     if (session == null) return;
-    await _apply(
-      ref.read(recordCardReadProvider)(type, session: session),
-    );
+    await _apply(ref.read(recordCardReadProvider)(type, session: session));
     // Прочитали «Основы» — курс сдвигается на следующую тему, но не чаще
     // раза в день: это тема в день, а не тема за каждое открытие карточки.
     if (type == CardType.basics && session.staleDate == null) {

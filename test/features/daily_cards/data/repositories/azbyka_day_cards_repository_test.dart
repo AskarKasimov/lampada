@@ -95,12 +95,11 @@ Future<SharedPreferences> _emptyPrefs() async {
 AzbykaDayCardsRepository _repo(
   DayCardsRemoteDatasource remote,
   SharedPreferences prefs,
-) =>
-    AzbykaDayCardsRepository(
-      remote,
-      prefs,
-      retryDelays: const [Duration.zero, Duration.zero],
-    );
+) => AzbykaDayCardsRepository(
+  remote,
+  prefs,
+  retryDelays: const [Duration.zero, Duration.zero],
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -123,42 +122,59 @@ void main() {
 
   test('кэш держит несколько дней одновременно', () async {
     final prefs = await _emptyPrefs();
-    await _repo(_FakeDatasource([_card]), prefs)
-        .getCardsFor(DateTime(2026, 7, 19));
-    await _repo(_FakeDatasource([_card]), prefs)
-        .getCardsFor(DateTime(2026, 7, 20));
+    await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
+    await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 20));
 
     // Раньше один общий ключ помнил ровно последний день, и шаг назад
     // по календарю снова шёл в сеть.
-    final result = await _repo(_NeverCalledDatasource(), prefs)
-        .getCardsFor(DateTime(2026, 7, 19));
+    final result = await _repo(
+      _NeverCalledDatasource(),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
 
     expect(result, isA<Success<TodayCards>>());
-    expect(prefs.getStringList('day_cards_cached_dates_v3'),
-        ['2026-07-19', '2026-07-20']);
+    expect(prefs.getStringList('day_cards_cached_dates_v3'), [
+      '2026-07-19',
+      '2026-07-20',
+    ]);
   });
 
   test('индекс кэша отсортирован по дате, а не по порядку записи', () async {
     // По последнему элементу выбирается stale-день: «последний» обязан
     // значить «самый поздний».
     final prefs = await _emptyPrefs();
-    await _repo(_FakeDatasource([_card]), prefs)
-        .getCardsFor(DateTime(2026, 7, 20));
-    await _repo(_FakeDatasource([_card]), prefs)
-        .getCardsFor(DateTime(2026, 7, 19));
+    await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 20));
+    await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
 
-    expect(prefs.getStringList('day_cards_cached_dates_v3'),
-        ['2026-07-19', '2026-07-20']);
+    expect(prefs.getStringList('day_cards_cached_dates_v3'), [
+      '2026-07-19',
+      '2026-07-20',
+    ]);
   });
 
   test('кэш есть за запрошенную дату → сеть не дёргаем', () async {
     final prefs = await _emptyPrefs();
-    await _repo(_FakeDatasource([_card]), prefs)
-        .getCardsFor(DateTime(2026, 7, 19));
+    await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
 
-    final result =
-        await _repo(_NeverCalledDatasource(), prefs)
-            .getCardsFor(DateTime(2026, 7, 19));
+    final result = await _repo(
+      _NeverCalledDatasource(),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
 
     expect(result, isA<Success<TodayCards>>());
     final today = (result as Success<TodayCards>).value;
@@ -168,11 +184,15 @@ void main() {
 
   test('принудительное обновление обходит кэш и заменяет его', () async {
     final prefs = await _emptyPrefs();
-    await _repo(_FakeDatasource([_card]), prefs)
-        .getCardsFor(DateTime(2026, 7, 19));
+    await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
 
-    final result = await _repo(_FakeDatasource([_refreshedCard]), prefs)
-        .getCardsFor(DateTime(2026, 7, 19), forceRefresh: true);
+    final result = await _repo(
+      _FakeDatasource([_refreshedCard]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19), forceRefresh: true);
 
     expect(result, isA<Success<TodayCards>>());
     expect(
@@ -183,11 +203,15 @@ void main() {
 
   test('сеть упала + кэш только за другую дату → Failure', () async {
     final prefs = await _emptyPrefs();
-    await _repo(_FakeDatasource([_card]), prefs)
-        .getCardsFor(DateTime(2026, 7, 18));
+    await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 18));
 
     final result = await _repo(
-      _FakeDatasource(const RemoteFetchException(FailureKind.network, 'нет сети')),
+      _FakeDatasource(
+        const RemoteFetchException(FailureKind.network, 'нет сети'),
+      ),
       prefs,
     ).getCardsFor(DateTime(2026, 7, 19));
 
@@ -198,7 +222,9 @@ void main() {
     final prefs = await _emptyPrefs();
 
     final result = await _repo(
-      _FakeDatasource(const RemoteFetchException(FailureKind.network, 'нет сети')),
+      _FakeDatasource(
+        const RemoteFetchException(FailureKind.network, 'нет сети'),
+      ),
       prefs,
     ).getCardsFor(DateTime(2026, 7, 19));
 
@@ -228,7 +254,9 @@ void main() {
     final prefs = await _emptyPrefs();
 
     final result = await _repo(
-      _FakeDatasource(const RemoteFetchException(FailureKind.unknown, 'вёрстка')),
+      _FakeDatasource(
+        const RemoteFetchException(FailureKind.unknown, 'вёрстка'),
+      ),
       prefs,
     ).getCardsFor(DateTime(2026, 7, 19));
 
@@ -299,10 +327,15 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final remote = _FakeDatasource([_card]);
 
-    final result = await _repo(remote, prefs).getCardsFor(DateTime(2026, 7, 19));
+    final result = await _repo(
+      remote,
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
 
     expect(result, isA<Success<TodayCards>>());
-    expect((result as Success<TodayCards>).value.cards.single.id,
-        'quote-2026-07-19');
+    expect(
+      (result as Success<TodayCards>).value.cards.single.id,
+      'quote-2026-07-19',
+    );
   });
 }

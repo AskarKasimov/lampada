@@ -1,14 +1,14 @@
-import 'package:lampada/core/format/date_key.dart';
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-DayProgress _unwrap(Result<DayProgress> r) =>
-    (r as Success<DayProgress>).value;
+DayProgress _unwrap(Result<DayProgress> r) => (r as Success<DayProgress>).value;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -61,17 +61,19 @@ void main() {
     expect(p.visitedDays, hasLength(1));
   });
 
-  test('на новый день прочитанное сбрасывается, посещённые дни остаются',
-      () async {
-    final repo = await build();
-    await repo.markRead(CardType.quote);
+  test(
+    'на новый день прочитанное сбрасывается, посещённые дни остаются',
+    () async {
+      final repo = await build();
+      await repo.markRead(CardType.quote);
 
-    fixedNow = DateTime(2026, 7, 18);
-    final p = _unwrap(await repo.loadToday());
+      fixedNow = DateTime(2026, 7, 18);
+      final p = _unwrap(await repo.loadToday());
 
-    expect(p.readTypes, isEmpty);
-    expect(p.isLit(DateTime(2026, 7, 17)), isTrue);
-  });
+      expect(p.readTypes, isEmpty);
+      expect(p.isLit(DateTime(2026, 7, 17)), isTrue);
+    },
+  );
 
   test('серия растёт по дням, а не по прочитанным карточкам', () async {
     final repo = await build();

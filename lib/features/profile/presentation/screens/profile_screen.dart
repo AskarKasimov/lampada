@@ -31,7 +31,11 @@ class ProfileScreen extends StatelessWidget {
         // не только мелкой подписью под карточкой.
         Text(
           'Контент дня — материалы портала «Азбука веры» (azbyka.ru).',
-          style: TextStyle(fontSize: 12, height: 1.5, color: colors.homeSubtitle),
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.5,
+            color: colors.homeSubtitle,
+          ),
         ),
       ],
     );

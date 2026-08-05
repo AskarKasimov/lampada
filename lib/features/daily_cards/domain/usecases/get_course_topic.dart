@@ -54,8 +54,9 @@ class GetCourseTopic {
             ),
           );
         }
-        final basics =
-            day.cards.where((c) => c.type == CardType.basics).firstOrNull;
+        final basics = day.cards
+            .where((c) => c.type == CardType.basics)
+            .firstOrNull;
         if (basics == null) {
           return Failure(
             AppFailure(

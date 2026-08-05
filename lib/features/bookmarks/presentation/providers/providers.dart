@@ -27,8 +27,8 @@ final removeBookmarkProvider = Provider<RemoveBookmark>(
 
 final bookmarksProvider =
     AsyncNotifierProvider<BookmarksNotifier, List<Bookmark>>(
-  BookmarksNotifier.new,
-);
+      BookmarksNotifier.new,
+    );
 
 class BookmarksNotifier extends AsyncNotifier<List<Bookmark>> {
   @override
@@ -40,15 +40,11 @@ class BookmarksNotifier extends AsyncNotifier<List<Bookmark>> {
     };
   }
 
-  bool isSaved(String id) =>
-      (state.value ?? const []).any((b) => b.id == id);
+  bool isSaved(String id) => (state.value ?? const []).any((b) => b.id == id);
 
   Future<void> toggle(Bookmark bookmark) => _apply(
-        ref.read(toggleBookmarkProvider)(
-          bookmark,
-          isSaved: isSaved(bookmark.id),
-        ),
-      );
+    ref.read(toggleBookmarkProvider)(bookmark, isSaved: isSaved(bookmark.id)),
+  );
 
   Future<void> remove(String id) =>
       _apply(ref.read(removeBookmarkProvider)(id));

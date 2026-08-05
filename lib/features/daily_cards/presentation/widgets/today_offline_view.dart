@@ -11,10 +11,10 @@ import '../../../../core/widgets/brand_mark.dart';
 /// отдельный экран ошибки.
 class TodayOfflineView extends StatelessWidget {
   const TodayOfflineView({
-    super.key,
     required this.date,
     required this.kind,
     required this.onRetry,
+    super.key,
   });
 
   final DateTime date;
@@ -24,15 +24,15 @@ class TodayOfflineView extends StatelessWidget {
   /// Совет «включите Wi-Fi» уместен только при сетевом сбое: если лёг сам
   /// azbyka.ru, он отправит юзера чинить исправный интернет.
   ({String title, String hint}) get _copy => switch (kind) {
-        FailureKind.network => (
-            title: 'Нет подключения к интернету',
-            hint: 'Включите Wi-Fi или мобильную сеть',
-          ),
-        FailureKind.server || FailureKind.unknown => (
-            title: 'Азбука веры сейчас недоступна',
-            hint: 'Попробуйте позже',
-          ),
-      };
+    FailureKind.network => (
+      title: 'Нет подключения к интернету',
+      hint: 'Включите Wi-Fi или мобильную сеть',
+    ),
+    FailureKind.server || FailureKind.unknown => (
+      title: 'Азбука веры сейчас недоступна',
+      hint: 'Попробуйте позже',
+    ),
+  };
 
   @override
   Widget build(BuildContext context) {

@@ -23,10 +23,10 @@ const _dismissVelocity = 700.0;
 /// нижняя навигация не отъедает низ экрана у текста.
 class CardViewerScreen extends ConsumerStatefulWidget {
   const CardViewerScreen({
-    super.key,
     required this.cards,
     required this.startIndex,
     required this.recordProgress,
+    super.key,
     this.reading,
   });
 
@@ -50,8 +50,9 @@ class CardViewerScreen extends ConsumerStatefulWidget {
 }
 
 class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
-  late final PageController _controller =
-      PageController(initialPage: widget.startIndex);
+  late final PageController _controller = PageController(
+    initialPage: widget.startIndex,
+  );
   late int _index = widget.startIndex;
   int? _markedIndex;
 
@@ -110,7 +111,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     }
     var finished = false;
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) => ReadingScreen(
           reference: card.reference!,
           onFinished: () => finished = true,
@@ -248,11 +249,11 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
   Bookmark _bookmarkFor(DayCard card, Brightness brightness) => Bookmark(
-        id: card.id,
-        kind: BookmarkKind.card,
-        text: card.body,
-        source: card.source,
-        label: card.type.styleFor(brightness).label,
-        savedAt: DateTime.fromMillisecondsSinceEpoch(0),
-      );
+    id: card.id,
+    kind: BookmarkKind.card,
+    text: card.body,
+    source: card.source,
+    label: card.type.styleFor(brightness).label,
+    savedAt: DateTime.fromMillisecondsSinceEpoch(0),
+  );
 }

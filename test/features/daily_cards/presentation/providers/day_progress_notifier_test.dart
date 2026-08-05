@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -28,8 +28,7 @@ class _FreshCardsRepository implements DayCardsRepository {
   Future<Result<TodayCards>> getCardsFor(
     DateTime date, {
     bool forceRefresh = false,
-  }) async =>
-      const Success(TodayCards(cards: _cards));
+  }) async => const Success(TodayCards(cards: _cards));
 }
 
 Future<ProviderContainer> _container(DayCardsRepository cards) async {
@@ -56,7 +55,7 @@ void main() {
     for (final card in _cards) {
       await notifier.markRead(card.type);
     }
-    
+
     final progress = container.read(dayProgressProvider).requireValue;
     expect(progress.allReadOf(_cards.map((c) => c.type)), isTrue);
     expect(progress.isLit(DateTime.now()), isTrue);
@@ -69,7 +68,7 @@ void main() {
     for (final card in _cards) {
       await notifier.markRead(card.type);
     }
-    
+
     // Сегодняшний контент юзер не видел — день не пройден.
     final progress = container.read(dayProgressProvider).requireValue;
     expect(progress.readCount, 0);
@@ -81,8 +80,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
       overrides: [
-        dayCardsRepositoryProvider
-            .overrideWithValue(_StaleCardsRepository()),
+        dayCardsRepositoryProvider.overrideWithValue(_StaleCardsRepository()),
         sharedPreferencesProvider.overrideWithValue(prefs),
       ],
     );

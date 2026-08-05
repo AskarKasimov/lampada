@@ -9,9 +9,9 @@ import '../../../../core/widgets/app_pill_badge.dart';
 /// контент за сегодняшний — для приложения «карточка дня» это подлог.
 class StaleCacheNotice extends StatelessWidget {
   const StaleCacheNotice({
-    super.key,
     required this.staleDate,
     required this.onRefresh,
+    super.key,
   });
 
   final DateTime staleDate;

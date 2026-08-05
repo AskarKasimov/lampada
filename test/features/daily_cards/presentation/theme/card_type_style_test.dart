@@ -5,29 +5,40 @@ import 'package:lampada/features/daily_cards/presentation/theme/card_type_style.
 
 void main() {
   test(
-      'у каждого CardType — свой акцентный цвет и свои цвета плашки (light)',
-      () {
-    final styles =
-        CardType.values.map((t) => t.styleFor(Brightness.light)).toList();
+    'у каждого CardType — свой акцентный цвет и свои цвета плашки (light)',
+    () {
+      final styles = CardType.values
+          .map((t) => t.styleFor(Brightness.light))
+          .toList();
 
-    expect(styles.map((s) => s.accent).toSet().length, CardType.values.length);
-    expect(
-      styles.map((s) => s.tagBackground).toSet().length,
-      CardType.values.length,
-    );
-  });
+      expect(
+        styles.map((s) => s.accent).toSet().length,
+        CardType.values.length,
+      );
+      expect(
+        styles.map((s) => s.tagBackground).toSet().length,
+        CardType.values.length,
+      );
+    },
+  );
 
-  test('у каждого CardType — свой акцентный цвет и свои цвета плашки (dark)',
-      () {
-    final styles =
-        CardType.values.map((t) => t.styleFor(Brightness.dark)).toList();
+  test(
+    'у каждого CardType — свой акцентный цвет и свои цвета плашки (dark)',
+    () {
+      final styles = CardType.values
+          .map((t) => t.styleFor(Brightness.dark))
+          .toList();
 
-    expect(styles.map((s) => s.accent).toSet().length, CardType.values.length);
-    expect(
-      styles.map((s) => s.tagBackground).toSet().length,
-      CardType.values.length,
-    );
-  });
+      expect(
+        styles.map((s) => s.accent).toSet().length,
+        CardType.values.length,
+      );
+      expect(
+        styles.map((s) => s.tagBackground).toSet().length,
+        CardType.values.length,
+      );
+    },
+  );
 
   test('CardType.quote light соответствует расчётной палитре из дизайна', () {
     final style = CardType.quote.styleFor(Brightness.light);

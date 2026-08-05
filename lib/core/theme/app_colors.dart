@@ -129,32 +129,27 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     Color? chipUnreadText,
     Color? chipUnreadBorder,
     Color? homeButtonBackground,
-  }) =>
-      AppColorsExtension(
-        background: background ?? this.background,
-        ink: ink ?? this.ink,
-        textSecondary: textSecondary ?? this.textSecondary,
-        textTertiary: textTertiary ?? this.textTertiary,
-        dotDone: dotDone ?? this.dotDone,
-        dotUpcoming: dotUpcoming ?? this.dotUpcoming,
-        flameLight: flameLight ?? this.flameLight,
-        accent: accent ?? this.accent,
-        homeSubtitle: homeSubtitle ?? this.homeSubtitle,
-        todayLabel: todayLabel ?? this.todayLabel,
-        footer: footer ?? this.footer,
-        link: link ?? this.link,
-        homeIcon: homeIcon ?? this.homeIcon,
-        chipUnreadText: chipUnreadText ?? this.chipUnreadText,
-        chipUnreadBorder: chipUnreadBorder ?? this.chipUnreadBorder,
-        homeButtonBackground:
-            homeButtonBackground ?? this.homeButtonBackground,
-      );
+  }) => AppColorsExtension(
+    background: background ?? this.background,
+    ink: ink ?? this.ink,
+    textSecondary: textSecondary ?? this.textSecondary,
+    textTertiary: textTertiary ?? this.textTertiary,
+    dotDone: dotDone ?? this.dotDone,
+    dotUpcoming: dotUpcoming ?? this.dotUpcoming,
+    flameLight: flameLight ?? this.flameLight,
+    accent: accent ?? this.accent,
+    homeSubtitle: homeSubtitle ?? this.homeSubtitle,
+    todayLabel: todayLabel ?? this.todayLabel,
+    footer: footer ?? this.footer,
+    link: link ?? this.link,
+    homeIcon: homeIcon ?? this.homeIcon,
+    chipUnreadText: chipUnreadText ?? this.chipUnreadText,
+    chipUnreadBorder: chipUnreadBorder ?? this.chipUnreadBorder,
+    homeButtonBackground: homeButtonBackground ?? this.homeButtonBackground,
+  );
 
   @override
-  AppColorsExtension lerp(
-    ThemeExtension<AppColorsExtension>? other,
-    double t,
-  ) {
+  AppColorsExtension lerp(ThemeExtension<AppColorsExtension>? other, double t) {
     if (other is! AppColorsExtension) return this;
     return t < 0.5 ? this : other;
   }

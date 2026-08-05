@@ -8,7 +8,7 @@ import '../../domain/repositories/course_progress_repository.dart';
 /// Прогресс курса в shared_preferences: номер темы и день последнего сдвига.
 class PrefsCourseProgressRepository implements CourseProgressRepository {
   PrefsCourseProgressRepository(this._prefs, {DateTime Function()? clock})
-      : _clock = clock ?? DateTime.now;
+    : _clock = clock ?? DateTime.now;
 
   final SharedPreferences _prefs;
   final DateTime Function() _clock;
@@ -26,14 +26,14 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
 
   @override
   Future<Result<int>> advanceForToday() async => _guard(() async {
-        final today = dateKey(_clock());
-        if (_prefs.getString(_advancedKey) == today) return _topic;
+    final today = dateKey(_clock());
+    if (_prefs.getString(_advancedKey) == today) return _topic;
 
-        final next = normalizeCourseTopic(_topic + 1);
-        await _prefs.setInt(_topicKey, next);
-        await _prefs.setString(_advancedKey, today);
-        return next;
-      });
+    final next = normalizeCourseTopic(_topic + 1);
+    await _prefs.setInt(_topicKey, next);
+    await _prefs.setString(_advancedKey, today);
+    return next;
+  });
 
   Future<Result<int>> _guard(Future<int> Function() op) async {
     try {

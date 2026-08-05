@@ -57,7 +57,8 @@ final _liturgyOnlyReadings =
 
 /// Праздник: сперва утреня, затем «Лит.». Евангелие утрени идёт ПЕРВЫМ и без
 /// отсечки по «Лит.» перехватило бы выбор.
-final _matinsAndLiturgyReadings = 'Утр. – '
+final _matinsAndLiturgyReadings =
+    'Утр. – '
     '${_bibref('Jn.10:9-16', 'Ин.10:9–16')} (зач. 36). Лит. – '
     '${_bibref('Gal.1:11-19', 'Гал.1:11–19')} (зач. 200). '
     '${_bibref('Jn.10:1-9', 'Ин.10:1–9')} (зач. 35).';
@@ -84,16 +85,15 @@ AzbykaDayCardsRemoteDatasource _datasourceServing(
 Future<List<DayCardDto>> _fetch(
   AzbykaDayCardsRemoteDatasource datasource, [
   DateTime? date,
-]) =>
-    datasource.fetch(date ?? _date, timeout: _timeout);
+]) => datasource.fetch(date ?? _date, timeout: _timeout);
 
 DayCardDto _cardOfType(List<DayCardDto> cards, String type) =>
     cards.firstWhere((c) => c.type == type);
 
 String _loadFixture(String date) => File(
-      'test/features/daily_cards/data/datasources/fixtures/'
-      'azbyka_days_$date.html',
-    ).readAsStringSync();
+  'test/features/daily_cards/data/datasources/fixtures/'
+  'azbyka_days_$date.html',
+).readAsStringSync();
 
 void main() {
   group('отображение блоков разметки в карточки', () {
@@ -108,8 +108,12 @@ void main() {
         ),
       );
 
-      expect(cards.map((c) => c.type).toList(),
-          ['quote', 'advice', 'basics', 'reading']);
+      expect(cards.map((c) => c.type).toList(), [
+        'quote',
+        'advice',
+        'basics',
+        'reading',
+      ]);
       expect(_cardOfType(cards, 'quote').body, 'ЦИТАТА');
       expect(_cardOfType(cards, 'advice').body, 'СОВЕТ');
       expect(_cardOfType(cards, 'basics').body, 'ОСНОВЫ');
@@ -157,8 +161,9 @@ void main() {
     });
 
     test('без ссылки на автора источник цитаты — «Азбука веры»', () async {
-      final cards =
-          await _fetch(_datasourceServing(_page(quoteAuthorHtml: '')));
+      final cards = await _fetch(
+        _datasourceServing(_page(quoteAuthorHtml: '')),
+      );
 
       expect(_cardOfType(cards, 'quote').source, 'Азбука веры');
     });
@@ -197,7 +202,8 @@ void main() {
       final cards = await _fetch(
         _datasourceServing(
           _page(
-            readingsHtml: 'Утр. – '
+            readingsHtml:
+                'Утр. – '
                 '${_bibref('Jn.10:9-16', 'Ин.10:9–16')} (зач. 36). '
                 '<a href="https://azbyka.ru/liturgiya">Лит</a>. &ndash; '
                 '${_bibref('Gal.1:11-19', 'Гал.1:11–19')} (зач. 200). '
@@ -234,7 +240,11 @@ void main() {
       final cards = await _fetch(_datasourceServing(_page()));
 
       for (final card in cards.where((c) => c.type != 'reading')) {
-        expect(card.reference, isNull, reason: 'у ${card.type} лишний reference');
+        expect(
+          card.reference,
+          isNull,
+          reason: 'у ${card.type} лишний reference',
+        );
       }
     });
   });
@@ -253,18 +263,13 @@ void main() {
     test('порядок уцелевших карточек не сбивается', () async {
       final cards = await _fetch(_datasourceServing(_page(basicsHtml: '')));
 
-      expect(cards.map((c) => c.type),
-          ['quote', 'advice', 'reading']);
+      expect(cards.map((c) => c.type), ['quote', 'advice', 'reading']);
     });
 
     test('день из одной цитаты — валидный день', () async {
       final cards = await _fetch(
         _datasourceServing(
-          _page(
-            adviceHtml: '',
-            basicsHtml: '',
-            readingsHtml: '',
-          ),
+          _page(adviceHtml: '', basicsHtml: '', readingsHtml: ''),
         ),
       );
 
@@ -273,7 +278,9 @@ void main() {
     });
 
     test('пустая секция считается пропавшей, а не ломает день', () async {
-      final cards = await _fetch(_datasourceServing(_page(readingsHtml: '   ')));
+      final cards = await _fetch(
+        _datasourceServing(_page(readingsHtml: '   ')),
+      );
 
       expect(cards.map((c) => c.type), ['quote', 'advice', 'basics']);
     });
@@ -307,9 +314,7 @@ void main() {
     test('голый текст с <br> тоже разбивается на абзацы', () async {
       // Этот вариант уводил приложение в вечный офлайн-экран при живом интернете.
       final cards = await _fetch(
-        _datasourceServing(
-          _page(basicsHtml: 'ПЕРВЫЙ<br>ВТОРОЙ<br>ТРЕТИЙ'),
-        ),
+        _datasourceServing(_page(basicsHtml: 'ПЕРВЫЙ<br>ВТОРОЙ<br>ТРЕТИЙ')),
       );
 
       expect(_cardOfType(cards, 'basics').body, 'ПЕРВЫЙ\n\nВТОРОЙ\n\nТРЕТИЙ');
@@ -323,29 +328,32 @@ void main() {
       expect(_cardOfType(cards, 'advice').body, 'СТРОКА\nЕЩЁ');
     });
 
-    test('ответ списком <ul><li> попадает в карточку вместе с вопросом',
-        () async {
-      // Так Азбука сверстала «совет дня» 31 июля: вопрос абзацем, весь ответ
-      // списком. Сбор одних <p> возвращал непустой результат, поэтому карточка
-      // показывала вопрос БЕЗ ответа и выглядела рабочей.
-      final cards = await _fetch(
-        _datasourceServing(
-          _page(
-            adviceHtml: '<p><strong>МОЖНО ЛИ?</strong></p>'
-                '<ul><li>МОЖНО РАДИ ОДНОГО</li>'
-                '<li>МОЖНО РАДИ ДРУГОГО</li>'
-                '<li>А ВОТ ЭТО ЗАПРЕЩЕНО</li></ul>',
+    test(
+      'ответ списком <ul><li> попадает в карточку вместе с вопросом',
+      () async {
+        // Так Азбука сверстала «совет дня» 31 июля: вопрос абзацем, весь ответ
+        // списком. Сбор одних <p> возвращал непустой результат, поэтому карточка
+        // показывала вопрос БЕЗ ответа и выглядела рабочей.
+        final cards = await _fetch(
+          _datasourceServing(
+            _page(
+              adviceHtml:
+                  '<p><strong>МОЖНО ЛИ?</strong></p>'
+                  '<ul><li>МОЖНО РАДИ ОДНОГО</li>'
+                  '<li>МОЖНО РАДИ ДРУГОГО</li>'
+                  '<li>А ВОТ ЭТО ЗАПРЕЩЕНО</li></ul>',
+            ),
           ),
-        ),
-      );
+        );
 
-      final advice = _cardOfType(cards, 'advice').body;
-      expect(advice, contains('МОЖНО ЛИ?'));
-      expect(advice, contains('МОЖНО РАДИ ОДНОГО'));
-      expect(advice, contains('МОЖНО РАДИ ДРУГОГО'));
-      expect(advice, contains('А ВОТ ЭТО ЗАПРЕЩЕНО'));
-      expect(advice.split('\n\n'), hasLength(4));
-    });
+        final advice = _cardOfType(cards, 'advice').body;
+        expect(advice, contains('МОЖНО ЛИ?'));
+        expect(advice, contains('МОЖНО РАДИ ОДНОГО'));
+        expect(advice, contains('МОЖНО РАДИ ДРУГОГО'));
+        expect(advice, contains('А ВОТ ЭТО ЗАПРЕЩЕНО'));
+        expect(advice.split('\n\n'), hasLength(4));
+      },
+    );
 
     test('кривое вложенное <p><p> не задваивает текст', () async {
       // Именно так приходит разметка Азбуки: <p><p><strong>…</strong></p>.
@@ -386,8 +394,13 @@ void main() {
           DateTime.parse(date),
         );
 
-        expect(cards.map((c) => c.type).toList(),
-            ['quote', 'advice', 'basics', 'reading', 'question']);
+        expect(cards.map((c) => c.type).toList(), [
+          'quote',
+          'advice',
+          'basics',
+          'reading',
+          'question',
+        ]);
         for (final card in cards) {
           expect(card.id, '${card.type}-$date');
           expect(card.body.trim(), isNotEmpty, reason: 'пустая ${card.type}');
@@ -415,8 +428,13 @@ void main() {
     test('не-200 → RemoteFetchException с kind server', () async {
       await expectLater(
         () => _fetch(_datasourceServing(_page(), statusCode: 500)),
-        throwsA(isA<RemoteFetchException>()
-            .having((e) => e.kind, 'kind', FailureKind.server)),
+        throwsA(
+          isA<RemoteFetchException>().having(
+            (e) => e.kind,
+            'kind',
+            FailureKind.server,
+          ),
+        ),
       );
     });
 
@@ -424,8 +442,13 @@ void main() {
         ' а не неполный день', () async {
       await expectLater(
         () => _fetch(_datasourceServing('<html><body></body></html>')),
-        throwsA(isA<RemoteFetchException>()
-            .having((e) => e.kind, 'kind', FailureKind.unknown)),
+        throwsA(
+          isA<RemoteFetchException>().having(
+            (e) => e.kind,
+            'kind',
+            FailureKind.unknown,
+          ),
+        ),
       );
     });
 
@@ -436,10 +459,16 @@ void main() {
       });
 
       await expectLater(
-        () => AzbykaDayCardsRemoteDatasource(client: client)
-            .fetch(_date, timeout: const Duration(milliseconds: 10)),
-        throwsA(isA<RemoteFetchException>()
-            .having((e) => e.kind, 'kind', FailureKind.network)),
+        () => AzbykaDayCardsRemoteDatasource(
+          client: client,
+        ).fetch(_date, timeout: const Duration(milliseconds: 10)),
+        throwsA(
+          isA<RemoteFetchException>().having(
+            (e) => e.kind,
+            'kind',
+            FailureKind.network,
+          ),
+        ),
       );
     });
   });

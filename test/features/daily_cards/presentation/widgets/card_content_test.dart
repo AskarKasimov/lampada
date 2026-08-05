@@ -14,39 +14,33 @@ String _filler(int length) {
   return buffer.toString().substring(0, length);
 }
 
-DayCard _card(String body, {CardType type = CardType.advice}) => DayCard(
-      id: 'test',
-      type: type,
-      body: body,
-      source: 'Тестовый источник',
-    );
+DayCard _card(String body, {CardType type = CardType.advice}) =>
+    DayCard(id: 'test', type: type, body: body, source: 'Тестовый источник');
 
 // Ширина/высота как у телефона — дефолтная тестовая поверхность (~800px)
 // не даёт длинному тексту перенестись на строки, чтобы переполнить 300px.
 Widget _buildApp(DayCard card) => MaterialApp(
-      theme: AppTheme.light,
-      home: Scaffold(
-        body: SizedBox(
-          width: 320,
-          height: 300,
-          child: CardContent(card: card),
-        ),
-      ),
-    );
+  theme: AppTheme.light,
+  home: Scaffold(
+    body: SizedBox(width: 320, height: 300, child: CardContent(card: card)),
+  ),
+);
 
 double? _fontSizeOf(WidgetTester tester, String body) =>
     tester.widget<Text>(find.text(body)).style?.fontSize;
 
 void main() {
-  testWidgets('короткая карточка (≤220 символов): шрифт 24px, без намёка на скролл',
-      (tester) async {
-    final card = _card(_filler(50));
-    await tester.pumpWidget(_buildApp(card));
-    await tester.pump();
+  testWidgets(
+    'короткая карточка (≤220 символов): шрифт 24px, без намёка на скролл',
+    (tester) async {
+      final card = _card(_filler(50));
+      await tester.pumpWidget(_buildApp(card));
+      await tester.pump();
 
-    expect(_fontSizeOf(tester, card.body), 24);
-    expect(find.byIcon(Icons.keyboard_arrow_down), findsNothing);
-  });
+      expect(_fontSizeOf(tester, card.body), 24);
+      expect(find.byIcon(Icons.keyboard_arrow_down), findsNothing);
+    },
+  );
 
   testWidgets('карточка 300 символов: шрифт 21px', (tester) async {
     final card = _card(_filler(300));
@@ -56,29 +50,34 @@ void main() {
     expect(_fontSizeOf(tester, card.body), 21);
   });
 
-  testWidgets('длинная карточка (>500 символов): шрифт 18px, намёк на скролл виден',
-      (tester) async {
+  testWidgets(
+    'длинная карточка (>500 символов): шрифт 18px, намёк на скролл виден',
+    (tester) async {
+      final card = _card(_filler(600));
+      await tester.pumpWidget(_buildApp(card));
+      await tester.pump();
+
+      expect(_fontSizeOf(tester, card.body), 18);
+      expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
+    },
+  );
+
+  testWidgets('после скролла длинной карточки до конца намёк исчезает', (
+    tester,
+  ) async {
     final card = _card(_filler(600));
     await tester.pumpWidget(_buildApp(card));
     await tester.pump();
-
-    expect(_fontSizeOf(tester, card.body), 18);
-    expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
-  });
-
-  testWidgets('после скролла длинной карточки до конца намёк исчезает',
-      (tester) async {
-    final card = _card(_filler(600));
-    await tester.pumpWidget(_buildApp(card));
-    await tester.pump();
     expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
 
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -2000));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -2000),
+    );
     await tester.pump();
 
     expect(find.byIcon(Icons.keyboard_arrow_down), findsNothing);
   });
-
 
   testWidgets('под текстом всегда подпись источника', (tester) async {
     final card = _card(_filler(50));

@@ -6,9 +6,9 @@ import '../../../../core/theme/app_colors.dart';
 /// стихов в отрывке бывает под сорок, и точки превратились бы в рябь.
 class ReadingProgressLine extends StatelessWidget {
   const ReadingProgressLine({
-    super.key,
     required this.position,
     required this.total,
+    super.key,
   });
 
   /// Индекс текущей страницы, от нуля.

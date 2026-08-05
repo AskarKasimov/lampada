@@ -14,6 +14,7 @@ abstract class DayCard with _$DayCard {
     required String id,
     required CardType type,
     required String body,
+
     /// Источник на Азбуке веры (автор/страница).
     required String source,
 

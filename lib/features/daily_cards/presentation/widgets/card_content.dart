@@ -9,7 +9,7 @@ import '../theme/card_type_style.dart';
 /// Одна карточка дня. Вызывающий обязан передать `key: ValueKey(card.id)` —
 /// иначе AnimatedSwitcher не увидит смену карточки и не сбросит скролл.
 class CardContent extends StatefulWidget {
-  const CardContent({super.key, required this.card, this.showBadge = true});
+  const CardContent({required this.card, super.key, this.showBadge = true});
 
   final DayCard card;
   final bool showBadge;
@@ -39,7 +39,8 @@ class _CardContentState extends State<CardContent> {
   void _updateHasMoreBelow() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
-    final hasMore = position.maxScrollExtent > 0 &&
+    final hasMore =
+        position.maxScrollExtent > 0 &&
         position.pixels < position.maxScrollExtent - 1;
     if (hasMore != _hasMoreBelow && mounted) {
       setState(() => _hasMoreBelow = hasMore);
@@ -81,16 +82,18 @@ class _CardContentState extends State<CardContent> {
                 SingleChildScrollView(
                   controller: _scrollController,
                   child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             card.body,
-                            style: AppTheme.quoteStyle(context)
-                                .copyWith(fontSize: fontSize),
+                            style: AppTheme.quoteStyle(
+                              context,
+                            ).copyWith(fontSize: fontSize),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 16),

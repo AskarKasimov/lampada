@@ -12,15 +12,14 @@ Bookmark _bookmark(
   String text = 'ТЕКСТ',
   DateTime? savedAt,
   BookmarkKind kind = BookmarkKind.card,
-}) =>
-    Bookmark(
-      id: id,
-      kind: kind,
-      text: text,
-      source: 'Источник',
-      label: 'Цитата дня',
-      savedAt: savedAt ?? DateTime(2026, 7, 28, 10),
-    );
+}) => Bookmark(
+  id: id,
+  kind: kind,
+  text: text,
+  source: 'Источник',
+  label: 'Цитата дня',
+  savedAt: savedAt ?? DateTime(2026, 7, 28, 10),
+);
 
 List<Bookmark> _value(Result<List<Bookmark>> r) =>
     (r as Success<List<Bookmark>>).value;
@@ -62,14 +61,19 @@ void main() {
     // FR-017: копилка локальная и должна лежать в prefs, а не в памяти.
     await repo.save(_bookmark('quote-2026-07-28'));
 
-    final reopened =
-        PrefsBookmarksRepository(await SharedPreferences.getInstance());
+    final reopened = PrefsBookmarksRepository(
+      await SharedPreferences.getInstance(),
+    );
     expect(_value(await reopened.load()).single.id, 'quote-2026-07-28');
   });
 
   test('поля записи не теряются при сериализации', () async {
     await repo.save(
-      _bookmark('verse-Jn.10:1', kind: BookmarkKind.verse, text: 'Я есмь дверь'),
+      _bookmark(
+        'verse-Jn.10:1',
+        kind: BookmarkKind.verse,
+        text: 'Я есмь дверь',
+      ),
     );
 
     final saved = _value(await repo.load()).single;
@@ -110,8 +114,9 @@ void main() {
 
   test('битый JSON в prefs отдаёт Failure, а не роняет приложение', () async {
     SharedPreferences.setMockInitialValues({'bookmarks': 'не json'});
-    final broken =
-        PrefsBookmarksRepository(await SharedPreferences.getInstance());
+    final broken = PrefsBookmarksRepository(
+      await SharedPreferences.getInstance(),
+    );
 
     expect(await broken.load(), isA<Failure<List<Bookmark>>>());
   });

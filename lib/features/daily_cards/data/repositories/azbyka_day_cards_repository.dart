@@ -28,10 +28,10 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       Duration(seconds: 1),
     ],
     NetworkStatus? networkStatus,
-  })  : _budget = budget,
-        _attemptTimeout = attemptTimeout,
-        _retryDelays = retryDelays,
-        _networkStatus = networkStatus;
+  }) : _budget = budget,
+       _attemptTimeout = attemptTimeout,
+       _retryDelays = retryDelays,
+       _networkStatus = networkStatus;
 
   final DayCardsRemoteDatasource _remote;
   final SharedPreferences _prefs;
@@ -106,15 +106,19 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       }
 
       try {
-        netLog('попытка ${attempt + 1}, остаток бюджета '
-            '${left.inMilliseconds}мс');
+        netLog(
+          'попытка ${attempt + 1}, остаток бюджета '
+          '${left.inMilliseconds}мс',
+        );
         final dtos = await _remote.fetch(
           date,
           timeout: left < _attemptTimeout ? left : _attemptTimeout,
         );
         await _writeCache(date, dtos);
-        netLog('успех на попытке ${attempt + 1} за '
-            '${elapsed.elapsedMilliseconds}мс — отдаём свежие');
+        netLog(
+          'успех на попытке ${attempt + 1} за '
+          '${elapsed.elapsedMilliseconds}мс — отдаём свежие',
+        );
         return Success(TodayCards(cards: _toEntities(dtos)));
       } on RemoteFetchException catch (e) {
         lastKind = e.kind;
@@ -137,9 +141,11 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       }
     }
 
-    netLog('всё упало за ${elapsed.elapsedMilliseconds}мс, кэша за '
-        '${dateKey(date)} нет — офлайн-экран, kind=${lastKind.name}, '
-        'причина: $lastCause');
+    netLog(
+      'всё упало за ${elapsed.elapsedMilliseconds}мс, кэша за '
+      '${dateKey(date)} нет — офлайн-экран, kind=${lastKind.name}, '
+      'причина: $lastCause',
+    );
     return Failure(
       AppFailure(
         'Не удалось загрузить карточки дня',

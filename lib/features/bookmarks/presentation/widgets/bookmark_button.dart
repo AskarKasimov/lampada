@@ -11,7 +11,7 @@ import '../providers/providers.dart';
 /// самому контенту и «Дальше». Подтверждение — снекбар «Сохранено в копилку»
 /// (FR-016), потому что смена иконки на 20 пикселей легко проходит мимо глаз.
 class BookmarkButton extends ConsumerWidget {
-  const BookmarkButton({super.key, required this.bookmark});
+  const BookmarkButton({required this.bookmark, super.key});
 
   /// Готовая запись: вызывающий знает и текст, и происхождение.
   /// savedAt проставляется в момент нажатия, поэтому здесь он не важен.
@@ -21,8 +21,8 @@ class BookmarkButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final saved = ref.watch(
       bookmarksProvider.select(
-        (state) => (state.value ?? const <Bookmark>[])
-            .any((b) => b.id == bookmark.id),
+        (state) =>
+            (state.value ?? const <Bookmark>[]).any((b) => b.id == bookmark.id),
       ),
     );
     final colors = AppColorsExtension.of(context);
@@ -32,9 +32,9 @@ class BookmarkButton extends ConsumerWidget {
       tooltip: saved ? 'Убрать из копилки' : 'Сохранить в копилку',
       visualDensity: VisualDensity.compact,
       onPressed: () async {
-        await ref.read(bookmarksProvider.notifier).toggle(
-              bookmark.copyWith(savedAt: DateTime.now()),
-            );
+        await ref
+            .read(bookmarksProvider.notifier)
+            .toggle(bookmark.copyWith(savedAt: DateTime.now()));
         if (saved) return;
         messenger?.showSnackBar(
           const SnackBar(

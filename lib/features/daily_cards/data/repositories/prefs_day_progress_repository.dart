@@ -14,7 +14,7 @@ import '../mappers/day_progress_mapper.dart';
 /// Единственное место, где исключения data-слоя превращаются в Failure.
 class PrefsDayProgressRepository implements DayProgressRepository {
   PrefsDayProgressRepository(this._prefs, {DateTime Function()? clock})
-      : _clock = clock ?? DateTime.now;
+    : _clock = clock ?? DateTime.now;
 
   final SharedPreferences _prefs;
   final DateTime Function() _clock;

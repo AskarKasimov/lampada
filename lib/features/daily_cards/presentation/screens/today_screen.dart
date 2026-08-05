@@ -48,8 +48,7 @@ class CalendarPageMapper {
     initialDate.day + page - initialPage,
   );
 
-  int pageForDate(DateTime date) =>
-      initialPage + dayOffset(initialDate, date);
+  int pageForDate(DateTime date) => initialPage + dayOffset(initialDate, date);
 
   static int dayOffset(DateTime from, DateTime to) =>
       _dayNumber(to) - _dayNumber(from);
@@ -111,9 +110,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             onPageChanged: (page) => ref
                 .read(selectedDateProvider.notifier)
                 .select(_pageMapper.dateForPage(page)),
-            itemBuilder: (context, page) => _TodayDayPage(
-              date: _pageMapper.dateForPage(page),
-            ),
+            itemBuilder: (context, page) =>
+                _TodayDayPage(date: _pageMapper.dateForPage(page)),
           ),
         ),
       ],
@@ -206,11 +204,7 @@ class _SelectedDayContent extends ConsumerWidget {
   ///
   /// Только для сегодняшней даты: курс — это личный прогресс. Если тема не
   /// доехала, скрываем календарные «Основы», чтобы не выдать их за курс.
-  TodayCards _withCourseTopic(
-    DateTime date,
-    TodayCards day,
-    DayCard? topic,
-  ) {
+  TodayCards _withCourseTopic(DateTime date, TodayCards day, DayCard? topic) {
     if (dateKey(date) != dateKey(DateTime.now())) return day;
     if (topic == null) {
       return day.copyWith(
@@ -326,7 +320,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     }
     final pages = _pages;
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         fullscreenDialog: true,
         builder: (_) => CardViewerScreen(
           cards: pages,
@@ -343,7 +337,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       ref.read(dayProgressProvider.notifier).markRead(card.type);
     }
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (_) => ReadingScreen(reference: card.reference!),
       ),
     );
@@ -351,7 +345,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
 
   void _openCourse(BuildContext context, DayCard card) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         fullscreenDialog: true,
         builder: (_) => CourseReaderScreen(currentTopic: card),
       ),
@@ -425,12 +419,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       physics: const AlwaysScrollableScrollPhysics(),
       // Снизу оставляем место под плавающую капсулу навигации: контент
       // уходит под неё, и без запаса последний блок оказался бы закрыт.
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        kFloatingNavInset + 32,
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, kFloatingNavInset + 32),
       children: [
         if (day.staleDate != null) ...[
           StaleCacheNotice(
@@ -484,9 +473,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ],
       ],
     );
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      child: blocks,
-    );
+    return RefreshIndicator(onRefresh: _refresh, child: blocks);
   }
 }

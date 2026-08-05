@@ -7,7 +7,7 @@ import 'basics_hero_block.dart';
 
 /// Тихая точка входа в личный курс на датах, где нет большой карточки курса.
 class BasicsCourseLink extends StatelessWidget {
-  const BasicsCourseLink({super.key, required this.card, required this.onTap});
+  const BasicsCourseLink({required this.card, required this.onTap, super.key});
 
   final DayCard card;
   final VoidCallback onTap;
@@ -47,7 +47,10 @@ class BasicsCourseLink extends StatelessWidget {
                       card.body,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ],
                 ),

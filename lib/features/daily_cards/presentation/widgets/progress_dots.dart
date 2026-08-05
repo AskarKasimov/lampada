@@ -6,10 +6,10 @@ import '../../../../core/theme/app_colors.dart';
 /// пройденные тусклые, будущие едва заметны.
 class ProgressDots extends StatelessWidget {
   const ProgressDots({
-    super.key,
     required this.count,
     required this.currentIndex,
     required this.accentColors,
+    super.key,
   });
 
   final int count;

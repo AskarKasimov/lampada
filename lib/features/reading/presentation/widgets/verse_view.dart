@@ -7,7 +7,7 @@ import '../../domain/entities/daily_reading.dart';
 /// Один стих на весь экран — герой ридера (§6). Номер подписью снизу,
 /// чтобы не разбивать сам текст служебной цифрой.
 class VerseView extends StatelessWidget {
-  const VerseView({super.key, required this.verse, this.onOpenInterpretation});
+  const VerseView({required this.verse, super.key, this.onOpenInterpretation});
 
   final Verse verse;
 
@@ -33,8 +33,9 @@ class VerseView extends StatelessWidget {
           Text(
             verse.text,
             textAlign: TextAlign.center,
-            style: AppTheme.quoteStyle(context)
-                .copyWith(fontSize: _fontSizeFor(verse.text.length), height: 1.5),
+            style: AppTheme.quoteStyle(
+              context,
+            ).copyWith(fontSize: _fontSizeFor(verse.text.length), height: 1.5),
           ),
           const SizedBox(height: 18),
           Text(
@@ -62,7 +63,7 @@ class VerseView extends StatelessWidget {
 /// действие терялось под номером стиха и его просто не находили. Контур, а не
 /// заливка — по §6 высокий контраст остаётся за самим стихом.
 class VerseInterpretationButton extends StatelessWidget {
-  const VerseInterpretationButton({super.key, required this.onPressed});
+  const VerseInterpretationButton({required this.onPressed, super.key});
 
   final VoidCallback onPressed;
 

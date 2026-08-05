@@ -11,7 +11,7 @@ import '../../../../core/widgets/streak_flame.dart';
 /// FR-019 селит «Лампадку» только в календарь «Дни», а FR-020 прямо запрещает
 /// показывать её давящим счётчиком.
 class SessionDoneView extends StatelessWidget {
-  const SessionDoneView({super.key, required this.onDone});
+  const SessionDoneView({required this.onDone, super.key});
 
   final VoidCallback onDone;
 
@@ -26,8 +26,9 @@ class SessionDoneView extends StatelessWidget {
         Text(
           'Огонёк на сегодня зажжён\nУвидимся завтра',
           textAlign: TextAlign.center,
-          style:
-              AppTheme.quoteStyle(context).copyWith(fontSize: 22, height: 1.55),
+          style: AppTheme.quoteStyle(
+            context,
+          ).copyWith(fontSize: 22, height: 1.55),
         ),
         const SizedBox(height: 14),
         Text(
@@ -49,15 +50,15 @@ class SessionDoneView extends StatelessWidget {
 /// перечитать одну карточку, приходилось запускать весь день заново.
 /// Теперь возврат ведёт к блокам дня, где любая часть открывается напрямую.
 class SessionDoneButton extends StatelessWidget {
-  const SessionDoneButton({super.key, required this.onPressed});
+  const SessionDoneButton({required this.onPressed, super.key});
 
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) => AppLinkButton(
-        label: 'Пройти снова',
-        color: AppColorsExtension.of(context).link,
-        fontSize: 12,
-        onPressed: onPressed,
-      );
+    label: 'Пройти снова',
+    color: AppColorsExtension.of(context).link,
+    fontSize: 12,
+    onPressed: onPressed,
+  );
 }

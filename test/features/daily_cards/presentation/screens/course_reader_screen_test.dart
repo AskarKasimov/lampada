@@ -105,7 +105,7 @@ void main() {
               builder: (context) => Scaffold(
                 body: TextButton(
                   onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
+                    MaterialPageRoute<void>(
                       builder: (_) =>
                           CourseReaderScreen(currentTopic: currentTopic),
                     ),

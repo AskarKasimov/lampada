@@ -24,16 +24,16 @@ void main() {
   /// обычного текста — 4.5:1; крупным (>=18pt) хватило бы 3:1, но такого
   /// среди приглушённых ролей нет.
   Map<String, Color> textRoles(AppColorsExtension c) => {
-        'ink': c.ink,
-        'textSecondary': c.textSecondary,
-        'textTertiary': c.textTertiary,
-        'homeSubtitle': c.homeSubtitle,
-        'todayLabel': c.todayLabel,
-        'footer': c.footer,
-        'link': c.link,
-        'chipUnreadText': c.chipUnreadText,
-        'accent': c.accent,
-      };
+    'ink': c.ink,
+    'textSecondary': c.textSecondary,
+    'textTertiary': c.textTertiary,
+    'homeSubtitle': c.homeSubtitle,
+    'todayLabel': c.todayLabel,
+    'footer': c.footer,
+    'link': c.link,
+    'chipUnreadText': c.chipUnreadText,
+    'accent': c.accent,
+  };
 
   for (final (name, colors) in [
     ('светлая', AppColorsExtension.light),

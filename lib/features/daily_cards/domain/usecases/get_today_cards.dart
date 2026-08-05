@@ -19,11 +19,11 @@ class GetTodayCards {
     );
     return switch (result) {
       Success(value: final today) => Success(
-          today.copyWith(
-            cards: [...today.cards]
-              ..sort((a, b) => a.type.index.compareTo(b.type.index)),
-          ),
+        today.copyWith(
+          cards: [...today.cards]
+            ..sort((a, b) => a.type.index.compareTo(b.type.index)),
         ),
+      ),
       Failure(failure: final f) => Failure(f),
     };
   }

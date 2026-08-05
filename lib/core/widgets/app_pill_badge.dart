@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 /// на Home различаются только цветами/паддингом/бордером, форма одна.
 class AppPillBadge extends StatelessWidget {
   const AppPillBadge({
-    super.key,
     required this.label,
     required this.background,
     required this.foreground,
+    super.key,
     this.border,
     this.horizontalPadding = 14,
     this.fontSize = 12,

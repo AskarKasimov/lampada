@@ -5,8 +5,10 @@ import 'package:lampada/core/widgets/brand_loading_view.dart';
 import 'package:lampada/core/widgets/brand_mark.dart';
 
 void main() {
-  Widget wrap(Widget child) =>
-      MaterialApp(theme: AppTheme.light, home: Scaffold(body: child));
+  Widget wrap(Widget child) => MaterialApp(
+    theme: AppTheme.light,
+    home: Scaffold(body: child),
+  );
 
   testWidgets('до порога — только брендинг, без спиннера', (tester) async {
     await tester.pumpWidget(
@@ -22,8 +24,9 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('после порога появляется спиннер, брендинг остаётся',
-      (tester) async {
+  testWidgets('после порога появляется спиннер, брендинг остаётся', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       wrap(const BrandLoadingView(spinnerDelay: Duration(seconds: 3))),
     );
@@ -33,8 +36,9 @@ void main() {
     expect(find.byType(BrandMark), findsOneWidget);
   });
 
-  testWidgets('снятие с экрана до порога не роняет тест на висящем таймере',
-      (tester) async {
+  testWidgets('снятие с экрана до порога не роняет тест на висящем таймере', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       wrap(const BrandLoadingView(spinnerDelay: Duration(seconds: 3))),
     );
