@@ -110,8 +110,8 @@ void main() {
     expect(today.staleDate, isNull);
     // Кэш подневный: ключ включает дату, иначе календарь не смог бы
     // держать больше одного дня.
-    expect(prefs.getString('day_cards_cache_v2:2026-07-19'), isNotNull);
-    expect(prefs.getStringList('day_cards_cached_dates_v2'), ['2026-07-19']);
+    expect(prefs.getString('day_cards_cache_v3:2026-07-19'), isNotNull);
+    expect(prefs.getStringList('day_cards_cached_dates_v3'), ['2026-07-19']);
   });
 
   test('кэш держит несколько дней одновременно', () async {
@@ -127,7 +127,7 @@ void main() {
         .getCardsFor(DateTime(2026, 7, 19));
 
     expect(result, isA<Success<TodayCards>>());
-    expect(prefs.getStringList('day_cards_cached_dates_v2'),
+    expect(prefs.getStringList('day_cards_cached_dates_v3'),
         ['2026-07-19', '2026-07-20']);
   });
 
@@ -140,7 +140,7 @@ void main() {
     await _repo(_FakeDatasource([_card]), prefs)
         .getCardsFor(DateTime(2026, 7, 19));
 
-    expect(prefs.getStringList('day_cards_cached_dates_v2'),
+    expect(prefs.getStringList('day_cards_cached_dates_v3'),
         ['2026-07-19', '2026-07-20']);
   });
 
@@ -264,15 +264,15 @@ void main() {
     // доходя до сети. Так удаление «вопроса дня» дало офлайн-экран при живом
     // интернете.
     SharedPreferences.setMockInitialValues({
-      'flutter.day_cards_cache_v2:2026-07-19': jsonEncode([
+      'flutter.day_cards_cache_v3:2026-07-19': jsonEncode([
         {
-          'id': 'question-2026-07-19',
-          'type': 'question',
+          'id': 'legacy-2026-07-19',
+          'type': 'legacy',
           'body': 'body',
           'source': 'source',
         },
       ]),
-      'flutter.day_cards_cached_dates_v2': ['2026-07-19'],
+      'flutter.day_cards_cached_dates_v3': ['2026-07-19'],
     });
     final prefs = await SharedPreferences.getInstance();
     final remote = _FakeDatasource([_card]);

@@ -9,7 +9,7 @@ part 'day_card_dto.g.dart';
 abstract class DayCardDto with _$DayCardDto {
   const factory DayCardDto({
     required String id,
-    /// Строковый тип из источника: quote | advice | basics | reading.
+    /// Строковый тип из источника: quote | advice | basics | reading | question.
     required String type,
     required String body,
     required String source,

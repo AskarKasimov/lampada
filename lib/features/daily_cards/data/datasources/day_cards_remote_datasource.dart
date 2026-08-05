@@ -31,7 +31,7 @@ abstract interface class DayCardsRemoteDatasource {
 }
 
 /// Скрейпит https://azbyka.ru/days/{yyyy-MM-dd} — вся дневная разметка
-/// (цитата/совет/основы/чтения) лежит на одной странице.
+/// (цитата/совет/основы/чтения/вопрос) лежит на одной странице.
 ///
 /// Отсутствующая секция карточку не создаёт, но и день не роняет: Азбука
 /// публикует не все разделы каждый день, а раньше пропажа любого из пяти
@@ -88,6 +88,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet'),
         _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy'),
         _readingCard(doc, dateStr),
+        _questionCard(doc, dateStr),
       ].nonNulls.toList();
 
       // Пустая страница — это уже сломанная вёрстка, а не неполный день.
@@ -132,6 +133,23 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       body: link.text.trim(),
       source: _defaultSource,
       reference: reference,
+    );
+  }
+
+  /// Вопрос дня лежит в виджете с неуникальным классом, поэтому опираемся
+  /// на уникальный класс самой ссылки. Ответ на отдельной странице намеренно
+  /// не загружаем: карточка — вопрос для размышления, без второго запроса.
+  DayCardDto? _questionCard(Document doc, String dateStr) {
+    final body = doc.querySelector('a.az-qod-link')?.text.trim() ?? '';
+    if (body.isEmpty) {
+      netLog('нет секции "question" — пропускаем');
+      return null;
+    }
+    return DayCardDto(
+      id: 'question-$dateStr',
+      type: 'question',
+      body: body,
+      source: _defaultSource,
     );
   }
 

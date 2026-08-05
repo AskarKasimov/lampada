@@ -53,11 +53,11 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   /// НА КЭШЕ, не доходя до сети. Ровно это и случилось, когда убрали
   /// «вопрос дня»: приложение показывало офлайн-экран при живом интернете.
   /// Меняется набор [CardType] или поля DTO — версия растёт.
-  static const _cachePrefix = 'day_cards_cache_v2:';
+  static const _cachePrefix = 'day_cards_cache_v3:';
 
   /// Даты в кэше, старые слева. Отдельный индекс, потому что SharedPreferences
   /// не умеет перечислять ключи по префиксу без чтения всего хранилища.
-  static const _cacheIndexKey = 'day_cards_cached_dates_v2';
+  static const _cacheIndexKey = 'day_cards_cached_dates_v3';
 
   /// Потолок кэша. Дни хранят распарсенный текст, не разметку, так что это
   /// сотни килобайт — но расти бесконечно ему всё равно незачем.

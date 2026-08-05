@@ -24,13 +24,14 @@ DayCard _card(CardType type) => DayCard(
 void main() {
   test(
       'возвращает карточки строго в порядке '
-      'quote → advice → basics → reading', () async {
+      'quote → advice → basics → reading → question', () async {
     // Репозиторий отдаёт вперемешку — usecase обязан отсортировать.
     final repo = _FakeRepository([
       _card(CardType.reading),
       _card(CardType.quote),
       _card(CardType.basics),
       _card(CardType.advice),
+      _card(CardType.question),
     ]);
     final usecase = GetTodayCards(repo);
 
@@ -42,8 +43,9 @@ void main() {
       CardType.quote,
       CardType.advice,
       CardType.basics,
-      // Чтение замыкает день: §5 делает Писание «глубоким концом».
+      // После чтения остаётся вопрос для размышления.
       CardType.reading,
+      CardType.question,
     ]);
   });
 }
