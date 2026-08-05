@@ -64,6 +64,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       return CardContent(
         key: ValueKey(widget.currentTopic.id),
         card: widget.currentTopic,
+        showBadge: false,
       );
     }
 
@@ -71,7 +72,11 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     return ref
         .watch(courseTopicByNumberProvider(topic))
         .when(
-          data: (card) => CardContent(key: ValueKey(card.id), card: card),
+          data: (card) => CardContent(
+            key: ValueKey(card.id),
+            card: card,
+            showBadge: false,
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => Center(
             child: Column(

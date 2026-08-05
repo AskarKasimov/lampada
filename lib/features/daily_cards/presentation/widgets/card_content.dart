@@ -9,9 +9,10 @@ import '../theme/card_type_style.dart';
 /// Одна карточка дня. Вызывающий обязан передать `key: ValueKey(card.id)` —
 /// иначе AnimatedSwitcher не увидит смену карточки и не сбросит скролл.
 class CardContent extends StatefulWidget {
-  const CardContent({super.key, required this.card});
+  const CardContent({super.key, required this.card, this.showBadge = true});
 
   final DayCard card;
+  final bool showBadge;
 
   @override
   State<CardContent> createState() => _CardContentState();
@@ -64,13 +65,15 @@ class _CardContentState extends State<CardContent> {
     return Column(
       mainAxisSize: MainAxisSize.max,
       children: [
-        AppPillBadge(
-          label: style.label,
-          background: style.tagBackground,
-          foreground: style.tagForeground,
-          letterSpacing: 0.2,
-        ),
-        const SizedBox(height: 22),
+        if (widget.showBadge) ...[
+          AppPillBadge(
+            label: style.label,
+            background: style.tagBackground,
+            foreground: style.tagForeground,
+            letterSpacing: 0.2,
+          ),
+          const SizedBox(height: 22),
+        ],
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) => Stack(

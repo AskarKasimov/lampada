@@ -128,6 +128,14 @@ void main() {
     expect(find.text('Основы веры'), findsOneWidget);
   });
 
+  testWidgets('uses the reader header instead of the repeated basics badge', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    expect(find.text('Основы'), findsNothing);
+  });
+
   testWidgets('a right swipe shows the immediately preceding topic', (
     tester,
   ) async {
