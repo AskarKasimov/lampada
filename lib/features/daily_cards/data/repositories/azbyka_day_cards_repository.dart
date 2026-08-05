@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
+import '../../../../core/network/network_status.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/today_cards.dart';
@@ -26,9 +27,11 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       Duration(seconds: 1),
       Duration(seconds: 1),
     ],
+    NetworkStatus? networkStatus,
   })  : _budget = budget,
         _attemptTimeout = attemptTimeout,
-        _retryDelays = retryDelays;
+        _retryDelays = retryDelays,
+        _networkStatus = networkStatus;
 
   final DayCardsRemoteDatasource _remote;
   final SharedPreferences _prefs;
@@ -39,6 +42,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   final Duration _budget;
   final Duration _attemptTimeout;
   final List<Duration> _retryDelays;
+  final NetworkStatus? _networkStatus;
 
   /// Кэш подневный: календарь листает прошлые дни, а один общий ключ держал
   /// ровно последний загруженный день и на шаг назад уже ничего не помнил.
@@ -74,6 +78,17 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     if (exact != null) {
       netLog('кэш за нужную дату — сеть не трогаем');
       return Success(TodayCards(cards: exact));
+    }
+
+    if (_networkStatus != null && !await _networkStatus.isOnline()) {
+      netLog('сети нет — не запускаем попытки загрузки карточек');
+      return Failure(
+        AppFailure(
+          'Не удалось загрузить карточки дня',
+          kind: FailureKind.network,
+          cause: StateError('Нет активного сетевого подключения'),
+        ),
+      );
     }
 
     final elapsed = Stopwatch()..start();

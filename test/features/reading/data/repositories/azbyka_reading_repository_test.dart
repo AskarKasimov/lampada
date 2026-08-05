@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/network/network_status.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart'
     show RemoteFetchException;
@@ -58,6 +59,11 @@ class _FailingDatasource implements ReadingRemoteDatasource {
       throw const RemoteFetchException(FailureKind.unknown, 'нет сети');
 }
 
+class _OfflineNetworkStatus implements NetworkStatus {
+  @override
+  Future<bool> isOnline() async => false;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -108,6 +114,22 @@ void main() {
 
     expect(remote.calls, 1, reason: 'второй раз полезли в сеть');
     expect(valueOf(second).verses.single.interpretation, 'СВЕЖЕЕ ТОЛКОВАНИЕ');
+  });
+
+  test('без сети и кэша чтение завершается без запроса к источнику', () async {
+    final prefs = await prefsWith({});
+    final remote = _FakeDatasource();
+    final repo = AzbykaReadingRepository(
+      remote,
+      prefs,
+      networkStatus: _OfflineNetworkStatus(),
+    );
+
+    final result = await repo.getReading(_reference);
+
+    expect(result, isA<Failure<DailyReading>>());
+    expect((result as Failure<DailyReading>).failure.kind, FailureKind.network);
+    expect(remote.calls, 0, reason: 'в офлайне не ждём загрузку чтения');
   });
 
   test('битый кэш не роняет чтение — молча идём в сеть', () async {

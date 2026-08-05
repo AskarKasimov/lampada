@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/network/network_status.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart';
 import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
@@ -48,6 +49,11 @@ class _CountingDatasource implements DayCardsRemoteDatasource {
     timeouts.add(timeout);
     throw _error;
   }
+}
+
+class _OfflineNetworkStatus implements NetworkStatus {
+  @override
+  Future<bool> isOnline() async => false;
 }
 
 /// Съедает весь выданный таймаут и падает — так ведёт себя живая, но не
@@ -176,6 +182,24 @@ void main() {
 
     expect(result, isA<Failure<TodayCards>>());
     expect((result as Failure<TodayCards>).failure.kind, FailureKind.network);
+  });
+
+  test('без сети и кэша день завершается без запроса к источнику', () async {
+    final prefs = await _emptyPrefs();
+    final remote = _CountingDatasource(
+      const RemoteFetchException(FailureKind.unknown, 'не должен зваться'),
+    );
+    final repo = AzbykaDayCardsRepository(
+      remote,
+      prefs,
+      networkStatus: _OfflineNetworkStatus(),
+    );
+
+    final result = await repo.getCardsFor(DateTime(2026, 7, 19));
+
+    expect(result, isA<Failure<TodayCards>>());
+    expect((result as Failure<TodayCards>).failure.kind, FailureKind.network);
+    expect(remote.calls, 0, reason: 'в офлайне не ждём ни одной попытки');
   });
 
   test('битая разметка + кэша нет → Failure с kind unknown', () async {
