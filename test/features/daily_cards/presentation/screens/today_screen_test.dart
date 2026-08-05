@@ -11,8 +11,10 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repos
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_action_button.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/basics_course_link.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_card_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reading_hero_block.dart';
@@ -309,7 +311,8 @@ void main() {
       expect(tester.getSize(pageView).height, before);
     });
 
-    testWidgets('тап по курсу открывает и засчитывает тему', (tester) async {
+    testWidgets('тап по герою курса открывает ридер и засчитывает тему',
+        (tester) async {
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
       await tester.pumpWidget(
@@ -323,7 +326,8 @@ void main() {
       await tester.tap(find.byType(BasicsHeroBlock));
       await settle(tester);
 
-      expect(find.byType(CardViewerScreen), findsOneWidget);
+      expect(find.byType(CourseReaderScreen), findsOneWidget);
+      expect(find.byType(CardViewerScreen), findsNothing);
       expect(find.text(_basics.body), findsOneWidget);
       expect(progress.readTypes, contains(CardType.basics));
     });
@@ -338,6 +342,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsOneWidget);
+      expect(find.byType(CourseReaderScreen), findsNothing);
       // Просмотрщик — маршрут поверх шелла, навигации в нём нет.
       expect(
         find.descendant(
@@ -566,6 +571,36 @@ void main() {
 
       expect(find.byType(BasicsHeroBlock), findsNothing);
       expect(find.text('Основы веры'), findsOneWidget);
+    });
+
+    testWidgets('тап по ссылке курса на другом дне открывает ридер',
+        (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({
+          CardType.quote,
+          CardType.advice,
+          CardType.reading,
+          CardType.basics,
+        });
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(cards: [..._cards, _basics]),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.fling(
+        find.byType(PageView),
+        const Offset(-400, 0),
+        1000,
+      );
+      await settle(tester);
+      await tester.tap(find.byType(BasicsCourseLink));
+      await settle(tester);
+
+      expect(find.byType(CourseReaderScreen), findsOneWidget);
+      expect(find.byType(CardViewerScreen), findsNothing);
     });
 
     testWidgets('открывает дату, выбранную до показа экрана', (tester) async {

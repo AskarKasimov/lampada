@@ -20,6 +20,7 @@ import '../widgets/stale_cache_notice.dart';
 import '../widgets/today_offline_view.dart';
 import '../widgets/week_strip.dart';
 import 'card_viewer_screen.dart';
+import 'course_reader_screen.dart';
 
 /// Вкладка «Сегодня»: полоска недели и блоки выбранного дня.
 ///
@@ -319,7 +320,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       _openReader(context, ref, card);
       return;
     }
-    final pages = card.type == CardType.basics ? [card] : _pages;
+    if (card.type == CardType.basics) {
+      _openCourse(context, card);
+      return;
+    }
+    final pages = _pages;
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
@@ -327,7 +332,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           cards: pages,
           startIndex: pages.indexOf(card),
           recordProgress: _recordProgress,
-          reading: card.type == CardType.basics ? null : _reading,
+          reading: _reading,
         ),
       ),
     );
@@ -348,11 +353,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => CardViewerScreen(
-          cards: [card],
-          startIndex: 0,
-          recordProgress: true,
-        ),
+        builder: (_) => CourseReaderScreen(currentTopic: card),
       ),
     );
   }
