@@ -105,6 +105,25 @@ final courseTopicProvider = FutureProvider<DayCard?>((ref) async {
   };
 });
 
+/// Карточка «Основы» для страницы с явно запрошенным номером темы.
+///
+/// Ошибку отдельной страницы оставляем локальной: одна недоступная старая
+/// тема не должна подменяться карточкой другого дня.
+final courseTopicByNumberProvider = FutureProvider.family<DayCard, int>(
+  (ref, topic) async {
+    final result = await ref.watch(getCourseTopicProvider).forTopic(topic);
+    return switch (result) {
+      Success(value: final card) => card,
+      Failure(failure: final f) => () {
+          netLog('тема курса $topic не доехала: $f');
+          throw f;
+        }(),
+    };
+  },
+  // Здесь retry управляется кнопкой конкретной исторической страницы.
+  retry: (_, _) => null,
+);
+
 /// Прогресс дня: экраны вызывают markRead, репозиторий напрямую не трогают.
 final dayProgressProvider =
     AsyncNotifierProvider<DayProgressNotifier, DayProgress>(

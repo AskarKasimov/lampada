@@ -22,9 +22,12 @@ class GetCourseTopic {
       case Failure(failure: final f):
         return Failure(f);
       case Success(value: final topic):
-        return _topicCard(topic);
+        return forTopic(topic);
     }
   }
+
+  /// Карточка «Основы» для явно запрошенной темы курса.
+  Future<Result<DayCard>> forTopic(int topic) => _topicCard(topic);
 
   Future<Result<DayCard>> _topicCard(int topic) async {
     // Тема живёт на странице дня, у которого день года равен её номеру —
