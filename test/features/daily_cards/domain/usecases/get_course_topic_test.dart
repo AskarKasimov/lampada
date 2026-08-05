@@ -34,7 +34,42 @@ class _StaleDayCardsRepository implements DayCardsRepository {
   );
 }
 
+class _FreshDayCardsRepository implements DayCardsRepository {
+  DateTime? requestedDate;
+
+  @override
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async {
+    requestedDate = date;
+    return const Success(
+      TodayCards(
+        cards: [
+          DayCard(
+            id: 'basics-2026-03-05',
+            type: CardType.basics,
+            body: 'Тема 64',
+            source: 'Азбука веры',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 void main() {
+  test('загружает запрошенную тему с её номером в id', () async {
+    final cards = _FreshDayCardsRepository();
+    final useCase = GetCourseTopic(_CourseProgressRepository(), cards);
+
+    final result = await useCase.forTopic(64);
+
+    expect(cards.requestedDate, DateTime(2026, 3, 5));
+    expect(result, isA<Success<DayCard>>());
+    expect((result as Success<DayCard>).value.id, 'basics-topic-64');
+  });
+
   test('stale-кэш не становится темой курса', () async {
     final useCase = GetCourseTopic(
       _CourseProgressRepository(),
