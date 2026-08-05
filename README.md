@@ -90,6 +90,12 @@ Entity — freezed без JSON (`domain/entities/`). DTO — freezed + `fromJson
 
 ## Команды
 
+### iOS
+
+Для iOS нужен Flutter 3.44 или новее: он включает Swift Package Manager для
+нативных плагинов. Если SwiftPM ранее отключили в настройках Flutter,
+включите его командой `flutter config --enable-swift-package-manager`.
+
 - `flutter run` — запуск
 - `flutter test` — тесты
 - `flutter analyze` — статический анализ
