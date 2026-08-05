@@ -5,6 +5,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
 
+const basicsCourseTitle = 'Основы веры';
+
 /// Личная тема курса «Основы»: идёт последовательно и не зависит от даты
 /// открытого календарного дня.
 class BasicsHeroBlock extends StatelessWidget {
@@ -18,13 +20,6 @@ class BasicsHeroBlock extends StatelessWidget {
   final DayCard card;
   final bool isRead;
   final VoidCallback onTap;
-
-  String get _title {
-    final number = int.tryParse(card.id.replaceFirst('basics-topic-', ''));
-    return number == null
-        ? 'Основы веры'
-        : 'Основы веры №$number';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +66,7 @@ class BasicsHeroBlock extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                _title,
+                basicsCourseTitle,
                 style: AppTheme.quoteStyle(
                   context,
                 ).copyWith(fontSize: 26, height: 1.2),

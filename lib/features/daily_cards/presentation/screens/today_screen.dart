@@ -12,6 +12,7 @@ import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
 import '../providers/providers.dart';
+import '../widgets/basics_course_link.dart';
 import '../widgets/basics_hero_block.dart';
 import '../widgets/day_card_block.dart';
 import '../widgets/reading_hero_block.dart';
@@ -147,6 +148,7 @@ class _SelectedDayContent extends ConsumerWidget {
     final cardsAsync = ref.watch(dayCardsProvider(key));
     final day = cardsAsync.value;
     final progress = ref.watch(dayProgressProvider).value;
+    final courseTopic = ref.watch(courseTopicProvider).value;
     return _body(
       context,
       ref,
@@ -155,6 +157,7 @@ class _SelectedDayContent extends ConsumerWidget {
       cardsAsync,
       day,
       progress,
+      courseTopic,
     );
   }
 
@@ -166,15 +169,17 @@ class _SelectedDayContent extends ConsumerWidget {
     AsyncValue<TodayCards> cardsAsync,
     TodayCards? day,
     DayProgress? progress,
+    DayCard? courseTopic,
   ) {
     // Контент важнее ошибки: если карточки на руках есть, показываем их,
     // даже когда последнее обновление упало.
     if (day != null && progress != null) {
       return _DayBlocks(
         date: selected,
-        day: _withCourseTopic(ref, selected, day),
+        day: _withCourseTopic(selected, day, courseTopic),
         progress: progress,
         isSelected: isSelected,
+        courseTopic: courseTopic,
       );
     }
 
@@ -200,9 +205,12 @@ class _SelectedDayContent extends ConsumerWidget {
   ///
   /// Только для сегодняшней даты: курс — это личный прогресс. Если тема не
   /// доехала, скрываем календарные «Основы», чтобы не выдать их за курс.
-  TodayCards _withCourseTopic(WidgetRef ref, DateTime date, TodayCards day) {
+  TodayCards _withCourseTopic(
+    DateTime date,
+    TodayCards day,
+    DayCard? topic,
+  ) {
     if (dateKey(date) != dateKey(DateTime.now())) return day;
-    final topic = ref.watch(courseTopicProvider).value;
     if (topic == null) {
       return day.copyWith(
         cards: day.cards.where((c) => c.type != CardType.basics).toList(),
@@ -262,12 +270,14 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.day,
     required this.progress,
     required this.isSelected,
+    required this.courseTopic,
   });
 
   final DateTime date;
   final TodayCards day;
   final DayProgress progress;
   final bool isSelected;
+  final DayCard? courseTopic;
 
   @override
   ConsumerState<_DayBlocks> createState() => _DayBlocksState();
@@ -297,6 +307,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   DayCard? get _basics => _isToday
       ? day.cards.where((c) => c.type == CardType.basics).firstOrNull
       : null;
+
+  DayCard? get _courseLink => _isToday ? null : widget.courseTopic;
 
   List<DayCard> get _pages => day.cards
       .where((c) => c.type != CardType.reading && c.type != CardType.basics)
@@ -328,6 +340,19 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ReadingScreen(reference: card.reference!),
+      ),
+    );
+  }
+
+  void _openCourse(BuildContext context, DayCard card) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => CardViewerScreen(
+          cards: [card],
+          startIndex: 0,
+          recordProgress: true,
+        ),
       ),
     );
   }
@@ -383,6 +408,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     _maybeAutoOpen();
     final reading = _reading;
     final basics = _basics;
+    final courseLink = _courseLink;
     final rest = _pages;
 
     if (reading == null && basics == null && rest.isEmpty) {
@@ -419,6 +445,13 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             onTap: () => _open(context, ref, basics),
           ),
           const SizedBox(height: 26),
+        ],
+        if (courseLink != null) ...[
+          BasicsCourseLink(
+            card: courseLink,
+            onTap: () => _openCourse(context, courseLink),
+          ),
+          const SizedBox(height: 20),
         ],
         if (reading != null) ...[
           ReadingHeroBlock(

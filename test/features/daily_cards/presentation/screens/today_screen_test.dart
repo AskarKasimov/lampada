@@ -540,6 +540,34 @@ void main() {
       expect(calendarBasics.hitTestable(), findsNothing);
     });
 
+    testWidgets('на другом дне оставляет ссылку на текущую тему курса',
+        (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({
+          CardType.quote,
+          CardType.advice,
+          CardType.reading,
+          CardType.basics,
+        });
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(cards: [..._cards, _basics]),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.fling(
+        find.byType(PageView),
+        const Offset(-400, 0),
+        1000,
+      );
+      await settle(tester);
+
+      expect(find.byType(BasicsHeroBlock), findsNothing);
+      expect(find.text('Основы веры'), findsOneWidget);
+    });
+
     testWidgets('открывает дату, выбранную до показа экрана', (tester) async {
       final repo = _FakeCardsRepository();
       final selected = DateTime(2026, 1, 1);
@@ -712,6 +740,6 @@ void main() {
       ),
     );
 
-    expect(find.text('Основы веры №42'), findsOneWidget);
+    expect(find.text('Основы веры'), findsOneWidget);
   });
 }
