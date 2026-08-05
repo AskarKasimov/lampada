@@ -8,9 +8,7 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repos
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/refresh_on_resume.dart';
 
-const _cards = [
-  DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
-];
+const _cards = [DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's')];
 
 class _CountingRepository implements DayCardsRepository {
   int calls = 0;
@@ -21,9 +19,7 @@ class _CountingRepository implements DayCardsRepository {
     bool forceRefresh = false,
   }) async {
     calls++;
-    return Success(
-      TodayCards(cards: _cards, staleDate: DateTime(2026, 7, 19)),
-    );
+    return Success(TodayCards(cards: _cards, staleDate: DateTime(2026, 7, 19)));
   }
 }
 
@@ -51,9 +47,7 @@ Future<ProviderContainer> pumpWithRepo(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(
-        home: RefreshOnResume(child: SizedBox.shrink()),
-      ),
+      child: const MaterialApp(home: RefreshOnResume(child: SizedBox.shrink())),
     ),
   );
   return container;
@@ -66,28 +60,32 @@ Future<void> resume(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('возврат в приложение при stale-наборе перезапрашивает карточки',
-      (tester) async {
-    final repo = _CountingRepository();
-    final container = await pumpWithRepo(tester, repo);
+  testWidgets(
+    'возврат в приложение при stale-наборе перезапрашивает карточки',
+    (tester) async {
+      final repo = _CountingRepository();
+      final container = await pumpWithRepo(tester, repo);
 
-    await resume(tester);
-    await container.read(todayCardsProvider.future);
+      await resume(tester);
+      await container.read(todayCardsProvider.future);
 
-    expect(repo.calls, 2);
-  });
+      expect(repo.calls, 2);
+    },
+  );
 
-  testWidgets('возврат перезапрашивает даже свежий набор — сутки могли смениться',
-      (tester) async {
-    // TodayCards не хранит дату, за которую он взят — свежий набор со вчера
-    // неотличим от сегодняшнего. Поэтому спрашиваем всегда: при совпадении
-    // даты репозиторий просто отдаёт кэш, не трогая сеть.
-    final repo = _FreshRepository();
-    final container = await pumpWithRepo(tester, repo);
+  testWidgets(
+    'возврат перезапрашивает даже свежий набор — сутки могли смениться',
+    (tester) async {
+      // TodayCards не хранит дату, за которую он взят — свежий набор со вчера
+      // неотличим от сегодняшнего. Поэтому спрашиваем всегда: при совпадении
+      // даты репозиторий просто отдаёт кэш, не трогая сеть.
+      final repo = _FreshRepository();
+      final container = await pumpWithRepo(tester, repo);
 
-    await resume(tester);
-    await container.read(todayCardsProvider.future);
+      await resume(tester);
+      await container.read(todayCardsProvider.future);
 
-    expect(repo.calls, 2);
-  });
+      expect(repo.calls, 2);
+    },
+  );
 }

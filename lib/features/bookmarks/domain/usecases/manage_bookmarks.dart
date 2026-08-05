@@ -20,8 +20,7 @@ class ToggleBookmark {
   Future<Result<List<Bookmark>>> call(
     Bookmark bookmark, {
     required bool isSaved,
-  }) =>
-      isSaved ? _repository.remove(bookmark.id) : _repository.save(bookmark);
+  }) => isSaved ? _repository.remove(bookmark.id) : _repository.save(bookmark);
 }
 
 class RemoveBookmark {

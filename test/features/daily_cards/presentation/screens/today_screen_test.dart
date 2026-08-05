@@ -13,9 +13,9 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_action_button.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_course_link.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_hero_block.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_action_button.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_card_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reading_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/session_done_view.dart';
@@ -86,9 +86,7 @@ class _FakeCardsRepository implements DayCardsRepository {
     if (forceRefresh && refreshedCards?[key] != null) {
       _cachedCards[key] = refreshedCards![key]!;
     }
-    return Success(
-      TodayCards(cards: _cachedCards[key] ?? cards),
-    );
+    return Success(TodayCards(cards: _cachedCards[key] ?? cards));
   }
 }
 
@@ -139,25 +137,26 @@ void main() {
     DayCardsRepository? cardsRepository,
     DayProgressRepository? progressRepository,
     DateTime? selectedDate,
-  }) =>
-      ProviderScope(
-        overrides: [
-          dayCardsRepositoryProvider
-              .overrideWithValue(cardsRepository ?? _FakeCardsRepository()),
-          dayProgressRepositoryProvider
-              .overrideWithValue(progressRepository ?? _FakeProgressRepository()),
-          readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          if (selectedDate != null)
-            selectedDateProvider.overrideWith(
-              () => _SelectedDateNotifier(selectedDate),
-            ),
-        ],
-        child: MaterialApp(
-          theme: AppTheme.light,
-          home: const Scaffold(body: TodayScreen()),
+  }) => ProviderScope(
+    overrides: [
+      dayCardsRepositoryProvider.overrideWithValue(
+        cardsRepository ?? _FakeCardsRepository(),
+      ),
+      dayProgressRepositoryProvider.overrideWithValue(
+        progressRepository ?? _FakeProgressRepository(),
+      ),
+      readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      if (selectedDate != null)
+        selectedDateProvider.overrideWith(
+          () => _SelectedDateNotifier(selectedDate),
         ),
-      );
+    ],
+    child: MaterialApp(
+      theme: AppTheme.light,
+      home: const Scaffold(body: TodayScreen()),
+    ),
+  );
 
   // StreakFlame крутится бесконечно (repeat(reverse: true)) — pumpAndSettle
   // никогда не осядет. Прокачиваем вручную, и с запасом: переходы маршрутов
@@ -179,8 +178,9 @@ void main() {
   }
 
   group('вкладка «Сегодня»', () {
-    testWidgets('показывает последовательный курс отдельной карточкой',
-        (tester) async {
+    testWidgets('показывает последовательный курс отдельной карточкой', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()
         ..seedRead({
           CardType.quote,
@@ -239,8 +239,9 @@ void main() {
       );
     });
 
-    testWidgets('pull-to-refresh запрашивает свежие карточки дня',
-        (tester) async {
+    testWidgets('pull-to-refresh запрашивает свежие карточки дня', (
+      tester,
+    ) async {
       const refreshed = DayCard(
         id: 'quote-refreshed',
         type: CardType.quote,
@@ -269,8 +270,9 @@ void main() {
       expect(find.text('Свежая карточка'), findsOneWidget);
     });
 
-    testWidgets('прочитанные блоки видны и после прохождения дня',
-        (tester) async {
+    testWidgets('прочитанные блоки видны и после прохождения дня', (
+      tester,
+    ) async {
       // Раньше пройденный день встречал экраном завершения с «Пройти снова»,
       // и чтобы перечитать одну карточку, надо было запускать день заново.
       final progress = _FakeProgressRepository()
@@ -287,8 +289,9 @@ void main() {
   });
 
   group('полноэкранный просмотр', () {
-    testWidgets('финальный экран не меняет высоту области карточки',
-        (tester) async {
+    testWidgets('финальный экран не меняет высоту области карточки', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
       await tester.pumpWidget(buildApp(progressRepository: progress));
@@ -311,8 +314,9 @@ void main() {
       expect(tester.getSize(pageView).height, before);
     });
 
-    testWidgets('тап по герою курса открывает ридер и засчитывает тему',
-        (tester) async {
+    testWidgets('тап по герою курса открывает ридер и засчитывает тему', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
       await tester.pumpWidget(
@@ -332,8 +336,7 @@ void main() {
       expect(progress.readTypes, contains(CardType.basics));
     });
 
-    testWidgets('тап по блоку открывает карточку без таб-бара',
-        (tester) async {
+    testWidgets('тап по блоку открывает карточку без таб-бара', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -353,8 +356,9 @@ void main() {
       );
     });
 
-    testWidgets('открывается именно та карточка, по которой тапнули',
-        (tester) async {
+    testWidgets('открывается именно та карточка, по которой тапнули', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -372,8 +376,9 @@ void main() {
       );
     });
 
-    testWidgets('крестик закрывает просмотрщик и возвращает к блокам',
-        (tester) async {
+    testWidgets('крестик закрывает просмотрщик и возвращает к блокам', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -387,8 +392,9 @@ void main() {
       expect(find.byType(DayCardBlock), findsNWidgets(_cards.length - 1));
     });
 
-    testWidgets('открытая карточка сразу засчитывается прочитанной',
-        (tester) async {
+    testWidgets('открытая карточка сразу засчитывается прочитанной', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository();
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
@@ -417,8 +423,9 @@ void main() {
       expect(find.byType(CardViewerScreen), findsNothing);
     });
 
-    testWidgets('карточка чтения не получает страницы в просмотрщике',
-        (tester) async {
+    testWidgets('карточка чтения не получает страницы в просмотрщике', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -429,12 +436,16 @@ void main() {
       final viewer = tester.widget<CardViewerScreen>(
         find.byType(CardViewerScreen),
       );
-      expect(viewer.cards.map((c) => c.type), isNot(contains(CardType.reading)));
+      expect(
+        viewer.cards.map((c) => c.type),
+        isNot(contains(CardType.reading)),
+      );
       expect(viewer.reading?.reference, 'Jn.10:1-9');
     });
 
-    testWidgets('с последней карточки «Читать» ведёт прямо в ридер',
-        (tester) async {
+    testWidgets('с последней карточки «Читать» ведёт прямо в ридер', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -452,8 +463,9 @@ void main() {
       expect(find.byType(ReadingScreen), findsOneWidget);
     });
 
-    testWidgets('открытие ридера засчитывает чтение прочитанным',
-        (tester) async {
+    testWidgets('открытие ридера засчитывает чтение прочитанным', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository();
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
@@ -467,8 +479,9 @@ void main() {
   });
 
   group('переключение даты', () {
-    testWidgets('календарная полоска не листается вместе с карточками',
-        (tester) async {
+    testWidgets('календарная полоска не листается вместе с карточками', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
       await tester.pumpWidget(buildApp(progressRepository: progress));
@@ -485,10 +498,7 @@ void main() {
     });
 
     test('страницы сохраняют соседние календарные даты через DST', () {
-      final pages = CalendarPageMapper(
-        DateTime(2026, 3, 8),
-        initialPage: 0,
-      );
+      final pages = CalendarPageMapper(DateTime(2026, 3, 8), initialPage: 0);
 
       expect(pages.dateForPage(1), DateTime(2026, 3, 9));
       expect(pages.pageForDate(DateTime(2026, 3, 9)), 1);
@@ -500,11 +510,7 @@ void main() {
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      await tester.fling(
-        find.byType(PageView),
-        const Offset(-400, 0),
-        1000,
-      );
+      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
       await settle(tester);
 
       final container = ProviderScope.containerOf(
@@ -532,21 +538,19 @@ void main() {
       );
       await settle(tester);
 
-      await tester.fling(
-        find.byType(PageView),
-        const Offset(-400, 0),
-        1000,
-      );
+      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
       await settle(tester);
 
       final calendarBasics = find.byWidgetPredicate(
-        (widget) => widget is DayCardBlock && widget.card.type == CardType.basics,
+        (widget) =>
+            widget is DayCardBlock && widget.card.type == CardType.basics,
       );
       expect(calendarBasics.hitTestable(), findsNothing);
     });
 
-    testWidgets('на другом дне оставляет ссылку на текущую тему курса',
-        (tester) async {
+    testWidgets('на другом дне оставляет ссылку на текущую тему курса', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()
         ..seedRead({
           CardType.quote,
@@ -562,19 +566,16 @@ void main() {
       );
       await settle(tester);
 
-      await tester.fling(
-        find.byType(PageView),
-        const Offset(-400, 0),
-        1000,
-      );
+      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
       await settle(tester);
 
       expect(find.byType(BasicsHeroBlock), findsNothing);
       expect(find.text('Основы веры'), findsOneWidget);
     });
 
-    testWidgets('тап по ссылке курса на другом дне открывает ридер',
-        (tester) async {
+    testWidgets('тап по ссылке курса на другом дне открывает ридер', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()
         ..seedRead({
           CardType.quote,
@@ -590,11 +591,7 @@ void main() {
       );
       await settle(tester);
 
-      await tester.fling(
-        find.byType(PageView),
-        const Offset(-400, 0),
-        1000,
-      );
+      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
       await settle(tester);
       await tester.tap(find.byType(BasicsCourseLink));
       await settle(tester);
@@ -614,8 +611,7 @@ void main() {
       expect(repo.requested, contains(dateKey(selected)));
     });
 
-    testWidgets('предзагружает карточки соседних страниц',
-        (tester) async {
+    testWidgets('предзагружает карточки соседних страниц', (tester) async {
       final repo = _FakeCardsRepository();
       await tester.pumpWidget(buildApp(cardsRepository: repo));
       await settle(tester);
@@ -631,8 +627,9 @@ void main() {
       );
     });
 
-    testWidgets('тап по дню недели запрашивает карточки этой даты',
-        (tester) async {
+    testWidgets('тап по дню недели запрашивает карточки этой даты', (
+      tester,
+    ) async {
       final repo = _FakeCardsRepository();
       await tester.pumpWidget(buildApp(cardsRepository: repo));
       await settle(tester);
@@ -645,8 +642,10 @@ void main() {
       await settle(tester);
 
       expect(repo.requested, contains(dateKey(other)));
-      expect(find.text(dateKey(other) == dateKey(today) ? 'Сегодня' : 'Сегодня'),
-          findsNothing);
+      expect(
+        find.text(dateKey(other) == dateKey(today) ? 'Сегодня' : 'Сегодня'),
+        findsNothing,
+      );
     });
 
     testWidgets('на чужой дате прогресс не пишется', (tester) async {
@@ -671,14 +670,13 @@ void main() {
 
       expect(progress.readTypes, before, reason: 'прогресс сдвинулся');
       expect(progress.visitedDays, isEmpty);
-  });
+    });
   });
 
   group('«Лампадка» в полоске недели', () {
     testWidgets('дни с активностью помечены огоньком', (tester) async {
       final today = DateTime.now();
-      final progress = _FakeProgressRepository()
-        ..seedVisited({dateKey(today)});
+      final progress = _FakeProgressRepository()..seedVisited({dateKey(today)});
 
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
@@ -706,8 +704,9 @@ void main() {
       );
     });
 
-    testWidgets('следующий вход открывает совет, если до него не дошли',
-        (tester) async {
+    testWidgets('следующий вход открывает совет, если до него не дошли', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()..seedRead({CardType.quote});
 
       await tester.pumpWidget(buildApp(progressRepository: progress));
@@ -722,8 +721,9 @@ void main() {
       );
     });
 
-    testWidgets('всё прочитано — открываются блоки, а не просмотрщик',
-        (tester) async {
+    testWidgets('всё прочитано — открываются блоки, а не просмотрщик', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
 
@@ -734,7 +734,9 @@ void main() {
       expect(find.byType(DayCardBlock), findsNWidgets(_cards.length - 1));
     });
 
-    testWidgets('закрыл просмотрщик — он не открывается заново', (tester) async {
+    testWidgets('закрыл просмотрщик — он не открывается заново', (
+      tester,
+    ) async {
       // Прогресс пишется асинхронно, и на один кадр карточка ещё выглядит
       // непрочитанной: без флага возврат к блокам зацикливался.
       await tester.pumpWidget(buildApp());

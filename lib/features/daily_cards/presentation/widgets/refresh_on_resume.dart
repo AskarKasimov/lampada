@@ -10,7 +10,7 @@ import '../providers/providers.dart';
 /// этого не нужно. Репозиторий перед сетевым запросом сам быстро отсекает
 /// явный офлайн через общий статус сети.
 class RefreshOnResume extends ConsumerStatefulWidget {
-  const RefreshOnResume({super.key, required this.child});
+  const RefreshOnResume({required this.child, super.key});
 
   final Widget child;
 

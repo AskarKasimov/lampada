@@ -168,7 +168,8 @@ void main() {
     test('церковнославянские стихи отбрасываются', () async {
       final s = _serving(
         passage: _passagePage(
-          versesHtml: _verse(10, 1, 'СЛАВЯНСКИЙ', lang: 'cs') +
+          versesHtml:
+              _verse(10, 1, 'СЛАВЯНСКИЙ', lang: 'cs') +
               _verse(10, 1, 'РУССКИЙ'),
         ),
         interpretation: _interpretationPage(_perVerseChapter),
@@ -209,8 +210,13 @@ void main() {
 
       await expectLater(
         () => s.datasource.fetch('Jn.10:1-9', timeout: timeout),
-        throwsA(isA<RemoteFetchException>()
-            .having((e) => e.kind, 'kind', FailureKind.unknown)),
+        throwsA(
+          isA<RemoteFetchException>().having(
+            (e) => e.kind,
+            'kind',
+            FailureKind.unknown,
+          ),
+        ),
       );
     });
   });
@@ -219,8 +225,9 @@ void main() {
     test('у каждого стиха своё толкование, когда так размечено', () async {
       final s = _serving(
         passage: _passagePage(
-          versesHtml: [for (var i = 1; i <= 3; i++) _verse(10, i, 'СТИХ $i')]
-              .join(),
+          versesHtml: [
+            for (var i = 1; i <= 3; i++) _verse(10, i, 'СТИХ $i'),
+          ].join(),
         ),
         interpretation: _interpretationPage(_perVerseChapter),
       );
@@ -248,8 +255,9 @@ void main() {
       // Нарезка «по стиху» отдала бы юзеру сам стих вместо толкования.
       final s = _serving(
         passage: _passagePage(
-          versesHtml: [for (var i = 1; i <= 4; i++) _verse(10, i, 'СТИХ $i')]
-              .join(),
+          versesHtml: [
+            for (var i = 1; i <= 4; i++) _verse(10, i, 'СТИХ $i'),
+          ].join(),
         ),
         interpretation: _interpretationPage(_groupedChapter),
       );
@@ -273,8 +281,10 @@ void main() {
 
       final dto = await s.datasource.fetch('Jn.10:1-1', timeout: timeout);
 
-      expect(dto.verses.single.interpretation,
-          'КОММЕНТАРИЙ НА ПРИТЧУ\n\nВТОРОЙ АБЗАЦ КОММЕНТАРИЯ');
+      expect(
+        dto.verses.single.interpretation,
+        'КОММЕНТАРИЙ НА ПРИТЧУ\n\nВТОРОЙ АБЗАЦ КОММЕНТАРИЯ',
+      );
     });
 
     test('стих без толкования остаётся без него', () async {
@@ -306,7 +316,8 @@ void main() {
       final s = _serving(
         passage: _passagePage(
           versesHtml: _verse(10, 1, 'СТИХ'),
-          interpretsHtml: '<ul class="interprets">'
+          interpretsHtml:
+              '<ul class="interprets">'
               '<li><a href="/otechnik/Lopuhin/x/10">Лопухин</a></li></ul>',
         ),
       );

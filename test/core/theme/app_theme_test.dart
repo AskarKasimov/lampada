@@ -20,16 +20,21 @@ void main() {
     );
   });
 
-  testWidgets('AppTheme.quoteStyle берёт цвет ink активной темы',
-      (tester) async {
+  testWidgets('AppTheme.quoteStyle берёт цвет ink активной темы', (
+    tester,
+  ) async {
     late TextStyle style;
-    await tester.pumpWidget(MaterialApp(
-      theme: AppTheme.dark,
-      home: Builder(builder: (context) {
-        style = AppTheme.quoteStyle(context);
-        return const SizedBox.shrink();
-      }),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Builder(
+          builder: (context) {
+            style = AppTheme.quoteStyle(context);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
 
     expect(style.color, AppColorsExtension.dark.ink);
   });

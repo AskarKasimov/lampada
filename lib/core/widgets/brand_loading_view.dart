@@ -53,10 +53,7 @@ class _BrandLoadingViewState extends State<BrandLoadingView> {
             width: 18,
             height: 18,
             child: _showSpinner
-                ? CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: colors.link,
-                  )
+                ? CircularProgressIndicator(strokeWidth: 2, color: colors.link)
                 : null,
           ),
         ],

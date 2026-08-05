@@ -12,11 +12,11 @@ import '../../../../core/widgets/streak_flame.dart';
 /// целый экран было лишним шагом, а неделя помещается над контентом.
 class WeekStrip extends StatelessWidget {
   const WeekStrip({
-    super.key,
     required this.selected,
     required this.today,
     required this.litDays,
     required this.onSelect,
+    super.key,
   });
 
   final DateTime selected;

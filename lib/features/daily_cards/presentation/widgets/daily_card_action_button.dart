@@ -5,9 +5,9 @@ import '../../../../core/widgets/app_primary_button.dart';
 /// Не последняя карточка дня — переход к следующей.
 class DailyCardNextButton extends StatelessWidget {
   const DailyCardNextButton({
-    super.key,
     required this.color,
     required this.onPressed,
+    super.key,
   });
 
   final Color color;
@@ -21,9 +21,9 @@ class DailyCardNextButton extends StatelessWidget {
 /// Карточка чтения — уводит в постишный ридер, а не листает дальше.
 class DailyCardReadButton extends StatelessWidget {
   const DailyCardReadButton({
-    super.key,
     required this.color,
     required this.onPressed,
+    super.key,
   });
 
   final Color color;
@@ -37,9 +37,9 @@ class DailyCardReadButton extends StatelessWidget {
 /// Последняя карточка дня — завершает сессию.
 class DailyCardDoneButton extends StatelessWidget {
   const DailyCardDoneButton({
-    super.key,
     required this.color,
     required this.onPressed,
+    super.key,
   });
 
   final Color color;

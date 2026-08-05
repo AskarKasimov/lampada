@@ -18,9 +18,9 @@ import '../../domain/entities/daily_reading.dart';
 /// простыня на несколько экранов нечитаема.
 class InterpretationSheet extends StatelessWidget {
   const InterpretationSheet({
-    super.key,
     required this.verse,
     required this.author,
+    super.key,
   });
 
   final Verse verse;
@@ -30,24 +30,23 @@ class InterpretationSheet extends StatelessWidget {
     BuildContext context, {
     required Verse verse,
     required String? author,
-  }) =>
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        backgroundColor: AppColorsExtension.of(context).background,
-        builder: (_) => InterpretationSheet(verse: verse, author: author),
-      );
+  }) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: AppColorsExtension.of(context).background,
+    builder: (_) => InterpretationSheet(verse: verse, author: author),
+  );
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
   Bookmark get _bookmark => Bookmark(
-        id: 'interpretation-${verse.interpretationRange}',
-        kind: BookmarkKind.interpretation,
-        text: verse.interpretation ?? '',
-        source: author ?? verse.interpretationRange ?? '',
-        label: 'Толкование',
-        savedAt: DateTime.fromMillisecondsSinceEpoch(0),
-      );
+    id: 'interpretation-${verse.interpretationRange}',
+    kind: BookmarkKind.interpretation,
+    text: verse.interpretation ?? '',
+    source: author ?? verse.interpretationRange ?? '',
+    label: 'Толкование',
+    savedAt: DateTime.fromMillisecondsSinceEpoch(0),
+  );
 
   @override
   Widget build(BuildContext context) {

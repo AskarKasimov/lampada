@@ -28,9 +28,9 @@ const kFloatingNavInset = _barHeight + _bottomMargin + 12;
 /// iOS 26 ему недоступен — это его приближение размытием и прозрачностью.
 class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({
-    super.key,
     required this.current,
     required this.onSelect,
+    super.key,
   });
 
   final ShellTab current;

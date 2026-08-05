@@ -43,9 +43,10 @@ class _StreakFlameState extends State<StreakFlame>
     _syncWithMotionPreference(context);
     final colors = AppColorsExtension.of(context);
     return FadeTransition(
-      opacity: Tween(begin: 0.85, end: 1.0).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-      ),
+      opacity: Tween(
+        begin: 0.85,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)),
       child: Container(
         width: widget.size,
         height: widget.size,

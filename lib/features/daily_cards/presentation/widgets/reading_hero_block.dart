@@ -13,10 +13,10 @@ import '../../domain/entities/day_card.dart';
 /// двух местах, и путь к ценности — одно из них.
 class ReadingHeroBlock extends StatelessWidget {
   const ReadingHeroBlock({
-    super.key,
     required this.card,
     required this.isRead,
     required this.onTap,
+    super.key,
   });
 
   final DayCard card;
@@ -50,8 +50,11 @@ class ReadingHeroBlock extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.auto_stories_outlined,
-                      size: 17, color: colors.accent),
+                  Icon(
+                    Icons.auto_stories_outlined,
+                    size: 17,
+                    color: colors.accent,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'ЧТЕНИЕ ДНЯ',
@@ -72,8 +75,9 @@ class ReadingHeroBlock extends StatelessWidget {
               // я сегодня читаю», а не служебная подпись.
               Text(
                 card.body,
-                style: AppTheme.quoteStyle(context)
-                    .copyWith(fontSize: 30, height: 1.2),
+                style: AppTheme.quoteStyle(
+                  context,
+                ).copyWith(fontSize: 30, height: 1.2),
               ),
               const SizedBox(height: 8),
               Text(

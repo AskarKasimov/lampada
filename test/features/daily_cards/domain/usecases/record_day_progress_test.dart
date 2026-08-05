@@ -7,9 +7,7 @@ import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/usecases/record_card_read.dart';
 
-const _cards = [
-  DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
-];
+const _cards = [DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's')];
 
 const _fresh = TodayCards(cards: _cards);
 final _stale = TodayCards(cards: _cards, staleDate: DateTime(2026, 7, 19));
@@ -44,12 +42,16 @@ void main() {
     test('свежая сессия — карточка засчитывается', () async {
       final repo = _SpyRepository();
 
-      final result =
-          await RecordCardRead(repo)(CardType.quote, session: _fresh);
+      final result = await RecordCardRead(repo)(
+        CardType.quote,
+        session: _fresh,
+      );
 
       expect(repo.calls, ['markRead']);
-      expect((result as Success<DayProgress>).value.readTypes,
-          contains(CardType.quote));
+      expect(
+        (result as Success<DayProgress>).value.readTypes,
+        contains(CardType.quote),
+      );
     });
 
     test('свежая сессия зажигает сегодняшний день', () async {
@@ -57,18 +59,24 @@ void main() {
       // делает день состоявшимся (§1).
       final repo = _SpyRepository();
 
-      final result =
-          await RecordCardRead(repo)(CardType.quote, session: _fresh);
+      final result = await RecordCardRead(repo)(
+        CardType.quote,
+        session: _fresh,
+      );
 
-      expect((result as Success<DayProgress>).value.isLit(DateTime.now()),
-          isTrue);
+      expect(
+        (result as Success<DayProgress>).value.isLit(DateTime.now()),
+        isTrue,
+      );
     });
 
     test('устаревшая сессия — прогресс не пишется', () async {
       final repo = _SpyRepository();
 
-      final result =
-          await RecordCardRead(repo)(CardType.quote, session: _stale);
+      final result = await RecordCardRead(repo)(
+        CardType.quote,
+        session: _stale,
+      );
 
       expect(repo.calls, isNot(contains('markRead')));
       expect((result as Success<DayProgress>).value.readTypes, isEmpty);
@@ -79,23 +87,31 @@ void main() {
       // было бы тихой неправдой.
       final repo = _SpyRepository();
 
-      final result =
-          await RecordCardRead(repo)(CardType.quote, session: _stale);
+      final result = await RecordCardRead(repo)(
+        CardType.quote,
+        session: _stale,
+      );
 
       expect((result as Success<DayProgress>).value.visitedDays, isEmpty);
     });
 
-    test('устаревшая сессия отдаёт актуальный прогресс, а не пустышку',
-        () async {
-      final repo = _SpyRepository();
-      // День уже частично пройден по свежим карточкам.
-      await RecordCardRead(repo)(CardType.quote, session: _fresh);
+    test(
+      'устаревшая сессия отдаёт актуальный прогресс, а не пустышку',
+      () async {
+        final repo = _SpyRepository();
+        // День уже частично пройден по свежим карточкам.
+        await RecordCardRead(repo)(CardType.quote, session: _fresh);
 
-      final result =
-          await RecordCardRead(repo)(CardType.advice, session: _stale);
+        final result = await RecordCardRead(repo)(
+          CardType.advice,
+          session: _stale,
+        );
 
-      expect((result as Success<DayProgress>).value.readTypes,
-          contains(CardType.quote));
-    });
+        expect(
+          (result as Success<DayProgress>).value.readTypes,
+          contains(CardType.quote),
+        );
+      },
+    );
   });
 }

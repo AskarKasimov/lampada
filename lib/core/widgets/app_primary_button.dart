@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 /// «Дальше»/«Готово» на карточках и «Начать»/«Продолжить» на Home.
 class AppPrimaryButton extends StatelessWidget {
   const AppPrimaryButton({
-    super.key,
     required this.label,
     required this.color,
     required this.onPressed,
+    super.key,
     this.horizontalPadding = 40,
   });
 
@@ -21,7 +21,10 @@ class AppPrimaryButton extends StatelessWidget {
     return FilledButton(
       style: FilledButton.styleFrom(
         backgroundColor: color,
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 14),
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: 14,
+        ),
         shape: const StadiumBorder(),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),

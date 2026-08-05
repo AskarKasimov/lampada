@@ -24,8 +24,7 @@ class BookmarksScreen extends ConsumerWidget {
         if (bookmarks.isEmpty) return const BookmarksEmptyView();
 
         return ListView.separated(
-          padding:
-              const EdgeInsets.fromLTRB(24, 28, 24, kFloatingNavInset),
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, kFloatingNavInset),
           itemCount: bookmarks.length + 1,
           separatorBuilder: (context, index) => index == 0
               ? const SizedBox.shrink()

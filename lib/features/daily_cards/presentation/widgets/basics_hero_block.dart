@@ -11,10 +11,10 @@ const basicsCourseTitle = 'Основы веры';
 /// открытого календарного дня.
 class BasicsHeroBlock extends StatelessWidget {
   const BasicsHeroBlock({
-    super.key,
     required this.card,
     required this.isRead,
     required this.onTap,
+    super.key,
   });
 
   final DayCard card;

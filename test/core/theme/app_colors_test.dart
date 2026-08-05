@@ -15,22 +15,30 @@ void main() {
       isNot(AppColorsExtension.dark.accent),
     );
     for (final colors in [AppColorsExtension.light, AppColorsExtension.dark]) {
-      expect(colors.accent.r, greaterThan(colors.accent.b),
-          reason: 'акцент должен остаться тёплым');
+      expect(
+        colors.accent.r,
+        greaterThan(colors.accent.b),
+        reason: 'акцент должен остаться тёплым',
+      );
     }
   });
 
   testWidgets(
-      'AppColorsExtension.of возвращает light без зарегистрированной темы',
-      (tester) async {
-    late BuildContext capturedContext;
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(builder: (context) {
-        capturedContext = context;
-        return const SizedBox.shrink();
-      }),
-    ));
+    'AppColorsExtension.of возвращает light без зарегистрированной темы',
+    (tester) async {
+      late BuildContext capturedContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              capturedContext = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
 
-    expect(AppColorsExtension.of(capturedContext), AppColorsExtension.light);
-  });
+      expect(AppColorsExtension.of(capturedContext), AppColorsExtension.light);
+    },
+  );
 }

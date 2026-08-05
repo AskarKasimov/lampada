@@ -39,7 +39,7 @@ abstract interface class DayCardsRemoteDatasource {
 /// только страница, где не нашлось ни одной секции.
 class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   AzbykaDayCardsRemoteDatasource({http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   final http.Client _client;
 
@@ -96,9 +96,11 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         throw const FormatException('ни одной секции дня на странице');
       }
 
-      netLog('разобрано ${cards.length} карточек '
-          '(${cards.map((c) => c.type).join(', ')}) '
-          'за ${elapsed.elapsedMilliseconds}мс суммарно');
+      netLog(
+        'разобрано ${cards.length} карточек '
+        '(${cards.map((c) => c.type).join(', ')}) '
+        'за ${elapsed.elapsedMilliseconds}мс суммарно',
+      );
       return cards;
     } on FormatException catch (e) {
       // Вёрстка azbyka.ru поменялась — ретраить бессмысленно,
@@ -200,8 +202,9 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   /// показываем только Евангелие дня.
   static const _gospelSlugs = {'Mt', 'Mk', 'Lk', 'Jn'};
 
-  static final _referencePattern =
-      RegExp(r'\?([A-Za-z0-9]+)\.(\d+:\d+(?:[-–]\d+(?::\d+)?)?)');
+  static final _referencePattern = RegExp(
+    r'\?([A-Za-z0-9]+)\.(\d+:\d+(?:[-–]\d+(?::\d+)?)?)',
+  );
 
   static bool _isGospelLink(Element link) {
     final match = _referencePattern.firstMatch(link.attributes['href'] ?? '');
@@ -230,8 +233,9 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     }
     // Второй абзац с автором необязателен: цитата без подписи — всё ещё
     // цитата, а индекс без проверки падал бы на такой вёрстке.
-    final author =
-        paragraphs.length > 1 ? paragraphs[1].querySelector('a')?.text.trim() : null;
+    final author = paragraphs.length > 1
+        ? paragraphs[1].querySelector('a')?.text.trim()
+        : null;
     return DayCardDto(
       id: 'quote-$dateStr',
       type: 'quote',
@@ -300,8 +304,10 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   /// <br> не даёт пробела в Element.text — заменяем на \n, иначе соседние
   /// предложения слипаются.
   static String _textWithBreaks(Element el) {
-    final withBreaks = el.innerHtml
-        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+    final withBreaks = el.innerHtml.replaceAll(
+      RegExp(r'<br\s*/?>', caseSensitive: false),
+      '\n',
+    );
     return html_parser.parseFragment(withBreaks).text?.trim() ?? '';
   }
 }

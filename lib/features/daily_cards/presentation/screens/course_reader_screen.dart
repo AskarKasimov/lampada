@@ -18,7 +18,7 @@ const _dismissVelocity = 700.0;
 /// Нулевая страница — текущая тема. Движение вправо открывает только уже
 /// пройденные темы, поэтому будущие части курса здесь недоступны.
 class CourseReaderScreen extends ConsumerStatefulWidget {
-  const CourseReaderScreen({super.key, required this.currentTopic});
+  const CourseReaderScreen({required this.currentTopic, super.key});
 
   final DayCard currentTopic;
 
@@ -81,11 +81,8 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     return ref
         .watch(courseTopicByNumberProvider(topic))
         .when(
-          data: (card) => CardContent(
-            key: ValueKey(card.id),
-            card: card,
-            showBadge: false,
-          ),
+          data: (card) =>
+              CardContent(key: ValueKey(card.id), card: card, showBadge: false),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => Center(
             child: Column(

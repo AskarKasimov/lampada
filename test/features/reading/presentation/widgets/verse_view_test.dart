@@ -6,8 +6,10 @@ import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 
 const _verse = Verse(number: 1, chapter: 10, text: 'Истинно говорю вам');
 
-Widget _app(Widget child) =>
-    MaterialApp(theme: AppTheme.light, home: Scaffold(body: Center(child: child)));
+Widget _app(Widget child) => MaterialApp(
+  theme: AppTheme.light,
+  home: Scaffold(body: Center(child: child)),
+);
 
 void main() {
   testWidgets('у стиха с толкованием есть кнопка перехода', (tester) async {
@@ -22,8 +24,9 @@ void main() {
     expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
   });
 
-  testWidgets('без толкования кнопки нет — обещать пустоту нельзя',
-      (tester) async {
+  testWidgets('без толкования кнопки нет — обещать пустоту нельзя', (
+    tester,
+  ) async {
     await tester.pumpWidget(_app(const VerseView(verse: _verse)));
 
     expect(find.byType(VerseInterpretationButton), findsNothing);

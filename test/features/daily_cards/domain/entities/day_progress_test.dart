@@ -8,11 +8,11 @@ final _today = DateTime(2026, 7, 28);
 /// Дни активности заданием «сколько суток назад» — так условие теста читается
 /// как сценарий, а не как список дат.
 DayProgress _progressDaysAgo(List<int> daysAgo) => DayProgress(
-      readTypes: const {},
-      visitedDays: daysAgo
-          .map((d) => dateKey(_today.subtract(Duration(days: d))))
-          .toSet(),
-    );
+  readTypes: const {},
+  visitedDays: daysAgo
+      .map((d) => dateKey(_today.subtract(Duration(days: d))))
+      .toSet(),
+);
 
 void main() {
   group('серия «Лампадки»', () {
@@ -83,8 +83,7 @@ void main() {
       final progress = DayProgress(
         readTypes: const {},
         visitedDays: {
-          for (var i = 0; i < 4; i++)
-            dateKey(dst.subtract(Duration(days: i))),
+          for (var i = 0; i < 4; i++) dateKey(dst.subtract(Duration(days: i))),
         },
       );
 

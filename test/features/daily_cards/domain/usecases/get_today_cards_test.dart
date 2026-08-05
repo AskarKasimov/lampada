@@ -13,20 +13,14 @@ class _FakeRepository implements DayCardsRepository {
   Future<Result<TodayCards>> getCardsFor(
     DateTime date, {
     bool forceRefresh = false,
-  }) async =>
-      Success(TodayCards(cards: cards));
+  }) async => Success(TodayCards(cards: cards));
 }
 
-DayCard _card(CardType type) => DayCard(
-      id: type.name,
-      type: type,
-      body: 'b',
-      source: 's',
-    );
+DayCard _card(CardType type) =>
+    DayCard(id: type.name, type: type, body: 'b', source: 's');
 
 void main() {
-  test(
-      'возвращает карточки строго в порядке '
+  test('возвращает карточки строго в порядке '
       'quote → advice → basics → reading → question', () async {
     // Репозиторий отдаёт вперемешку — usecase обязан отсортировать.
     final repo = _FakeRepository([

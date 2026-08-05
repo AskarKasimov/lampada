@@ -12,10 +12,10 @@ import '../theme/card_type_style.dart';
 /// с концом.
 class DayCardBlock extends StatelessWidget {
   const DayCardBlock({
-    super.key,
     required this.card,
     required this.isRead,
     required this.onTap,
+    super.key,
   });
 
   final DayCard card;

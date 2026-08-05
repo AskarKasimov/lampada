@@ -26,9 +26,9 @@ class AzbykaReadingRepository implements ReadingRepository {
     Duration budget = const Duration(seconds: 12),
     List<Duration> retryDelays = const [Duration(seconds: 1)],
     NetworkStatus? networkStatus,
-  })  : _budget = budget,
-        _retryDelays = retryDelays,
-        _networkStatus = networkStatus;
+  }) : _budget = budget,
+       _retryDelays = retryDelays,
+       _networkStatus = networkStatus;
 
   final ReadingRemoteDatasource _remote;
   final SharedPreferences _prefs;
@@ -107,9 +107,7 @@ class AzbykaReadingRepository implements ReadingRepository {
     final raw = _prefs.getString('$_cachePrefix$reference');
     if (raw == null) return null;
     try {
-      return DailyReadingDto.fromJson(
-        jsonDecode(raw) as Map<String, dynamic>,
-      );
+      return DailyReadingDto.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } on Exception catch (e) {
       // Кэш от прошлой версии схемы — не повод падать, просто сходим в сеть.
       netLog('кэш чтения $reference не разобрался, игнорируем: $e');

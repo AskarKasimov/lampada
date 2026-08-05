@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/stale_cache_notice.dart';
 
 void main() {
-  testWidgets('показывает дату кэша по-русски и зовёт onRefresh', (tester) async {
+  testWidgets('показывает дату кэша по-русски и зовёт onRefresh', (
+    tester,
+  ) async {
     var refreshed = 0;
     await tester.pumpWidget(
       MaterialApp(

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 /// «Пройти снова», «Повторить» после ошибки загрузки.
 class AppLinkButton extends StatelessWidget {
   const AppLinkButton({
-    super.key,
     required this.label,
     required this.color,
     required this.onPressed,
+    super.key,
     this.fontSize = 13,
   });
 

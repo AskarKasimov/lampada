@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/theme/app_theme.dart';
@@ -18,21 +16,25 @@ import 'package:lampada/features/profile/presentation/screens/profile_screen.dar
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
   @override
   Future<Result<TodayCards>> getCardsFor(
     DateTime date, {
     bool forceRefresh = false,
-  }) async =>
-      Success(TodayCards(cards: const [
+  }) async => Success(
+    TodayCards(
+      cards: const [
         DayCard(
           id: 'quote',
           type: CardType.quote,
           body: 'Мысль дня',
           source: 'Источник',
         ),
-      ]));
+      ],
+    ),
+  );
 }
 
 class _FakeProgressRepository implements DayProgressRepository {
@@ -51,7 +53,6 @@ class _FakeProgressRepository implements DayProgressRepository {
     _visited = {..._visited, dateKey(DateTime.now())};
     return Success(_current);
   }
-
 }
 
 void main() {
@@ -66,26 +67,23 @@ void main() {
 
   /// IndexedStack строит все четыре вкладки сразу, поэтому Профиль читает
   /// настройку темы уже на старте — prefs нужны даже тесту про «Сегодня».
-  // Тип списка выводится: flutter_riverpod не реэкспортит `Override`,
-  // поэтому написать его явно нельзя.
-  overrides() => [
-        dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
-        dayProgressRepositoryProvider
-            .overrideWithValue(_FakeProgressRepository()),
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ];
-
   Widget buildApp() => ProviderScope(
-        overrides: overrides(),
-        child: MaterialApp(theme: AppTheme.light, home: const AppShell()),
-      );
+    overrides: [
+      dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
+      dayProgressRepositoryProvider.overrideWithValue(
+        _FakeProgressRepository(),
+      ),
+      sharedPreferencesProvider.overrideWithValue(prefs),
+    ],
+    child: MaterialApp(theme: AppTheme.light, home: const AppShell()),
+  );
 
   /// Иконка закладки живёт и в навигации, и кнопкой сохранения на карточке —
   /// искать её по всему дереву неоднозначно.
   Finder tabIcon(IconData icon) => find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.byIcon(icon),
-      );
+    of: find.byType(FloatingNavBar),
+    matching: find.byIcon(icon),
+  );
 
   // StreakFlame крутится бесконечно — pumpAndSettle никогда не осядет.
   // Прокачиваем с запасом: переходы маршрутов длиннее анимации карточки,
@@ -104,8 +102,9 @@ void main() {
     await settle(tester);
   }
 
-  testWidgets('стартует на «Сегодня» — карточка, а не экран-прослойка',
-      (tester) async {
+  testWidgets('стартует на «Сегодня» — карточка, а не экран-прослойка', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
@@ -115,8 +114,9 @@ void main() {
     expect(find.text('Мысль дня'), findsOneWidget);
   });
 
-  testWidgets('в навигации три вкладки: календарь свёрнут в полоску недели',
-      (tester) async {
+  testWidgets('в навигации три вкладки: календарь свёрнут в полоску недели', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
@@ -127,8 +127,9 @@ void main() {
     expect(tabIcon(Icons.person_outline), findsOneWidget);
   });
 
-  testWidgets('подписи видны у всех вкладок, не только у активной',
-      (tester) async {
+  testWidgets('подписи видны у всех вкладок, не только у активной', (
+    tester,
+  ) async {
     // Без ярлыков неочевидно, куда ведут иконки; активную вкладку отличает
     // акцентный цвет и насыщенность, а не наличие подписи.
     await tester.pumpWidget(buildApp());
@@ -147,8 +148,9 @@ void main() {
     }
   });
 
-  testWidgets('навигация плавает поверх контента, а не режет экран',
-      (tester) async {
+  testWidgets('навигация плавает поверх контента, а не режет экран', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
@@ -157,7 +159,10 @@ void main() {
     // лежит в Stack над контентом и не сдвигает его вверх.
     expect(find.byType(NavigationBar), findsNothing);
     expect(
-      find.ancestor(of: find.byType(FloatingNavBar), matching: find.byType(Stack)),
+      find.ancestor(
+        of: find.byType(FloatingNavBar),
+        matching: find.byType(Stack),
+      ),
       findsWidgets,
     );
 
@@ -174,7 +179,11 @@ void main() {
     final screen = tester.getSize(find.byType(AppShell));
     expect(capsule.left, greaterThan(0), reason: 'капсула прижата к краю');
     expect(capsule.right, lessThan(screen.width));
-    expect(capsule.bottom, lessThan(screen.height), reason: 'капсула не в самом низу');
+    expect(
+      capsule.bottom,
+      lessThan(screen.height),
+      reason: 'капсула не в самом низу',
+    );
   });
 
   testWidgets('переключение вкладки меняет содержимое', (tester) async {
@@ -195,9 +204,18 @@ void main() {
     expect(find.byType(BookmarksScreen), findsOneWidget);
   });
 
-  testWidgets('выбранная дата переживает уход на другую вкладку',
-      (tester) async {
-    final container = ProviderContainer(overrides: overrides());
+  testWidgets('выбранная дата переживает уход на другую вкладку', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
+        dayProgressRepositoryProvider.overrideWithValue(
+          _FakeProgressRepository(),
+        ),
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+    );
     addTearDown(container.dispose);
 
     await tester.pumpWidget(
@@ -224,10 +242,20 @@ void main() {
     expect(dateKey(container.read(selectedDateProvider)), dateKey(other));
   });
 
-  testWidgets('selectedTabProvider переключает вкладку снаружи', (tester) async {
+  testWidgets('selectedTabProvider переключает вкладку снаружи', (
+    tester,
+  ) async {
     // На этом держится FR-015: тап по пушу обязан открыть «Сегодня»,
     // где бы юзер ни был в прошлый раз.
-    final container = ProviderContainer(overrides: overrides());
+    final container = ProviderContainer(
+      overrides: [
+        dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
+        dayProgressRepositoryProvider.overrideWithValue(
+          _FakeProgressRepository(),
+        ),
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+    );
     addTearDown(container.dispose);
 
     await tester.pumpWidget(

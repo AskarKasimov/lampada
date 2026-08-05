@@ -2,9 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 
-const _cards = [
-  DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
-];
+const _cards = [DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's')];
 
 void main() {
   test('без staleDate набор считается свежим', () {
