@@ -10,7 +10,10 @@ class _FakeRepository implements DayCardsRepository {
   final List<DayCard> cards;
 
   @override
-  Future<Result<TodayCards>> getCardsFor(DateTime date) async =>
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async =>
       Success(TodayCards(cards: cards));
 }
 

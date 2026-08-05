@@ -336,6 +336,20 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   /// хранит типы, прочитанные сегодня, и на чужой дате означала бы не то.
   bool _isRead(DayCard card) => _isToday && progress.isRead(card.type);
 
+  /// Обходим кэш репозитория, а после удачного ответа сбрасываем Riverpod,
+  /// чтобы экран прочитал уже перезаписанную запись. Старый кэш до успеха не
+  /// удаляем: pull-to-refresh в офлайне не должен превращать готовый день в
+  /// пустой экран.
+  Future<void> _refresh() async {
+    final result = await ref.read(getTodayCardsProvider)(
+      date,
+      forceRefresh: true,
+    );
+    if (result is Success<TodayCards>) {
+      ref.invalidate(dayCardsProvider(dateKey(date)));
+    }
+  }
+
   /// Каждый вход открывает первую непрочитанную карточку дня на весь экран:
   /// первый раз это цитата, второй — совет, если до него не дошли, и так далее.
   ///
@@ -380,7 +394,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       );
     }
 
-    return ListView(
+    final blocks = ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       // Снизу оставляем место под плавающую капсулу навигации: контент
       // уходит под неё, и без запаса последний блок оказался бы закрыт.
       padding: const EdgeInsets.fromLTRB(
@@ -434,6 +449,10 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           ],
         ],
       ],
+    );
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: blocks,
     );
   }
 }

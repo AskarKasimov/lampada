@@ -67,7 +67,10 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   static const _minAttempt = Duration(milliseconds: 500);
 
   @override
-  Future<Result<TodayCards>> getCardsFor(DateTime date) async {
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async {
     final exact = _readCache(dateKey(date));
     netLog(
       'запрошено ${dateKey(date)}, в кэше '
@@ -75,7 +78,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       'бюджет ${_budget.inMilliseconds}мс, '
       'попыток максимум ${_retryDelays.length + 1}',
     );
-    if (exact != null) {
+    if (exact != null && !forceRefresh) {
       netLog('кэш за нужную дату — сеть не трогаем');
       return Success(TodayCards(cards: exact));
     }

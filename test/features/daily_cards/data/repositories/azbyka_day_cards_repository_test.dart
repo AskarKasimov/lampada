@@ -79,6 +79,13 @@ const _card = DayCardDto(
   source: 'source',
 );
 
+const _refreshedCard = DayCardDto(
+  id: 'quote-refreshed-2026-07-19',
+  type: 'quote',
+  body: 'обновлённый текст',
+  source: 'source',
+);
+
 Future<SharedPreferences> _emptyPrefs() async {
   SharedPreferences.setMockInitialValues({});
   return SharedPreferences.getInstance();
@@ -157,6 +164,21 @@ void main() {
     final today = (result as Success<TodayCards>).value;
     expect(today.cards.single.id, 'quote-2026-07-19');
     expect(today.staleDate, isNull);
+  });
+
+  test('принудительное обновление обходит кэш и заменяет его', () async {
+    final prefs = await _emptyPrefs();
+    await _repo(_FakeDatasource([_card]), prefs)
+        .getCardsFor(DateTime(2026, 7, 19));
+
+    final result = await _repo(_FakeDatasource([_refreshedCard]), prefs)
+        .getCardsFor(DateTime(2026, 7, 19), forceRefresh: true);
+
+    expect(result, isA<Success<TodayCards>>());
+    expect(
+      (result as Success<TodayCards>).value.cards.single.id,
+      'quote-refreshed-2026-07-19',
+    );
   });
 
   test('сеть упала + кэш только за другую дату → Failure', () async {

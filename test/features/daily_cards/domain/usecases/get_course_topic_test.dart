@@ -16,7 +16,10 @@ class _CourseProgressRepository implements CourseProgressRepository {
 
 class _StaleDayCardsRepository implements DayCardsRepository {
   @override
-  Future<Result<TodayCards>> getCardsFor(DateTime date) async => Success(
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async => Success(
     TodayCards(
       cards: const [
         DayCard(

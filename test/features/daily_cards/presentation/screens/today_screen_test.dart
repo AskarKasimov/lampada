@@ -66,15 +66,26 @@ class _FakeReadingRepository implements ReadingRepository {
 }
 
 class _FakeCardsRepository implements DayCardsRepository {
-  _FakeCardsRepository({this.cards = _cards});
+  _FakeCardsRepository({this.cards = _cards, this.refreshedCards});
 
   final requested = <String>[];
   final List<DayCard> cards;
+  final Map<String, List<DayCard>>? refreshedCards;
+  final _cachedCards = <String, List<DayCard>>{};
 
   @override
-  Future<Result<TodayCards>> getCardsFor(DateTime date) async {
-    requested.add(dateKey(date));
-    return Success(TodayCards(cards: cards));
+  Future<Result<TodayCards>> getCardsFor(
+    DateTime date, {
+    bool forceRefresh = false,
+  }) async {
+    final key = dateKey(date);
+    requested.add(key);
+    if (forceRefresh && refreshedCards?[key] != null) {
+      _cachedCards[key] = refreshedCards![key]!;
+    }
+    return Success(
+      TodayCards(cards: _cachedCards[key] ?? cards),
+    );
   }
 }
 
@@ -223,6 +234,36 @@ void main() {
         list.padding,
         const EdgeInsets.fromLTRB(20, 12, 20, kFloatingNavInset + 32),
       );
+    });
+
+    testWidgets('pull-to-refresh запрашивает свежие карточки дня',
+        (tester) async {
+      const refreshed = DayCard(
+        id: 'quote-refreshed',
+        type: CardType.quote,
+        body: 'Свежая карточка',
+        source: 'Источник 1',
+      );
+      final today = dateKey(DateTime.now());
+      final progress = _FakeProgressRepository()
+        ..seedRead(_cards.map((card) => card.type).toSet());
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            refreshedCards: {
+              today: [refreshed, ..._cards.skip(1)],
+            },
+          ),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Первая карточка'), findsOneWidget);
+      await tester.fling(find.byType(ListView), const Offset(0, 300), 1000);
+      await settle(tester);
+
+      expect(find.text('Свежая карточка'), findsOneWidget);
     });
 
     testWidgets('прочитанные блоки видны и после прохождения дня',
