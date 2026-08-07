@@ -21,14 +21,14 @@ DayCard _card(CardType type) =>
 
 void main() {
   test('возвращает карточки строго в порядке '
-      'quote → advice → basics → reading → question', () async {
+      'quote → advice → parable → reading → basics', () async {
     // Репозиторий отдаёт вперемешку — usecase обязан отсортировать.
     final repo = _FakeRepository([
       _card(CardType.reading),
       _card(CardType.quote),
       _card(CardType.basics),
       _card(CardType.advice),
-      _card(CardType.question),
+      _card(CardType.parable),
     ]);
     final usecase = GetTodayCards(repo);
 
@@ -36,13 +36,14 @@ void main() {
 
     expect(result, isA<Success<TodayCards>>());
     final cards = (result as Success<TodayCards>).value.cards;
+    // Этот же порядок — очередь автооткрытия при входе в приложение.
+    // Первые три составляют сессию дня, дальше идут отдельные треки.
     expect(cards.map((c) => c.type).toList(), [
       CardType.quote,
       CardType.advice,
-      CardType.basics,
-      // После чтения остаётся вопрос для размышления.
+      CardType.parable,
       CardType.reading,
-      CardType.question,
+      CardType.basics,
     ]);
   });
 }

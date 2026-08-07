@@ -10,5 +10,6 @@ extension DayCardDtoMapper on DayCardDto {
     body: body,
     source: source,
     reference: reference,
+    title: title,
   );
 }

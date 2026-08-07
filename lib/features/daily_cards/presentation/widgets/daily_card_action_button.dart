@@ -18,22 +18,6 @@ class DailyCardNextButton extends StatelessWidget {
       AppPrimaryButton(label: 'Дальше', color: color, onPressed: onPressed);
 }
 
-/// Карточка чтения — уводит в постишный ридер, а не листает дальше.
-class DailyCardReadButton extends StatelessWidget {
-  const DailyCardReadButton({
-    required this.color,
-    required this.onPressed,
-    super.key,
-  });
-
-  final Color color;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) =>
-      AppPrimaryButton(label: 'Читать', color: color, onPressed: onPressed);
-}
-
 /// Последняя карточка дня — завершает сессию.
 class DailyCardDoneButton extends StatelessWidget {
   const DailyCardDoneButton({

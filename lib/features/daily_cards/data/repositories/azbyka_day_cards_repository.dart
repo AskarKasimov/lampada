@@ -10,7 +10,7 @@ import '../../domain/entities/day_card.dart';
 import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../datasources/day_cards_remote_datasource.dart';
-import '../dto/day_card_dto.dart';
+import '../dto/day_dto.dart';
 import '../mappers/day_card_mapper.dart';
 
 /// Скрейпит день через [DayCardsRemoteDatasource]. Кэш за нужную дату —
@@ -53,11 +53,13 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   /// НА КЭШЕ, не доходя до сети. Ровно это и случилось, когда убрали
   /// «вопрос дня»: приложение показывало офлайн-экран при живом интернете.
   /// Меняется набор [CardType] или поля DTO — версия растёт.
-  static const _cachePrefix = 'day_cards_cache_v3:';
+  /// v4: запись стала объектом (карточки + имя дня) вместо голого массива
+  /// карточек.
+  static const _cachePrefix = 'day_cards_cache_v4:';
 
   /// Даты в кэше, старые слева. Отдельный индекс, потому что SharedPreferences
   /// не умеет перечислять ключи по префиксу без чтения всего хранилища.
-  static const _cacheIndexKey = 'day_cards_cached_dates_v3';
+  static const _cacheIndexKey = 'day_cards_cached_dates_v4';
 
   /// Потолок кэша. Дни хранят распарсенный текст, не разметку, так что это
   /// сотни килобайт — но расти бесконечно ему всё равно незачем.
@@ -80,7 +82,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     );
     if (exact != null && !forceRefresh) {
       netLog('кэш за нужную дату — сеть не трогаем');
-      return Success(TodayCards(cards: exact));
+      return Success(exact);
     }
 
     if (_networkStatus != null && !await _networkStatus.isOnline()) {
@@ -110,16 +112,16 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
           'попытка ${attempt + 1}, остаток бюджета '
           '${left.inMilliseconds}мс',
         );
-        final dtos = await _remote.fetch(
+        final dto = await _remote.fetch(
           date,
           timeout: left < _attemptTimeout ? left : _attemptTimeout,
         );
-        await _writeCache(date, dtos);
+        await _writeCache(date, dto);
         netLog(
           'успех на попытке ${attempt + 1} за '
           '${elapsed.elapsedMilliseconds}мс — отдаём свежие',
         );
-        return Success(TodayCards(cards: _toEntities(dtos)));
+        return Success(_toEntity(dto));
       } on RemoteFetchException catch (e) {
         lastKind = e.kind;
         lastCause = e.cause;
@@ -155,18 +157,19 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     );
   }
 
-  static List<DayCard> _toEntities(List<DayCardDto> dtos) =>
-      dtos.map((dto) => dto.toEntity()).toList();
+  static TodayCards _toEntity(DayDto dto) => TodayCards(
+    cards: dto.cards.map((c) => c.toEntity()).toList(),
+    week: dto.week,
+    title: dto.title,
+    isFast: dto.isFast,
+  );
 
   List<String> _cachedDates() =>
       _prefs.getStringList(_cacheIndexKey) ?? const [];
 
-  Future<void> _writeCache(DateTime date, List<DayCardDto> dtos) async {
+  Future<void> _writeCache(DateTime date, DayDto dto) async {
     final key = dateKey(date);
-    await _prefs.setString(
-      '$_cachePrefix$key',
-      jsonEncode(dtos.map((d) => d.toJson()).toList()),
-    );
+    await _prefs.setString('$_cachePrefix$key', jsonEncode(dto.toJson()));
 
     // Индекс держим отсортированным по дате: по нему же выбирается stale-день,
     // и «последний» должен значить «самый поздний», а не «записанный позже».
@@ -192,13 +195,13 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   /// `ArgumentError` — это `Error`, и он пролетал мимо `on Exception`. Так
   /// удаление «вопроса дня» превратило старую запись кэша в офлайн-экран при
   /// живом интернете: разбор падал, не доходя до сети.
-  List<DayCard>? _readCache(String key) {
+  TodayCards? _readCache(String key) {
     final raw = _prefs.getString('$_cachePrefix$key');
     if (raw == null) return null;
     try {
-      return (jsonDecode(raw) as List<dynamic>)
-          .map((c) => DayCardDto.fromJson(c as Map<String, dynamic>).toEntity())
-          .toList();
+      return _toEntity(
+        DayDto.fromJson(jsonDecode(raw) as Map<String, dynamic>),
+      );
     } catch (e) {
       netLog('кэш за $key не разобрался, игнорируем: $e');
       return null;

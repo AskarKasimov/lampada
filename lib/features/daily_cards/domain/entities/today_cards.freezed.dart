@@ -14,7 +14,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TodayCards {
 
- List<DayCard> get cards; DateTime? get staleDate;
+ List<DayCard> get cards; DateTime? get staleDate;/// Седмица церковного года: «Седмица 10-я по Пятидесятнице».
+ String? get week;/// Первая память дня: «Мц. Христи́ны Тирской».
+ String? get title;/// Постный ли день.
+ bool get isFast;
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +28,16 @@ $TodayCardsCopyWith<TodayCards> get copyWith => _$TodayCardsCopyWithImpl<TodayCa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TodayCards&&const DeepCollectionEquality().equals(other.cards, cards)&&(identical(other.staleDate, staleDate) || other.staleDate == staleDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TodayCards&&const DeepCollectionEquality().equals(other.cards, cards)&&(identical(other.staleDate, staleDate) || other.staleDate == staleDate)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cards),staleDate);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cards),staleDate,week,title,isFast);
 
 @override
 String toString() {
-  return 'TodayCards(cards: $cards, staleDate: $staleDate)';
+  return 'TodayCards(cards: $cards, staleDate: $staleDate, week: $week, title: $title, isFast: $isFast)';
 }
 
 
@@ -45,7 +48,7 @@ abstract mixin class $TodayCardsCopyWith<$Res>  {
   factory $TodayCardsCopyWith(TodayCards value, $Res Function(TodayCards) _then) = _$TodayCardsCopyWithImpl;
 @useResult
 $Res call({
- List<DayCard> cards, DateTime? staleDate
+ List<DayCard> cards, DateTime? staleDate, String? week, String? title, bool isFast
 });
 
 
@@ -62,11 +65,14 @@ class _$TodayCardsCopyWithImpl<$Res>
 
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? cards = null,Object? staleDate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? cards = null,Object? staleDate = freezed,Object? week = freezed,Object? title = freezed,Object? isFast = null,}) {
   return _then(_self.copyWith(
 cards: null == cards ? _self.cards : cards // ignore: cast_nullable_to_non_nullable
 as List<DayCard>,staleDate: freezed == staleDate ? _self.staleDate : staleDate // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,week: freezed == week ? _self.week : week // ignore: cast_nullable_to_non_nullable
+as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String?,isFast: null == isFast ? _self.isFast : isFast // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -151,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<DayCard> cards,  DateTime? staleDate)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<DayCard> cards,  DateTime? staleDate,  String? week,  String? title,  bool isFast)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TodayCards() when $default != null:
-return $default(_that.cards,_that.staleDate);case _:
+return $default(_that.cards,_that.staleDate,_that.week,_that.title,_that.isFast);case _:
   return orElse();
 
 }
@@ -172,10 +178,10 @@ return $default(_that.cards,_that.staleDate);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<DayCard> cards,  DateTime? staleDate)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<DayCard> cards,  DateTime? staleDate,  String? week,  String? title,  bool isFast)  $default,) {final _that = this;
 switch (_that) {
 case _TodayCards():
-return $default(_that.cards,_that.staleDate);case _:
+return $default(_that.cards,_that.staleDate,_that.week,_that.title,_that.isFast);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -192,10 +198,10 @@ return $default(_that.cards,_that.staleDate);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<DayCard> cards,  DateTime? staleDate)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<DayCard> cards,  DateTime? staleDate,  String? week,  String? title,  bool isFast)?  $default,) {final _that = this;
 switch (_that) {
 case _TodayCards() when $default != null:
-return $default(_that.cards,_that.staleDate);case _:
+return $default(_that.cards,_that.staleDate,_that.week,_that.title,_that.isFast);case _:
   return null;
 
 }
@@ -206,8 +212,8 @@ return $default(_that.cards,_that.staleDate);case _:
 /// @nodoc
 
 
-class _TodayCards implements TodayCards {
-  const _TodayCards({required final  List<DayCard> cards, this.staleDate}): _cards = cards;
+class _TodayCards extends TodayCards {
+  const _TodayCards({required final  List<DayCard> cards, this.staleDate, this.week, this.title, this.isFast = false}): _cards = cards,super._();
   
 
  final  List<DayCard> _cards;
@@ -218,6 +224,12 @@ class _TodayCards implements TodayCards {
 }
 
 @override final  DateTime? staleDate;
+/// Седмица церковного года: «Седмица 10-я по Пятидесятнице».
+@override final  String? week;
+/// Первая память дня: «Мц. Христи́ны Тирской».
+@override final  String? title;
+/// Постный ли день.
+@override@JsonKey() final  bool isFast;
 
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +241,16 @@ _$TodayCardsCopyWith<_TodayCards> get copyWith => __$TodayCardsCopyWithImpl<_Tod
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TodayCards&&const DeepCollectionEquality().equals(other._cards, _cards)&&(identical(other.staleDate, staleDate) || other.staleDate == staleDate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TodayCards&&const DeepCollectionEquality().equals(other._cards, _cards)&&(identical(other.staleDate, staleDate) || other.staleDate == staleDate)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_cards),staleDate);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_cards),staleDate,week,title,isFast);
 
 @override
 String toString() {
-  return 'TodayCards(cards: $cards, staleDate: $staleDate)';
+  return 'TodayCards(cards: $cards, staleDate: $staleDate, week: $week, title: $title, isFast: $isFast)';
 }
 
 
@@ -249,7 +261,7 @@ abstract mixin class _$TodayCardsCopyWith<$Res> implements $TodayCardsCopyWith<$
   factory _$TodayCardsCopyWith(_TodayCards value, $Res Function(_TodayCards) _then) = __$TodayCardsCopyWithImpl;
 @override @useResult
 $Res call({
- List<DayCard> cards, DateTime? staleDate
+ List<DayCard> cards, DateTime? staleDate, String? week, String? title, bool isFast
 });
 
 
@@ -266,11 +278,14 @@ class __$TodayCardsCopyWithImpl<$Res>
 
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? cards = null,Object? staleDate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? cards = null,Object? staleDate = freezed,Object? week = freezed,Object? title = freezed,Object? isFast = null,}) {
   return _then(_TodayCards(
 cards: null == cards ? _self._cards : cards // ignore: cast_nullable_to_non_nullable
 as List<DayCard>,staleDate: freezed == staleDate ? _self.staleDate : staleDate // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,week: freezed == week ? _self.week : week // ignore: cast_nullable_to_non_nullable
+as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String?,isFast: null == isFast ? _self.isFast : isFast // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

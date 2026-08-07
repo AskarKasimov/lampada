@@ -130,11 +130,13 @@ void main() {
     expect(progress.readTypes, {CardType.quote, CardType.advice});
   });
 
-  test('сохранённый вопрос дня остаётся прочитанным', () async {
+  test('прогресс с убранным «вопросом дня» не теряет остальное', () async {
+    // Не выдуманный `legacy`, а тип, который прямо сейчас лежит в prefs у всех,
+    // кто открывал приложение до замены вопроса на притчу.
     SharedPreferences.setMockInitialValues({
       'flutter.day_progress': jsonEncode({
         'date': dateKey(DateTime.now()),
-        'readTypes': ['question'],
+        'readTypes': ['quote', 'question'],
         'visitedDays': <String>[],
       }),
     });
@@ -144,6 +146,6 @@ void main() {
 
     expect(result, isA<Success<DayProgress>>());
     final progress = (result as Success<DayProgress>).value;
-    expect(progress.readTypes, {CardType.question});
+    expect(progress.readTypes, {CardType.quote});
   });
 }

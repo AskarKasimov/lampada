@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../reminders/presentation/widgets/reminder_scheduler.dart';
 import '../providers/shell_providers.dart';
 import '../widgets/floating_nav_bar.dart';
 
@@ -24,31 +25,33 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(selectedTabProvider);
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          SafeArea(
-            bottom: false,
-            child: IndexedStack(
-              index: tab.index,
-              children: const [
-                TodayScreen(),
-                BookmarksScreen(),
-                ProfileScreen(),
-              ],
+    return ReminderScheduler(
+      child: Scaffold(
+        body: Stack(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: IndexedStack(
+                index: tab.index,
+                children: const [
+                  TodayScreen(),
+                  BookmarksScreen(),
+                  ProfileScreen(),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: FloatingNavBar(
-              current: tab,
-              onSelect: (selected) =>
-                  ref.read(selectedTabProvider.notifier).select(selected),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: FloatingNavBar(
+                current: tab,
+                onSelect: (selected) =>
+                    ref.read(selectedTabProvider.notifier).select(selected),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

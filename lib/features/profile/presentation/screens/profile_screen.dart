@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../reminders/presentation/widgets/reminder_setting_tile.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../widgets/theme_mode_toggle_button.dart';
 
-/// Вкладка «Профиль»: настройки приложения. Напоминания приезжают вместе с
-/// пушами; аккаунта и подписки в бесплатном пилоте нет вовсе (FR-024).
+/// Вкладка «Профиль»: настройки приложения. Аккаунта и подписки
+/// в бесплатном пилоте нет вовсе (FR-024).
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -26,6 +27,8 @@ class ProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         const ThemeModeSettingTile(),
+        const SizedBox(height: 24),
+        const ReminderSettingTile(),
         const SizedBox(height: 32),
         // FR-025: контент принадлежит Азбуке, и это должно быть видно
         // не только мелкой подписью под карточкой.
