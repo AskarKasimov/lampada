@@ -47,8 +47,20 @@ class BookmarksScreen extends ConsumerWidget {
             final bookmark = bookmarks[index - 1];
             return BookmarkTile(
               bookmark: bookmark,
-              onRemove: () =>
-                  ref.read(bookmarksProvider.notifier).remove(bookmark.id),
+              onRemove: () async {
+                final removed = await ref
+                    .read(bookmarksProvider.notifier)
+                    .remove(bookmark.id);
+                if (!removed && context.mounted) {
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                    const SnackBar(
+                      content: Text('Не удалось удалить закладку'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+                return removed;
+              },
             );
           },
         );

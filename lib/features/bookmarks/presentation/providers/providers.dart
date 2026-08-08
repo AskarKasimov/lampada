@@ -41,19 +41,22 @@ class BookmarksNotifier extends AsyncNotifier<List<Bookmark>> {
 
   bool isSaved(String id) => (state.value ?? const []).any((b) => b.id == id);
 
-  Future<void> toggle(Bookmark bookmark) => _apply(
+  Future<bool> toggle(Bookmark bookmark) => _apply(
     ref.read(toggleBookmarkProvider)(bookmark, isSaved: isSaved(bookmark.id)),
   );
 
-  Future<void> remove(String id) =>
+  Future<bool> remove(String id) =>
       _apply(ref.read(removeBookmarkProvider)(id));
 
-  Future<void> _apply(Future<Result<List<Bookmark>>> op) async {
+  /// При неудаче оставляем предыдущий список на экране: локальный сбой не
+  /// должен превращать «Копилку» в пустое состояние и стирать контекст.
+  Future<bool> _apply(Future<Result<List<Bookmark>>> op) async {
     switch (await op) {
       case Success(value: final list):
         state = AsyncData(list);
-      case Failure(failure: final f):
-        state = AsyncError(f, StackTrace.current);
+        return true;
+      case Failure():
+        return false;
     }
   }
 }
