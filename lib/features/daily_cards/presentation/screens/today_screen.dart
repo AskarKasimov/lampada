@@ -310,6 +310,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
 
   bool get _isToday => dateKey(date) == dateKey(DateTime.now());
 
+  bool get _isFuture => dateKey(date).compareTo(dateKey(DateTime.now())) > 0;
+
   bool get _recordProgress => _isToday;
 
   /// Карточка чтения своей страницы в просмотрщике не имеет — экран с одной
@@ -483,6 +485,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             DayCardBlock(
               card: card,
               isRead: _isRead(card),
+              showReadStatus: !_isFuture,
               onTap: () => _open(context, ref, card),
             ),
             if (card != rest.last) const SizedBox(height: 12),

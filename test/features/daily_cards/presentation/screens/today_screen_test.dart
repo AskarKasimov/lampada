@@ -589,6 +589,23 @@ void main() {
       );
     });
 
+    testWidgets('на будущем дне не показывает статусы прочтения', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+      await settle(tester);
+
+      final futureDayCards = find.byWidgetPredicate(
+        (widget) => widget is DayCardBlock && !widget.showReadStatus,
+      );
+      expect(futureDayCards.hitTestable(), findsWidgets);
+    });
+
     testWidgets('скрывает календарные основы на другом дне', (tester) async {
       final progress = _FakeProgressRepository()
         ..seedRead({

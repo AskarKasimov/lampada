@@ -15,11 +15,13 @@ class DayCardBlock extends StatelessWidget {
     required this.card,
     required this.isRead,
     required this.onTap,
+    this.showReadStatus = true,
     super.key,
   });
 
   final DayCard card;
   final bool isRead;
+  final bool showReadStatus;
   final VoidCallback onTap;
 
   /// Превью в две строки. Карточка чтения текста не несёт — там лежит
@@ -56,13 +58,15 @@ class DayCardBlock extends StatelessWidget {
                     letterSpacing: 0.2,
                   ),
                   const Spacer(),
-                  // Прочитанное помечаем тихой галочкой, а не вычёркиванием:
-                  // это не список дел, к блоку можно вернуться.
-                  Icon(
-                    isRead ? Icons.check_circle : Icons.circle_outlined,
-                    size: 17,
-                    color: isRead ? style.accent : colors.chipUnreadBorder,
-                  ),
+                  if (showReadStatus)
+                    // Прочитанное помечаем тихой галочкой, а не
+                    // вычёркиванием: это не список дел, к блоку можно
+                    // вернуться.
+                    Icon(
+                      isRead ? Icons.check_circle : Icons.circle_outlined,
+                      size: 17,
+                      color: isRead ? style.accent : colors.chipUnreadBorder,
+                    ),
                 ],
               ),
               const SizedBox(height: 10),
