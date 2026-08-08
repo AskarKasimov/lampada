@@ -30,49 +30,57 @@ void main() {
     expect(valueOf(result), 1);
   });
 
-  test('продвижение даёт следующую тему', () async {
+  test('прочтение темы не меняет её в тот же день', () async {
     final r = repo(await prefsWith());
 
-    expect(valueOf(await r.advanceForToday()), 2);
-    expect(valueOf(await r.currentTopic()), 2);
+    await r.markCurrentTopicRead();
+
+    expect(valueOf(await r.currentTopic()), 1);
   });
 
-  test('за один день курс сдвигается только раз', () async {
-    // Иначе перечитывание карточки пролистывало бы курс вперёд.
-    final r = repo(await prefsWith());
+  test(
+    'на следующий день после прочтения открывается следующая тема',
+    () async {
+      final r = repo(await prefsWith());
 
-    await r.advanceForToday();
-    await r.advanceForToday();
-    await r.advanceForToday();
+      await r.markCurrentTopicRead();
+      now = DateTime(2026, 7, 29);
 
-    expect(valueOf(await r.currentTopic()), 2);
-  });
+      expect(valueOf(await r.currentTopic()), 2);
+      expect(valueOf(await r.currentTopic()), 2);
+    },
+  );
 
-  test('на следующий день курс снова сдвигается', () async {
+  test('пропущенные без прочтения дни не продвигают курс', () async {
     final prefs = await prefsWith();
 
-    await repo(prefs).advanceForToday();
+    now = DateTime(2026, 8, 5);
+
+    expect(valueOf(await repo(prefs).currentTopic()), 1);
+  });
+
+  test('прочтение переживает пересоздание репозитория', () async {
+    final prefs = await prefsWith();
+    await repo(prefs).markCurrentTopicRead();
     now = DateTime(2026, 7, 29);
-    await repo(prefs).advanceForToday();
-
-    expect(valueOf(await repo(prefs).currentTopic()), 3);
-  });
-
-  test('прогресс переживает пересоздание репозитория', () async {
-    final prefs = await prefsWith();
-    await repo(prefs).advanceForToday();
 
     expect(valueOf(await repo(prefs).currentTopic()), 2);
   });
 
-  test('дойдя до конца курса, начинаем сначала', () async {
-    final prefs = await prefsWith({'flutter.course_topic': courseTopicCount});
+  test('дойдя до конца курса, на следующий день начинаем сначала', () async {
+    final prefs = await prefsWith({
+      'flutter.course_topic_v2': courseTopicCount,
+    });
+    final r = repo(prefs);
 
-    expect(valueOf(await repo(prefs).advanceForToday()), 1);
+    await r.markCurrentTopicRead();
+    now = DateTime(2026, 7, 29);
+
+    expect(valueOf(await r.currentTopic()), 1);
   });
 
-  test('мусорный номер в prefs не ломает курс', () async {
-    final prefs = await prefsWith({'flutter.course_topic': 0});
+  test('старый ключ не мигрируется в новую схему', () async {
+    final prefs = await prefsWith({'flutter.course_topic': courseTopicCount});
 
     expect(valueOf(await repo(prefs).currentTopic()), 1);
   });

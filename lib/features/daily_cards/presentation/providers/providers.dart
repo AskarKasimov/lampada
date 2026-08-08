@@ -19,6 +19,7 @@ import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
 import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
+import '../../domain/usecases/mark_course_topic_read.dart';
 import '../../domain/usecases/record_card_read.dart';
 
 final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
@@ -90,6 +91,10 @@ final getCourseTopicProvider = Provider<GetCourseTopic>(
   ),
 );
 
+final markCourseTopicReadProvider = Provider<MarkCourseTopicRead>(
+  (ref) => MarkCourseTopicRead(ref.watch(courseProgressRepositoryProvider)),
+);
+
 /// Карточка «Основы» для текущей темы курса.
 ///
 /// Null вместо ошибки: если личная тема не доехала, экран остаётся доступен,
@@ -151,12 +156,14 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     };
   }
 
-  Future<void> _apply(Future<Result<DayProgress>> op) async {
+  Future<bool> _apply(Future<Result<DayProgress>> op) async {
     switch (await op) {
       case Success(value: final p):
         state = AsyncData(p);
+        return true;
       case Failure(failure: final f):
         state = AsyncError(f, StackTrace.current);
+        return false;
     }
   }
 
@@ -165,12 +172,12 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
   Future<void> markRead(CardType type) async {
     final session = _session;
     if (session == null) return;
-    await _apply(ref.read(recordCardReadProvider)(type, session: session));
-    // Прочитали «Основы» — курс сдвигается на следующую тему, но не чаще
-    // раза в день: это тема в день, а не тема за каждое открытие карточки.
-    if (type == CardType.basics && session.staleDate == null) {
-      await ref.read(courseProgressRepositoryProvider).advanceForToday();
-      ref.invalidate(courseTopicProvider);
+    final saved = await _apply(
+      ref.read(recordCardReadProvider)(type, session: session),
+    );
+    if (saved && type == CardType.basics && session.staleDate == null) {
+      final result = await ref.read(markCourseTopicReadProvider)();
+      if (result is Success<void>) ref.invalidate(courseTopicProvider);
     }
   }
 }
