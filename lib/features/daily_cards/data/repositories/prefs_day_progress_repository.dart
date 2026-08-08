@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
+import '../../../../core/storage/preference_write.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/repositories/day_progress_repository.dart';
@@ -36,7 +37,7 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   }
 
   Future<void> _write(DayProgressDto dto) =>
-      _prefs.setString(_key, jsonEncode(dto.toJson()));
+      requirePreferenceWrite(_prefs.setString(_key, jsonEncode(dto.toJson())));
 
   /// Приводит DTO к сегодняшнему дню: если дата не сегодня —
   /// список прочитанного обнуляется, посещённые дни сохраняются.

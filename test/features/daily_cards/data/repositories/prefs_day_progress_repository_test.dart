@@ -7,8 +7,24 @@ import 'package:lampada/features/daily_cards/data/repositories/prefs_day_progres
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 DayProgress _unwrap(Result<DayProgress> r) => (r as Success<DayProgress>).value;
+
+class _FailedWriteStore extends SharedPreferencesStorePlatform {
+  @override
+  Future<bool> clear() async => true;
+
+  @override
+  Future<Map<String, Object>> getAll() async => {};
+
+  @override
+  Future<bool> remove(String key) async => false;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async =>
+      false;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -145,5 +161,19 @@ void main() {
     expect(result, isA<Success<DayProgress>>());
     final progress = (result as Success<DayProgress>).value;
     expect(progress.readTypes, {CardType.question});
+  });
+
+  test('не подтверждает прогресс, если prefs отклонил запись', () async {
+    SharedPreferences.resetStatic();
+    SharedPreferencesStorePlatform.instance = _FailedWriteStore();
+    final prefs = await SharedPreferences.getInstance();
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    final result = await PrefsDayProgressRepository(
+      prefs,
+      clock: () => fixedNow,
+    ).markRead(CardType.quote);
+
+    expect(result, isA<Failure<DayProgress>>());
   });
 }
