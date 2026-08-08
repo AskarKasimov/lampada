@@ -9,7 +9,8 @@ import 'package:lampada/features/reading/data/dto/daily_reading_dto.dart';
 import 'package:lampada/features/reading/data/repositories/azbyka_reading_repository.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
+
+import '../../../../support/shared_preferences_stores.dart';
 
 const _reference = 'Jn.10:1-9';
 
@@ -61,21 +62,6 @@ class _FailingDatasource implements ReadingRemoteDatasource {
 class _OfflineNetworkStatus implements NetworkStatus {
   @override
   Future<bool> isOnline() async => false;
-}
-
-class _FailingCacheStore extends SharedPreferencesStorePlatform {
-  @override
-  Future<bool> clear() async => true;
-
-  @override
-  Future<Map<String, Object>> getAll() async => {};
-
-  @override
-  Future<bool> remove(String key) async => true;
-
-  @override
-  Future<bool> setValue(String valueType, String key, Object value) =>
-      Future<bool>.error(Exception('диск недоступен'));
 }
 
 void main() {
@@ -134,7 +120,7 @@ void main() {
 
   test('свежее чтение возвращается при ошибке записи кэша', () async {
     SharedPreferences.resetStatic();
-    SharedPreferencesStorePlatform.instance = _FailingCacheStore();
+    installSharedPreferencesStore(ThrowingWriteStore());
     final prefs = await SharedPreferences.getInstance();
     addTearDown(() => SharedPreferences.setMockInitialValues({}));
 

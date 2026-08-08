@@ -7,24 +7,10 @@ import 'package:lampada/features/daily_cards/data/repositories/prefs_day_progres
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
+
+import '../../../../support/shared_preferences_stores.dart';
 
 DayProgress _unwrap(Result<DayProgress> r) => (r as Success<DayProgress>).value;
-
-class _FailedWriteStore extends SharedPreferencesStorePlatform {
-  @override
-  Future<bool> clear() async => true;
-
-  @override
-  Future<Map<String, Object>> getAll() async => {};
-
-  @override
-  Future<bool> remove(String key) async => false;
-
-  @override
-  Future<bool> setValue(String valueType, String key, Object value) async =>
-      false;
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -165,7 +151,7 @@ void main() {
 
   test('не подтверждает прогресс, если prefs отклонил запись', () async {
     SharedPreferences.resetStatic();
-    SharedPreferencesStorePlatform.instance = _FailedWriteStore();
+    installSharedPreferencesStore(RejectingWriteStore());
     final prefs = await SharedPreferences.getInstance();
     addTearDown(() => SharedPreferences.setMockInitialValues({}));
 

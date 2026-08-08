@@ -11,7 +11,8 @@ import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmark_button.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmarks_empty_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
+
+import '../../../../support/shared_preferences_stores.dart';
 
 Bookmark _bookmark(String id, {String text = 'Сохранённая мысль'}) => Bookmark(
   id: id,
@@ -21,21 +22,6 @@ Bookmark _bookmark(String id, {String text = 'Сохранённая мысль'
   label: 'Цитата дня',
   savedAt: DateTime(2026, 7, 28),
 );
-
-class _FailedWriteStore extends SharedPreferencesStorePlatform {
-  @override
-  Future<bool> clear() async => true;
-
-  @override
-  Future<Map<String, Object>> getAll() async => {};
-
-  @override
-  Future<bool> remove(String key) async => false;
-
-  @override
-  Future<bool> setValue(String valueType, String key, Object value) async =>
-      false;
-}
 
 class _FailingRemoveRepository implements BookmarksRepository {
   @override
@@ -177,7 +163,7 @@ void main() {
       tester,
     ) async {
       SharedPreferences.resetStatic();
-      SharedPreferencesStorePlatform.instance = _FailedWriteStore();
+      installSharedPreferencesStore(RejectingWriteStore());
       final failingPrefs = await SharedPreferences.getInstance();
       addTearDown(() => SharedPreferences.setMockInitialValues({}));
 

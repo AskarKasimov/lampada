@@ -5,29 +5,15 @@ import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/profile/presentation/widgets/theme_mode_toggle_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
-class _FailedWriteStore extends SharedPreferencesStorePlatform {
-  @override
-  Future<bool> clear() async => true;
-
-  @override
-  Future<Map<String, Object>> getAll() async => {};
-
-  @override
-  Future<bool> remove(String key) async => false;
-
-  @override
-  Future<bool> setValue(String valueType, String key, Object value) async =>
-      false;
-}
+import '../../../../support/shared_preferences_stores.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('сообщает, если выбор темы не сохранился', (tester) async {
     SharedPreferences.resetStatic();
-    SharedPreferencesStorePlatform.instance = _FailedWriteStore();
+    installSharedPreferencesStore(RejectingWriteStore());
     final prefs = await SharedPreferences.getInstance();
     addTearDown(() => SharedPreferences.setMockInitialValues({}));
 

@@ -5,22 +5,8 @@ import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/course_calendar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
-class _FailedWriteStore extends SharedPreferencesStorePlatform {
-  @override
-  Future<bool> clear() async => true;
-
-  @override
-  Future<Map<String, Object>> getAll() async => {};
-
-  @override
-  Future<bool> remove(String key) async => false;
-
-  @override
-  Future<bool> setValue(String valueType, String key, Object value) async =>
-      false;
-}
+import '../../../../support/shared_preferences_stores.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -111,7 +97,7 @@ void main() {
 
   test('не подтверждает прочтение, если prefs отклонил запись', () async {
     SharedPreferences.resetStatic();
-    SharedPreferencesStorePlatform.instance = _FailedWriteStore();
+    installSharedPreferencesStore(RejectingWriteStore());
     final failing = repo(await SharedPreferences.getInstance());
     addTearDown(() => SharedPreferences.setMockInitialValues({}));
 
