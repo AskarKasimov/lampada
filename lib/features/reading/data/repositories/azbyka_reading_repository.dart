@@ -4,9 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/log/net_log.dart';
 import '../../../../core/network/network_status.dart';
+import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
-import '../../../daily_cards/data/datasources/day_cards_remote_datasource.dart'
-    show RemoteFetchException;
 import '../../domain/entities/daily_reading.dart';
 import '../../domain/repositories/reading_repository.dart';
 import '../datasources/reading_remote_datasource.dart';

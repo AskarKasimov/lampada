@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/bookmarks/domain/entities/bookmark.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmark_button.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmarks_empty_view.dart';
-import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Bookmark _bookmark(String id, {String text = 'Сохранённая мысль'}) => Bookmark(

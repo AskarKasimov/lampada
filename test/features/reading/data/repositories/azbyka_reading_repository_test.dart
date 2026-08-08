@@ -2,9 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/network/network_status.dart';
+import 'package:lampada/core/network/remote_fetch_exception.dart';
 import 'package:lampada/core/result/result.dart';
-import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart'
-    show RemoteFetchException;
 import 'package:lampada/features/reading/data/datasources/reading_remote_datasource.dart';
 import 'package:lampada/features/reading/data/dto/daily_reading_dto.dart';
 import 'package:lampada/features/reading/data/repositories/azbyka_reading_repository.dart';

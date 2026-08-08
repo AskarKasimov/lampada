@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/daily_cards/presentation/providers/providers.dart';
+import '../storage/shared_preferences_provider.dart';
 
 /// Режим темы приложения: системная (по умолчанию), светлая, тёмная.
 /// Персистится в shared_preferences.

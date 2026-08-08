@@ -1,12 +1,12 @@
 // Единственное место, где presentation видит data: тут repository → usecase
 // и провайдер прогресса склеиваются в DI-граф.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
 import '../../../../core/network/network_status_provider.dart';
 import '../../../../core/result/result.dart';
+import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/datasources/day_cards_remote_datasource.dart';
 import '../../data/repositories/azbyka_day_cards_repository.dart';
 import '../../data/repositories/prefs_course_progress_repository.dart';
@@ -70,12 +70,6 @@ class SelectedDateNotifier extends Notifier<DateTime> {
 
   void select(DateTime date) => state = _atMidnight(date);
 }
-
-/// Инициализируется в main() через override.
-final sharedPreferencesProvider = Provider<SharedPreferences>(
-  (ref) =>
-      throw UnimplementedError('override sharedPreferencesProvider in main()'),
-);
 
 final dayProgressRepositoryProvider = Provider<DayProgressRepository>(
   (ref) => PrefsDayProgressRepository(ref.watch(sharedPreferencesProvider)),

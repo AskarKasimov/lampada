@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
 import '../../../../core/network/network_status.dart';
+import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/today_cards.dart';

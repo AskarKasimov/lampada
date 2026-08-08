@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/network_status_provider.dart';
 import '../../../../core/result/result.dart';
-import '../../../daily_cards/presentation/providers/providers.dart'
-    show sharedPreferencesProvider;
+import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/datasources/reading_remote_datasource.dart';
 import '../../data/repositories/azbyka_reading_repository.dart';
 import '../../domain/entities/daily_reading.dart';

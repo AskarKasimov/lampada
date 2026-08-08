@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
+import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';

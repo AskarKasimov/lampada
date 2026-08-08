@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/storage/shared_preferences_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
-import 'features/daily_cards/presentation/providers/providers.dart';
 import 'features/daily_cards/presentation/widgets/refresh_on_resume.dart';
 import 'features/shell/presentation/screens/splash_screen.dart';
 
