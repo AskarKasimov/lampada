@@ -16,6 +16,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/course_reader_
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_course_link.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_hero_block.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/card_swipe_nudge.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_card_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reading_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/session_done_view.dart';
@@ -455,7 +456,8 @@ void main() {
       await tester.tap(find.byType(DayCardBlock).first);
       await settle(tester);
 
-      expect(find.text('Свайпните влево'), findsOneWidget);
+      expect(find.text('Свайпните влево'), findsNothing);
+      expect(find.byType(CardSwipeNudge), findsOneWidget);
       expect(find.text('Дальше'), findsNothing);
 
       final pageView = find.descendant(

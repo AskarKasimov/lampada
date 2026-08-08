@@ -9,7 +9,7 @@ import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
-import '../widgets/card_swipe_hint.dart';
+import '../widgets/card_swipe_nudge.dart';
 import '../widgets/progress_dots.dart';
 import '../widgets/session_done_view.dart';
 
@@ -138,10 +138,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 34),
                         child: Center(
                           child: index < widget.cards.length
-                              ? CardContent(
-                                  key: ValueKey(widget.cards[index].id),
-                                  card: widget.cards[index],
-                                )
+                              ? _cardPage(index)
                               : SessionDoneView(
                                   onRead: widget.reading == null
                                       ? null
@@ -172,8 +169,6 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                                 card.type.styleFor(brightness).accent,
                             ],
                           ),
-                          const SizedBox(height: 20),
-                          const CardSwipeHint(),
                         ],
                       ),
                     ),
@@ -214,6 +209,16 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
         ),
       ),
     );
+  }
+
+  Widget _cardPage(int index) {
+    final content = CardContent(
+      key: ValueKey(widget.cards[index].id),
+      card: widget.cards[index],
+    );
+    return index == widget.startIndex
+        ? CardSwipeNudge(child: content)
+        : content;
   }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
