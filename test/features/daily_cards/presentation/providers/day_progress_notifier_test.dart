@@ -18,15 +18,6 @@ const _cards = [
   DayCard(id: 'r', type: CardType.reading, body: 'b', source: 's'),
 ];
 
-class _StaleCardsRepository implements DayCardsRepository {
-  @override
-  Future<Result<TodayCards>> getCardsFor(
-    DateTime date, {
-    bool forceRefresh = false,
-  }) async =>
-      Success(TodayCards(cards: _cards, staleDate: DateTime(2026, 7, 19)));
-}
-
 class _FreshCardsRepository implements DayCardsRepository {
   @override
   Future<Result<TodayCards>> getCardsFor(
@@ -45,6 +36,21 @@ class _CourseProgressRepository implements CourseProgressRepository {
   Future<Result<void>> markCurrentTopicRead() async {
     markCalls++;
     return const Success(null);
+  }
+}
+
+class _FailingCourseProgressRepository implements CourseProgressRepository {
+  var markCalls = 0;
+
+  @override
+  Future<Result<int>> currentTopic() async => const Success(1);
+
+  @override
+  Future<Result<void>> markCurrentTopicRead() async {
+    markCalls++;
+    return const Failure(
+      AppFailure('не удалось сохранить курс', kind: FailureKind.unknown),
+    );
   }
 }
 
@@ -123,41 +129,33 @@ void main() {
       courseRepository: courseRepository,
     );
 
-    await container
+    final saved = await container
         .read(dayProgressProvider.notifier)
         .markRead(CardType.basics);
 
+    expect(saved, isFalse);
     expect(courseRepository.markCalls, 0);
-  });
-
-  test('карточки за другой день: ни прогресс, ни серия не двигаются', () async {
-    final container = await _container(_StaleCardsRepository());
-    final notifier = container.read(dayProgressProvider.notifier);
-
-    for (final card in _cards) {
-      await notifier.markRead(card.type);
-    }
-
-    // Сегодняшний контент юзер не видел — день не пройден.
-    final progress = container.read(dayProgressProvider).requireValue;
-    expect(progress.readCount, 0);
-    expect(progress.visitedDays, isEmpty);
-  });
-
-  test('stale-сессия ничего не пишет в shared_preferences', () async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    final container = ProviderContainer(
-      overrides: [
-        dayCardsRepositoryProvider.overrideWithValue(_StaleCardsRepository()),
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ],
+    expect(
+      container.read(dayProgressProvider).requireValue,
+      const DayProgress(readTypes: {}, visitedDays: {}),
     );
-    await container.read(todayCardsProvider.future);
-    await container.read(dayProgressProvider.future);
+  });
 
-    await container.read(dayProgressProvider.notifier).markRead(CardType.quote);
+  test('ошибка записи темы курса возвращает неуспех', () async {
+    final courseRepository = _FailingCourseProgressRepository();
+    final container = await _container(
+      _FreshCardsRepository(),
+      courseRepository: courseRepository,
+    );
 
-    expect(prefs.getString('day_progress'), isNull);
+    final saved = await container
+        .read(dayProgressProvider.notifier)
+        .markRead(CardType.basics);
+
+    expect(saved, isFalse);
+    expect(courseRepository.markCalls, 1);
+    expect(container.read(dayProgressProvider).requireValue.readTypes, {
+      CardType.basics,
+    });
   });
 }

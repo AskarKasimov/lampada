@@ -199,6 +199,10 @@ void main() {
 
       expect(find.byType(BasicsHeroBlock), findsOneWidget);
       expect(find.text('ПОСЛЕДОВАТЕЛЬНЫЙ КУРС'), findsOneWidget);
+      expect(
+        find.text('Следующая тема откроется на следующий день после прочтения'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('показывает полоску недели и блоки дня', (tester) async {

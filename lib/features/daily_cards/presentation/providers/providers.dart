@@ -165,22 +165,27 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
         state = AsyncData(p);
         return true;
       case Failure(failure: final f):
-        state = AsyncError(f, StackTrace.current);
+        netLog('не удалось сохранить прогресс дня: $f');
         return false;
     }
   }
 
   /// Решение «засчитывать ли сессию» — за usecase, не нотифаером: доменное
   /// правило должно жить там, где его можно проверить без Riverpod.
-  Future<void> markRead(CardType type) async {
+  Future<bool> markRead(CardType type) async {
     final session = _session;
-    if (session == null) return;
-    final saved = await _apply(
-      ref.read(recordCardReadProvider)(type, session: session),
-    );
-    if (saved && type == CardType.basics && session.staleDate == null) {
+    if (session == null) return false;
+    final saved = await _apply(ref.read(recordCardReadProvider)(type));
+    if (!saved) return false;
+    if (type == CardType.basics) {
       final result = await ref.read(markCourseTopicReadProvider)();
-      if (result is Success<void>) ref.invalidate(courseTopicProvider);
+      if (result is Success<void>) {
+        ref.invalidate(courseTopicProvider);
+      } else {
+        netLog('не удалось отметить тему курса прочитанной: $result');
+        return false;
+      }
     }
+    return true;
   }
 }

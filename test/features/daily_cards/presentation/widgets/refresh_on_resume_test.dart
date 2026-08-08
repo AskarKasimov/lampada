@@ -10,19 +10,6 @@ import 'package:lampada/features/daily_cards/presentation/widgets/refresh_on_res
 
 const _cards = [DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's')];
 
-class _CountingRepository implements DayCardsRepository {
-  int calls = 0;
-
-  @override
-  Future<Result<TodayCards>> getCardsFor(
-    DateTime date, {
-    bool forceRefresh = false,
-  }) async {
-    calls++;
-    return Success(TodayCards(cards: _cards, staleDate: DateTime(2026, 7, 19)));
-  }
-}
-
 class _FreshRepository implements DayCardsRepository {
   int calls = 0;
 
@@ -60,19 +47,6 @@ Future<void> resume(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets(
-    'возврат в приложение при stale-наборе перезапрашивает карточки',
-    (tester) async {
-      final repo = _CountingRepository();
-      final container = await pumpWithRepo(tester, repo);
-
-      await resume(tester);
-      await container.read(todayCardsProvider.future);
-
-      expect(repo.calls, 2);
-    },
-  );
-
   testWidgets(
     'возврат перезапрашивает даже свежий набор — сутки могли смениться',
     (tester) async {

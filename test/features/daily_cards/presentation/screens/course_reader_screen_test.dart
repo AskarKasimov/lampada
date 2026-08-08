@@ -8,6 +8,7 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
+import 'package:lampada/features/daily_cards/domain/repositories/course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
@@ -66,6 +67,16 @@ class _ProgressRepository implements DayProgressRepository {
   }
 }
 
+class _FailingCourseProgressRepository implements CourseProgressRepository {
+  @override
+  Future<Result<int>> currentTopic() async => const Success(3);
+
+  @override
+  Future<Result<void>> markCurrentTopicRead() async => const Failure(
+    AppFailure('Не удалось сохранить тему курса', kind: FailureKind.unknown),
+  );
+}
+
 const _currentTopic = DayCard(
   id: 'basics-topic-3',
   type: CardType.basics,
@@ -90,11 +101,16 @@ void main() {
   Widget buildApp({
     DayCard currentTopic = _currentTopic,
     bool showLauncher = false,
+    CourseProgressRepository? courseProgressRepository,
   }) => ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       dayCardsRepositoryProvider.overrideWithValue(cards),
       dayProgressRepositoryProvider.overrideWithValue(progress),
+      if (courseProgressRepository != null)
+        courseProgressRepositoryProvider.overrideWithValue(
+          courseProgressRepository,
+        ),
       dayCardsProvider(
         dateKey(DateTime.now()),
       ).overrideWithValue(AsyncData(TodayCards(cards: [currentTopic]))),
@@ -136,6 +152,18 @@ void main() {
     expect(find.text('Тема 3'), findsOneWidget);
     expect(progress.readTypes, {CardType.basics});
     expect(cards.requestedTopics, contains(2));
+  });
+
+  testWidgets('показывает ошибку, если тема курса не сохранилась', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildApp(courseProgressRepository: _FailingCourseProgressRepository()),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Не удалось сохранить прогресс'), findsOneWidget);
   });
 
   testWidgets('keeps the course title visible in the reader header', (

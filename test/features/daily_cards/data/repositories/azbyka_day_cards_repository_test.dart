@@ -116,7 +116,6 @@ void main() {
     expect(result, isA<Success<TodayCards>>());
     final today = (result as Success<TodayCards>).value;
     expect(today.cards.single.id, 'quote-2026-07-19');
-    expect(today.staleDate, isNull);
     // Кэш подневный: ключ включает дату, иначе календарь не смог бы
     // держать больше одного дня.
     expect(prefs.getString('day_cards_cache_v3:2026-07-19'), isNotNull);
@@ -196,7 +195,6 @@ void main() {
     expect(result, isA<Success<TodayCards>>());
     final today = (result as Success<TodayCards>).value;
     expect(today.cards.single.id, 'quote-2026-07-19');
-    expect(today.staleDate, isNull);
   });
 
   test('принудительное обновление обходит кэш и заменяет его', () async {

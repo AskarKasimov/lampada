@@ -14,26 +14,6 @@ class _CourseProgressRepository implements CourseProgressRepository {
   Future<Result<int>> currentTopic() async => const Success(1);
 }
 
-class _StaleDayCardsRepository implements DayCardsRepository {
-  @override
-  Future<Result<TodayCards>> getCardsFor(
-    DateTime date, {
-    bool forceRefresh = false,
-  }) async => Success(
-    TodayCards(
-      cards: const [
-        DayCard(
-          id: 'basics-2026-08-05',
-          type: CardType.basics,
-          body: 'Чужая тема',
-          source: 'Азбука веры',
-        ),
-      ],
-      staleDate: DateTime(2026, 8, 5),
-    ),
-  );
-}
-
 class _FreshDayCardsRepository implements DayCardsRepository {
   DateTime? requestedDate;
 
@@ -68,14 +48,5 @@ void main() {
     expect(cards.requestedDate, DateTime(2026, 3, 5));
     expect(result, isA<Success<DayCard>>());
     expect((result as Success<DayCard>).value.id, 'basics-topic-64');
-  });
-
-  test('stale-кэш не становится темой курса', () async {
-    final useCase = GetCourseTopic(
-      _CourseProgressRepository(),
-      _StaleDayCardsRepository(),
-    );
-
-    expect(await useCase(), isA<Failure<DayCard>>());
   });
 }

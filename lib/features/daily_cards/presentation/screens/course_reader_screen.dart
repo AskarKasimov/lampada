@@ -48,9 +48,18 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   }
 
   void _markCurrentTopicRead() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(dayProgressProvider.notifier).markRead(CardType.basics);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final saved = await ref
+          .read(dayProgressProvider.notifier)
+          .markRead(CardType.basics);
+      if (!saved && mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось сохранить прогресс'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     });
   }
