@@ -8,7 +8,7 @@ import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
-import '../widgets/daily_card_action_button.dart';
+import '../widgets/card_swipe_nudge.dart';
 import '../widgets/progress_dots.dart';
 
 /// Скорость свайпа вниз (лог.px/с), после которой просмотрщик закрывается.
@@ -19,11 +19,6 @@ const _dismissVelocity = 700.0;
 ///
 /// Отдельный маршрут поверх шелла, а не содержимое вкладки: только так
 /// нижняя навигация не отъедает низ экрана у текста.
-///
-/// Показывает ТОЛЬКО сессию дня — цитату, совет, притчу. Евангелие и курс
-/// сюда не входят: это отдельные треки со своими ридерами, и раньше
-/// просмотрщик утягивал в постишное Евангелие прямо с последней карточки,
-/// из-за чего сессия не заканчивалась там, где обещала.
 class CardViewerScreen extends ConsumerStatefulWidget {
   const CardViewerScreen({
     required this.cards,
@@ -32,6 +27,8 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     super.key,
   });
 
+  /// Карточки-страницы. Евангелие и курс идут отдельными треками и сюда не
+  /// входят.
   final List<DayCard> cards;
   final int startIndex;
 
@@ -50,11 +47,8 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   );
   late int _index = widget.startIndex;
   int? _markedIndex;
+  var _swipeNudgeHasStarted = false;
 
-  /// Отдельной страницы завершения нет. Она объявляла день оконченным, хотя
-  /// Евангелие и курс остаются на сегодня, и любая формулировка на ней
-  /// выходила либо неправдой, либо церемонией. С последней карточки
-  /// просмотрщик просто закрывается на «Сегодня», где видно, что осталось.
   int get _pageCount => widget.cards.length;
 
   @override
@@ -82,17 +76,6 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     });
   }
 
-  void _next() {
-    if (_index >= _pageCount - 1) {
-      Navigator.of(context).pop();
-      return;
-    }
-    _controller.nextPage(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-    );
-  }
-
   void _handleVerticalDrag(DragEndDetails details) {
     if ((details.primaryVelocity ?? 0) >= _dismissVelocity) {
       Navigator.of(context).pop();
@@ -103,7 +86,6 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
-
     return Scaffold(
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -124,16 +106,33 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                       },
                       itemBuilder: (context, index) => Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 34),
-                        child: Center(
-                          child: CardContent(
-                            key: ValueKey(widget.cards[index].id),
-                            card: widget.cards[index],
-                          ),
-                        ),
+                        child: Center(child: _cardPage(index)),
                       ),
                     ),
                   ),
-                  _footer(colors, brightness),
+                  Visibility(
+                    visible: true,
+                    maintainAnimation: true,
+                    maintainSize: true,
+                    maintainState: true,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 20),
+                          ProgressDots(
+                            count: _pageCount,
+                            currentIndex: _index,
+                            accentColors: [
+                              for (final card in widget.cards)
+                                card.type.styleFor(brightness).accent,
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -163,30 +162,17 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     );
   }
 
-  Widget _footer(AppColorsExtension colors, Brightness brightness) {
-    final isLastCard = _index == widget.cards.length - 1;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 20),
-        ProgressDots(
-          count: widget.cards.length,
-          currentIndex: _index,
-          accentColors: [
-            for (final c in widget.cards) c.type.styleFor(brightness).accent,
-          ],
-        ),
-        const SizedBox(height: 20),
-        if (isLastCard)
-          DailyCardDoneButton(
-            color: colors.accent,
-            onPressed: () => Navigator.of(context).pop(),
-          )
-        else
-          DailyCardNextButton(color: colors.accent, onPressed: _next),
-      ],
+  Widget _cardPage(int index) {
+    final content = CardContent(
+      key: ValueKey(widget.cards[index].id),
+      card: widget.cards[index],
     );
+    return index == widget.startIndex && !_swipeNudgeHasStarted
+        ? CardSwipeNudge(
+            onConsumed: () => _swipeNudgeHasStarted = true,
+            child: content,
+          )
+        : content;
   }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.

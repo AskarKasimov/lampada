@@ -2,8 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
-import '../../../daily_cards/presentation/providers/providers.dart'
-    show sharedPreferencesProvider;
+import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/repositories/prefs_reminder_repository.dart';
 import '../../data/services/notification_service.dart';
 import '../../domain/repositories/reminder_repository.dart';
@@ -46,8 +45,8 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     final granted = await ref
         .read(notificationServiceProvider)
         .requestPermission();
-    await _save(ReminderSettings(enabled: granted, asked: true));
-    return granted;
+    final saved = await _save(ReminderSettings(enabled: granted, asked: true));
+    return granted && saved;
   }
 
   /// Отказ на нашем экране, без системного запроса. Разрешение остаётся
@@ -64,8 +63,14 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     await requestAndEnable();
   }
 
-  Future<void> _save(ReminderSettings settings) async {
-    await ref.read(reminderRepositoryProvider).save(settings);
-    state = AsyncData(settings);
+  Future<bool> _save(ReminderSettings settings) async {
+    final result = await ref.read(reminderRepositoryProvider).save(settings);
+    return switch (result) {
+      Success() => () {
+        state = AsyncData(settings);
+        return true;
+      }(),
+      Failure() => false,
+    };
   }
 }

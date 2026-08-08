@@ -32,9 +32,18 @@ class BookmarkButton extends ConsumerWidget {
       tooltip: saved ? 'Убрать из копилки' : 'Сохранить в копилку',
       visualDensity: VisualDensity.compact,
       onPressed: () async {
-        await ref
+        final changed = await ref
             .read(bookmarksProvider.notifier)
             .toggle(bookmark.copyWith(savedAt: DateTime.now()));
+        if (!changed) {
+          messenger?.showSnackBar(
+            const SnackBar(
+              content: Text('Не удалось сохранить закладку'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
         if (saved) return;
         messenger?.showSnackBar(
           const SnackBar(

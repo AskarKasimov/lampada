@@ -2,14 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/network/network_status.dart';
+import 'package:lampada/core/network/remote_fetch_exception.dart';
 import 'package:lampada/core/result/result.dart';
-import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart'
-    show RemoteFetchException;
 import 'package:lampada/features/reading/data/datasources/reading_remote_datasource.dart';
 import 'package:lampada/features/reading/data/dto/daily_reading_dto.dart';
 import 'package:lampada/features/reading/data/repositories/azbyka_reading_repository.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/shared_preferences_stores.dart';
 
 const _reference = 'Jn.10:1-9';
 
@@ -117,6 +118,20 @@ void main() {
     expect(valueOf(second).verses.single.interpretation, 'СВЕЖЕЕ ТОЛКОВАНИЕ');
   });
 
+  test('свежее чтение возвращается при ошибке записи кэша', () async {
+    SharedPreferences.resetStatic();
+    installSharedPreferencesStore(ThrowingWriteStore());
+    final prefs = await SharedPreferences.getInstance();
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    final result = await AzbykaReadingRepository(
+      _FakeDatasource(),
+      prefs,
+    ).getReading(_reference);
+
+    expect(result, isA<Success<DailyReading>>());
+  });
+
   test('без сети и кэша чтение завершается без запроса к источнику', () async {
     final prefs = await prefsWith({});
     final remote = _FakeDatasource();
@@ -135,6 +150,19 @@ void main() {
 
   test('битый кэш не роняет чтение — молча идём в сеть', () async {
     final prefs = await prefsWith({'reading_cache_v2:$_reference': 'не json'});
+    final remote = _FakeDatasource();
+
+    final result = await AzbykaReadingRepository(
+      remote,
+      prefs,
+    ).getReading(_reference);
+
+    expect(remote.calls, 1);
+    expect(valueOf(result).verses.single.text, 'СВЕЖИЙ СТИХ');
+  });
+
+  test('кэш неверного JSON-типа не роняет чтение — идём в сеть', () async {
+    final prefs = await prefsWith({'reading_cache_v2:$_reference': '[]'});
     final remote = _FakeDatasource();
 
     final result = await AzbykaReadingRepository(

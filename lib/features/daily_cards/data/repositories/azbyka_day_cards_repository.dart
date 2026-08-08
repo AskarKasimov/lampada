@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
 import '../../../../core/network/network_status.dart';
+import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
+import '../../../../core/storage/preference_write.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/day_cards_repository.dart';
@@ -116,12 +118,17 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
           date,
           timeout: left < _attemptTimeout ? left : _attemptTimeout,
         );
-        await _writeCache(date, dto);
+        final day = _toEntity(dto);
+        try {
+          await _writeCache(date, dto);
+        } on Exception catch (e) {
+          netLog('не удалось записать кэш за ${dateKey(date)}: $e');
+        }
         netLog(
           'успех на попытке ${attempt + 1} за '
           '${elapsed.elapsedMilliseconds}мс — отдаём свежие',
         );
-        return Success(_toEntity(dto));
+        return Success(day);
       } on RemoteFetchException catch (e) {
         lastKind = e.kind;
         lastCause = e.cause;
@@ -169,7 +176,9 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
 
   Future<void> _writeCache(DateTime date, DayDto dto) async {
     final key = dateKey(date);
-    await _prefs.setString('$_cachePrefix$key', jsonEncode(dto.toJson()));
+    await requirePreferenceWrite(
+      _prefs.setString('$_cachePrefix$key', jsonEncode(dto.toJson())),
+    );
 
     // Индекс держим отсортированным по дате: по нему же выбирается stale-день,
     // и «последний» должен значить «самый поздний», а не «записанный позже».
@@ -177,13 +186,15 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     for (final stale in dates.take(
       dates.length > _maxCachedDays ? dates.length - _maxCachedDays : 0,
     )) {
-      await _prefs.remove('$_cachePrefix$stale');
+      await requirePreferenceWrite(_prefs.remove('$_cachePrefix$stale'));
     }
-    await _prefs.setStringList(
-      _cacheIndexKey,
-      dates.length > _maxCachedDays
-          ? dates.sublist(dates.length - _maxCachedDays)
-          : dates,
+    await requirePreferenceWrite(
+      _prefs.setStringList(
+        _cacheIndexKey,
+        dates.length > _maxCachedDays
+            ? dates.sublist(dates.length - _maxCachedDays)
+            : dates,
+      ),
     );
   }
 

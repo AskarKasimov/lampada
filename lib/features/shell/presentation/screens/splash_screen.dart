@@ -44,8 +44,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   /// `context` бросает «This widget has been unmounted». Внешне это выглядело
   /// как молчащая кнопка.
   Widget _welcome() => WelcomeScreen(
-    onStart: (welcomeContext) =>
-        _replaceWith(welcomeContext, const AppShell()),
+    onStart: (welcomeContext) => _replaceWith(welcomeContext, const AppShell()),
   );
 
   void _replaceWith(BuildContext context, Widget screen) {

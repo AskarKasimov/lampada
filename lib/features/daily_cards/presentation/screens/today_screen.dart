@@ -16,7 +16,6 @@ import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/day_entry_row.dart';
 import '../widgets/day_name_header.dart';
-import '../widgets/stale_cache_notice.dart';
 import '../widgets/today_offline_view.dart';
 import '../widgets/week_strip.dart';
 import 'card_viewer_screen.dart';
@@ -318,7 +317,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
 
   bool get _isToday => dateKey(date) == dateKey(DateTime.now());
 
-  bool get _recordProgress => _isToday && day.staleDate == null;
+  bool get _isFuture => dateKey(date).compareTo(dateKey(DateTime.now())) > 0;
+
+  bool get _recordProgress => _isToday;
 
   /// Карточка чтения своей страницы в просмотрщике не имеет — экран с одной
   /// ссылкой и кнопкой «Читать» был лишним шагом.
@@ -493,17 +494,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       // уходит под неё, и без запаса последняя запись оказалась бы закрыта.
       padding: const EdgeInsets.fromLTRB(20, 4, 20, kFloatingNavInset + 32),
       children: [
-        if (day.staleDate != null) ...[
-          StaleCacheNotice(
-            staleDate: day.staleDate!,
-            onRefresh: () => ref.invalidate(dayCardsProvider(dateKey(date))),
-          ),
-          const SizedBox(height: 12),
-        ],
-        if (day.hasName) ...[
-          DayNameHeader(day: day),
-          const DayEntryDivider(),
-        ],
+        if (day.hasName) ...[DayNameHeader(day: day), const DayEntryDivider()],
         // Сессия дня: цитата, совет, притча — одна группа, разделённая
         // воздухом. Заголовка у группы нет: «ЕЩЁ ЗА СЕГОДНЯ» называл ядро
         // дня остатком, а сами подписи записей уже говорят, что это.
@@ -512,6 +503,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             label: card.type.styleFor(brightness).shortLabel.toUpperCase(),
             text: card.body.replaceAll('\n', ' '),
             isUnread: !_isRead(card),
+            showReadStatus: !_isFuture,
             labelColor: card.type.styleFor(brightness).accent,
             onTap: () => _open(context, ref, card),
           ),
@@ -523,6 +515,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             // это и есть содержание входа, ничего дописывать не нужно.
             text: reading.body,
             isUnread: !_isRead(reading),
+            showReadStatus: !_isFuture,
             labelColor: CardType.reading.styleFor(brightness).accent,
             textSize: 27,
             maxLines: 1,
@@ -535,6 +528,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             label: _courseLabel(basics),
             text: basics.title ?? basicsCourseTitle,
             isUnread: !_isRead(basics),
+            showReadStatus: !_isFuture,
             labelColor: CardType.basics.styleFor(brightness).accent,
             textSize: 19,
             onTap: () => _open(context, ref, basics),

@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/result/result.dart';
+import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/bookmarks/domain/entities/bookmark.dart';
+import 'package:lampada/features/bookmarks/domain/repositories/bookmarks_repository.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmark_button.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmarks_empty_view.dart';
-import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/shared_preferences_stores.dart';
 
 Bookmark _bookmark(String id, {String text = 'Сохранённая мысль'}) => Bookmark(
   id: id,
@@ -18,6 +22,20 @@ Bookmark _bookmark(String id, {String text = 'Сохранённая мысль'
   label: 'Цитата дня',
   savedAt: DateTime(2026, 7, 28),
 );
+
+class _FailingRemoveRepository implements BookmarksRepository {
+  @override
+  Future<Result<List<Bookmark>>> load() async =>
+      Success([_bookmark('quote-1')]);
+
+  @override
+  Future<Result<List<Bookmark>>> remove(String id) async =>
+      const Failure(AppFailure('Ошибка', kind: FailureKind.unknown));
+
+  @override
+  Future<Result<List<Bookmark>>> save(Bookmark bookmark) async =>
+      Success([bookmark]);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +98,33 @@ void main() {
     expect(find.byType(BookmarksEmptyView), findsOneWidget);
   });
 
+  testWidgets('ошибка удаления оставляет закладку в списке', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          bookmarksRepositoryProvider.overrideWithValue(
+            _FailingRemoveRepository(),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const Scaffold(body: BookmarksScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const ValueKey('quote-1')),
+      const Offset(-500, 0),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Сохранённая мысль'), findsOneWidget);
+    expect(find.text('Не удалось удалить закладку'), findsOneWidget);
+  });
+
   group('кнопка сохранения', () {
     testWidgets('переключает состояние и подтверждает сохранение', (
       tester,
@@ -112,6 +157,35 @@ void main() {
         tester.element(find.byType(BookmarkButton)),
       );
       expect(container.read(bookmarksProvider).value, isEmpty);
+    });
+
+    testWidgets('не подтверждает сохранение, если запись не удалась', (
+      tester,
+    ) async {
+      SharedPreferences.resetStatic();
+      installSharedPreferencesStore(RejectingWriteStore());
+      final failingPrefs = await SharedPreferences.getInstance();
+      addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(failingPrefs),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Scaffold(body: BookmarkButton(bookmark: _bookmark('q'))),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(BookmarkButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Сохранено в копилку'), findsNothing);
+      expect(find.text('Не удалось сохранить закладку'), findsOneWidget);
+      expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
     });
 
     testWidgets('момент сохранения ставится при нажатии, а не при сборке', (

@@ -6,9 +6,8 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
 import '../../../../core/log/net_log.dart';
+import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
-import '../../../daily_cards/data/datasources/day_cards_remote_datasource.dart'
-    show RemoteFetchException;
 import '../dto/daily_reading_dto.dart';
 
 /// Разобранная ссылка отрывка: `Jn.10:1-9`, `Mt.16:20-17:9`.

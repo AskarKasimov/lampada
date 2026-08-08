@@ -9,7 +9,8 @@ import '../repositories/day_cards_repository.dart';
 ///
 /// Юзер, поставивший приложение в июле, раньше встречал «Тему 209» — курс
 /// начинался с середины и читался как случайный факт. Теперь он начинает с
-/// первой темы и идёт по одной в день.
+/// первой темы; следующая открывается сразу после прочтения текущей, но не
+/// чаще одной темы за день.
 class GetCourseTopic {
   const GetCourseTopic(this._progress, this._cards);
 
@@ -43,17 +44,6 @@ class GetCourseTopic {
       case Failure(failure: final f):
         return Failure(f);
       case Success(value: final TodayCards day):
-        // Fallback-кэш относится к другой дате. Выдать его за тему [topic]
-        // означало бы незаметно подменить личный курс случайными «Основами».
-        // Провайдер оставит обычную карточку дня, пока тема не загрузится.
-        if (day.staleDate != null) {
-          return Failure(
-            AppFailure(
-              'Не удалось загрузить тему $topic',
-              kind: FailureKind.unknown,
-            ),
-          );
-        }
         final basics = day.cards
             .where((c) => c.type == CardType.basics)
             .firstOrNull;

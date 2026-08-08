@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
+import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
@@ -13,7 +14,6 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_action_button.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
@@ -541,7 +541,14 @@ void main() {
 
       await tester.tap(entry('ЦИТАТА'));
       await settle(tester);
-      await tester.tap(find.byType(DailyCardNextButton));
+      await tester.fling(
+        find.descendant(
+          of: find.byType(CardViewerScreen),
+          matching: find.byType(PageView),
+        ),
+        const Offset(-400, 0),
+        1000,
+      );
       await settle(tester);
 
       expect(find.text('Читать'), findsNothing);
@@ -616,6 +623,23 @@ void main() {
         dateKey(container.read(selectedDateProvider)),
         dateKey(DateTime.now().add(const Duration(days: 1))),
       );
+    });
+
+    testWidgets('на будущем дне не показывает статус прочтения', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+      await settle(tester);
+
+      final futureEntries = find.byWidgetPredicate(
+        (widget) => widget is DayEntryRow && !widget.showReadStatus,
+      );
+      expect(futureEntries.hitTestable(), findsWidgets);
     });
 
     testWidgets('скрывает календарные основы на другом дне', (tester) async {
@@ -782,7 +806,7 @@ void main() {
   });
 
   group('конец сессии', () {
-    testWidgets('с последней карточки «Готово» возвращает на «Сегодня»', (
+    testWidgets('после последней карточки просмотрщик закрывается крестиком', (
       tester,
     ) async {
       // Экрана завершения нет вовсе. Любая надпись на нём выходила либо
@@ -803,8 +827,7 @@ void main() {
         await settle(tester);
       }
 
-      expect(find.byType(DailyCardDoneButton), findsOneWidget);
-      await tester.tap(find.byType(DailyCardDoneButton));
+      await tester.tap(find.byTooltip('Закрыть'));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);

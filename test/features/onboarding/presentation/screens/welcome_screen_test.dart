@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
-import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/onboarding/presentation/providers/providers.dart';
 import 'package:lampada/features/onboarding/presentation/screens/welcome_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';

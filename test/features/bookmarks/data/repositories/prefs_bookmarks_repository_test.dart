@@ -121,6 +121,15 @@ void main() {
     expect(await broken.load(), isA<Failure<List<Bookmark>>>());
   });
 
+  test('закладки неверного типа в prefs отдают Failure', () async {
+    SharedPreferences.setMockInitialValues({'bookmarks': <String>[]});
+    final broken = PrefsBookmarksRepository(
+      await SharedPreferences.getInstance(),
+    );
+
+    expect(await broken.load(), isA<Failure<List<Bookmark>>>());
+  });
+
   test('save ждёт завершения платформенной записи', () async {
     final store = _DeferredStore();
     SharedPreferences.resetStatic();

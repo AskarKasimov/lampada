@@ -34,6 +34,7 @@ class DayEntryRow extends StatelessWidget {
     this.labelColor,
     this.textSize = 16,
     this.maxLines = 2,
+    this.showReadStatus = true,
   });
 
   /// Подпись разрядкой: «ЦИТАТА», «ЕВАНГЕЛИЕ ДНЯ», «ОСНОВЫ ВЕРЫ · 47».
@@ -46,6 +47,7 @@ class DayEntryRow extends StatelessWidget {
   final Color? labelColor;
   final double textSize;
   final int maxLines;
+  final bool showReadStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +89,7 @@ class DayEntryRow extends StatelessWidget {
                   ),
                 ],
               ),
-              if (isUnread)
+              if (showReadStatus && isUnread)
                 Positioned(
                   left: -_dotGutter,
                   top: 4,

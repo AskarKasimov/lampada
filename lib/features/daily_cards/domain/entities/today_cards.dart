@@ -4,16 +4,11 @@ import 'day_card.dart';
 
 part 'today_cards.freezed.dart';
 
-/// Набор карточек дня с признаком свежести.
-///
-/// [staleDate] — null для карточек нужного дня; иначе это последний
-/// закэшированный набор за другую дату (сеть недоступна). UI обязан
-/// пометить его, иначе юзер примет вчерашний контент за сегодняшний.
+/// Набор карточек строго за запрошенную дату.
 @freezed
 abstract class TodayCards with _$TodayCards {
   const factory TodayCards({
     required List<DayCard> cards,
-    DateTime? staleDate,
 
     /// Седмица церковного года: «Седмица 10-я по Пятидесятнице».
     String? week,

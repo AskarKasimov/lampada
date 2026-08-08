@@ -58,11 +58,7 @@ class WelcomeScreen extends ConsumerWidget {
                 'Каждый день здесь то, что сегодня читают за службой: '
                 'отрывок Евангелия с толкованием, слово святых, притча. '
                 'И курс «Основы веры» — по одной теме в день.',
-                style: TextStyle(
-                  fontSize: 16,
-                  height: 1.6,
-                  color: colors.ink,
-                ),
+                style: TextStyle(fontSize: 16, height: 1.6, color: colors.ink),
               ),
               const Spacer(flex: 3),
               Center(

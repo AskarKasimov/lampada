@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/course_calendar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/shared_preferences_stores.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -30,50 +34,75 @@ void main() {
     expect(valueOf(result), 1);
   });
 
-  test('продвижение даёт следующую тему', () async {
+  test('прочтение сразу открывает следующую тему', () async {
     final r = repo(await prefsWith());
 
-    expect(valueOf(await r.advanceForToday()), 2);
-    expect(valueOf(await r.currentTopic()), 2);
-  });
-
-  test('за один день курс сдвигается только раз', () async {
-    // Иначе перечитывание карточки пролистывало бы курс вперёд.
-    final r = repo(await prefsWith());
-
-    await r.advanceForToday();
-    await r.advanceForToday();
-    await r.advanceForToday();
+    await r.markCurrentTopicRead();
 
     expect(valueOf(await r.currentTopic()), 2);
   });
 
-  test('на следующий день курс снова сдвигается', () async {
-    final prefs = await prefsWith();
+  test('повторное прочтение в тот же день не пропускает тему', () async {
+    final r = repo(await prefsWith());
 
-    await repo(prefs).advanceForToday();
-    now = DateTime(2026, 7, 29);
-    await repo(prefs).advanceForToday();
+    await r.markCurrentTopicRead();
+    await r.markCurrentTopicRead();
 
-    expect(valueOf(await repo(prefs).currentTopic()), 3);
+    expect(valueOf(await r.currentTopic()), 2);
   });
 
-  test('прогресс переживает пересоздание репозитория', () async {
+  test('пропущенные без прочтения дни не продвигают курс', () async {
     final prefs = await prefsWith();
-    await repo(prefs).advanceForToday();
+
+    now = DateTime(2026, 8, 5);
+
+    expect(valueOf(await repo(prefs).currentTopic()), 1);
+  });
+
+  test('прочтение переживает пересоздание репозитория', () async {
+    final prefs = await prefsWith();
+    await repo(prefs).markCurrentTopicRead();
 
     expect(valueOf(await repo(prefs).currentTopic()), 2);
   });
 
-  test('дойдя до конца курса, начинаем сначала', () async {
-    final prefs = await prefsWith({'flutter.course_topic': courseTopicCount});
+  test('дойдя до конца курса, сразу начинаем сначала', () async {
+    final prefs = await prefsWith({
+      'flutter.course_progress_v4': jsonEncode({
+        'topic': courseTopicCount,
+        'readOn': null,
+      }),
+    });
+    final r = repo(prefs);
 
-    expect(valueOf(await repo(prefs).advanceForToday()), 1);
+    await r.markCurrentTopicRead();
+
+    expect(valueOf(await r.currentTopic()), 1);
   });
 
-  test('мусорный номер в prefs не ломает курс', () async {
-    final prefs = await prefsWith({'flutter.course_topic': 0});
+  test('ключи прошлой схемы не мигрируются', () async {
+    final prefs = await prefsWith({
+      'flutter.course_progress_v3': jsonEncode({
+        'topic': 42,
+        'readOn': '2026-07-27',
+      }),
+    });
 
     expect(valueOf(await repo(prefs).currentTopic()), 1);
+  });
+
+  test('прогресс неверного типа в prefs отдаёт Failure', () async {
+    final prefs = await prefsWith({'flutter.course_progress_v4': <String>[]});
+
+    expect(await repo(prefs).currentTopic(), isA<Failure<int>>());
+  });
+
+  test('не подтверждает прочтение, если prefs отклонил запись', () async {
+    SharedPreferences.resetStatic();
+    installSharedPreferencesStore(RejectingWriteStore());
+    final failing = repo(await SharedPreferences.getInstance());
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    expect(await failing.markCurrentTopicRead(), isA<Failure<void>>());
   });
 }

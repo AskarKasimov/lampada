@@ -41,7 +41,7 @@ class PrefsBookmarksRepository implements BookmarksRepository {
   ) async {
     try {
       return Success(await op());
-    } on Exception catch (e) {
+    } on Object catch (e) {
       return Failure(
         AppFailure(
           'Не удалось открыть копилку',
