@@ -18,6 +18,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/basics_course_
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/card_swipe_nudge.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_card_block.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reading_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/session_done_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
@@ -316,6 +317,15 @@ void main() {
       await settle(tester);
 
       expect(find.byType(SessionDoneView), findsOneWidget);
+      final dots = find.byType(ProgressDots);
+      expect(dots, findsOneWidget);
+      expect(tester.widget<ProgressDots>(dots).count, 3);
+      expect(tester.widget<ProgressDots>(dots).currentIndex, 2);
+      final dotsVisibility = find.ancestor(
+        of: dots,
+        matching: find.byType(Visibility),
+      );
+      expect(tester.widget<Visibility>(dotsVisibility).visible, isTrue);
       expect(tester.getSize(pageView).height, before);
     });
 

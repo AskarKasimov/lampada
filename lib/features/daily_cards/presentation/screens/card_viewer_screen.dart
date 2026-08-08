@@ -63,8 +63,8 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
 
   int get _pageCount => widget.cards.length + (_hasDonePage ? 1 : 0);
 
-  /// Точки соответствуют только карточкам, до которых можно листать свайпом.
-  int get _stepCount => widget.cards.length;
+  /// Точки соответствуют карточкам и финальному экрану текущего дня.
+  int get _stepCount => widget.cards.length + (_hasDonePage ? 1 : 0);
 
   @override
   void initState() {
@@ -150,7 +150,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                     ),
                   ),
                   Visibility(
-                    visible: !onDonePage,
+                    visible: true,
                     maintainAnimation: true,
                     maintainSize: true,
                     maintainState: true,
@@ -168,6 +168,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                             accentColors: [
                               for (final card in widget.cards)
                                 card.type.styleFor(brightness).accent,
+                              if (_hasDonePage) colors.accent,
                             ],
                           ),
                         ],
