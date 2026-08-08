@@ -57,7 +57,7 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
   Future<Result<T>> _guard<T>(Future<T> Function() op) async {
     try {
       return Success(await op());
-    } on Exception catch (e) {
+    } on Object catch (e) {
       return Failure(
         AppFailure(
           'Не удалось прочитать прогресс курса',

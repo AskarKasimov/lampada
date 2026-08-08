@@ -114,7 +114,7 @@ class AzbykaReadingRepository implements ReadingRepository {
     if (raw == null) return null;
     try {
       return DailyReadingDto.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    } on Exception catch (e) {
+    } catch (e) {
       // Кэш от прошлой версии схемы — не повод падать, просто сходим в сеть.
       netLog('кэш чтения $reference не разобрался, игнорируем: $e');
       return null;

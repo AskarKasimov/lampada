@@ -20,7 +20,7 @@ class PrefsThemeModeRepository implements ThemeModeRepository {
         'light' => ThemeMode.light,
         _ => ThemeMode.system,
       });
-    } on Exception catch (e) {
+    } on Object catch (e) {
       return Failure(
         AppFailure(
           'Не удалось загрузить тему',
@@ -36,7 +36,7 @@ class PrefsThemeModeRepository implements ThemeModeRepository {
     try {
       await requirePreferenceWrite(_prefs.setString(_key, mode.name));
       return const Success(null);
-    } on Exception catch (e) {
+    } on Object catch (e) {
       return Failure(
         AppFailure(
           'Не удалось сохранить тему',

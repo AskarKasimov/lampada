@@ -95,6 +95,12 @@ void main() {
     expect(valueOf(await repo(prefs).currentTopic()), 1);
   });
 
+  test('прогресс неверного типа в prefs отдаёт Failure', () async {
+    final prefs = await prefsWith({'flutter.course_progress_v3': <String>[]});
+
+    expect(await repo(prefs).currentTopic(), isA<Failure<int>>());
+  });
+
   test('не подтверждает прочтение, если prefs отклонил запись', () async {
     SharedPreferences.resetStatic();
     installSharedPreferencesStore(RejectingWriteStore());

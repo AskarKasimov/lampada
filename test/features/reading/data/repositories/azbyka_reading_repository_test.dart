@@ -160,4 +160,17 @@ void main() {
     expect(remote.calls, 1);
     expect(valueOf(result).verses.single.text, 'СВЕЖИЙ СТИХ');
   });
+
+  test('кэш неверного JSON-типа не роняет чтение — идём в сеть', () async {
+    final prefs = await prefsWith({'reading_cache_v2:$_reference': '[]'});
+    final remote = _FakeDatasource();
+
+    final result = await AzbykaReadingRepository(
+      remote,
+      prefs,
+    ).getReading(_reference);
+
+    expect(remote.calls, 1);
+    expect(valueOf(result).verses.single.text, 'СВЕЖИЙ СТИХ');
+  });
 }

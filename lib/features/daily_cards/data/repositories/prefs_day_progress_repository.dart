@@ -49,7 +49,7 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   Future<Result<DayProgress>> loadToday() async {
     try {
       return Success(_forToday(_read()).toEntity());
-    } on Exception catch (e) {
+    } on Object catch (e) {
       return Failure(
         AppFailure(
           'Не удалось загрузить прогресс дня',
@@ -73,7 +73,7 @@ class PrefsDayProgressRepository implements DayProgressRepository {
       );
       await _write(updated);
       return Success(updated.toEntity());
-    } on Exception catch (e) {
+    } on Object catch (e) {
       return Failure(
         AppFailure(
           'Не удалось сохранить прогресс',

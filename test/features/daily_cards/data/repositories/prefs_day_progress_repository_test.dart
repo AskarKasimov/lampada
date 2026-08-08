@@ -132,6 +132,17 @@ void main() {
     expect(progress.readTypes, {CardType.quote, CardType.advice});
   });
 
+  test('прогресс неверного типа в prefs отдаёт Failure', () async {
+    SharedPreferences.setMockInitialValues({
+      'flutter.day_progress': <String>[],
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    final result = await PrefsDayProgressRepository(prefs).loadToday();
+
+    expect(result, isA<Failure<DayProgress>>());
+  });
+
   test('сохранённый вопрос дня остаётся прочитанным', () async {
     SharedPreferences.setMockInitialValues({
       'flutter.day_progress': jsonEncode({

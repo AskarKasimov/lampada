@@ -20,6 +20,15 @@ void main() {
     expect((result as Success<ThemeMode>).value, ThemeMode.system);
   });
 
+  test('неверный тип темы в prefs отдаёт Failure', () async {
+    SharedPreferences.setMockInitialValues({'theme_mode': 1});
+    final repository = PrefsThemeModeRepository(
+      await SharedPreferences.getInstance(),
+    );
+
+    expect(repository.load(), isA<Failure<ThemeMode>>());
+  });
+
   test('возвращает Failure, если prefs отклонил сохранение темы', () async {
     SharedPreferences.resetStatic();
     installSharedPreferencesStore(RejectingWriteStore());
