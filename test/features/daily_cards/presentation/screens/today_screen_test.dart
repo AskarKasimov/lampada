@@ -16,8 +16,9 @@ import 'package:lampada/features/daily_cards/presentation/screens/course_reader_
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_course_link.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_hero_block.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_action_button.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/card_swipe_nudge.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_card_block.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reading_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/session_done_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
@@ -215,6 +216,7 @@ void main() {
       // обычных блоков на один меньше, чем карточек дня.
       expect(find.byType(ReadingHeroBlock), findsOneWidget);
       expect(find.byType(DayCardBlock), findsNWidgets(_cards.length - 1));
+      expect(find.text('МАТЕРИАЛЫ ДНЯ'), findsOneWidget);
       expect(find.text('Сегодня'), findsOneWidget);
     });
 
@@ -316,6 +318,15 @@ void main() {
       await settle(tester);
 
       expect(find.byType(SessionDoneView), findsOneWidget);
+      final dots = find.byType(ProgressDots);
+      expect(dots, findsOneWidget);
+      expect(tester.widget<ProgressDots>(dots).count, 3);
+      expect(tester.widget<ProgressDots>(dots).currentIndex, 2);
+      final dotsVisibility = find.ancestor(
+        of: dots,
+        matching: find.byType(Visibility),
+      );
+      expect(tester.widget<Visibility>(dotsVisibility).visible, isTrue);
       expect(tester.getSize(pageView).height, before);
     });
 
@@ -448,7 +459,42 @@ void main() {
       expect(viewer.reading?.reference, 'Jn.10:1-9');
     });
 
-    testWidgets('с последней карточки «Читать» ведёт прямо в ридер', (
+    testWidgets('свайп ведёт к финалу с чтением Евангелия', (tester) async {
+      await tester.pumpWidget(buildApp());
+      await settle(tester);
+      await dismissAutoOpened(tester);
+
+      await tester.tap(find.byType(DayCardBlock).first);
+      await settle(tester);
+
+      expect(find.text('Свайпните влево'), findsNothing);
+      expect(find.byType(CardSwipeNudge), findsOneWidget);
+      expect(find.text('Дальше'), findsNothing);
+
+      final pageView = find.descendant(
+        of: find.byType(CardViewerScreen),
+        matching: find.byType(PageView),
+      );
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+
+      expect(find.byType(SessionDoneView), findsOneWidget);
+      expect(find.text('Пройти снова'), findsNothing);
+      expect(find.text('Читать Евангелие'), findsOneWidget);
+      await tester.tap(find.text('Читать Евангелие'));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      expect(find.byType(ReadingScreen), findsNothing);
+      await settle(tester);
+
+      expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);
+      expect(find.byType(ReadingScreen), findsOneWidget);
+    });
+
+    testWidgets('подсказка свайпа не повторяется при возврате к карточке', (
       tester,
     ) async {
       await tester.pumpWidget(buildApp());
@@ -457,15 +503,21 @@ void main() {
 
       await tester.tap(find.byType(DayCardBlock).first);
       await settle(tester);
-      // Цитата → совет: совет последний, дальше чтение.
-      await tester.tap(find.byType(DailyCardNextButton));
+
+      final pageView = find.descendant(
+        of: find.byType(CardViewerScreen),
+        matching: find.byType(PageView),
+      );
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(400, 0), 1000);
       await settle(tester);
 
-      expect(find.byType(DailyCardReadButton), findsOneWidget);
-      await tester.tap(find.byType(DailyCardReadButton));
-      await settle(tester);
-
-      expect(find.byType(ReadingScreen), findsOneWidget);
+      expect(find.byType(CardSwipeNudge), findsNothing);
     });
 
     testWidgets('открытие ридера засчитывает чтение прочитанным', (
@@ -536,6 +588,23 @@ void main() {
         dateKey(container.read(selectedDateProvider)),
         dateKey(DateTime.now().add(const Duration(days: 1))),
       );
+    });
+
+    testWidgets('на будущем дне не показывает статусы прочтения', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+      await settle(tester);
+
+      final futureDayCards = find.byWidgetPredicate(
+        (widget) => widget is DayCardBlock && !widget.showReadStatus,
+      );
+      expect(futureDayCards.hitTestable(), findsWidgets);
     });
 
     testWidgets('скрывает календарные основы на другом дне', (tester) async {

@@ -20,13 +20,10 @@ import '../widgets/verse_view.dart';
 /// в приложении, где юзер уходит в длинную последовательность, и таб-бар под
 /// ней только мешал бы.
 class ReadingScreen extends ConsumerStatefulWidget {
-  const ReadingScreen({required this.reference, super.key, this.onFinished});
+  const ReadingScreen({required this.reference, super.key});
 
   /// Машинная ссылка отрывка из карточки дня: `Jn.10:1-9`.
   final String reference;
-
-  /// Зовётся, когда юзер дочитал до конца и закрыл ридер.
-  final VoidCallback? onFinished;
 
   @override
   ConsumerState<ReadingScreen> createState() => _ReadingScreenState();
@@ -42,10 +39,7 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
     super.dispose();
   }
 
-  void _close({required bool finished}) {
-    if (finished) widget.onFinished?.call();
-    Navigator.of(context).pop();
-  }
+  void _close() => Navigator.of(context).pop();
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +57,7 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
             },
             onRetry: () =>
                 ref.invalidate(dailyReadingProvider(widget.reference)),
-            onClose: () => _close(finished: false),
+            onClose: _close,
           ),
           data: (reading) => _reader(reading, colors),
         ),
@@ -111,7 +105,7 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
                 label: isLast ? 'Готово' : 'Закрыть',
                 color: isLast ? colors.link : colors.homeSubtitle,
                 fontSize: 12,
-                onPressed: () => _close(finished: isLast),
+                onPressed: _close,
               ),
             ],
           ),

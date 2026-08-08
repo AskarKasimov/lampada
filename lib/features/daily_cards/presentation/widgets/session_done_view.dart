@@ -11,9 +11,9 @@ import '../../../../core/widgets/streak_flame.dart';
 /// FR-019 селит «Лампадку» только в календарь «Дни», а FR-020 прямо запрещает
 /// показывать её давящим счётчиком.
 class SessionDoneView extends StatelessWidget {
-  const SessionDoneView({required this.onDone, super.key});
+  const SessionDoneView({this.onRead, super.key});
 
-  final VoidCallback onDone;
+  final VoidCallback? onRead;
 
   @override
   Widget build(BuildContext context) {
@@ -36,29 +36,16 @@ class SessionDoneView extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, color: colors.textSecondary),
         ),
-        const SizedBox(height: 10),
-        SessionDoneButton(onPressed: onDone),
+        if (onRead != null) ...[
+          const SizedBox(height: 10),
+          AppLinkButton(
+            label: 'Читать Евангелие',
+            color: colors.link,
+            fontSize: 13,
+            onPressed: onRead!,
+          ),
+        ],
       ],
     );
   }
-}
-
-/// «Готово» на экране завершения — свой тип, чтобы тесты искали
-/// по структуре, а не по тексту кнопки.
-///
-/// Раньше здесь было «Пройти снова», и это читалось нелогично: чтобы
-/// перечитать одну карточку, приходилось запускать весь день заново.
-/// Теперь возврат ведёт к блокам дня, где любая часть открывается напрямую.
-class SessionDoneButton extends StatelessWidget {
-  const SessionDoneButton({required this.onPressed, super.key});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => AppLinkButton(
-    label: 'Пройти снова',
-    color: AppColorsExtension.of(context).link,
-    fontSize: 12,
-    onPressed: onPressed,
-  );
 }

@@ -4,12 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
-import '../../../reading/presentation/screens/reading_screen.dart';
 import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
-import '../widgets/daily_card_action_button.dart';
+import '../widgets/card_swipe_nudge.dart';
 import '../widgets/progress_dots.dart';
 import '../widgets/session_done_view.dart';
 
@@ -40,9 +39,9 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// задним числом зажигать вчерашний огонёк.
   final bool recordProgress;
 
-  /// Чтение дня, если оно есть. Своей страницы не имеет: показывать экран
-  /// с одной ссылкой «Ин.10:1–9» и кнопкой «Читать» — лишний шаг, ридер
-  /// открывается сразу с последней карточки.
+  /// Чтение дня, если оно есть. На него ведёт явное действие финального
+  /// экрана: последняя обычная карточка не должна неожиданно менять «Дальше»
+  /// на «Читать».
   final DayCard? reading;
 
   @override
@@ -55,6 +54,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   );
   late int _index = widget.startIndex;
   int? _markedIndex;
+  var _swipeNudgeHasStarted = false;
 
   /// Экран завершения — последняя страница, сразу за карточками. Он про
   /// «на сегодня довольно», поэтому у чужих дней его нет.
@@ -62,9 +62,8 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
 
   int get _pageCount => widget.cards.length + (_hasDonePage ? 1 : 0);
 
-  /// Точек столько, сколько частей у дня, включая чтение: иначе с последней
-  /// карточки кажется, что день кончился, а он нет.
-  int get _stepCount => widget.cards.length + (widget.reading != null ? 1 : 0);
+  /// Точки соответствуют карточкам и финальному экрану текущего дня.
+  int get _stepCount => widget.cards.length + (_hasDonePage ? 1 : 0);
 
   @override
   void initState() {
@@ -91,40 +90,8 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     });
   }
 
-  void _next() {
-    if (_index >= _pageCount - 1) {
-      Navigator.of(context).pop();
-      return;
-    }
-    _controller.nextPage(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-    );
-  }
-
-  /// Ридер открывается прямо с последней карточки. Дочитал отрывок —
-  /// показываем завершение дня; вышел раньше — остаёмся на карточке.
-  Future<void> _openReader() async {
-    final card = widget.reading!;
-    if (widget.recordProgress) {
-      ref.read(dayProgressProvider.notifier).markRead(card.type);
-    }
-    var finished = false;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ReadingScreen(
-          reference: card.reference!,
-          onFinished: () => finished = true,
-        ),
-      ),
-    );
-    if (!mounted || !finished || !_hasDonePage) return;
-    _controller.animateToPage(
-      _pageCount - 1,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-    );
-  }
+  /// Закрывает просмотрщик и возвращает чтение родительскому маршруту.
+  void _openReader() => Navigator.of(context).pop(widget.reading);
 
   void _handleVerticalDrag(DragEndDetails details) {
     if ((details.primaryVelocity ?? 0) >= _dismissVelocity) {
@@ -161,23 +128,41 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 34),
                         child: Center(
                           child: index < widget.cards.length
-                              ? CardContent(
-                                  key: ValueKey(widget.cards[index].id),
-                                  card: widget.cards[index],
-                                )
+                              ? _cardPage(index)
                               : SessionDoneView(
-                                  onDone: () => Navigator.of(context).pop(),
+                                  onRead: widget.reading == null
+                                      ? null
+                                      : _openReader,
                                 ),
                         ),
                       ),
                     ),
                   ),
                   Visibility(
-                    visible: !onDonePage,
+                    visible: true,
                     maintainAnimation: true,
                     maintainSize: true,
                     maintainState: true,
-                    child: _footer(colors, brightness),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 20),
+                          ProgressDots(
+                            count: _stepCount,
+                            currentIndex: _index < _stepCount
+                                ? _index
+                                : _stepCount - 1,
+                            accentColors: [
+                              for (final card in widget.cards)
+                                card.type.styleFor(brightness).accent,
+                              if (_hasDonePage) colors.accent,
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -217,34 +202,17 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     );
   }
 
-  Widget _footer(AppColorsExtension colors, Brightness brightness) {
-    final isLastCard = _index == widget.cards.length - 1;
-    final reading = widget.reading;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 20),
-        ProgressDots(
-          count: _stepCount,
-          currentIndex: _index,
-          accentColors: [
-            for (final c in widget.cards) c.type.styleFor(brightness).accent,
-            if (reading != null) reading.type.styleFor(brightness).accent,
-          ],
-        ),
-        const SizedBox(height: 20),
-        if (isLastCard && reading != null)
-          DailyCardReadButton(color: colors.accent, onPressed: _openReader)
-        else if (isLastCard && !_hasDonePage)
-          DailyCardDoneButton(
-            color: colors.accent,
-            onPressed: () => Navigator.of(context).pop(),
-          )
-        else
-          DailyCardNextButton(color: colors.accent, onPressed: _next),
-      ],
+  Widget _cardPage(int index) {
+    final content = CardContent(
+      key: ValueKey(widget.cards[index].id),
+      card: widget.cards[index],
     );
+    return index == widget.startIndex && !_swipeNudgeHasStarted
+        ? CardSwipeNudge(
+            onConsumed: () => _swipeNudgeHasStarted = true,
+            child: content,
+          )
+        : content;
   }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
