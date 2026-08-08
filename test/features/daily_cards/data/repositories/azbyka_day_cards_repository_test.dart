@@ -2,12 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/network/network_status.dart';
+import 'package:lampada/core/network/remote_fetch_exception.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart';
 import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
 import 'package:lampada/features/daily_cards/data/repositories/azbyka_day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/shared_preferences_stores.dart';
 
 class _FakeDatasource implements DayCardsRemoteDatasource {
   _FakeDatasource(this._result);
@@ -113,11 +116,24 @@ void main() {
     expect(result, isA<Success<TodayCards>>());
     final today = (result as Success<TodayCards>).value;
     expect(today.cards.single.id, 'quote-2026-07-19');
-    expect(today.staleDate, isNull);
     // Кэш подневный: ключ включает дату, иначе календарь не смог бы
     // держать больше одного дня.
     expect(prefs.getString('day_cards_cache_v3:2026-07-19'), isNotNull);
     expect(prefs.getStringList('day_cards_cached_dates_v3'), ['2026-07-19']);
+  });
+
+  test('свежие карточки возвращаются при ошибке записи кэша', () async {
+    SharedPreferences.resetStatic();
+    installSharedPreferencesStore(ThrowingWriteStore());
+    final prefs = await SharedPreferences.getInstance();
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    final result = await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
+
+    expect(result, isA<Success<TodayCards>>());
   });
 
   test('кэш держит несколько дней одновременно', () async {
@@ -179,7 +195,6 @@ void main() {
     expect(result, isA<Success<TodayCards>>());
     final today = (result as Success<TodayCards>).value;
     expect(today.cards.single.id, 'quote-2026-07-19');
-    expect(today.staleDate, isNull);
   });
 
   test('принудительное обновление обходит кэш и заменяет его', () async {

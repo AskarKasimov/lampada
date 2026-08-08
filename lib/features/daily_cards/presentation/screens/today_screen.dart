@@ -16,7 +16,6 @@ import '../widgets/basics_course_link.dart';
 import '../widgets/basics_hero_block.dart';
 import '../widgets/day_card_block.dart';
 import '../widgets/reading_hero_block.dart';
-import '../widgets/stale_cache_notice.dart';
 import '../widgets/today_offline_view.dart';
 import '../widgets/week_strip.dart';
 import 'card_viewer_screen.dart';
@@ -309,7 +308,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
 
   bool get _isToday => dateKey(date) == dateKey(DateTime.now());
 
-  bool get _recordProgress => _isToday && day.staleDate == null;
+  bool get _recordProgress => _isToday;
 
   /// Карточка чтения своей страницы в просмотрщике не имеет — экран с одной
   /// ссылкой и кнопкой «Читать» был лишним шагом.
@@ -440,13 +439,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       // уходит под неё, и без запаса последний блок оказался бы закрыт.
       padding: const EdgeInsets.fromLTRB(20, 12, 20, kFloatingNavInset + 32),
       children: [
-        if (day.staleDate != null) ...[
-          StaleCacheNotice(
-            staleDate: day.staleDate!,
-            onRefresh: () => ref.invalidate(dayCardsProvider(dateKey(date))),
-          ),
-          const SizedBox(height: 12),
-        ],
         if (basics != null) ...[
           BasicsHeroBlock(
             card: basics,

@@ -73,7 +73,7 @@ class BasicsHeroBlock extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Следующая тема откроется после прочтения этой',
+                'Следующая тема откроется на следующий день после прочтения',
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.45,

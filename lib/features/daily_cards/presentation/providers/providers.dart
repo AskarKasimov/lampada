@@ -1,12 +1,12 @@
 // Единственное место, где presentation видит data: тут repository → usecase
 // и провайдер прогресса склеиваются в DI-граф.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
 import '../../../../core/network/network_status_provider.dart';
 import '../../../../core/result/result.dart';
+import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/datasources/day_cards_remote_datasource.dart';
 import '../../data/repositories/azbyka_day_cards_repository.dart';
 import '../../data/repositories/prefs_course_progress_repository.dart';
@@ -19,6 +19,8 @@ import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
 import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
+import '../../domain/usecases/load_day_progress.dart';
+import '../../domain/usecases/mark_course_topic_read.dart';
 import '../../domain/usecases/record_card_read.dart';
 
 final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
@@ -71,18 +73,16 @@ class SelectedDateNotifier extends Notifier<DateTime> {
   void select(DateTime date) => state = _atMidnight(date);
 }
 
-/// Инициализируется в main() через override.
-final sharedPreferencesProvider = Provider<SharedPreferences>(
-  (ref) =>
-      throw UnimplementedError('override sharedPreferencesProvider in main()'),
-);
-
 final dayProgressRepositoryProvider = Provider<DayProgressRepository>(
   (ref) => PrefsDayProgressRepository(ref.watch(sharedPreferencesProvider)),
 );
 
 final recordCardReadProvider = Provider<RecordCardRead>(
   (ref) => RecordCardRead(ref.watch(dayProgressRepositoryProvider)),
+);
+
+final loadDayProgressProvider = Provider<LoadDayProgress>(
+  (ref) => LoadDayProgress(ref.watch(dayProgressRepositoryProvider)),
 );
 
 final courseProgressRepositoryProvider = Provider<CourseProgressRepository>(
@@ -94,6 +94,10 @@ final getCourseTopicProvider = Provider<GetCourseTopic>(
     ref.watch(courseProgressRepositoryProvider),
     ref.watch(dayCardsRepositoryProvider),
   ),
+);
+
+final markCourseTopicReadProvider = Provider<MarkCourseTopicRead>(
+  (ref) => MarkCourseTopicRead(ref.watch(courseProgressRepositoryProvider)),
 );
 
 /// Карточка «Основы» для текущей темы курса.
@@ -137,8 +141,6 @@ final dayProgressProvider =
     );
 
 class DayProgressNotifier extends AsyncNotifier<DayProgress> {
-  DayProgressRepository get _repo => ref.read(dayProgressRepositoryProvider);
-
   /// Набор, по которому сейчас идёт сессия. Null — карточки ещё не загрузились
   /// или упали; записывать в прогресс тогда нечего.
   ///
@@ -150,33 +152,40 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
 
   @override
   Future<DayProgress> build() async {
-    final result = await _repo.loadToday();
+    final result = await ref.read(loadDayProgressProvider)();
     return switch (result) {
       Success(value: final p) => p,
       Failure(failure: final f) => throw f,
     };
   }
 
-  Future<void> _apply(Future<Result<DayProgress>> op) async {
+  Future<bool> _apply(Future<Result<DayProgress>> op) async {
     switch (await op) {
       case Success(value: final p):
         state = AsyncData(p);
+        return true;
       case Failure(failure: final f):
-        state = AsyncError(f, StackTrace.current);
+        netLog('не удалось сохранить прогресс дня: $f');
+        return false;
     }
   }
 
   /// Решение «засчитывать ли сессию» — за usecase, не нотифаером: доменное
   /// правило должно жить там, где его можно проверить без Riverpod.
-  Future<void> markRead(CardType type) async {
+  Future<bool> markRead(CardType type) async {
     final session = _session;
-    if (session == null) return;
-    await _apply(ref.read(recordCardReadProvider)(type, session: session));
-    // Прочитали «Основы» — курс сдвигается на следующую тему, но не чаще
-    // раза в день: это тема в день, а не тема за каждое открытие карточки.
-    if (type == CardType.basics && session.staleDate == null) {
-      await ref.read(courseProgressRepositoryProvider).advanceForToday();
-      ref.invalidate(courseTopicProvider);
+    if (session == null) return false;
+    final saved = await _apply(ref.read(recordCardReadProvider)(type));
+    if (!saved) return false;
+    if (type == CardType.basics) {
+      final result = await ref.read(markCourseTopicReadProvider)();
+      if (result is Success<void>) {
+        ref.invalidate(courseTopicProvider);
+      } else {
+        netLog('не удалось отметить тему курса прочитанной: $result');
+        return false;
+      }
     }
+    return true;
   }
 }

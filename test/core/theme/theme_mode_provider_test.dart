@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/theme_mode_provider.dart';
-import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/shared_preferences_stores.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -80,5 +82,23 @@ void main() {
     addTearDown(second.dispose);
 
     expect(second.read(themeModeProvider), ThemeMode.dark);
+  });
+
+  test('не меняет тему, если prefs отклонил запись', () async {
+    SharedPreferences.resetStatic();
+    installSharedPreferencesStore(RejectingWriteStore());
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    final saved = await container
+        .read(themeModeProvider.notifier)
+        .select(ThemeMode.dark);
+
+    expect(saved, isFalse);
+    expect(container.read(themeModeProvider), ThemeMode.system);
   });
 }

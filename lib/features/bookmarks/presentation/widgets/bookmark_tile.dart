@@ -14,7 +14,7 @@ class BookmarkTile extends StatelessWidget {
   });
 
   final Bookmark bookmark;
-  final VoidCallback onRemove;
+  final Future<bool> Function() onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +22,9 @@ class BookmarkTile extends StatelessWidget {
     return Dismissible(
       key: ValueKey(bookmark.id),
       direction: DismissDirection.endToStart,
-      onDismissed: (_) => onRemove(),
+      // Не убираем плитку до подтверждённой записи: иначе свайп создаёт
+      // впечатление удаления, хотя prefs мог отклонить операцию.
+      confirmDismiss: (_) => onRemove(),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 12),

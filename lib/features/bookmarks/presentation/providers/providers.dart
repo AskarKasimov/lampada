@@ -2,8 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
-import '../../../daily_cards/presentation/providers/providers.dart'
-    show sharedPreferencesProvider;
+import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/repositories/prefs_bookmarks_repository.dart';
 import '../../domain/entities/bookmark.dart';
 import '../../domain/repositories/bookmarks_repository.dart';
@@ -42,19 +41,22 @@ class BookmarksNotifier extends AsyncNotifier<List<Bookmark>> {
 
   bool isSaved(String id) => (state.value ?? const []).any((b) => b.id == id);
 
-  Future<void> toggle(Bookmark bookmark) => _apply(
+  Future<bool> toggle(Bookmark bookmark) => _apply(
     ref.read(toggleBookmarkProvider)(bookmark, isSaved: isSaved(bookmark.id)),
   );
 
-  Future<void> remove(String id) =>
+  Future<bool> remove(String id) =>
       _apply(ref.read(removeBookmarkProvider)(id));
 
-  Future<void> _apply(Future<Result<List<Bookmark>>> op) async {
+  /// При неудаче оставляем предыдущий список на экране: локальный сбой не
+  /// должен превращать «Копилку» в пустое состояние и стирать контекст.
+  Future<bool> _apply(Future<Result<List<Bookmark>>> op) async {
     switch (await op) {
       case Success(value: final list):
         state = AsyncData(list);
-      case Failure(failure: final f):
-        state = AsyncError(f, StackTrace.current);
+        return true;
+      case Failure():
+        return false;
     }
   }
 }

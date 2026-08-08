@@ -1,11 +1,14 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
+import '../../../../core/storage/preference_write.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 
-/// Прогресс курса в shared_preferences: номер темы и день последнего сдвига.
+/// Прогресс курса в shared_preferences: номер текущей темы и день её прочтения.
 class PrefsCourseProgressRepository implements CourseProgressRepository {
   PrefsCourseProgressRepository(this._prefs, {DateTime Function()? clock})
     : _clock = clock ?? DateTime.now;
@@ -13,32 +16,48 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
   final SharedPreferences _prefs;
   final DateTime Function() _clock;
 
-  static const _topicKey = 'course_topic';
+  static const _key = 'course_progress_v3';
 
-  /// День, в который курс последний раз сдвинулся. Без него повторное открытие
-  /// карточки за тот же день пролистывало бы курс вперёд.
-  static const _advancedKey = 'course_topic_advanced_on';
+  _CourseProgress _read() {
+    final raw = _prefs.getString(_key);
+    if (raw == null) return const _CourseProgress(topic: 1);
+    final json = jsonDecode(raw) as Map<String, dynamic>;
+    return _CourseProgress(
+      topic: normalizeCourseTopic(json['topic'] as int? ?? 1),
+      readOn: json['readOn'] as String?,
+    );
+  }
 
-  int get _topic => normalizeCourseTopic(_prefs.getInt(_topicKey) ?? 1);
+  Future<void> _write(_CourseProgress progress) => requirePreferenceWrite(
+    _prefs.setString(
+      _key,
+      jsonEncode({'topic': progress.topic, 'readOn': progress.readOn}),
+    ),
+  );
 
   @override
-  Future<Result<int>> currentTopic() async => _guard(() async => _topic);
-
-  @override
-  Future<Result<int>> advanceForToday() async => _guard(() async {
+  Future<Result<int>> currentTopic() => _guard(() async {
     final today = dateKey(_clock());
-    if (_prefs.getString(_advancedKey) == today) return _topic;
+    final progress = _read();
+    if (progress.readOn == null || progress.readOn!.compareTo(today) >= 0) {
+      return progress.topic;
+    }
 
-    final next = normalizeCourseTopic(_topic + 1);
-    await _prefs.setInt(_topicKey, next);
-    await _prefs.setString(_advancedKey, today);
+    final next = normalizeCourseTopic(progress.topic + 1);
+    await _write(_CourseProgress(topic: next));
     return next;
   });
 
-  Future<Result<int>> _guard(Future<int> Function() op) async {
+  @override
+  Future<Result<void>> markCurrentTopicRead() => _guard(() async {
+    final progress = _read();
+    await _write(progress.copyWith(readOn: dateKey(_clock())));
+  });
+
+  Future<Result<T>> _guard<T>(Future<T> Function() op) async {
     try {
       return Success(await op());
-    } on Exception catch (e) {
+    } on Object catch (e) {
       return Failure(
         AppFailure(
           'Не удалось прочитать прогресс курса',
@@ -48,4 +67,14 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
       );
     }
   }
+}
+
+class _CourseProgress {
+  const _CourseProgress({required this.topic, this.readOn});
+
+  final int topic;
+  final String? readOn;
+
+  _CourseProgress copyWith({String? readOn}) =>
+      _CourseProgress(topic: topic, readOn: readOn);
 }

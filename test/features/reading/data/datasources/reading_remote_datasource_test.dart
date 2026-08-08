@@ -1,9 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:lampada/core/network/remote_fetch_exception.dart';
 import 'package:lampada/core/result/result.dart';
-import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart'
-    show RemoteFetchException;
 import 'package:lampada/features/reading/data/datasources/reading_remote_datasource.dart';
 
 /// Разметка стиха у Азбуки: номер главы и стиха в data-verse, язык — в классе.

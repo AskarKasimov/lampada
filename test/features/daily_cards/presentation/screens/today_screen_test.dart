@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
+import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
@@ -198,6 +199,10 @@ void main() {
 
       expect(find.byType(BasicsHeroBlock), findsOneWidget);
       expect(find.text('ПОСЛЕДОВАТЕЛЬНЫЙ КУРС'), findsOneWidget);
+      expect(
+        find.text('Следующая тема откроется на следующий день после прочтения'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('показывает полоску недели и блоки дня', (tester) async {

@@ -7,20 +7,9 @@ import 'package:http/http.dart' as http;
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
+import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
 import '../dto/day_card_dto.dart';
-
-/// Сбой похода в сеть с уже определённым видом. Знание про `dart:io` и `http`
-/// заканчивается здесь — репозиторий выше видит только [FailureKind].
-class RemoteFetchException implements Exception {
-  const RemoteFetchException(this.kind, this.cause);
-
-  final FailureKind kind;
-  final Object cause;
-
-  @override
-  String toString() => 'RemoteFetchException(${kind.name}, $cause)';
-}
 
 /// Источник дневного контента. Реализация ниже скрейпит azbyka.ru —
 /// абстракция позволяет подменить её в тестах репозитория.
