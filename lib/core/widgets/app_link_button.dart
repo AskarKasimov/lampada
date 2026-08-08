@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Второстепенная текстовая кнопка (подчёркнутая) — «На главный экран»,
-/// «Пройти снова», «Повторить» после ошибки загрузки.
+/// «Читать Евангелие», «Повторить» после ошибки загрузки.
 class AppLinkButton extends StatelessWidget {
   const AppLinkButton({
     required this.label,

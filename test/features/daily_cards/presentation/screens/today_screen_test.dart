@@ -16,7 +16,6 @@ import 'package:lampada/features/daily_cards/presentation/screens/course_reader_
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_course_link.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/basics_hero_block.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/daily_card_action_button.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_card_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reading_hero_block.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/session_done_view.dart';
@@ -448,23 +447,31 @@ void main() {
       expect(viewer.reading?.reference, 'Jn.10:1-9');
     });
 
-    testWidgets('с последней карточки «Читать» ведёт прямо в ридер', (
-      tester,
-    ) async {
+    testWidgets('свайп ведёт к финалу с чтением Евангелия', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
 
       await tester.tap(find.byType(DayCardBlock).first);
       await settle(tester);
-      // Цитата → совет: совет последний, дальше чтение.
-      await tester.tap(find.byType(DailyCardNextButton));
+
+      expect(find.text('Свайпните влево'), findsOneWidget);
+      expect(find.text('Дальше'), findsNothing);
+
+      final pageView = find.descendant(
+        of: find.byType(CardViewerScreen),
+        matching: find.byType(PageView),
+      );
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
       await settle(tester);
 
-      expect(find.byType(DailyCardReadButton), findsOneWidget);
-      await tester.tap(find.byType(DailyCardReadButton));
+      expect(find.byType(SessionDoneView), findsOneWidget);
+      expect(find.text('Пройти снова'), findsNothing);
+      expect(find.text('Читать Евангелие'), findsOneWidget);
+      await tester.tap(find.text('Читать Евангелие'));
       await settle(tester);
-
       expect(find.byType(ReadingScreen), findsOneWidget);
     });
 
