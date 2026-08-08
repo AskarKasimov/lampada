@@ -4,6 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/theme_mode_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
+
+class _FailedWriteStore extends SharedPreferencesStorePlatform {
+  @override
+  Future<bool> clear() async => true;
+
+  @override
+  Future<Map<String, Object>> getAll() async => {};
+
+  @override
+  Future<bool> remove(String key) async => false;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async =>
+      false;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -80,5 +96,23 @@ void main() {
     addTearDown(second.dispose);
 
     expect(second.read(themeModeProvider), ThemeMode.dark);
+  });
+
+  test('не меняет тему, если prefs отклонил запись', () async {
+    SharedPreferences.resetStatic();
+    SharedPreferencesStorePlatform.instance = _FailedWriteStore();
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    final saved = await container
+        .read(themeModeProvider.notifier)
+        .select(ThemeMode.dark);
+
+    expect(saved, isFalse);
+    expect(container.read(themeModeProvider), ThemeMode.system);
   });
 }

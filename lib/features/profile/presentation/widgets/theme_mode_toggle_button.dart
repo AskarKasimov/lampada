@@ -35,8 +35,16 @@ class ThemeModeSettingTile extends ConsumerWidget {
           ],
           selected: {mode},
           showSelectedIcon: false,
-          onSelectionChanged: (selection) =>
-              ref.read(themeModeProvider.notifier).select(selection.first),
+          onSelectionChanged: (selection) async {
+            final saved = await ref
+                .read(themeModeProvider.notifier)
+                .select(selection.first);
+            if (!saved && context.mounted) {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                const SnackBar(content: Text('Не удалось сохранить тему')),
+              );
+            }
+          },
           style: SegmentedButton.styleFrom(
             foregroundColor: colors.textSecondary,
             selectedForegroundColor: colors.background,
