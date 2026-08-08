@@ -6,6 +6,7 @@ import '../../../../core/log/net_log.dart';
 import '../../../../core/network/network_status.dart';
 import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
+import '../../../../core/storage/preference_write.dart';
 import '../../domain/entities/daily_reading.dart';
 import '../../domain/repositories/reading_repository.dart';
 import '../datasources/reading_remote_datasource.dart';
@@ -71,7 +72,11 @@ class AzbykaReadingRepository implements ReadingRepository {
 
       try {
         final dto = await _remote.fetch(reference, timeout: left);
-        await _writeCache(reference, dto);
+        try {
+          await _writeCache(reference, dto);
+        } on Exception catch (e) {
+          netLog('не удалось записать кэш чтения $reference: $e');
+        }
         return Success(dto.toEntity());
       } on RemoteFetchException catch (e) {
         lastKind = e.kind;
@@ -100,7 +105,9 @@ class AzbykaReadingRepository implements ReadingRepository {
   }
 
   Future<void> _writeCache(String reference, DailyReadingDto dto) =>
-      _prefs.setString('$_cachePrefix$reference', jsonEncode(dto.toJson()));
+      requirePreferenceWrite(
+        _prefs.setString('$_cachePrefix$reference', jsonEncode(dto.toJson())),
+      );
 
   DailyReadingDto? _readCache(String reference) {
     final raw = _prefs.getString('$_cachePrefix$reference');

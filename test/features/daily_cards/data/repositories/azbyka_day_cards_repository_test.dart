@@ -9,6 +9,7 @@ import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
 import 'package:lampada/features/daily_cards/data/repositories/azbyka_day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 class _FakeDatasource implements DayCardsRemoteDatasource {
   _FakeDatasource(this._result);
@@ -55,6 +56,21 @@ class _CountingDatasource implements DayCardsRemoteDatasource {
 class _OfflineNetworkStatus implements NetworkStatus {
   @override
   Future<bool> isOnline() async => false;
+}
+
+class _FailingCacheStore extends SharedPreferencesStorePlatform {
+  @override
+  Future<bool> clear() async => true;
+
+  @override
+  Future<Map<String, Object>> getAll() async => {};
+
+  @override
+  Future<bool> remove(String key) async => true;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) =>
+      Future<bool>.error(Exception('диск недоступен'));
 }
 
 /// Съедает весь выданный таймаут и падает — так ведёт себя живая, но не
@@ -119,6 +135,20 @@ void main() {
     // держать больше одного дня.
     expect(prefs.getString('day_cards_cache_v3:2026-07-19'), isNotNull);
     expect(prefs.getStringList('day_cards_cached_dates_v3'), ['2026-07-19']);
+  });
+
+  test('свежие карточки возвращаются при ошибке записи кэша', () async {
+    SharedPreferences.resetStatic();
+    SharedPreferencesStorePlatform.instance = _FailingCacheStore();
+    final prefs = await SharedPreferences.getInstance();
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    final result = await _repo(
+      _FakeDatasource([_card]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
+
+    expect(result, isA<Success<TodayCards>>());
   });
 
   test('кэш держит несколько дней одновременно', () async {
