@@ -19,6 +19,7 @@ import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
 import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
+import '../../domain/usecases/load_day_progress.dart';
 import '../../domain/usecases/mark_course_topic_read.dart';
 import '../../domain/usecases/record_card_read.dart';
 
@@ -80,6 +81,10 @@ final recordCardReadProvider = Provider<RecordCardRead>(
   (ref) => RecordCardRead(ref.watch(dayProgressRepositoryProvider)),
 );
 
+final loadDayProgressProvider = Provider<LoadDayProgress>(
+  (ref) => LoadDayProgress(ref.watch(dayProgressRepositoryProvider)),
+);
+
 final courseProgressRepositoryProvider = Provider<CourseProgressRepository>(
   (ref) => PrefsCourseProgressRepository(ref.watch(sharedPreferencesProvider)),
 );
@@ -136,8 +141,6 @@ final dayProgressProvider =
     );
 
 class DayProgressNotifier extends AsyncNotifier<DayProgress> {
-  DayProgressRepository get _repo => ref.read(dayProgressRepositoryProvider);
-
   /// Набор, по которому сейчас идёт сессия. Null — карточки ещё не загрузились
   /// или упали; записывать в прогресс тогда нечего.
   ///
@@ -149,7 +152,7 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
 
   @override
   Future<DayProgress> build() async {
-    final result = await _repo.loadToday();
+    final result = await ref.read(loadDayProgressProvider)();
     return switch (result) {
       Success(value: final p) => p,
       Failure(failure: final f) => throw f,
