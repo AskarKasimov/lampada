@@ -477,6 +477,32 @@ void main() {
       expect(find.byType(ReadingScreen), findsOneWidget);
     });
 
+    testWidgets('подсказка свайпа не повторяется при возврате к карточке', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildApp());
+      await settle(tester);
+      await dismissAutoOpened(tester);
+
+      await tester.tap(find.byType(DayCardBlock).first);
+      await settle(tester);
+
+      final pageView = find.descendant(
+        of: find.byType(CardViewerScreen),
+        matching: find.byType(PageView),
+      );
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(-400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(400, 0), 1000);
+      await settle(tester);
+      await tester.fling(pageView, const Offset(400, 0), 1000);
+      await settle(tester);
+
+      expect(find.byType(CardSwipeNudge), findsNothing);
+    });
+
     testWidgets('открытие ридера засчитывает чтение прочитанным', (
       tester,
     ) async {

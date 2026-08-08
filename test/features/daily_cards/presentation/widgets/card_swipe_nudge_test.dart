@@ -6,10 +6,17 @@ void main() {
   testWidgets('начинается после показа экрана и плавно возвращается', (
     tester,
   ) async {
+    var starts = 0;
     await tester.pumpWidget(
-      const MaterialApp(home: CardSwipeNudge(child: SizedBox.expand())),
+      MaterialApp(
+        home: CardSwipeNudge(
+          onConsumed: () => starts++,
+          child: const SizedBox.expand(),
+        ),
+      ),
     );
 
+    expect(starts, 1);
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 20));
     expect(_horizontalOffset(tester), 0);

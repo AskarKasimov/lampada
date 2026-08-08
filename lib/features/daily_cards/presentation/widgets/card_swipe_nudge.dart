@@ -4,9 +4,14 @@ const _nudgeDistance = 24.0;
 
 /// После показа экрана один раз плавно качает карточку в сторону свайпа.
 class CardSwipeNudge extends StatefulWidget {
-  const CardSwipeNudge({required this.child, super.key});
+  const CardSwipeNudge({
+    required this.child,
+    required this.onConsumed,
+    super.key,
+  });
 
   final Widget child;
+  final VoidCallback onConsumed;
 
   @override
   State<CardSwipeNudge> createState() => _CardSwipeNudgeState();
@@ -38,8 +43,10 @@ class _CardSwipeNudgeState extends State<CardSwipeNudge>
   @override
   void initState() {
     super.initState();
+    widget.onConsumed();
     Future<void>.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) _controller.forward();
+      if (!mounted) return;
+      _controller.forward();
     });
   }
 

@@ -55,6 +55,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   );
   late int _index = widget.startIndex;
   int? _markedIndex;
+  var _swipeNudgeHasStarted = false;
 
   /// Экран завершения — последняя страница, сразу за карточками. Он про
   /// «на сегодня довольно», поэтому у чужих дней его нет.
@@ -216,8 +217,11 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
       key: ValueKey(widget.cards[index].id),
       card: widget.cards[index],
     );
-    return index == widget.startIndex
-        ? CardSwipeNudge(child: content)
+    return index == widget.startIndex && !_swipeNudgeHasStarted
+        ? CardSwipeNudge(
+            onConsumed: () => _swipeNudgeHasStarted = true,
+            child: content,
+          )
         : content;
   }
 
