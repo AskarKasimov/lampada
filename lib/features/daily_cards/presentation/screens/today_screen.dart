@@ -21,6 +21,8 @@ import '../widgets/week_strip.dart';
 import 'card_viewer_screen.dart';
 import 'course_reader_screen.dart';
 
+const _readerOpenDelay = Duration(milliseconds: 300);
+
 /// Вкладка «Сегодня»: полоска недели и блоки выбранного дня.
 ///
 /// Календарь отдельной вкладкой не живёт — неделя сверху закрывает навигацию
@@ -327,7 +329,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       .where((c) => c.type != CardType.reading && c.type != CardType.basics)
       .toList();
 
-  void _open(BuildContext context, WidgetRef ref, DayCard card) {
+  Future<void> _open(BuildContext context, WidgetRef ref, DayCard card) async {
     if (card.type == CardType.reading) {
       _openReader(context, ref, card);
       return;
@@ -337,8 +339,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       return;
     }
     final pages = _pages;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    final reading = await Navigator.of(context).push<DayCard>(
+      MaterialPageRoute<DayCard>(
         fullscreenDialog: true,
         builder: (_) => CardViewerScreen(
           cards: pages,
@@ -348,6 +350,10 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ),
       ),
     );
+    if (!context.mounted || reading == null) return;
+    await Future<void>.delayed(_readerOpenDelay);
+    if (!context.mounted) return;
+    _openReader(context, ref, reading);
   }
 
   void _openReader(BuildContext context, WidgetRef ref, DayCard card) {

@@ -483,7 +483,13 @@ void main() {
       expect(find.text('Пройти снова'), findsNothing);
       expect(find.text('Читать Евангелие'), findsOneWidget);
       await tester.tap(find.text('Читать Евангелие'));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      expect(find.byType(ReadingScreen), findsNothing);
       await settle(tester);
+
+      expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);
       expect(find.byType(ReadingScreen), findsOneWidget);
     });
 

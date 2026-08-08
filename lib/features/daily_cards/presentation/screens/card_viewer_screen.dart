@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
-import '../../../reading/presentation/screens/reading_screen.dart';
 import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
@@ -91,18 +90,8 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     });
   }
 
-  /// Ридер открывается с финального экрана после завершения карточек.
-  Future<void> _openReader() async {
-    final card = widget.reading!;
-    if (widget.recordProgress) {
-      ref.read(dayProgressProvider.notifier).markRead(card.type);
-    }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ReadingScreen(reference: card.reference!),
-      ),
-    );
-  }
+  /// Закрывает просмотрщик и возвращает чтение родительскому маршруту.
+  void _openReader() => Navigator.of(context).pop(widget.reading);
 
   void _handleVerticalDrag(DragEndDetails details) {
     if ((details.primaryVelocity ?? 0) >= _dismissVelocity) {
