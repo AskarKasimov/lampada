@@ -472,7 +472,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ],
         if (rest.isNotEmpty) ...[
           Text(
-            'ЕЩЁ ЗА СЕГОДНЯ',
+            'МАТЕРИАЛЫ ДНЯ',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,

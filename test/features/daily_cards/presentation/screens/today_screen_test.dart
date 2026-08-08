@@ -216,6 +216,7 @@ void main() {
       // обычных блоков на один меньше, чем карточек дня.
       expect(find.byType(ReadingHeroBlock), findsOneWidget);
       expect(find.byType(DayCardBlock), findsNWidgets(_cards.length - 1));
+      expect(find.text('МАТЕРИАЛЫ ДНЯ'), findsOneWidget);
       expect(find.text('Сегодня'), findsOneWidget);
     });
 
