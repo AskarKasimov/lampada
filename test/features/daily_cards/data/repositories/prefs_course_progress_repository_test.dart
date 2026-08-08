@@ -1,8 +1,26 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/course_calendar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
+
+class _FailedWriteStore extends SharedPreferencesStorePlatform {
+  @override
+  Future<bool> clear() async => true;
+
+  @override
+  Future<Map<String, Object>> getAll() async => {};
+
+  @override
+  Future<bool> remove(String key) async => false;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async =>
+      false;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -69,7 +87,10 @@ void main() {
 
   test('дойдя до конца курса, на следующий день начинаем сначала', () async {
     final prefs = await prefsWith({
-      'flutter.course_topic_v2': courseTopicCount,
+      'flutter.course_progress_v3': jsonEncode({
+        'topic': courseTopicCount,
+        'readOn': null,
+      }),
     });
     final r = repo(prefs);
 
@@ -79,9 +100,21 @@ void main() {
     expect(valueOf(await r.currentTopic()), 1);
   });
 
-  test('старый ключ не мигрируется в новую схему', () async {
-    final prefs = await prefsWith({'flutter.course_topic': courseTopicCount});
+  test('ключи прошлой схемы не мигрируются', () async {
+    final prefs = await prefsWith({
+      'flutter.course_topic_v2': 42,
+      'flutter.course_topic_read_on_v2': '2026-07-27',
+    });
 
     expect(valueOf(await repo(prefs).currentTopic()), 1);
+  });
+
+  test('не подтверждает прочтение, если prefs отклонил запись', () async {
+    SharedPreferences.resetStatic();
+    SharedPreferencesStorePlatform.instance = _FailedWriteStore();
+    final failing = repo(await SharedPreferences.getInstance());
+    addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+    expect(await failing.markCurrentTopicRead(), isA<Failure<void>>());
   });
 }
