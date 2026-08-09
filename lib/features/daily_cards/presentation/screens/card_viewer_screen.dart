@@ -10,7 +10,6 @@ import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
 import '../widgets/card_swipe_nudge.dart';
 import '../widgets/progress_dots.dart';
-import '../widgets/session_done_view.dart';
 
 /// Скорость свайпа вниз (лог.px/с), после которой просмотрщик закрывается.
 const _dismissVelocity = 700.0;
@@ -26,11 +25,10 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     required this.startIndex,
     required this.recordProgress,
     super.key,
-    this.reading,
   });
 
-  /// Карточки-страницы. Карточки чтения здесь нет: она не текст, а вход
-  /// в ридер, и своей страницы не получает — см. [reading].
+  /// Карточки-страницы. Евангелие и курс идут отдельными треками и сюда не
+  /// входят.
   final List<DayCard> cards;
   final int startIndex;
 
@@ -38,11 +36,6 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// юзер заходил ЗА КОНТЕНТОМ ЭТОГО ДНЯ, и чтение вчерашнего не должно
   /// задним числом зажигать вчерашний огонёк.
   final bool recordProgress;
-
-  /// Чтение дня, если оно есть. На него ведёт явное действие финального
-  /// экрана: последняя обычная карточка не должна неожиданно менять «Дальше»
-  /// на «Читать».
-  final DayCard? reading;
 
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
@@ -56,14 +49,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   int? _markedIndex;
   var _swipeNudgeHasStarted = false;
 
-  /// Экран завершения — последняя страница, сразу за карточками. Он про
-  /// «на сегодня довольно», поэтому у чужих дней его нет.
-  bool get _hasDonePage => widget.recordProgress;
-
-  int get _pageCount => widget.cards.length + (_hasDonePage ? 1 : 0);
-
-  /// Точки соответствуют карточкам и финальному экрану текущего дня.
-  int get _stepCount => widget.cards.length + (_hasDonePage ? 1 : 0);
+  int get _pageCount => widget.cards.length;
 
   @override
   void initState() {
@@ -90,9 +76,6 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     });
   }
 
-  /// Закрывает просмотрщик и возвращает чтение родительскому маршруту.
-  void _openReader() => Navigator.of(context).pop(widget.reading);
-
   void _handleVerticalDrag(DragEndDetails details) {
     if ((details.primaryVelocity ?? 0) >= _dismissVelocity) {
       Navigator.of(context).pop();
@@ -103,9 +86,6 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
-    final onDonePage = _index >= widget.cards.length;
-    final bookmarkIndex = onDonePage ? widget.cards.length - 1 : _index;
-
     return Scaffold(
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -126,15 +106,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                       },
                       itemBuilder: (context, index) => Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 34),
-                        child: Center(
-                          child: index < widget.cards.length
-                              ? _cardPage(index)
-                              : SessionDoneView(
-                                  onRead: widget.reading == null
-                                      ? null
-                                      : _openReader,
-                                ),
-                        ),
+                        child: Center(child: _cardPage(index)),
                       ),
                     ),
                   ),
@@ -150,14 +122,11 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                         children: [
                           const SizedBox(height: 20),
                           ProgressDots(
-                            count: _stepCount,
-                            currentIndex: _index < _stepCount
-                                ? _index
-                                : _stepCount - 1,
+                            count: _pageCount,
+                            currentIndex: _index,
                             accentColors: [
                               for (final card in widget.cards)
                                 card.type.styleFor(brightness).accent,
-                              if (_hasDonePage) colors.accent,
                             ],
                           ),
                         ],
@@ -182,17 +151,8 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
               Positioned(
                 top: 0,
                 left: 8,
-                child: Visibility(
-                  visible: !onDonePage,
-                  maintainAnimation: true,
-                  maintainSize: true,
-                  maintainState: true,
-                  child: BookmarkButton(
-                    bookmark: _bookmarkFor(
-                      widget.cards[bookmarkIndex],
-                      brightness,
-                    ),
-                  ),
+                child: BookmarkButton(
+                  bookmark: _bookmarkFor(widget.cards[_index], brightness),
                 ),
               ),
             ],

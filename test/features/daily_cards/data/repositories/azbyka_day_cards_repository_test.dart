@@ -6,7 +6,9 @@ import 'package:lampada/core/network/remote_fetch_exception.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart';
 import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
+import 'package:lampada/features/daily_cards/data/dto/day_dto.dart';
 import 'package:lampada/features/daily_cards/data/repositories/azbyka_day_cards_repository.dart';
+import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -17,21 +19,15 @@ class _FakeDatasource implements DayCardsRemoteDatasource {
   final Object _result; // List<DayCardDto> или Exception
 
   @override
-  Future<List<DayCardDto>> fetch(
-    DateTime date, {
-    required Duration timeout,
-  }) async {
+  Future<DayDto> fetch(DateTime date, {required Duration timeout}) async {
     if (_result is Exception) throw _result;
-    return _result as List<DayCardDto>;
+    return DayDto(cards: _result as List<DayCardDto>);
   }
 }
 
 class _NeverCalledDatasource implements DayCardsRemoteDatasource {
   @override
-  Future<List<DayCardDto>> fetch(
-    DateTime date, {
-    required Duration timeout,
-  }) async {
+  Future<DayDto> fetch(DateTime date, {required Duration timeout}) async {
     throw StateError('fetch не должен зваться, если кэш свежий');
   }
 }
@@ -44,10 +40,7 @@ class _CountingDatasource implements DayCardsRemoteDatasource {
   final List<Duration> timeouts = [];
 
   @override
-  Future<List<DayCardDto>> fetch(
-    DateTime date, {
-    required Duration timeout,
-  }) async {
+  Future<DayDto> fetch(DateTime date, {required Duration timeout}) async {
     calls++;
     timeouts.add(timeout);
     throw _error;
@@ -65,10 +58,7 @@ class _SlowDatasource implements DayCardsRemoteDatasource {
   final List<Duration> timeouts = [];
 
   @override
-  Future<List<DayCardDto>> fetch(
-    DateTime date, {
-    required Duration timeout,
-  }) async {
+  Future<DayDto> fetch(DateTime date, {required Duration timeout}) async {
     timeouts.add(timeout);
     await Future<void>.delayed(timeout);
     throw const RemoteFetchException(FailureKind.network, 'таймаут');
@@ -79,6 +69,13 @@ const _card = DayCardDto(
   id: 'quote-2026-07-19',
   type: 'quote',
   body: 'body',
+  source: 'source',
+);
+
+const _parableCard = DayCardDto(
+  id: 'parable-2026-07-19',
+  type: 'parable',
+  body: 'притча',
   source: 'source',
 );
 
@@ -118,8 +115,8 @@ void main() {
     expect(today.cards.single.id, 'quote-2026-07-19');
     // Кэш подневный: ключ включает дату, иначе календарь не смог бы
     // держать больше одного дня.
-    expect(prefs.getString('day_cards_cache_v3:2026-07-19'), isNotNull);
-    expect(prefs.getStringList('day_cards_cached_dates_v3'), ['2026-07-19']);
+    expect(prefs.getString('day_cards_cache_v4:2026-07-19'), isNotNull);
+    expect(prefs.getStringList('day_cards_cached_dates_v4'), ['2026-07-19']);
   });
 
   test('свежие карточки возвращаются при ошибке записи кэша', () async {
@@ -155,7 +152,7 @@ void main() {
     ).getCardsFor(DateTime(2026, 7, 19));
 
     expect(result, isA<Success<TodayCards>>());
-    expect(prefs.getStringList('day_cards_cached_dates_v3'), [
+    expect(prefs.getStringList('day_cards_cached_dates_v4'), [
       '2026-07-19',
       '2026-07-20',
     ]);
@@ -174,7 +171,7 @@ void main() {
       prefs,
     ).getCardsFor(DateTime(2026, 7, 19));
 
-    expect(prefs.getStringList('day_cards_cached_dates_v3'), [
+    expect(prefs.getStringList('day_cards_cached_dates_v4'), [
       '2026-07-19',
       '2026-07-20',
     ]);
@@ -329,15 +326,17 @@ void main() {
     // доходя до сети. Так удаление «вопроса дня» дало офлайн-экран при живом
     // интернете.
     SharedPreferences.setMockInitialValues({
-      'flutter.day_cards_cache_v3:2026-07-19': jsonEncode([
-        {
-          'id': 'legacy-2026-07-19',
-          'type': 'legacy',
-          'body': 'body',
-          'source': 'source',
-        },
-      ]),
-      'flutter.day_cards_cached_dates_v3': ['2026-07-19'],
+      'flutter.day_cards_cache_v4:2026-07-19': jsonEncode({
+        'cards': [
+          {
+            'id': 'legacy-2026-07-19',
+            'type': 'legacy',
+            'body': 'body',
+            'source': 'source',
+          },
+        ],
+      }),
+      'flutter.day_cards_cached_dates_v4': ['2026-07-19'],
     });
     final prefs = await SharedPreferences.getInstance();
     final remote = _FakeDatasource([_card]);
@@ -353,4 +352,44 @@ void main() {
       'quote-2026-07-19',
     );
   });
+
+  test(
+    'день с «вопросом дня» перезапрашивается, а не отдаётся урезанным',
+    () async {
+      // Записи, оставшиеся от версии с «вопросом дня», обязаны считаться
+      // промахом целиком. Отфильтровать одну карточку и отдать остаток было бы
+      // хуже промаха: юзер получил бы день, в котором молча нет притчи, и
+      // ничто бы на это не намекнуло.
+      SharedPreferences.setMockInitialValues({
+        'flutter.day_cards_cache_v4:2026-07-19': jsonEncode({
+          'cards': [
+            {
+              'id': 'quote-2026-07-19',
+              'type': 'quote',
+              'body': 'из кэша',
+              'source': 'source',
+            },
+            {
+              'id': 'question-2026-07-19',
+              'type': 'question',
+              'body': 'body',
+              'source': 'source',
+            },
+          ],
+        }),
+        'flutter.day_cards_cached_dates_v4': ['2026-07-19'],
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      final result = await _repo(
+        _FakeDatasource([_card, _parableCard]),
+        prefs,
+      ).getCardsFor(DateTime(2026, 7, 19));
+
+      expect(result, isA<Success<TodayCards>>());
+      final cards = (result as Success<TodayCards>).value.cards;
+      expect(cards.map((c) => c.type), contains(CardType.parable));
+      expect(cards.map((c) => c.body), isNot(contains('из кэша')));
+    },
+  );
 }

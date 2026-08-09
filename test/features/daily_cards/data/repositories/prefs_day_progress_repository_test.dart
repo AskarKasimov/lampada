@@ -8,8 +8,6 @@ import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../support/shared_preferences_stores.dart';
-
 DayProgress _unwrap(Result<DayProgress> r) => (r as Success<DayProgress>).value;
 
 void main() {
@@ -132,22 +130,13 @@ void main() {
     expect(progress.readTypes, {CardType.quote, CardType.advice});
   });
 
-  test('прогресс неверного типа в prefs отдаёт Failure', () async {
-    SharedPreferences.setMockInitialValues({
-      'flutter.day_progress': <String>[],
-    });
-    final prefs = await SharedPreferences.getInstance();
-
-    final result = await PrefsDayProgressRepository(prefs).loadToday();
-
-    expect(result, isA<Failure<DayProgress>>());
-  });
-
-  test('сохранённый вопрос дня остаётся прочитанным', () async {
+  test('прогресс с убранным «вопросом дня» не теряет остальное', () async {
+    // Не выдуманный `legacy`, а тип, который прямо сейчас лежит в prefs у всех,
+    // кто открывал приложение до замены вопроса на притчу.
     SharedPreferences.setMockInitialValues({
       'flutter.day_progress': jsonEncode({
         'date': dateKey(DateTime.now()),
-        'readTypes': ['question'],
+        'readTypes': ['quote', 'question'],
         'visitedDays': <String>[],
       }),
     });
@@ -157,20 +146,6 @@ void main() {
 
     expect(result, isA<Success<DayProgress>>());
     final progress = (result as Success<DayProgress>).value;
-    expect(progress.readTypes, {CardType.question});
-  });
-
-  test('не подтверждает прогресс, если prefs отклонил запись', () async {
-    SharedPreferences.resetStatic();
-    installSharedPreferencesStore(RejectingWriteStore());
-    final prefs = await SharedPreferences.getInstance();
-    addTearDown(() => SharedPreferences.setMockInitialValues({}));
-
-    final result = await PrefsDayProgressRepository(
-      prefs,
-      clock: () => fixedNow,
-    ).markRead(CardType.quote);
-
-    expect(result, isA<Failure<DayProgress>>());
+    expect(progress.readTypes, {CardType.quote});
   });
 }

@@ -176,7 +176,6 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     final session = _session;
     if (session == null) return false;
     final saved = await _apply(ref.read(recordCardReadProvider)(type));
-    if (!saved) return false;
     if (type == CardType.basics) {
       final result = await ref.read(markCourseTopicReadProvider)();
       if (result is Success<void>) {
@@ -186,6 +185,6 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
         return false;
       }
     }
-    return true;
+    return saved;
   }
 }

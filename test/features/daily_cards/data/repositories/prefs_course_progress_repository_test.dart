@@ -34,26 +34,22 @@ void main() {
     expect(valueOf(result), 1);
   });
 
-  test('прочтение темы не меняет её в тот же день', () async {
+  test('прочтение сразу открывает следующую тему', () async {
     final r = repo(await prefsWith());
 
     await r.markCurrentTopicRead();
 
-    expect(valueOf(await r.currentTopic()), 1);
+    expect(valueOf(await r.currentTopic()), 2);
   });
 
-  test(
-    'на следующий день после прочтения открывается следующая тема',
-    () async {
-      final r = repo(await prefsWith());
+  test('повторное прочтение в тот же день не пропускает тему', () async {
+    final r = repo(await prefsWith());
 
-      await r.markCurrentTopicRead();
-      now = DateTime(2026, 7, 29);
+    await r.markCurrentTopicRead();
+    await r.markCurrentTopicRead();
 
-      expect(valueOf(await r.currentTopic()), 2);
-      expect(valueOf(await r.currentTopic()), 2);
-    },
-  );
+    expect(valueOf(await r.currentTopic()), 2);
+  });
 
   test('пропущенные без прочтения дни не продвигают курс', () async {
     final prefs = await prefsWith();
@@ -66,14 +62,13 @@ void main() {
   test('прочтение переживает пересоздание репозитория', () async {
     final prefs = await prefsWith();
     await repo(prefs).markCurrentTopicRead();
-    now = DateTime(2026, 7, 29);
 
     expect(valueOf(await repo(prefs).currentTopic()), 2);
   });
 
-  test('дойдя до конца курса, на следующий день начинаем сначала', () async {
+  test('дойдя до конца курса, сразу начинаем сначала', () async {
     final prefs = await prefsWith({
-      'flutter.course_progress_v3': jsonEncode({
+      'flutter.course_progress_v4': jsonEncode({
         'topic': courseTopicCount,
         'readOn': null,
       }),
@@ -81,22 +76,23 @@ void main() {
     final r = repo(prefs);
 
     await r.markCurrentTopicRead();
-    now = DateTime(2026, 7, 29);
 
     expect(valueOf(await r.currentTopic()), 1);
   });
 
   test('ключи прошлой схемы не мигрируются', () async {
     final prefs = await prefsWith({
-      'flutter.course_topic_v2': 42,
-      'flutter.course_topic_read_on_v2': '2026-07-27',
+      'flutter.course_progress_v3': jsonEncode({
+        'topic': 42,
+        'readOn': '2026-07-27',
+      }),
     });
 
     expect(valueOf(await repo(prefs).currentTopic()), 1);
   });
 
   test('прогресс неверного типа в prefs отдаёт Failure', () async {
-    final prefs = await prefsWith({'flutter.course_progress_v3': <String>[]});
+    final prefs = await prefsWith({'flutter.course_progress_v4': <String>[]});
 
     expect(await repo(prefs).currentTopic(), isA<Failure<int>>());
   });

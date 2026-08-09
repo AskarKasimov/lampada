@@ -41,6 +41,9 @@ dependencies:
   http: ^1.6.0
   html: ^0.15.6
   connectivity_plus: ^7.3.1
+  flutter_local_notifications: ^22.2.0
+  timezone: ^0.11.1
+  flutter_timezone: ^5.1.0
 
 dev_dependencies:
   flutter_test:
@@ -72,9 +75,9 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    # Марка приложения: та же лампада, что на иконке, но с прозрачным фоном.
+    - assets/brand/lampada.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -124,7 +127,10 @@ flutter_launcher_icons:
   image_path: "assets/icon/icon_ios.png"
   android: true
   ios: true
-  adaptive_icon_background: "#5C4838"
+  # App Store отклоняет иконку с альфа-каналом. Генератор тащит его из
+  # исходника даже когда тот RGB, поэтому снимаем явно.
+  remove_alpha_ios: true
+  adaptive_icon_background: "#F7EFE2"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
   # Исходник уже нарисован с полями — штатный отступ 16% ужал бы огонёк ещё раз.
   adaptive_icon_foreground_inset: 0

@@ -6,16 +6,29 @@ import 'core/storage/shared_preferences_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'features/daily_cards/presentation/widgets/refresh_on_resume.dart';
+import 'features/reminders/presentation/providers/providers.dart';
+import 'features/shell/presentation/providers/shell_providers.dart';
 import 'features/shell/presentation/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  final container = ProviderContainer(
+    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+  );
+
+  // Тап по напоминанию обязан привести на «Сегодня», где бы юзер ни был
+  // в прошлый раз (FR-015). Разрешение здесь НЕ запрашиваем — это делает
+  // отдельный экран после первой прочитанной карточки.
+  await container
+      .read(notificationServiceProvider)
+      .init(
+        onTap: () =>
+            container.read(selectedTabProvider.notifier).select(ShellTab.today),
+      );
+
   runApp(
-    ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      child: const LampadaApp(),
-    ),
+    UncontrolledProviderScope(container: container, child: const LampadaApp()),
   );
 }
 

@@ -8,7 +8,7 @@ import '../../../../core/storage/preference_write.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 
-/// Прогресс курса в shared_preferences: номер текущей темы и день её прочтения.
+/// Прогресс курса в shared_preferences: номер текущей темы и день сдвига.
 class PrefsCourseProgressRepository implements CourseProgressRepository {
   PrefsCourseProgressRepository(this._prefs, {DateTime Function()? clock})
     : _clock = clock ?? DateTime.now;
@@ -16,7 +16,9 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
   final SharedPreferences _prefs;
   final DateTime Function() _clock;
 
-  static const _key = 'course_progress_v3';
+  // Предыдущая схема отмечала прочтение, но оставляла тему прежней до завтра.
+  // Приложение ещё не выпущено, поэтому старое dev-состояние не мигрируем.
+  static const _key = 'course_progress_v4';
 
   _CourseProgress _read() {
     final raw = _prefs.getString(_key);
@@ -36,22 +38,16 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
   );
 
   @override
-  Future<Result<int>> currentTopic() => _guard(() async {
-    final today = dateKey(_clock());
-    final progress = _read();
-    if (progress.readOn == null || progress.readOn!.compareTo(today) >= 0) {
-      return progress.topic;
-    }
-
-    final next = normalizeCourseTopic(progress.topic + 1);
-    await _write(_CourseProgress(topic: next));
-    return next;
-  });
+  Future<Result<int>> currentTopic() => _guard(() async => _read().topic);
 
   @override
   Future<Result<void>> markCurrentTopicRead() => _guard(() async {
+    final today = dateKey(_clock());
     final progress = _read();
-    await _write(progress.copyWith(readOn: dateKey(_clock())));
+    if (progress.readOn == today) return;
+
+    final next = normalizeCourseTopic(progress.topic + 1);
+    await _write(_CourseProgress(topic: next, readOn: today));
   });
 
   Future<Result<T>> _guard<T>(Future<T> Function() op) async {
@@ -74,7 +70,4 @@ class _CourseProgress {
 
   final int topic;
   final String? readOn;
-
-  _CourseProgress copyWith({String? readOn}) =>
-      _CourseProgress(topic: topic, readOn: readOn);
 }

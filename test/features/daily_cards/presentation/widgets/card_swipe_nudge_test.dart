@@ -28,7 +28,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 800));
     expect(_horizontalOffset(tester), 0);
   });
+
+  testWidgets('раннее закрытие отменяет задержку подсказки', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: CardSwipeNudge(onConsumed: _noop, child: SizedBox.expand()),
+      ),
+    );
+
+    await tester.pumpWidget(const SizedBox());
+  });
 }
+
+void _noop() {}
 
 double _horizontalOffset(WidgetTester tester) =>
     tester.widget<Transform>(find.byType(Transform)).transform.storage[12];

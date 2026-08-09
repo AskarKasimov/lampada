@@ -10,13 +10,14 @@ import '../../../../core/log/net_log.dart';
 import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
 import '../dto/day_card_dto.dart';
+import '../dto/day_dto.dart';
 
 /// Источник дневного контента. Реализация ниже скрейпит azbyka.ru —
 /// абстракция позволяет подменить её в тестах репозитория.
 abstract interface class DayCardsRemoteDatasource {
   /// [timeout] задаёт вызывающий: бюджетом на загрузку владеет репозиторий,
   /// датасорс лишь исполняет отведённое ему время.
-  Future<List<DayCardDto>> fetch(DateTime date, {required Duration timeout});
+  Future<DayDto> fetch(DateTime date, {required Duration timeout});
 }
 
 /// Скрейпит https://azbyka.ru/days/{yyyy-MM-dd} — вся дневная разметка
@@ -35,10 +36,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
   static const _defaultSource = 'Азбука веры';
 
   @override
-  Future<List<DayCardDto>> fetch(
-    DateTime date, {
-    required Duration timeout,
-  }) async {
+  Future<DayDto> fetch(DateTime date, {required Duration timeout}) async {
     final dateStr = dateKey(date);
     final uri = Uri.parse('https://azbyka.ru/days/$dateStr');
     final elapsed = Stopwatch()..start();
@@ -75,9 +73,9 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       final cards = [
         _quoteCard(doc, dateStr),
         _sectionCard(doc, dateStr, type: 'advice', selector: '#sovet'),
-        _sectionCard(doc, dateStr, type: 'basics', selector: '#osnovy'),
+        _basicsCard(doc, dateStr),
         _readingCard(doc, dateStr),
-        _questionCard(doc, dateStr),
+        _parableCard(doc, dateStr),
       ].nonNulls.toList();
 
       // Пустая страница — это уже сломанная вёрстка, а не неполный день.
@@ -85,12 +83,21 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         throw const FormatException('ни одной секции дня на странице');
       }
 
+      final day = DayDto(
+        cards: cards,
+        week: _weekOf(doc),
+        title: _titleOf(doc),
+        isFast: _isFastDay(doc),
+      );
+
       netLog(
         'разобрано ${cards.length} карточек '
-        '(${cards.map((c) => c.type).join(', ')}) '
+        '(${cards.map((c) => c.type).join(', ')}), '
+        'день: ${day.title ?? '—'} / ${day.week ?? '—'}'
+        '${day.isFast ? ' / постный' : ''} '
         'за ${elapsed.elapsedMilliseconds}мс суммарно',
       );
-      return cards;
+      return day;
     } on FormatException catch (e) {
       // Вёрстка azbyka.ru поменялась — ретраить бессмысленно,
       // поэтому unknown, а не server.
@@ -127,21 +134,106 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     );
   }
 
-  /// Вопрос дня лежит в виджете с неуникальным классом, поэтому опираемся
-  /// на уникальный класс самой ссылки. Ответ на отдельной странице намеренно
-  /// не загружаем: карточка — вопрос для размышления, без второго запроса.
-  DayCardDto? _questionCard(Document doc, String dateStr) {
-    final body = doc.querySelector('a.az-qod-link')?.text.trim() ?? '';
-    if (body.isEmpty) {
-      netLog('нет секции "question" — пропускаем');
+  /// Притча дня. От [_sectionCard] отличается подписью: у части дней притча
+  /// заканчивается абзацем с автором, и он обязан попасть в source — карточка
+  /// и так печатает «— {source}» под телом, иначе автор оказался бы на экране
+  /// дважды и по-разному.
+  DayCardDto? _parableCard(Document doc, String dateStr) {
+    final container = doc.querySelector('#pritcha');
+    if (container == null) {
+      netLog('нет секции "parable" (#pritcha) — пропускаем');
+      return null;
+    }
+    // Строго до _paragraphsFrom: подпись вырезается из дерева, иначе она
+    // же станет последним абзацем тела.
+    final author = _attributionOf(container);
+    final paragraphs = _paragraphsFrom(container);
+    if (paragraphs.isEmpty) {
+      netLog('секция "parable" пуста — пропускаем');
       return null;
     }
     return DayCardDto(
-      id: 'question-$dateStr',
-      type: 'question',
-      body: body,
-      source: _defaultSource,
+      id: 'parable-$dateStr',
+      type: 'parable',
+      body: paragraphs.join('\n\n'),
+      source: author ?? _defaultSource,
     );
+  }
+
+  /// Подпись автора притчи — последний абзац, выключенный вправо.
+  ///
+  /// Азбука ставит её не всегда: на семи проверенных датах подпись была у
+  /// двух. Опираемся на выключку, а не на позицию: у части притч первый абзац
+  /// выключен по центру — это их собственный заголовок («Хитрый архитектор»),
+  /// и он часть текста, а не подпись.
+  static String? _attributionOf(Element container) {
+    final paragraphs = container.querySelectorAll('p');
+    if (paragraphs.isEmpty) return null;
+
+    final last = paragraphs.last;
+    final style = (last.attributes['style'] ?? '').replaceAll(' ', '');
+    if (!style.contains('text-align:right')) return null;
+
+    last.remove();
+    // «(см. иллюстрацию к этой притче)» — ссылка на страницу сайта, внутри
+    // приложения вести по ней некуда.
+    final text = _textWithBreaks(
+      last,
+    ).replaceFirst(RegExp(r'\s*\(\s*см\..*$', dotAll: true), '').trim();
+    return text.isEmpty ? null : text;
+  }
+
+  /// «Основы» с названием темы.
+  ///
+  /// Название нужно входу в курс на «Сегодня»: без него блок обещал «Основы
+  /// веры» и ничего больше. Берём `<strong>` из первого абзаца, а не режем
+  /// текст по первой точке: Азбука выделяет заголовок разметкой, а в самих
+  /// названиях встречаются сокращения с точкой внутри.
+  DayCardDto? _basicsCard(Document doc, String dateStr) {
+    final title = _cleaned(doc.querySelector('#osnovy p strong'));
+    final card = _sectionCard(
+      doc,
+      dateStr,
+      type: 'basics',
+      selector: '#osnovy',
+    );
+    return card?.copyWith(title: title);
+  }
+
+  /// Седмица церковного года: «Седмица 10-я по Пятидесятнице».
+  ///
+  /// Внутри `.shadow` лежат распорки `.lc`/`.rc` с неразрывными пробелами,
+  /// а сам текст разорван ссылками («<a>Седмица 2</a>-я <a>Великого поста</a>»),
+  /// поэтому берём текст всего блока и схлопываем пробелы.
+  static String? _weekOf(Document doc) =>
+      _cleaned(doc.querySelector('.day__post-wp .shadow'));
+
+  /// Первая память дня: «Прп. Льва́, епископа Ката́нского».
+  ///
+  /// Год жизни в `.secondary-content` отбрасываем: в шапке важно, чей это
+  /// день, а не когда он был, и «(ок. 780)» только удлиняет строку, которая
+  /// и так набрана крупно.
+  static String? _titleOf(Document doc) {
+    final item = doc.querySelector('.day__text ul li');
+    if (item == null) return null;
+    item.querySelectorAll('.secondary-content').forEach((e) => e.remove());
+    return _cleaned(item);
+  }
+
+  /// Постный ли день. Пометка стоит ссылкой на календарь постов в первом
+  /// абзаце `.day__text`; опираемся на href, а не на текст, потому что рядом
+  /// в том же абзаце живёт глас и порядок слов у Азбуки плавает.
+  static bool _isFastDay(Document doc) =>
+      doc.querySelector('.day__text a[href*="kalendar-postov"]') != null;
+
+  /// Текст элемента со схлопнутыми пробелами, включая неразрывные.
+  static String? _cleaned(Element? el) {
+    if (el == null) return null;
+    final text = el.text
+        .replaceAll(' ', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return text.isEmpty ? null : text;
   }
 
   /// Первое евангельское чтение литургии.

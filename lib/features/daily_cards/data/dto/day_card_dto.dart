@@ -10,13 +10,17 @@ abstract class DayCardDto with _$DayCardDto {
   const factory DayCardDto({
     required String id,
 
-    /// Строковый тип из источника: quote | advice | basics | reading | question.
+    /// Строковый тип из источника: quote | advice | basics | reading | parable.
     required String type,
     required String body,
     required String source,
 
     /// Ссылка на отрывок (`Jn.10:1-9`) — только у карточки чтения.
     String? reference,
+
+    /// Название темы — только у «Основ»: «Свойство Божье – всесовершенство».
+    /// У остальных типов заголовка нет, там сам текст и есть содержание.
+    String? title,
   }) = _DayCardDto;
 
   factory DayCardDto.fromJson(Map<String, dynamic> json) =>

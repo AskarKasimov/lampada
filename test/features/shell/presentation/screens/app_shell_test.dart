@@ -61,8 +61,11 @@ void main() {
 
   late SharedPreferences prefs;
 
+  /// Разрешение на напоминания спрашивается после первой закрытой карточки
+  /// и накрывает шелл своим маршрутом. Тестам про навигацию это мешает,
+  /// поэтому считаем, что спросили раньше.
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'flutter.reminders_asked': true});
     prefs = await SharedPreferences.getInstance();
   });
 

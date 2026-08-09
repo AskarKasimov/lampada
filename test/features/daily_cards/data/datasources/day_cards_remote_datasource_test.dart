@@ -7,6 +7,7 @@ import 'package:lampada/core/network/remote_fetch_exception.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart';
 import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
+import 'package:lampada/features/daily_cards/data/dto/day_dto.dart';
 
 /// Страница формы azbyka.ru с подставным содержимым вместо реальных цитат —
 /// так тест проверяет отображение «блок разметки → поле карточки», а не то,
@@ -17,10 +18,12 @@ String _page({
   String adviceHtml = '<p>ADVICE</p>',
   String basicsHtml = '<p>BASICS</p>',
   String? readingsHtml,
-  String? questionHtml,
+  String? parableHtml,
+  String? headerHtml,
 }) =>
     '''
 <html><body>
+  ${headerHtml ?? ''}
   <div class="widget quote-of-day">
     <div class="box">
       <p>$quoteBody</p>
@@ -39,10 +42,10 @@ String _page({
     <h2>Чтения Священного Писания</h2>
     <div class="readings-inner"><div class="readings-text">${readingsHtml ?? _liturgyOnlyReadings}</div></div>
   </div>
-  ${questionHtml == null ? '' : '''
-  <div class="widget">
-    <div class="widget-title">Вопрос дня</div>
-    <div class="box">$questionHtml</div>
+  ${parableHtml == null ? '' : '''
+  <div id="pritcha" class="block info">
+    <h2><a href="/pritchi">Притча</a> дня</h2>
+    <div class="brif">$parableHtml</div>
   </div>
   '''}
 </body></html>
@@ -84,6 +87,11 @@ AzbykaDayCardsRemoteDatasource _datasourceServing(
 }
 
 Future<List<DayCardDto>> _fetch(
+  AzbykaDayCardsRemoteDatasource datasource, [
+  DateTime? date,
+]) async => (await datasource.fetch(date ?? _date, timeout: _timeout)).cards;
+
+Future<DayDto> _fetchDay(
   AzbykaDayCardsRemoteDatasource datasource, [
   DateTime? date,
 ]) => datasource.fetch(date ?? _date, timeout: _timeout);
@@ -132,23 +140,139 @@ void main() {
       });
     });
 
-    test('ссылка «Вопрос дня» становится карточкой вопроса', () async {
+    test('блок «Притча дня» становится карточкой притчи', () async {
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(parableHtml: '<p>ПЕРВЫЙ АБЗАЦ</p><p>ВТОРОЙ АБЗАЦ</p>'),
+        ),
+      );
+
+      final parable = _cardOfType(cards, 'parable');
+      expect(parable.id, 'parable-2026-07-19');
+      expect(parable.body, 'ПЕРВЫЙ АБЗАЦ\n\nВТОРОЙ АБЗАЦ');
+      // Заголовок секции («Притча дня») — не контент.
+      expect(parable.body, isNot(contains('Притча')));
+    });
+
+    test('подпись под притчей уходит в источник, а не в текст', () async {
+      // Карточка сама печатает «— {source}» под телом: оставь подпись
+      // абзацем — и автор окажется на экране дважды, по-разному.
       final cards = await _fetch(
         _datasourceServing(
           _page(
-            questionHtml: '''
-              <a class="az-qod-link" href="https://azbyka.ru/vopros/why/">
-                Почему важно прощать?
-              </a>
+            parableHtml:
+                '<p>ТЕКСТ ПРИТЧИ</p>'
+                '<p style="text-align: right;">'
+                '<a href="/otechnik/Dorofej/"><em>авва Дорофей</em></a>'
+                '</p>',
+          ),
+        ),
+      );
+
+      final parable = _cardOfType(cards, 'parable');
+      expect(parable.body, 'ТЕКСТ ПРИТЧИ');
+      expect(parable.source, 'авва Дорофей');
+    });
+
+    test('из подписи вырезается «см. иллюстрацию»', () async {
+      // Ссылка ведёт на страницу сайта — внутри приложения идти по ней некуда.
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(
+            parableHtml:
+                '<p>ТЕКСТ</p>'
+                '<p style="text-align: right;">авва Дорофей '
+                '(см.<a href="/shemy/x.shtml"> иллюстрацию к этой притче</a>)'
+                '</p>',
+          ),
+        ),
+      );
+
+      expect(_cardOfType(cards, 'parable').source, 'авва Дорофей');
+    });
+
+    test('заголовок притчи по центру остаётся в тексте', () async {
+      // Выключка по центру — собственное название притчи, а не подпись:
+      // опираться на «последний абзац» вместо выключки было бы неверно.
+      final cards = await _fetch(
+        _datasourceServing(
+          _page(
+            parableHtml:
+                '<p style="text-align: center;">ХИТРЫЙ АРХИТЕКТОР</p>'
+                '<p>ТЕКСТ</p>',
+          ),
+        ),
+      );
+
+      final parable = _cardOfType(cards, 'parable');
+      expect(parable.body, 'ХИТРЫЙ АРХИТЕКТОР\n\nТЕКСТ');
+      expect(parable.source, 'Азбука веры');
+    });
+
+    test('имя дня собирается из седмицы, памяти и пометки поста', () async {
+      // Азбука рвёт эти строки ссылками и распорками с неразрывными
+      // пробелами, поэтому берём текст блока целиком и схлопываем пробелы.
+      final day = await _fetchDay(
+        _datasourceServing(
+          _page(
+            headerHtml: '''
+              <div class="day__post-wp dayinfo_color">
+                <div class="shadow">
+                  <div class="lc">&nbsp;</div>
+                  <a href="/days/x">Седмица 2</a>-я <a href="/y">Великого поста</a>
+                  <div class="rc">&nbsp;</div>
+                </div>
+              </div>
+              <div class="text day__text">
+                <p>
+                  <a href="/days/p-kalendar-postov-i-trapez">Постный день.</a>
+                  <a href="/glas">Глас</a> 5-й
+                </p>
+                <ul><li><a href="/days/z">Прп. Льва́, епископа Ката́нского
+                  <span class="secondary-content">(ок. 780)</span></a></li></ul>
+              </div>
             ''',
           ),
         ),
       );
 
-      final question = _cardOfType(cards, 'question');
-      expect(question.id, 'question-2026-07-19');
-      expect(question.body, 'Почему важно прощать?');
-      expect(question.source, 'Азбука веры');
+      expect(day.week, 'Седмица 2-я Великого поста');
+      // Год жизни отброшен: в шапке важно, чей это день, а не когда он был.
+      expect(day.title, 'Прп. Льва́, епископа Ката́нского');
+      expect(day.isFast, isTrue);
+    });
+
+    test('«Поста нет» не считается постным днём', () async {
+      // Обе пометки — ссылки, и различает их только href: у поста это
+      // календарь постов, у его отсутствия — общая статья о постах.
+      final day = await _fetchDay(
+        _datasourceServing(
+          _page(
+            headerHtml: '''
+              <div class="text day__text">
+                <p><a href="https://azbyka.ru/posty-pravoslavnoj-cerkvi">Поста </a>нет.</p>
+                <ul><li><a href="/days/z">Прп. Сисо́я Великого</a></li></ul>
+              </div>
+            ''',
+          ),
+        ),
+      );
+
+      expect(day.isFast, isFalse);
+      expect(day.title, 'Прп. Сисо́я Великого');
+      // Блока седмицы на странице нет вовсе — так Азбука верстает великие
+      // праздники: на Пасху вместо седмицы стоит сам праздник. Память при
+      // этом на месте, и день не остаётся безымянным.
+      expect(day.week, isNull);
+    });
+
+    test('без шапки день остаётся безымянным, но не падает', () async {
+      final day = await _fetchDay(_datasourceServing(_page()));
+
+      expect(day.week, isNull);
+      expect(day.title, isNull);
+      expect(day.isFast, isFalse);
+      expect(day.cards, isNotEmpty);
     });
 
     test('автор цитаты становится источником карточки', () async {
@@ -400,7 +524,7 @@ void main() {
           'advice',
           'basics',
           'reading',
-          'question',
+          'parable',
         ]);
         for (final card in cards) {
           expect(card.id, '${card.type}-$date');
@@ -409,6 +533,20 @@ void main() {
         }
       });
     }
+
+    test('19 июля разбирается имя дня', () async {
+      final day = await _fetchDay(
+        _datasourceServing(
+          _loadFixture('2026-07-19'),
+          expectUrl: 'https://azbyka.ru/days/2026-07-19',
+        ),
+        DateTime(2026, 7, 19),
+      );
+
+      expect(day.week, 'Неделя 7-я по Пятидесятнице');
+      expect(day.title, 'Прп. Сисо́я Великого');
+      expect(day.isFast, isFalse);
+    });
 
     test('20 июля чтение — евангельский отрывок со ссылкой', () async {
       final cards = await _fetch(

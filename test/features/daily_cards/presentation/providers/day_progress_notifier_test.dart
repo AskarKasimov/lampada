@@ -121,7 +121,7 @@ void main() {
     expect(courseRepository.markCalls, 1);
   });
 
-  test('ошибка записи прогресса не отмечает тему курса', () async {
+  test('ошибка записи прогресса всё равно отмечает тему курса', () async {
     final courseRepository = _CourseProgressRepository();
     final container = await _container(
       _FreshCardsRepository(),
@@ -134,7 +134,7 @@ void main() {
         .markRead(CardType.basics);
 
     expect(saved, isFalse);
-    expect(courseRepository.markCalls, 0);
+    expect(courseRepository.markCalls, 1);
     expect(
       container.read(dayProgressProvider).requireValue,
       const DayProgress(readTypes: {}, visitedDays: {}),

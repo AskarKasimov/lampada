@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 const _nudgeDistance = 24.0;
@@ -39,12 +41,13 @@ class _CardSwipeNudgeState extends State<CardSwipeNudge>
       weight: 2,
     ),
   ]).animate(_controller);
+  late final Timer _startTimer;
 
   @override
   void initState() {
     super.initState();
     widget.onConsumed();
-    Future<void>.delayed(const Duration(milliseconds: 600), () {
+    _startTimer = Timer(const Duration(milliseconds: 600), () {
       if (!mounted) return;
       _controller.forward();
     });
@@ -52,6 +55,7 @@ class _CardSwipeNudgeState extends State<CardSwipeNudge>
 
   @override
   void dispose() {
+    _startTimer.cancel();
     _controller.dispose();
     super.dispose();
   }
