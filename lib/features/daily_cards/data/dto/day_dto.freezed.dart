@@ -19,7 +19,10 @@ mixin _$DayDto {
  String? get week;/// Первая память дня: «Мц. Христи́ны Тирской (ок. 300)».
  String? get title;/// Постный ли день. По умолчанию false: отсутствие пометки на странице
 /// значит именно «не постный», а не «неизвестно».
- bool get isFast;
+ bool get isFast;/// Ссылка на страницу праздника или святого — там лежит рассказ о нём.
+/// Только ссылка, не текст: страница отдельная, и грузим её лениво,
+/// когда юзер откроет заголовок дня, а не вместе с каждым днём.
+ String? get storyUrl;
 /// Create a copy of DayDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,16 +35,16 @@ $DayDtoCopyWith<DayDto> get copyWith => _$DayDtoCopyWithImpl<DayDto>(this as Day
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayDto&&const DeepCollectionEquality().equals(other.cards, cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayDto&&const DeepCollectionEquality().equals(other.cards, cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&(identical(other.storyUrl, storyUrl) || other.storyUrl == storyUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cards),week,title,isFast);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cards),week,title,isFast,storyUrl);
 
 @override
 String toString() {
-  return 'DayDto(cards: $cards, week: $week, title: $title, isFast: $isFast)';
+  return 'DayDto(cards: $cards, week: $week, title: $title, isFast: $isFast, storyUrl: $storyUrl)';
 }
 
 
@@ -52,7 +55,7 @@ abstract mixin class $DayDtoCopyWith<$Res>  {
   factory $DayDtoCopyWith(DayDto value, $Res Function(DayDto) _then) = _$DayDtoCopyWithImpl;
 @useResult
 $Res call({
- List<DayCardDto> cards, String? week, String? title, bool isFast
+ List<DayCardDto> cards, String? week, String? title, bool isFast, String? storyUrl
 });
 
 
@@ -69,13 +72,14 @@ class _$DayDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? storyUrl = freezed,}) {
   return _then(_self.copyWith(
 cards: null == cards ? _self.cards : cards // ignore: cast_nullable_to_non_nullable
 as List<DayCardDto>,week: freezed == week ? _self.week : week // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,isFast: null == isFast ? _self.isFast : isFast // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,storyUrl: freezed == storyUrl ? _self.storyUrl : storyUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -160,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<DayCardDto> cards,  String? week,  String? title,  bool isFast)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<DayCardDto> cards,  String? week,  String? title,  bool isFast,  String? storyUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DayDto() when $default != null:
-return $default(_that.cards,_that.week,_that.title,_that.isFast);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);case _:
   return orElse();
 
 }
@@ -181,10 +185,10 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<DayCardDto> cards,  String? week,  String? title,  bool isFast)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<DayCardDto> cards,  String? week,  String? title,  bool isFast,  String? storyUrl)  $default,) {final _that = this;
 switch (_that) {
 case _DayDto():
-return $default(_that.cards,_that.week,_that.title,_that.isFast);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +205,10 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<DayCardDto> cards,  String? week,  String? title,  bool isFast)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<DayCardDto> cards,  String? week,  String? title,  bool isFast,  String? storyUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _DayDto() when $default != null:
-return $default(_that.cards,_that.week,_that.title,_that.isFast);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);case _:
   return null;
 
 }
@@ -216,7 +220,7 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast);case _:
 @JsonSerializable()
 
 class _DayDto implements DayDto {
-  const _DayDto({required final  List<DayCardDto> cards, this.week, this.title, this.isFast = false}): _cards = cards;
+  const _DayDto({required final  List<DayCardDto> cards, this.week, this.title, this.isFast = false, this.storyUrl}): _cards = cards;
   factory _DayDto.fromJson(Map<String, dynamic> json) => _$DayDtoFromJson(json);
 
  final  List<DayCardDto> _cards;
@@ -233,6 +237,10 @@ class _DayDto implements DayDto {
 /// Постный ли день. По умолчанию false: отсутствие пометки на странице
 /// значит именно «не постный», а не «неизвестно».
 @override@JsonKey() final  bool isFast;
+/// Ссылка на страницу праздника или святого — там лежит рассказ о нём.
+/// Только ссылка, не текст: страница отдельная, и грузим её лениво,
+/// когда юзер откроет заголовок дня, а не вместе с каждым днём.
+@override final  String? storyUrl;
 
 /// Create a copy of DayDto
 /// with the given fields replaced by the non-null parameter values.
@@ -247,16 +255,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayDto&&const DeepCollectionEquality().equals(other._cards, _cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayDto&&const DeepCollectionEquality().equals(other._cards, _cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&(identical(other.storyUrl, storyUrl) || other.storyUrl == storyUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_cards),week,title,isFast);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_cards),week,title,isFast,storyUrl);
 
 @override
 String toString() {
-  return 'DayDto(cards: $cards, week: $week, title: $title, isFast: $isFast)';
+  return 'DayDto(cards: $cards, week: $week, title: $title, isFast: $isFast, storyUrl: $storyUrl)';
 }
 
 
@@ -267,7 +275,7 @@ abstract mixin class _$DayDtoCopyWith<$Res> implements $DayDtoCopyWith<$Res> {
   factory _$DayDtoCopyWith(_DayDto value, $Res Function(_DayDto) _then) = __$DayDtoCopyWithImpl;
 @override @useResult
 $Res call({
- List<DayCardDto> cards, String? week, String? title, bool isFast
+ List<DayCardDto> cards, String? week, String? title, bool isFast, String? storyUrl
 });
 
 
@@ -284,13 +292,14 @@ class __$DayDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? storyUrl = freezed,}) {
   return _then(_DayDto(
 cards: null == cards ? _self._cards : cards // ignore: cast_nullable_to_non_nullable
 as List<DayCardDto>,week: freezed == week ? _self.week : week // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,isFast: null == isFast ? _self.isFast : isFast // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,storyUrl: freezed == storyUrl ? _self.storyUrl : storyUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

@@ -57,11 +57,15 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   /// Меняется набор [CardType] или поля DTO — версия растёт.
   /// v4: запись стала объектом (карточки + имя дня) вместо голого массива
   /// карточек.
-  static const _cachePrefix = 'day_cards_cache_v4:';
+  /// v5: добавилось необязательное поле storyUrl. Само оно не ломает разбор
+  /// старой записи (null и есть null), но БЕЗ роста версии старый кэш тихо
+  /// оставлял бы рассказ дня недоступным до истечения TTL — версия растёт,
+  /// хоть парсинг и не падал бы.
+  static const _cachePrefix = 'day_cards_cache_v5:';
 
   /// Даты в кэше, старые слева. Отдельный индекс, потому что SharedPreferences
   /// не умеет перечислять ключи по префиксу без чтения всего хранилища.
-  static const _cacheIndexKey = 'day_cards_cached_dates_v4';
+  static const _cacheIndexKey = 'day_cards_cached_dates_v5';
 
   /// Потолок кэша. Дни хранят распарсенный текст, не разметку, так что это
   /// сотни килобайт — но расти бесконечно ему всё равно незачем.
@@ -169,6 +173,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     week: dto.week,
     title: dto.title,
     isFast: dto.isFast,
+    storyUrl: dto.storyUrl,
   );
 
   List<String> _cachedDates() =>

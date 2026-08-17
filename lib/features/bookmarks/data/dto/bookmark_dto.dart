@@ -8,7 +8,7 @@ abstract class BookmarkDto with _$BookmarkDto {
   const factory BookmarkDto({
     required String id,
 
-    /// Строковое имя BookmarkKind: card | verse | interpretation.
+    /// Строковое имя BookmarkKind: card | verse | interpretation | story.
     required String kind,
     required String text,
     required String source,

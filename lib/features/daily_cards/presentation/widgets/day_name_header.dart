@@ -12,14 +12,20 @@ import '../../domain/entities/today_cards.dart';
 ///
 /// Седмицы здесь нет намеренно: она свойство недели, а не дня, и живёт над
 /// полоской. Рядом с памятью она читалась как часть титула святого.
+///
+/// Заголовок кликабелен, когда за ним стоит рассказ ([TodayCards.storyUrl]
+/// не пуст): без стрелки в конце строки это читалось бы просто подписью,
+/// а не входом в праздник — как совет или притча, у которых своя карточка.
 class DayNameHeader extends StatelessWidget {
-  const DayNameHeader({required this.day, super.key});
+  const DayNameHeader({required this.day, super.key, this.onTap});
 
   final TodayCards day;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
+    final canOpen = onTap != null && day.storyUrl != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,12 +43,39 @@ class DayNameHeader extends StatelessWidget {
           const SizedBox(height: 8),
         ],
         if ((day.title ?? '').isNotEmpty)
-          Text(
-            day.title!,
-            style: AppTheme.quoteStyle(
-              context,
-            ).copyWith(fontSize: 25, height: 1.22),
-          ),
+          if (canOpen)
+            InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Text.rich(
+                TextSpan(
+                  text: day.title!,
+                  children: [
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Icon(
+                          Icons.chevron_right,
+                          size: 22,
+                          color: colors.homeSubtitle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                style: AppTheme.quoteStyle(
+                  context,
+                ).copyWith(fontSize: 25, height: 1.22),
+              ),
+            )
+          else
+            Text(
+              day.title!,
+              style: AppTheme.quoteStyle(
+                context,
+              ).copyWith(fontSize: 25, height: 1.22),
+            ),
       ],
     );
   }

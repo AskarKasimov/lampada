@@ -229,9 +229,10 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
   /// маркерам: у Феофилакта на Мф.20 один блок покрывает стихи 1–7, и
   /// нарезка «по стиху» отдала бы юзеру сам стих вместо толкования.
   ///
-  /// Стихи группы получают ОДИН общий текст и общую подпись отрывка —
-  /// обещать «толкование на этот стих», когда оно написано на семь,
-  /// было бы неправдой.
+  /// Толкование достаётся ТОЛЬКО последнему стиху группы, а не всем сразу:
+  /// оно написано на весь диапазон, и кнопка «Толкование» на промежуточном
+  /// стихе (например, на 23-м при диапазоне 23–24) звала бы за мыслью
+  /// раньше, чем дочитан стих, которым она завершается.
   ///
   /// Межглавный отрывок покрыт только первой главой: страница толкования
   /// одна на главу, а тянуть вторую ради хвоста — ещё один HTTP-поход.
@@ -251,10 +252,7 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
         final range = group.length == 1
             ? '$abbr.${ref.fromChapter}:${group.first}'
             : '$abbr.${ref.fromChapter}:${group.first}–${group.last}';
-        final text = commentary.join('\n\n');
-        for (final number in group) {
-          result[number] = (text: text, range: range);
-        }
+        result[group.last] = (text: commentary.join('\n\n'), range: range);
       }
       group = [];
       commentary = [];

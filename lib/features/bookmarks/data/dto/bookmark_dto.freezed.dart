@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BookmarkDto {
 
- String get id;/// Строковое имя BookmarkKind: card | verse | interpretation.
+ String get id;/// Строковое имя BookmarkKind: card | verse | interpretation | story.
  String get kind; String get text; String get source; String get label;/// ISO-8601. Хранится строкой, чтобы JSON оставался человекочитаемым
 /// при отладке prefs.
  String get savedAt;
@@ -221,7 +221,7 @@ class _BookmarkDto implements BookmarkDto {
   factory _BookmarkDto.fromJson(Map<String, dynamic> json) => _$BookmarkDtoFromJson(json);
 
 @override final  String id;
-/// Строковое имя BookmarkKind: card | verse | interpretation.
+/// Строковое имя BookmarkKind: card | verse | interpretation | story.
 @override final  String kind;
 @override final  String text;
 @override final  String source;

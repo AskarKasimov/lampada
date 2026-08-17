@@ -18,6 +18,10 @@ abstract class TodayCards with _$TodayCards {
 
     /// Постный ли день.
     @Default(false) bool isFast,
+
+    /// Ссылка на страницу праздника/святого — рассказ о дне грузится оттуда
+    /// лениво, при открытии заголовка, а не вместе с самим днём.
+    String? storyUrl,
   }) = _TodayCards;
 
   const TodayCards._();

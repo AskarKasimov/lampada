@@ -20,11 +20,8 @@ void main() {
 
   int valueOf(Result<int> result) => (result as Success<int>).value;
 
-  var now = DateTime(2026, 7, 28);
   PrefsCourseProgressRepository repo(SharedPreferences prefs) =>
-      PrefsCourseProgressRepository(prefs, clock: () => now);
-
-  setUp(() => now = DateTime(2026, 7, 28));
+      PrefsCourseProgressRepository(prefs);
 
   test('новый юзер начинает с первой темы', () async {
     // Раньше «Основы» брались по сегодняшней дате, и юзер, поставивший
@@ -42,22 +39,35 @@ void main() {
     expect(valueOf(await r.currentTopic()), 2);
   });
 
-  test('повторное прочтение в тот же день не пропускает тему', () async {
+  test('открыть тему за темой сразу — нормальный сценарий, без ограничения', () async {
+    // Ограничения «не чаще раза в день» нет: юзер сам решает, сколько тем
+    // прочитать за раз, и каждое открытие двигает курс дальше. Заодно это
+    // проверяет, что дедуп через `_advancing ??=` сбрасывается после
+    // завершения — иначе второе и третье открытия молча не сработали бы.
     final r = repo(await prefsWith());
 
     await r.markCurrentTopicRead();
     await r.markCurrentTopicRead();
+    await r.markCurrentTopicRead();
 
-    expect(valueOf(await r.currentTopic()), 2);
+    expect(valueOf(await r.currentTopic()), 4);
   });
 
-  test('пропущенные без прочтения дни не продвигают курс', () async {
-    final prefs = await prefsWith();
+  test(
+    'два конкурентных вызова на одно открытие продвигают тему только на одну',
+    () async {
+      // Регрессия: приложение звало markRead(CardType.basics) из двух мест
+      // (today_screen._openCourse и CourseReaderScreen.initState) на одно
+      // открытие курса. Оба вызова доходили до продвижения почти
+      // одновременно, БЕЗ ожидания друг друга — ровно как здесь, через
+      // Future.wait без промежуточного await. Тема прыгала с 1-й на 3-ю.
+      final r = repo(await prefsWith());
 
-    now = DateTime(2026, 8, 5);
+      await Future.wait([r.markCurrentTopicRead(), r.markCurrentTopicRead()]);
 
-    expect(valueOf(await repo(prefs).currentTopic()), 1);
-  });
+      expect(valueOf(await r.currentTopic()), 2);
+    },
+  );
 
   test('прочтение переживает пересоздание репозитория', () async {
     final prefs = await prefsWith();
@@ -68,16 +78,27 @@ void main() {
 
   test('дойдя до конца курса, сразу начинаем сначала', () async {
     final prefs = await prefsWith({
-      'flutter.course_progress_v4': jsonEncode({
-        'topic': courseTopicCount,
-        'readOn': null,
-      }),
+      'flutter.course_progress_v4': jsonEncode({'topic': courseTopicCount}),
     });
     final r = repo(prefs);
 
     await r.markCurrentTopicRead();
 
     expect(valueOf(await r.currentTopic()), 1);
+  });
+
+  test('запись прошлой схемы читается, лишний readOn игнорируется', () async {
+    // Дневного гарда больше нет, поле readOn перестали писать. Записи, где
+    // оно ещё лежит, должны читаться как обычно — иначе пришлось бы поднимать
+    // версию ключа на пустом месте.
+    final prefs = await prefsWith({
+      'flutter.course_progress_v4': jsonEncode({
+        'topic': 7,
+        'readOn': '2026-07-27',
+      }),
+    });
+
+    expect(valueOf(await repo(prefs).currentTopic()), 7);
   });
 
   test('ключи прошлой схемы не мигрируются', () async {
