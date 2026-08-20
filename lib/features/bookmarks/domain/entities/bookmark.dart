@@ -5,7 +5,7 @@ part 'bookmark.freezed.dart';
 /// Что именно сохранено. Своё перечисление, а не [CardType] из daily_cards:
 /// в копилку попадают и стихи с толкованиями, у которых карточки дня нет,
 /// и тянуть чужой домен ради трёх значений незачем.
-enum BookmarkKind { card, verse, interpretation }
+enum BookmarkKind { card, verse, interpretation, story }
 
 /// Сохранённая единица смысла. [id] стабилен и собирается из происхождения
 /// (`quote-2026-07-28`, `verse-Jn.10:1`) — по нему же работает переключение

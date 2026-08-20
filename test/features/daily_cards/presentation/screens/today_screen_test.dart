@@ -16,6 +16,10 @@ import 'package:lampada/features/daily_cards/presentation/screens/course_reader_
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
+import 'package:lampada/features/day_story/domain/entities/day_story.dart';
+import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
+import 'package:lampada/features/day_story/presentation/providers/providers.dart';
+import 'package:lampada/features/day_story/presentation/screens/day_story_screen.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/domain/repositories/reading_repository.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
@@ -72,6 +76,13 @@ class _FakeReadingRepository implements ReadingRepository {
       );
 }
 
+/// Рассказ о дне не должен ходить в сеть из виджет-тестов.
+class _FakeDayStoryRepository implements DayStoryRepository {
+  @override
+  Future<Result<DayStory>> fetch(String url) async =>
+      const Success(DayStory(paragraphs: ['Рассказ о памяти дня.']));
+}
+
 class _FakeCardsRepository implements DayCardsRepository {
   _FakeCardsRepository({
     this.cards = _cards,
@@ -79,6 +90,7 @@ class _FakeCardsRepository implements DayCardsRepository {
     this.week,
     this.title,
     this.isFast = false,
+    this.storyUrl,
   });
 
   final requested = <String>[];
@@ -87,6 +99,7 @@ class _FakeCardsRepository implements DayCardsRepository {
   final String? week;
   final String? title;
   final bool isFast;
+  final String? storyUrl;
   final _cachedCards = <String, List<DayCard>>{};
 
   @override
@@ -105,6 +118,7 @@ class _FakeCardsRepository implements DayCardsRepository {
         week: week,
         title: title,
         isFast: isFast,
+        storyUrl: storyUrl,
       ),
     );
   }
@@ -176,6 +190,7 @@ void main() {
         progressRepository ?? _FakeProgressRepository(),
       ),
       readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
+      dayStoryRepositoryProvider.overrideWithValue(_FakeDayStoryRepository()),
       sharedPreferencesProvider.overrideWithValue(prefs),
       if (selectedDate != null)
         selectedDateProvider.overrideWith(
@@ -273,6 +288,48 @@ void main() {
         greaterThan(stripTop),
       );
     });
+
+    testWidgets('тап по памяти дня со ссылкой открывает рассказ', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead(_cards.map((card) => card.type).toSet());
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            title: 'Мц. Христи́ны Тирской',
+            storyUrl: 'https://azbyka.ru/days/sv-hristina',
+          ),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(find.byIcon(Icons.chevron_right));
+      await settle(tester);
+
+      expect(find.byType(DayStoryScreen), findsOneWidget);
+      expect(find.text('Рассказ о памяти дня.'), findsOneWidget);
+    });
+
+    testWidgets(
+      'память дня без ссылки не рисует стрелку и не открывает рассказ',
+      (tester) async {
+        final progress = _FakeProgressRepository()
+          ..seedRead(_cards.map((card) => card.type).toSet());
+        await tester.pumpWidget(
+          buildApp(
+            cardsRepository: _FakeCardsRepository(
+              title: 'Мц. Христи́ны Тирской',
+            ),
+            progressRepository: progress,
+          ),
+        );
+        await settle(tester);
+
+        expect(find.byIcon(Icons.chevron_right), findsNothing);
+      },
+    );
 
     testWidgets('показывает полоску недели и блоки дня', (tester) async {
       await tester.pumpWidget(buildApp());
@@ -417,7 +474,11 @@ void main() {
       expect(find.byType(CourseReaderScreen), findsOneWidget);
       expect(find.byType(CardViewerScreen), findsNothing);
       expect(find.text(_basics.body), findsOneWidget);
-      expect(progress.marked, contains(CardType.basics));
+      // Регрессия: CourseReaderScreen отмечал тему ЕЩЁ РАЗ в своём initState,
+      // дублируя вот этот вызов из _openCourse. Оба доходили до
+      // продвижение почти одновременно, и тема курса продвигалась на 2
+      // за один показ вместо одной — «перескакивает с 1-й на 3-ю».
+      expect(progress.marked.where((t) => t == CardType.basics), hasLength(1));
     });
 
     testWidgets('тап по блоку открывает карточку без таб-бара', (tester) async {

@@ -2,53 +2,60 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/storage/preference_write.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 
-/// Прогресс курса в shared_preferences: номер текущей темы и день сдвига.
+/// Прогресс курса в shared_preferences: номер текущей темы.
+///
+/// Ограничения «не больше темы в день» нет: сколько тем прочитать за раз,
+/// решает юзер, и открыть следующую сразу после предыдущей — нормальный
+/// сценарий, а не обход правила. Поэтому день последнего сдвига не хранится.
 class PrefsCourseProgressRepository implements CourseProgressRepository {
-  PrefsCourseProgressRepository(this._prefs, {DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now;
+  PrefsCourseProgressRepository(this._prefs);
 
   final SharedPreferences _prefs;
-  final DateTime Function() _clock;
 
   // Предыдущая схема отмечала прочтение, но оставляла тему прежней до завтра.
   // Приложение ещё не выпущено, поэтому старое dev-состояние не мигрируем.
+  // Записи той схемы читаются без ошибки: лишний ключ readOn просто
+  // игнорируется, поэтому версия ключа не растёт.
   static const _key = 'course_progress_v4';
 
-  _CourseProgress _read() {
+  int _read() {
     final raw = _prefs.getString(_key);
-    if (raw == null) return const _CourseProgress(topic: 1);
+    if (raw == null) return 1;
     final json = jsonDecode(raw) as Map<String, dynamic>;
-    return _CourseProgress(
-      topic: normalizeCourseTopic(json['topic'] as int? ?? 1),
-      readOn: json['readOn'] as String?,
-    );
+    return normalizeCourseTopic(json['topic'] as int? ?? 1);
   }
 
-  Future<void> _write(_CourseProgress progress) => requirePreferenceWrite(
-    _prefs.setString(
-      _key,
-      jsonEncode({'topic': progress.topic, 'readOn': progress.readOn}),
-    ),
+  Future<void> _write(int topic) => requirePreferenceWrite(
+    _prefs.setString(_key, jsonEncode({'topic': topic})),
   );
 
   @override
-  Future<Result<int>> currentTopic() => _guard(() async => _read().topic);
+  Future<Result<int>> currentTopic() => _guard(() async => _read());
+
+  /// Операция продвижения в процессе — конкурентный вызов дожидается ЕЁ,
+  /// а не запускает свою.
+  ///
+  /// Раньше отметка «Основы прочитаны» звалась из двух мест на одно открытие
+  /// курса, и оба вызова доходили до продвижения почти одновременно: тема
+  /// перескакивала на две вперёд за одно открытие («с 1-й на 3-ю»). Дубликат
+  /// убран, но дедупликация оставлена: без дневного гарда она единственное,
+  /// что защищает от быстрого повторного тапа, который успел бы прочитать
+  /// номер темы до того, как первый вызов его записал.
+  ///
+  /// Работает, пока конкурентные вызовы идут через ОДИН инстанс — так и есть,
+  /// `courseProgressRepositoryProvider` не `.family` и не `autoDispose`.
+  Future<Result<void>>? _advancing;
 
   @override
-  Future<Result<void>> markCurrentTopicRead() => _guard(() async {
-    final today = dateKey(_clock());
-    final progress = _read();
-    if (progress.readOn == today) return;
-
-    final next = normalizeCourseTopic(progress.topic + 1);
-    await _write(_CourseProgress(topic: next, readOn: today));
-  });
+  Future<Result<void>> markCurrentTopicRead() =>
+      _advancing ??= _guard(() async {
+        await _write(normalizeCourseTopic(_read() + 1));
+      }).whenComplete(() => _advancing = null);
 
   Future<Result<T>> _guard<T>(Future<T> Function() op) async {
     try {
@@ -63,11 +70,4 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
       );
     }
   }
-}
-
-class _CourseProgress {
-  const _CourseProgress({required this.topic, this.readOn});
-
-  final int topic;
-  final String? readOn;
 }

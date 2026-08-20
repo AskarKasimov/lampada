@@ -1,0 +1,20 @@
+{
+  "app_id": "1210018959",
+  "collected_at": "2026-08-13T13:03:30.050090+00:00",
+  "source": "itunes",
+  "itunes": {
+    "title": "Жития православных святых",
+    "subtitle": "на каждый день",
+    "description": "Приложение содержит краткие жизнеописания более чем 1800 святых, чтимых Православной Церковью. Приложение работает офлайн.",
+    "rating_avg": 4.89609,
+    "rating_count": 1001,
+    "last_updated": "2019-02-26T23:25:14Z",
+    "price": 0.0,
+    "category": "Lifestyle",
+    "developer_name": "Andrey Fetisov",
+    "keyword_field": null
+  },
+  "_missing_fields": [
+    "keyword_field"
+  ]
+}

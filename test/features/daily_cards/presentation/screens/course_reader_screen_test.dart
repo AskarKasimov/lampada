@@ -144,13 +144,10 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('shows the supplied current topic and records its progress', (
-    tester,
-  ) async {
+  testWidgets('shows the supplied current topic', (tester) async {
     await pumpReader(tester);
 
     expect(find.text('Тема 3'), findsOneWidget);
-    expect(progress.readTypes, {CardType.basics});
     expect(cards.requestedTopics, contains(2));
   });
 
@@ -220,7 +217,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Тема 2'), findsOneWidget);
-    expect(progress.readTypes, {CardType.basics});
+    // Отмечается ровно текущая тема, один раз на открытие: листание истории
+    // прогресс не трогает.
     expect(progress.markReadCalls, [CardType.basics]);
   });
 

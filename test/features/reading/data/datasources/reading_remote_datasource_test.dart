@@ -69,6 +69,14 @@ final _groupedChapter = [
   _txt('КОММЕНТАРИЙ ЧЕТВЁРТЫЙ'),
 ].join();
 
+/// Группа из одного стиха с комментарием в два абзаца — изолирует склейку
+/// `p.txt` от вопроса «какому стиху из группы достаётся текст».
+final _singleVerseTwoParagraphs = [
+  _h5(1, 'Истинно говорю вам'),
+  _txt('АБЗАЦ ПЕРВЫЙ'),
+  _txt('АБЗАЦ ВТОРОЙ'),
+].join();
+
 /// Датасорс с подставными ответами: первый запрос — отрывок, второй —
 /// толкование. Заодно собираем URL, чтобы проверить параметр языка.
 ({AzbykaReadingRemoteDatasource datasource, List<String> urls}) _serving({
@@ -249,41 +257,45 @@ void main() {
       expect(dto.verses.single.interpretationRange, 'Ин.10:2');
     });
 
-    test('один блок на группу стихов достаётся всем стихам группы', () async {
-      // У Феофилакта на Мф.20 один комментарий покрывает стихи 1–7.
-      // Нарезка «по стиху» отдала бы юзеру сам стих вместо толкования.
-      final s = _serving(
-        passage: _passagePage(
-          versesHtml: [
-            for (var i = 1; i <= 4; i++) _verse(10, i, 'СТИХ $i'),
-          ].join(),
-        ),
-        interpretation: _interpretationPage(_groupedChapter),
-      );
+    test(
+      'один блок на группу стихов достаётся только последнему стиху группы',
+      () async {
+        // У Феофилакта на Мф.20 один комментарий покрывает стихи 1–7.
+        // Нарезка «по стиху» отдала бы юзеру сам стих вместо толкования —
+        // но и кнопка НА КАЖДОМ стихе группы была бы неправдой другого рода:
+        // звала бы за мыслью раньше, чем дочитан стих, которым она
+        // завершается. Кнопка — только на последнем стихе группы (3-м).
+        final s = _serving(
+          passage: _passagePage(
+            versesHtml: [
+              for (var i = 1; i <= 4; i++) _verse(10, i, 'СТИХ $i'),
+            ].join(),
+          ),
+          interpretation: _interpretationPage(_groupedChapter),
+        );
 
-      final dto = await s.datasource.fetch('Jn.10:1-4', timeout: timeout);
+        final dto = await s.datasource.fetch('Jn.10:1-4', timeout: timeout);
 
-      for (final verse in dto.verses.take(3)) {
-        expect(verse.interpretation, contains('КОММЕНТАРИЙ НА ПРИТЧУ'));
-        expect(verse.interpretationRange, 'Ин.10:1–3');
-      }
-      // Четвёртый стих — уже своя группа.
-      expect(dto.verses[3].interpretation, 'КОММЕНТАРИЙ ЧЕТВЁРТЫЙ');
-      expect(dto.verses[3].interpretationRange, 'Ин.10:4');
-    });
+        expect(dto.verses[0].interpretation, isNull);
+        expect(dto.verses[1].interpretation, isNull);
+        expect(dto.verses[2].interpretation, contains('КОММЕНТАРИЙ НА ПРИТЧУ'));
+        expect(dto.verses[2].interpretationRange, 'Ин.10:1–3');
+        // Четвёртый стих — уже своя группа из одного стиха, и это его
+        // единственный стих, так что толкование остаётся при нём.
+        expect(dto.verses[3].interpretation, 'КОММЕНТАРИЙ ЧЕТВЁРТЫЙ');
+        expect(dto.verses[3].interpretationRange, 'Ин.10:4');
+      },
+    );
 
     test('абзацы одного блока склеиваются, а не теряются', () async {
       final s = _serving(
         passage: _passagePage(versesHtml: _verse(10, 1, 'СТИХ')),
-        interpretation: _interpretationPage(_groupedChapter),
+        interpretation: _interpretationPage(_singleVerseTwoParagraphs),
       );
 
       final dto = await s.datasource.fetch('Jn.10:1-1', timeout: timeout);
 
-      expect(
-        dto.verses.single.interpretation,
-        'КОММЕНТАРИЙ НА ПРИТЧУ\n\nВТОРОЙ АБЗАЦ КОММЕНТАРИЯ',
-      );
+      expect(dto.verses.single.interpretation, 'АБЗАЦ ПЕРВЫЙ\n\nАБЗАЦ ВТОРОЙ');
     });
 
     test('стих без толкования остаётся без него', () async {

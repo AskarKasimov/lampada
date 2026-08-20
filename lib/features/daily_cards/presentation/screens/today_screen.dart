@@ -5,6 +5,7 @@ import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
+import '../../../day_story/presentation/screens/day_story_screen.dart';
 import '../../../reading/presentation/screens/reading_screen.dart';
 import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
@@ -407,12 +408,23 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     if (mounted) await _maybeAskReminders();
   }
 
+  Future<void> _openStory(
+    BuildContext context,
+    String title,
+    String storyUrl,
+  ) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => DayStoryScreen(title: title, storyUrl: storyUrl),
+    ),
+  );
+
   Future<void> _openCourse(BuildContext context, DayCard card) async {
-    // Курс отмечаем прочитанным независимо от открытой даты — в отличие от
-    // карточек и чтения. Те привязаны к своему дню, и вчерашнее нельзя
-    // засчитывать задним числом. Курс же личный и календарю не подчиняется:
-    // тему открыли СЕГОДНЯ, с какой бы страницы в него ни зашли.
-    ref.read(dayProgressProvider.notifier).markRead(CardType.basics);
+    // Тему прочитанной отмечает сам CourseReaderScreen, отсюда — НЕ отмечаем.
+    // Раньше это делали оба места, и пока курс держал гард «не чаще раза
+    // в день», второй вызов был холостым. Гарда больше нет (сколько тем
+    // читать за раз, решает юзер), поэтому дубль снова сдвигал бы тему на две
+    // за одно открытие — тот самый баг «перескакивает с 1-й на 3-ю».
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
@@ -494,7 +506,15 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       // уходит под неё, и без запаса последняя запись оказалась бы закрыта.
       padding: const EdgeInsets.fromLTRB(20, 4, 20, kFloatingNavInset + 32),
       children: [
-        if (day.hasName) ...[DayNameHeader(day: day), const DayEntryDivider()],
+        if (day.hasName) ...[
+          DayNameHeader(
+            day: day,
+            onTap: (day.title ?? '').isEmpty || day.storyUrl == null
+                ? null
+                : () => _openStory(context, day.title!, day.storyUrl!),
+          ),
+          const DayEntryDivider(),
+        ],
         // Сессия дня: цитата, совет, притча — одна группа, разделённая
         // воздухом. Заголовка у группы нет: «ЕЩЁ ЗА СЕГОДНЯ» называл ядро
         // дня остатком, а сами подписи записей уже говорят, что это.

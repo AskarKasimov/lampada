@@ -88,6 +88,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         week: _weekOf(doc),
         title: _titleOf(doc),
         isFast: _isFastDay(doc),
+        storyUrl: _storyUrlOf(doc),
       );
 
       netLog(
@@ -218,6 +219,31 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     if (item == null) return null;
     item.querySelectorAll('.secondary-content').forEach((e) => e.remove());
     return _cleaned(item);
+  }
+
+  /// Ссылка на страницу праздника/святого — там лежит рассказ о дне.
+  ///
+  /// Тот же `<li>`, что читает [_titleOf]. Первой ссылкой в нём иногда стоит
+  /// иконка-легенда («что означают эти значки», ведёт на `p-znaki-prazdnikov`)
+  /// — у неё нет текста, только `<img>`. Берём первую ссылку с НЕПУСТЫМ
+  /// текстом: это и есть память дня, а не пояснение к значку.
+  static String? _storyUrlOf(Document doc) {
+    final item = doc.querySelector('.day__text ul li');
+    if (item == null) return null;
+    final link = item
+        .querySelectorAll('a[href]')
+        .where((a) => a.text.trim().isNotEmpty)
+        .firstOrNull;
+    final href = link?.attributes['href'];
+    if (href == null || href.isEmpty) return null;
+    final uri = Uri.tryParse(href);
+    if (uri == null) return null;
+    if (uri.hasAuthority || uri.hasScheme) {
+      return uri.scheme == 'https' && uri.host == 'azbyka.ru'
+          ? uri.toString()
+          : null;
+    }
+    return Uri.parse('https://azbyka.ru').resolveUri(uri).toString();
   }
 
   /// Постный ли день. Пометка стоит ссылкой на календарь постов в первом
