@@ -6,6 +6,7 @@ import '../../../../core/log/net_log.dart';
 import '../../../../core/network/network_status.dart';
 import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
+import '../../../../core/storage/preference_write.dart';
 import '../../domain/entities/day_story.dart';
 import '../../domain/repositories/day_story_repository.dart';
 import '../datasources/day_story_remote_datasource.dart';
@@ -35,11 +36,14 @@ class AzbykaDayStoryRepository implements DayStoryRepository {
   final List<Duration> _retryDelays;
   final NetworkStatus? _networkStatus;
 
-  static const _cachePrefix = 'day_story_cache_v1:';
+  static const _cachePrefix = 'day_story_cache_v2:';
+  static const _cacheIndexKey = 'day_story_cache_index_v2';
+  static const _maxCachedStories = 20;
   static const _minAttempt = Duration(milliseconds: 500);
 
   @override
   Future<Result<DayStory>> fetch(String url) async {
+    await _clearLegacyCache();
     final cached = _readCache(url);
     if (cached != null) {
       netLog('рассказ $url из кэша — сеть не трогаем');
@@ -67,7 +71,11 @@ class AzbykaDayStoryRepository implements DayStoryRepository {
 
       try {
         final dto = await _remote.fetch(url, timeout: left);
-        await _writeCache(url, dto);
+        try {
+          await _writeCache(url, dto);
+        } on Object catch (e) {
+          netLog('не удалось записать кэш рассказа $url: $e');
+        }
         return Success(dto.toEntity());
       } on RemoteFetchException catch (e) {
         lastKind = e.kind;
@@ -81,7 +89,10 @@ class AzbykaDayStoryRepository implements DayStoryRepository {
       }
 
       if (attempt < _retryDelays.length) {
-        await Future<void>.delayed(_retryDelays[attempt]);
+        final left = _budget - elapsed.elapsed;
+        if (left <= Duration.zero) break;
+        final delay = _retryDelays[attempt];
+        await Future<void>.delayed(delay < left ? delay : left);
       }
     }
 
@@ -95,15 +106,54 @@ class AzbykaDayStoryRepository implements DayStoryRepository {
     );
   }
 
-  Future<void> _writeCache(String url, DayStoryDto dto) =>
-      _prefs.setString('$_cachePrefix$url', jsonEncode(dto.toJson()));
+  Future<void> _writeCache(String url, DayStoryDto dto) async {
+    await requirePreferenceWrite(
+      _prefs.setString('$_cachePrefix$url', jsonEncode(dto.toJson())),
+    );
+
+    final urls = _readCacheIndex()
+      ..remove(url)
+      ..add(url);
+    while (urls.length > _maxCachedStories) {
+      final evictedUrl = urls.removeAt(0);
+      await requirePreferenceWrite(_prefs.remove('$_cachePrefix$evictedUrl'));
+    }
+    await requirePreferenceWrite(
+      _prefs.setString(_cacheIndexKey, jsonEncode(urls)),
+    );
+  }
+
+  List<String> _readCacheIndex() {
+    final raw = _prefs.getString(_cacheIndexKey);
+    if (raw == null) return [];
+    try {
+      return (jsonDecode(raw) as List<Object?>).whereType<String>().toList();
+    } on Object catch (e) {
+      netLog('индекс кэша рассказов не разобрался, начинаем заново: $e');
+      return [];
+    }
+  }
+
+  Future<void> _clearLegacyCache() async {
+    final legacyKeys = _prefs
+        .getKeys()
+        .where((key) => key.startsWith('day_story_cache_v1:'))
+        .toList();
+    for (final key in legacyKeys) {
+      try {
+        await requirePreferenceWrite(_prefs.remove(key));
+      } on Object catch (e) {
+        netLog('не удалось удалить старый кэш рассказа $key: $e');
+      }
+    }
+  }
 
   DayStoryDto? _readCache(String url) {
     final raw = _prefs.getString('$_cachePrefix$url');
     if (raw == null) return null;
     try {
       return DayStoryDto.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    } on Exception catch (e) {
+    } on Object catch (e) {
       netLog('кэш рассказа $url не разобрался, игнорируем: $e');
       return null;
     }

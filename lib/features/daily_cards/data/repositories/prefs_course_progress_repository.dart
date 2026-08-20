@@ -30,8 +30,9 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
     return normalizeCourseTopic(json['topic'] as int? ?? 1);
   }
 
-  Future<void> _write(int topic) =>
-      requirePreferenceWrite(_prefs.setString(_key, jsonEncode({'topic': topic})));
+  Future<void> _write(int topic) => requirePreferenceWrite(
+    _prefs.setString(_key, jsonEncode({'topic': topic})),
+  );
 
   @override
   Future<Result<int>> currentTopic() => _guard(() async => _read());

@@ -295,10 +295,7 @@ void main() {
 
       final dto = await s.datasource.fetch('Jn.10:1-1', timeout: timeout);
 
-      expect(
-        dto.verses.single.interpretation,
-        'АБЗАЦ ПЕРВЫЙ\n\nАБЗАЦ ВТОРОЙ',
-      );
+      expect(dto.verses.single.interpretation, 'АБЗАЦ ПЕРВЫЙ\n\nАБЗАЦ ВТОРОЙ');
     });
 
     test('стих без толкования остаётся без него', () async {

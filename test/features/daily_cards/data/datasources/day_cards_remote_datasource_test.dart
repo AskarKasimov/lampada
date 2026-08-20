@@ -266,6 +266,22 @@ void main() {
       expect(day.week, isNull);
     });
 
+    test('внешняя ссылка памяти не становится ссылкой рассказа', () async {
+      final day = await _fetchDay(
+        _datasourceServing(
+          _page(
+            headerHtml:
+                '<div class="text day__text"><ul><li>'
+                '<a href="https://example.com/saint">Прп. Сисо́я Великого</a>'
+                '</li></ul></div>',
+          ),
+        ),
+      );
+
+      expect(day.title, 'Прп. Сисо́я Великого');
+      expect(day.storyUrl, isNull);
+    });
+
     test('без шапки день остаётся безымянным, но не падает', () async {
       final day = await _fetchDay(_datasourceServing(_page()));
 

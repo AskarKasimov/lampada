@@ -207,7 +207,7 @@ return $default(_that.paragraphs);case _:
 
 class _DayStory implements DayStory {
   const _DayStory({required final  List<String> paragraphs}): _paragraphs = paragraphs;
-  
+
 
  final  List<String> _paragraphs;
 @override List<String> get paragraphs {

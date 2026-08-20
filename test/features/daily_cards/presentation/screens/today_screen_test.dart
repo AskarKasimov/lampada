@@ -312,23 +312,24 @@ void main() {
       expect(find.text('Рассказ о памяти дня.'), findsOneWidget);
     });
 
-    testWidgets('память дня без ссылки не рисует стрелку и не открывает рассказ', (
-      tester,
-    ) async {
-      final progress = _FakeProgressRepository()
-        ..seedRead(_cards.map((card) => card.type).toSet());
-      await tester.pumpWidget(
-        buildApp(
-          cardsRepository: _FakeCardsRepository(
-            title: 'Мц. Христи́ны Тирской',
+    testWidgets(
+      'память дня без ссылки не рисует стрелку и не открывает рассказ',
+      (tester) async {
+        final progress = _FakeProgressRepository()
+          ..seedRead(_cards.map((card) => card.type).toSet());
+        await tester.pumpWidget(
+          buildApp(
+            cardsRepository: _FakeCardsRepository(
+              title: 'Мц. Христи́ны Тирской',
+            ),
+            progressRepository: progress,
           ),
-          progressRepository: progress,
-        ),
-      );
-      await settle(tester);
+        );
+        await settle(tester);
 
-      expect(find.byIcon(Icons.chevron_right), findsNothing);
-    });
+        expect(find.byIcon(Icons.chevron_right), findsNothing);
+      },
+    );
 
     testWidgets('показывает полоску недели и блоки дня', (tester) async {
       await tester.pumpWidget(buildApp());
@@ -477,10 +478,7 @@ void main() {
       // дублируя вот этот вызов из _openCourse. Оба доходили до
       // продвижение почти одновременно, и тема курса продвигалась на 2
       // за один показ вместо одной — «перескакивает с 1-й на 3-ю».
-      expect(
-        progress.marked.where((t) => t == CardType.basics),
-        hasLength(1),
-      );
+      expect(progress.marked.where((t) => t == CardType.basics), hasLength(1));
     });
 
     testWidgets('тап по блоку открывает карточку без таб-бара', (tester) async {

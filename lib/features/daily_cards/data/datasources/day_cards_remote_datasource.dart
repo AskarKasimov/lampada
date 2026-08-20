@@ -236,7 +236,14 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         .firstOrNull;
     final href = link?.attributes['href'];
     if (href == null || href.isEmpty) return null;
-    return href.startsWith('http') ? href : 'https://azbyka.ru$href';
+    final uri = Uri.tryParse(href);
+    if (uri == null) return null;
+    if (uri.hasAuthority || uri.hasScheme) {
+      return uri.scheme == 'https' && uri.host == 'azbyka.ru'
+          ? uri.toString()
+          : null;
+    }
+    return Uri.parse('https://azbyka.ru').resolveUri(uri).toString();
   }
 
   /// Постный ли день. Пометка стоит ссылкой на календарь постов в первом

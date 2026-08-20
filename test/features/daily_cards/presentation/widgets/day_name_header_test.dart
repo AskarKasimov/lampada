@@ -4,8 +4,10 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_name_header.dart';
 
-Widget _wrap(Widget child) =>
-    MaterialApp(theme: AppTheme.light, home: Scaffold(body: child));
+Widget _wrap(Widget child) => MaterialApp(
+  theme: AppTheme.light,
+  home: Scaffold(body: child),
+);
 
 void main() {
   testWidgets('без ссылки на рассказ заголовок не кликабелен и без стрелки', (

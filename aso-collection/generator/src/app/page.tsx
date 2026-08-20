@@ -3,12 +3,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
+import { withTimeout } from "../lib/with_timeout.mjs";
 
 /* ── Канва ─────────────────────────────────────────────────────────────── */
 
 // Дизайним в 6.9" — единственный обязательный размер App Store.
 const W = 1320;
 const H = 2868;
+const EXPORT_TIMEOUT_MS = 30_000;
 
 const SIZES = [
   { label: '6.9"', w: 1320, h: 2868 },
@@ -408,6 +410,7 @@ function Preview({
 
 export default function Page() {
   const [busy, setBusy] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [sizeIdx, setSizeIdx] = useState(0);
   const offRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -443,10 +446,10 @@ export default function Page() {
         cacheBust: true,
       };
       // Первый вызов прогревает шрифты и картинки, чистый кадр даёт второй.
-      await toPng(el, opts);
+      await withTimeout(toPng(el, opts), EXPORT_TIMEOUT_MS, `${id}, прогрев`);
       console.log(`[${id}] прогрев ок`);
       await new Promise((r) => setTimeout(r, 150));
-      const url = await toPng(el, opts);
+      const url = await withTimeout(toPng(el, opts), EXPORT_TIMEOUT_MS, id);
       console.log(`[${id}] снято, ${Math.round(url.length / 1024)}КБ`);
 
       const img = new window.Image();
@@ -477,6 +480,7 @@ export default function Page() {
   async function exportOne(id: string) {
     const el = offRefs.current[id];
     if (!el) return;
+    setExportError(null);
     setBusy(id);
     try {
       const { name, blob } = await renderBlob(id, el);
@@ -489,12 +493,14 @@ export default function Page() {
       a.remove();
     } catch (e) {
       console.error("экспорт упал", e);
+      setExportError(e instanceof Error ? e.message : "Не удалось экспортировать слайд.");
     } finally {
       setBusy(null);
     }
   }
 
   async function exportAll() {
+    setExportError(null);
     setBusy("all");
     try {
       const zip = new JSZip();
@@ -511,6 +517,9 @@ export default function Page() {
       a.href = URL.createObjectURL(out);
       a.download = `lampada-screenshots-ru-${SIZES[sizeIdx].w}x${SIZES[sizeIdx].h}.zip`;
       a.click();
+    } catch (e) {
+      console.error("экспорт архива упал", e);
+      setExportError(e instanceof Error ? e.message : "Не удалось экспортировать архив.");
     } finally {
       setBusy(null);
     }
@@ -574,6 +583,12 @@ export default function Page() {
             </button>
           </div>
         </div>
+
+        {exportError && (
+          <p style={{ margin: "0 0 20px", color: "#ffb4a9", fontSize: 13 }} role="alert">
+            {exportError}
+          </p>
+        )}
 
         <div
           style={{

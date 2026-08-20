@@ -214,4 +214,29 @@ void main() {
       ),
     );
   });
+
+  test('внешняя ссылка отклоняется до сетевого запроса', () async {
+    var calls = 0;
+    final datasource = AzbykaDayStoryRemoteDatasource(
+      client: MockClient((request) async {
+        calls++;
+        return http.Response('', 200);
+      }),
+    );
+
+    await expectLater(
+      datasource.fetch(
+        'https://example.com/days/holiday',
+        timeout: const Duration(seconds: 5),
+      ),
+      throwsA(
+        isA<RemoteFetchException>().having(
+          (e) => e.kind,
+          'kind',
+          FailureKind.unknown,
+        ),
+      ),
+    );
+    expect(calls, 0);
+  });
 }

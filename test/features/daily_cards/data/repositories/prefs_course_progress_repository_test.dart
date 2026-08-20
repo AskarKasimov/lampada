@@ -39,19 +39,22 @@ void main() {
     expect(valueOf(await r.currentTopic()), 2);
   });
 
-  test('открыть тему за темой сразу — нормальный сценарий, без ограничения', () async {
-    // Ограничения «не чаще раза в день» нет: юзер сам решает, сколько тем
-    // прочитать за раз, и каждое открытие двигает курс дальше. Заодно это
-    // проверяет, что дедуп через `_advancing ??=` сбрасывается после
-    // завершения — иначе второе и третье открытия молча не сработали бы.
-    final r = repo(await prefsWith());
+  test(
+    'открыть тему за темой сразу — нормальный сценарий, без ограничения',
+    () async {
+      // Ограничения «не чаще раза в день» нет: юзер сам решает, сколько тем
+      // прочитать за раз, и каждое открытие двигает курс дальше. Заодно это
+      // проверяет, что дедуп через `_advancing ??=` сбрасывается после
+      // завершения — иначе второе и третье открытия молча не сработали бы.
+      final r = repo(await prefsWith());
 
-    await r.markCurrentTopicRead();
-    await r.markCurrentTopicRead();
-    await r.markCurrentTopicRead();
+      await r.markCurrentTopicRead();
+      await r.markCurrentTopicRead();
+      await r.markCurrentTopicRead();
 
-    expect(valueOf(await r.currentTopic()), 4);
-  });
+      expect(valueOf(await r.currentTopic()), 4);
+    },
+  );
 
   test(
     'два конкурентных вызова на одно открытие продвигают тему только на одну',

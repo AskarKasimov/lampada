@@ -38,10 +38,10 @@ class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
   @override
   Future<DayStoryDto> fetch(String url, {required Duration timeout}) async {
     final uri = Uri.tryParse(url);
-    if (uri == null) {
+    if (uri == null || uri.scheme != 'https' || uri.host != 'azbyka.ru') {
       throw RemoteFetchException(
         FailureKind.unknown,
-        FormatException('нераспознанная ссылка рассказа: $url'),
+        FormatException('недопустимая ссылка рассказа: $url'),
       );
     }
 
