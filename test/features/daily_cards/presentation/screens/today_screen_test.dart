@@ -1035,6 +1035,33 @@ void main() {
       expect(entry('ЕВАНГЕЛИЕ ДНЯ'), findsOneWidget);
     });
 
+    testWidgets('возврат на сегодня после далёкой даты не открывает раздел', (
+      tester,
+    ) async {
+      // Флаг автооткрытия жил в странице PageView. После нескольких свайпов
+      // страница «Сегодня» пересоздавалась и открывала следующий раздел так,
+      // будто пользователь снова запустил приложение.
+      await tester.pumpWidget(buildApp());
+      await settle(tester);
+      await tester.tap(find.byIcon(Icons.close));
+      await settle(tester);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TodayScreen)),
+      );
+      container
+          .read(selectedDateProvider.notifier)
+          .select(DateTime.now().add(const Duration(days: 30)));
+      await settle(tester);
+      container.read(selectedDateProvider.notifier).select(DateTime.now());
+      await settle(tester);
+
+      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(find.byType(ReadingScreen), findsNothing);
+      expect(find.byType(CourseReaderScreen), findsNothing);
+      expect(entry('СОВЕТ'), findsOneWidget);
+    });
+
     testWidgets('на чужой дате ничего не открывается само', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
