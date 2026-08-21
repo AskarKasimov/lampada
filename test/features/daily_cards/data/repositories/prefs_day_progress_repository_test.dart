@@ -93,6 +93,18 @@ void main() {
     expect(progress.isReadOn(DateTime(2026, 7, 17), CardType.quote), isTrue);
   });
 
+  test('прочтение прошлого дня не засчитывает посещение', () async {
+    final repo = await build();
+    final yesterday = DateTime(2026, 7, 16);
+
+    final progress = _unwrap(
+      await repo.markRead(CardType.quote, date: yesterday, markVisited: false),
+    );
+
+    expect(progress.isReadOn(yesterday, CardType.quote), isTrue);
+    expect(progress.isLit(yesterday), isFalse);
+  });
+
   test('переносит прочитанные типы из прежнего формата', () async {
     SharedPreferences.setMockInitialValues({
       'flutter.day_progress': jsonEncode({

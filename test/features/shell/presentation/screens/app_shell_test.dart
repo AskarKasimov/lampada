@@ -49,7 +49,11 @@ class _FakeProgressRepository implements DayProgressRepository {
   Future<Result<DayProgress>> loadToday() async => Success(_current);
 
   @override
-  Future<Result<DayProgress>> markRead(CardType type) async {
+  Future<Result<DayProgress>> markRead(
+    CardType type, {
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
     _read = {..._read, type};
     _visited = {..._visited, dateKey(DateTime.now())};
     return Success(_current);

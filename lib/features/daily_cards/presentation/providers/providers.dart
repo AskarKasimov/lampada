@@ -172,10 +172,19 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
 
   /// Решение «засчитывать ли сессию» — за usecase, не нотифаером: доменное
   /// правило должно жить там, где его можно проверить без Riverpod.
-  Future<bool> markRead(CardType type) async {
-    final session = _session;
-    if (session == null) return false;
-    final saved = await _apply(ref.read(recordCardReadProvider)(type));
+  Future<bool> markRead(
+    CardType type, {
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
+    if (markVisited && _session == null) return false;
+    final saved = await _apply(
+      ref.read(recordCardReadProvider)(
+        type,
+        date: date,
+        markVisited: markVisited,
+      ),
+    );
     if (type == CardType.basics) {
       final result = await ref.read(markCourseTopicReadProvider)();
       if (result is Success<void>) {

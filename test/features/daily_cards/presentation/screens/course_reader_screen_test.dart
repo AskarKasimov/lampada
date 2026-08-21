@@ -60,7 +60,11 @@ class _ProgressRepository implements DayProgressRepository {
       Success(DayProgress(readTypes: readTypes, visitedDays: const {}));
 
   @override
-  Future<Result<DayProgress>> markRead(CardType type) async {
+  Future<Result<DayProgress>> markRead(
+    CardType type, {
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
     markReadCalls.add(type);
     readTypes.add(type);
     return Success(DayProgress(readTypes: readTypes, visitedDays: const {}));

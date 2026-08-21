@@ -73,18 +73,34 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   }
 
   @override
-  Future<Result<DayProgress>> markRead(CardType type) async {
+  Future<Result<DayProgress>> markRead(
+    CardType type, {
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
     try {
       final dto = _forToday(_read());
-      final visited = {...dto.visitedDays, _today}.toList()..sort();
+      final day = dateKey(date ?? _clock());
+      final visited = {...dto.visitedDays, if (markVisited) day}.toList()
+        ..sort();
       final retainedVisited = visited.length > _maxVisitedDays
           ? visited.sublist(visited.length - _maxVisitedDays)
           : visited;
-      final readTypes = {...dto.readTypes, type.name}.toList();
-      final byDate = {...dto.readTypesByDate, _today: readTypes}
-        ..removeWhere((date, _) => !retainedVisited.contains(date));
+      final readTypes = {
+        ...dto.readTypesByDate[day] ?? const <String>[],
+        type.name,
+      }.toList();
+      final byDate = {...dto.readTypesByDate, day: readTypes};
+      final retainedReadDates = byDate.keys.toList()..sort();
+      if (retainedReadDates.length > _maxVisitedDays) {
+        for (final expired in retainedReadDates.take(
+          retainedReadDates.length - _maxVisitedDays,
+        )) {
+          byDate.remove(expired);
+        }
+      }
       final updated = dto.copyWith(
-        readTypes: readTypes,
+        readTypes: day == _today ? readTypes : dto.readTypes,
         readTypesByDate: byDate,
         visitedDays: retainedVisited,
       );

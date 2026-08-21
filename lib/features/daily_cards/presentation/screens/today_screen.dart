@@ -386,6 +386,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         builder: (_) => CardViewerScreen(
           cards: pages,
           startIndex: pages.indexOf(card),
+          date: date,
           recordProgress: _recordProgress,
         ),
       ),
@@ -428,9 +429,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     WidgetRef ref,
     DayCard card,
   ) async {
-    if (_recordProgress) {
-      ref.read(dayProgressProvider.notifier).markRead(card.type);
-    }
+    ref
+        .read(dayProgressProvider.notifier)
+        .markRead(card.type, date: date, markVisited: _recordProgress);
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ReadingScreen(reference: card.reference!),

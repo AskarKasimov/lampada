@@ -145,12 +145,17 @@ class _FakeProgressRepository implements DayProgressRepository {
   final marked = <CardType>[];
 
   @override
-  Future<Result<DayProgress>> markRead(CardType type) async {
+  Future<Result<DayProgress>> markRead(
+    CardType type, {
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
     marked.add(type);
-    _read = {..._read, type};
-    final today = dateKey(DateTime.now());
-    _readByDate = {..._readByDate, today: _read};
-    _visited = {..._visited, today};
+    final day = dateKey(date ?? DateTime.now());
+    final read = {..._readByDate[day] ?? const <CardType>{}, type};
+    _readByDate = {..._readByDate, day: read};
+    if (day == dateKey(DateTime.now())) _read = read;
+    if (markVisited) _visited = {..._visited, day};
     return Success(_current);
   }
 
@@ -734,6 +739,26 @@ void main() {
       expect(entries.every((entry) => !entry.isUnread), isTrue);
     });
 
+    testWidgets('прочтение прошлого дня не зажигает его лампадку', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead(_cards.map((card) => card.type).toSet());
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
+      await settle(tester);
+      await tester.tap(entry('ЦИТАТА'));
+      await settle(tester);
+      await tester.tap(find.byIcon(Icons.close));
+      await settle(tester);
+
+      expect(progress.marked, contains(CardType.quote));
+      expect(progress.visitedDays, isNot(contains(dateKey(yesterday))));
+    });
+
     testWidgets('скрывает календарные основы на другом дне', (tester) async {
       final progress = _FakeProgressRepository()
         ..seedRead({
@@ -858,9 +883,13 @@ void main() {
       );
     });
 
-    testWidgets('на чужой дате прогресс не пишется', (tester) async {
+    testWidgets('чужая дата не меняет прогресс сегодняшней сессии', (
+      tester,
+    ) async {
       // «Лампадка» отмечает дни, когда юзер заходил за контентом ИМЕННО
-      // этого дня: чтение вчерашнего не должно зажигать вчерашний огонёк.
+      // этого дня: чтение вчерашнего не должно зажигать вчерашний огонёк
+      // или менять статус карточек на сегодня. Само прочтение хранится
+      // отдельно в истории этой даты.
       //
       // День засеян прочитанным целиком, чтобы автооткрытие за сегодня не
       // сработало и не подмешало свою запись в проверку.

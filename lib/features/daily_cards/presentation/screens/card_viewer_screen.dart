@@ -23,6 +23,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   const CardViewerScreen({
     required this.cards,
     required this.startIndex,
+    required this.date,
     required this.recordProgress,
     super.key,
   });
@@ -31,10 +32,9 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// входят.
   final List<DayCard> cards;
   final int startIndex;
+  final DateTime date;
 
-  /// Писать ли прогресс. Для чужих дат false: «Лампадка» отмечает дни, когда
-  /// юзер заходил ЗА КОНТЕНТОМ ЭТОГО ДНЯ, и чтение вчерашнего не должно
-  /// задним числом зажигать вчерашний огонёк.
+  /// Засчитывать ли дату посещённой. Само прочтение пишется всегда.
   final bool recordProgress;
 
   @override
@@ -67,12 +67,17 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   /// «Дальше» — иначе, закрыв просмотрщик раньше конца, юзер оставил бы
   /// просмотренную карточку непрочитанной.
   void _markCurrentAsRead(int index) {
-    if (!widget.recordProgress) return;
     if (index >= widget.cards.length || _markedIndex == index) return;
     _markedIndex = index;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(dayProgressProvider.notifier).markRead(widget.cards[index].type);
+      ref
+          .read(dayProgressProvider.notifier)
+          .markRead(
+            widget.cards[index].type,
+            date: widget.date,
+            markVisited: widget.recordProgress,
+          );
     });
   }
 
