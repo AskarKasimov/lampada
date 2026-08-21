@@ -14,6 +14,11 @@ abstract class DayProgressDto with _$DayProgressDto {
     /// Имена прочитанных сегодня типов (CardType.name).
     required List<String> readTypes,
 
+    /// Прочитанные типы по датам. [readTypes] остаётся для обратной
+    /// совместимости с версиями приложения до истории прочтений.
+    @Default(<String, List<String>>{})
+    Map<String, List<String>> readTypesByDate,
+
     /// Даты (yyyy-MM-dd) с активностью. Серия выводится из них, а не хранится
     /// числом: счётчик было негде сбрасывать, и он только рос.
     @Default(<String>[]) List<String> visitedDays,

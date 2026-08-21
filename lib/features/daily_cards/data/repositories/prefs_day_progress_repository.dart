@@ -39,11 +39,23 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   Future<void> _write(DayProgressDto dto) =>
       requirePreferenceWrite(_prefs.setString(_key, jsonEncode(dto.toJson())));
 
-  /// Приводит DTO к сегодняшнему дню: если дата не сегодня —
-  /// список прочитанного обнуляется, посещённые дни сохраняются.
-  DayProgressDto _forToday(DayProgressDto dto) => dto.date == _today
-      ? dto
-      : dto.copyWith(date: _today, readTypes: const []);
+  /// Приводит DTO к сегодняшнему дню и переносит старое одиночное поле
+  /// [DayProgressDto.readTypes] в историю. Старые версии не знают о карте,
+  /// но новые продолжают читать их JSON без потери прогресса.
+  DayProgressDto _forToday(DayProgressDto dto) {
+    final history = {...dto.readTypesByDate};
+    final visited = {...dto.visitedDays};
+    if (dto.readTypes.isNotEmpty && !history.containsKey(dto.date)) {
+      history[dto.date] = dto.readTypes;
+      visited.add(dto.date);
+    }
+    return dto.copyWith(
+      date: _today,
+      readTypes: history[_today] ?? const [],
+      readTypesByDate: history,
+      visitedDays: visited.toList()..sort(),
+    );
+  }
 
   @override
   Future<Result<DayProgress>> loadToday() async {
@@ -65,11 +77,16 @@ class PrefsDayProgressRepository implements DayProgressRepository {
     try {
       final dto = _forToday(_read());
       final visited = {...dto.visitedDays, _today}.toList()..sort();
+      final retainedVisited = visited.length > _maxVisitedDays
+          ? visited.sublist(visited.length - _maxVisitedDays)
+          : visited;
+      final readTypes = {...dto.readTypes, type.name}.toList();
+      final byDate = {...dto.readTypesByDate, _today: readTypes}
+        ..removeWhere((date, _) => !retainedVisited.contains(date));
       final updated = dto.copyWith(
-        readTypes: {...dto.readTypes, type.name}.toList(),
-        visitedDays: visited.length > _maxVisitedDays
-            ? visited.sublist(visited.length - _maxVisitedDays)
-            : visited,
+        readTypes: readTypes,
+        readTypesByDate: byDate,
+        visitedDays: retainedVisited,
       );
       await _write(updated);
       return Success(updated.toEntity());

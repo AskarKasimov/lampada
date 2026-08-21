@@ -12,6 +12,14 @@ _DayProgressDto _$DayProgressDtoFromJson(Map<String, dynamic> json) =>
       readTypes: (json['readTypes'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
+      readTypesByDate:
+          (json['readTypesByDate'] as Map<String, dynamic>?)?.map(
+            (k, e) => MapEntry(
+              k,
+              (e as List<dynamic>).map((e) => e as String).toList(),
+            ),
+          ) ??
+          const <String, List<String>>{},
       visitedDays:
           (json['visitedDays'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -23,5 +31,6 @@ Map<String, dynamic> _$DayProgressDtoToJson(_DayProgressDto instance) =>
     <String, dynamic>{
       'date': instance.date,
       'readTypes': instance.readTypes,
+      'readTypesByDate': instance.readTypesByDate,
       'visitedDays': instance.visitedDays,
     };

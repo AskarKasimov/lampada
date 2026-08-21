@@ -127,9 +127,13 @@ class _FakeCardsRepository implements DayCardsRepository {
 class _FakeProgressRepository implements DayProgressRepository {
   Set<CardType> _read = {};
   Set<String> _visited = {};
+  Map<String, Set<CardType>> _readByDate = {};
 
-  DayProgress get _current =>
-      DayProgress(readTypes: _read, visitedDays: _visited);
+  DayProgress get _current => DayProgress(
+    readTypes: _read,
+    readTypesByDate: _readByDate,
+    visitedDays: _visited,
+  );
 
   @override
   Future<Result<DayProgress>> loadToday() async => Success(_current);
@@ -144,14 +148,23 @@ class _FakeProgressRepository implements DayProgressRepository {
   Future<Result<DayProgress>> markRead(CardType type) async {
     marked.add(type);
     _read = {..._read, type};
-    _visited = {..._visited, dateKey(DateTime.now())};
+    final today = dateKey(DateTime.now());
+    _readByDate = {..._readByDate, today: _read};
+    _visited = {..._visited, today};
     return Success(_current);
   }
 
   Set<CardType> get readTypes => _read;
   Set<String> get visitedDays => _visited;
 
-  void seedRead(Set<CardType> types) => _read = types;
+  void seedRead(Set<CardType> types) {
+    _read = types;
+    _readByDate = {..._readByDate, dateKey(DateTime.now()): types};
+  }
+
+  void seedReadOn(DateTime date, Set<CardType> types) =>
+      _readByDate = {..._readByDate, dateKey(date): types};
+
   void seedVisited(Set<String> days) => _visited = days;
 }
 
@@ -701,6 +714,24 @@ void main() {
         (widget) => widget is DayEntryRow && !widget.showReadStatus,
       );
       expect(futureEntries.hitTestable(), findsWidgets);
+    });
+
+    testWidgets('на прошлом дне скрывает точки у прочитанного', (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead(_cards.map((card) => card.type).toSet())
+        ..seedReadOn(
+          DateTime.now().subtract(const Duration(days: 1)),
+          _cards.map((card) => card.type).toSet(),
+        );
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
+      await settle(tester);
+
+      final entries = tester.widgetList<DayEntryRow>(find.byType(DayEntryRow));
+      expect(entries, isNotEmpty);
+      expect(entries.every((entry) => !entry.isUnread), isTrue);
     });
 
     testWidgets('скрывает календарные основы на другом дне', (tester) async {

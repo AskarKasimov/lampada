@@ -465,9 +465,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     if (mounted) await _maybeAskReminders();
   }
 
-  /// Прочитанность — только для сегодняшнего дня: [DayProgress.readTypes]
-  /// хранит типы, прочитанные сегодня, и на чужой дате означала бы не то.
-  bool _isRead(DayCard card) => _isToday && progress.isRead(card.type);
+  bool _isRead(DayCard card) => _isToday
+      ? progress.isRead(card.type)
+      : progress.isReadOn(date, card.type);
 
   /// Обходим кэш репозитория, а после удачного ответа сбрасываем Riverpod,
   /// чтобы экран прочитал уже перезаписанную запись. Старый кэш до успеха не
