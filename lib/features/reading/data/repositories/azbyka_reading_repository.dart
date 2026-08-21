@@ -44,9 +44,12 @@ class AzbykaReadingRepository implements ReadingRepository {
   static const _minAttempt = Duration(milliseconds: 500);
 
   @override
-  Future<Result<DailyReading>> getReading(String reference) async {
+  Future<Result<DailyReading>> getReading(
+    String reference, {
+    bool forceRefresh = false,
+  }) async {
     final cached = _readCache(reference);
-    if (cached != null) {
+    if (cached != null && !forceRefresh) {
       netLog('чтение $reference из кэша — сеть не трогаем');
       return Success(cached.toEntity());
     }

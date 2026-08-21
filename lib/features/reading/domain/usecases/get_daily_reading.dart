@@ -8,6 +8,8 @@ class GetDailyReading {
 
   final ReadingRepository _repository;
 
-  Future<Result<DailyReading>> call(String reference) =>
-      _repository.getReading(reference);
+  Future<Result<DailyReading>> call(
+    String reference, {
+    bool forceRefresh = false,
+  }) => _repository.getReading(reference, forceRefresh: forceRefresh);
 }

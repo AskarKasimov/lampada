@@ -5,6 +5,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/daily_cards/domain/course_calendar.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -66,14 +67,21 @@ const _basics = DayCard(
 
 /// Ридер не должен ходить в сеть из виджет-тестов.
 class _FakeReadingRepository implements ReadingRepository {
+  final forceRefreshReferences = <String>[];
+
   @override
-  Future<Result<DailyReading>> getReading(String reference) async =>
-      const Success(
-        DailyReading(
-          label: 'Ин.10:1–9',
-          verses: [Verse(number: 1, chapter: 10, text: 'Истинно говорю вам')],
-        ),
-      );
+  Future<Result<DailyReading>> getReading(
+    String reference, {
+    bool forceRefresh = false,
+  }) async {
+    if (forceRefresh) forceRefreshReferences.add(reference);
+    return const Success(
+      DailyReading(
+        label: 'Ин.10:1–9',
+        verses: [Verse(number: 1, chapter: 10, text: 'Истинно говорю вам')],
+      ),
+    );
+  }
 }
 
 /// Рассказ о дне не должен ходить в сеть из виджет-тестов.
@@ -87,6 +95,7 @@ class _FakeCardsRepository implements DayCardsRepository {
   _FakeCardsRepository({
     this.cards = _cards,
     this.refreshedCards,
+    this.failedDates = const {},
     this.week,
     this.title,
     this.isFast = false,
@@ -96,11 +105,13 @@ class _FakeCardsRepository implements DayCardsRepository {
   final requested = <String>[];
   final List<DayCard> cards;
   final Map<String, List<DayCard>>? refreshedCards;
+  final Set<String> failedDates;
   final String? week;
   final String? title;
   final bool isFast;
   final String? storyUrl;
   final _cachedCards = <String, List<DayCard>>{};
+  final forceRefreshDates = <String>[];
 
   @override
   Future<Result<TodayCards>> getCardsFor(
@@ -109,6 +120,12 @@ class _FakeCardsRepository implements DayCardsRepository {
   }) async {
     final key = dateKey(date);
     requested.add(key);
+    if (forceRefresh) forceRefreshDates.add(key);
+    if (failedDates.contains(key)) {
+      return const Failure(
+        AppFailure('Контент недоступен', kind: FailureKind.network),
+      );
+    }
     if (forceRefresh && refreshedCards?[key] != null) {
       _cachedCards[key] = refreshedCards![key]!;
     }
@@ -127,9 +144,13 @@ class _FakeCardsRepository implements DayCardsRepository {
 class _FakeProgressRepository implements DayProgressRepository {
   Set<CardType> _read = {};
   Set<String> _visited = {};
+  Map<String, Set<CardType>> _readByDate = {};
 
-  DayProgress get _current =>
-      DayProgress(readTypes: _read, visitedDays: _visited);
+  DayProgress get _current => DayProgress(
+    readTypes: _read,
+    readTypesByDate: _readByDate,
+    visitedDays: _visited,
+  );
 
   @override
   Future<Result<DayProgress>> loadToday() async => Success(_current);
@@ -141,17 +162,31 @@ class _FakeProgressRepository implements DayProgressRepository {
   final marked = <CardType>[];
 
   @override
-  Future<Result<DayProgress>> markRead(CardType type) async {
+  Future<Result<DayProgress>> markRead(
+    CardType type, {
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
     marked.add(type);
-    _read = {..._read, type};
-    _visited = {..._visited, dateKey(DateTime.now())};
+    final day = dateKey(date ?? DateTime.now());
+    final read = {..._readByDate[day] ?? const <CardType>{}, type};
+    _readByDate = {..._readByDate, day: read};
+    if (day == dateKey(DateTime.now())) _read = read;
+    if (markVisited) _visited = {..._visited, day};
     return Success(_current);
   }
 
   Set<CardType> get readTypes => _read;
   Set<String> get visitedDays => _visited;
 
-  void seedRead(Set<CardType> types) => _read = types;
+  void seedRead(Set<CardType> types) {
+    _read = types;
+    _readByDate = {..._readByDate, dateKey(DateTime.now()): types};
+  }
+
+  void seedReadOn(DateTime date, Set<CardType> types) =>
+      _readByDate = {..._readByDate, dateKey(date): types};
+
   void seedVisited(Set<String> days) => _visited = days;
 }
 
@@ -180,6 +215,7 @@ void main() {
   Widget buildApp({
     DayCardsRepository? cardsRepository,
     DayProgressRepository? progressRepository,
+    ReadingRepository? readingRepository,
     DateTime? selectedDate,
   }) => ProviderScope(
     overrides: [
@@ -189,7 +225,9 @@ void main() {
       dayProgressRepositoryProvider.overrideWithValue(
         progressRepository ?? _FakeProgressRepository(),
       ),
-      readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
+      readingRepositoryProvider.overrideWithValue(
+        readingRepository ?? _FakeReadingRepository(),
+      ),
       dayStoryRepositoryProvider.overrideWithValue(_FakeDayStoryRepository()),
       sharedPreferencesProvider.overrideWithValue(prefs),
       if (selectedDate != null)
@@ -374,7 +412,7 @@ void main() {
       );
     });
 
-    testWidgets('pull-to-refresh запрашивает свежие карточки дня', (
+    testWidgets('pull-to-refresh обновляет все источники контента дня', (
       tester,
     ) async {
       const refreshed = DayCard(
@@ -384,25 +422,55 @@ void main() {
         source: 'Источник 1',
       );
       final today = dateKey(DateTime.now());
+      final cards = _FakeCardsRepository(
+        cards: [..._cards, _basics],
+        refreshedCards: {
+          today: [refreshed, ..._cards.skip(1), _basics],
+        },
+      );
+      final reading = _FakeReadingRepository();
       final progress = _FakeProgressRepository()
-        ..seedRead(_cards.map((card) => card.type).toSet());
+        ..seedRead([..._cards, _basics].map((card) => card.type).toSet());
       await tester.pumpWidget(
         buildApp(
-          cardsRepository: _FakeCardsRepository(
-            refreshedCards: {
-              today: [refreshed, ..._cards.skip(1)],
-            },
-          ),
+          cardsRepository: cards,
           progressRepository: progress,
+          readingRepository: reading,
         ),
       );
       await settle(tester);
+      cards.forceRefreshDates.clear();
 
       expect(find.text('Первая карточка'), findsOneWidget);
       await tester.fling(find.byType(ListView), const Offset(0, 300), 1000);
       await settle(tester);
 
       expect(find.text('Свежая карточка'), findsOneWidget);
+      expect(
+        cards.forceRefreshDates,
+        containsAll([today, dateKey(dateForCourseTopic(1))]),
+      );
+      expect(reading.forceRefreshReferences, ['Jn.10:1-9']);
+    });
+
+    testWidgets('показывает основы дня, если личная тема не загрузилась', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead([..._cards, _basics].map((card) => card.type).toSet());
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            cards: [..._cards, _basics],
+            failedDates: {dateKey(dateForCourseTopic(1))},
+          ),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      expect(entry('ОСНОВЫ ВЕРЫ'), findsOneWidget);
+      expect(find.text('О вере и жизни христианина'), findsOneWidget);
     });
 
     testWidgets('прочитанные блоки видны и после прохождения дня', (
@@ -703,6 +771,44 @@ void main() {
       expect(futureEntries.hitTestable(), findsWidgets);
     });
 
+    testWidgets('на прошлом дне скрывает точки у прочитанного', (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead(_cards.map((card) => card.type).toSet())
+        ..seedReadOn(
+          DateTime.now().subtract(const Duration(days: 1)),
+          _cards.map((card) => card.type).toSet(),
+        );
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
+      await settle(tester);
+
+      final entries = tester.widgetList<DayEntryRow>(find.byType(DayEntryRow));
+      expect(entries, isNotEmpty);
+      expect(entries.every((entry) => !entry.isUnread), isTrue);
+    });
+
+    testWidgets('прочтение прошлого дня не зажигает его лампадку', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead(_cards.map((card) => card.type).toSet());
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
+      await settle(tester);
+      await tester.tap(entry('ЦИТАТА'));
+      await settle(tester);
+      await tester.tap(find.byIcon(Icons.close));
+      await settle(tester);
+
+      expect(progress.marked, contains(CardType.quote));
+      expect(progress.visitedDays, isNot(contains(dateKey(yesterday))));
+    });
+
     testWidgets('скрывает календарные основы на другом дне', (tester) async {
       final progress = _FakeProgressRepository()
         ..seedRead({
@@ -827,9 +933,13 @@ void main() {
       );
     });
 
-    testWidgets('на чужой дате прогресс не пишется', (tester) async {
+    testWidgets('чужая дата не меняет прогресс сегодняшней сессии', (
+      tester,
+    ) async {
       // «Лампадка» отмечает дни, когда юзер заходил за контентом ИМЕННО
-      // этого дня: чтение вчерашнего не должно зажигать вчерашний огонёк.
+      // этого дня: чтение вчерашнего не должно зажигать вчерашний огонёк
+      // или менять статус карточек на сегодня. Само прочтение хранится
+      // отдельно в истории этой даты.
       //
       // День засеян прочитанным целиком, чтобы автооткрытие за сегодня не
       // сработало и не подмешало свою запись в проверку.
@@ -1033,6 +1143,33 @@ void main() {
 
       expect(find.byType(CardViewerScreen), findsNothing);
       expect(entry('ЕВАНГЕЛИЕ ДНЯ'), findsOneWidget);
+    });
+
+    testWidgets('возврат на сегодня после далёкой даты не открывает раздел', (
+      tester,
+    ) async {
+      // Флаг автооткрытия жил в странице PageView. После нескольких свайпов
+      // страница «Сегодня» пересоздавалась и открывала следующий раздел так,
+      // будто пользователь снова запустил приложение.
+      await tester.pumpWidget(buildApp());
+      await settle(tester);
+      await tester.tap(find.byIcon(Icons.close));
+      await settle(tester);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TodayScreen)),
+      );
+      container
+          .read(selectedDateProvider.notifier)
+          .select(DateTime.now().add(const Duration(days: 30)));
+      await settle(tester);
+      container.read(selectedDateProvider.notifier).select(DateTime.now());
+      await settle(tester);
+
+      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(find.byType(ReadingScreen), findsNothing);
+      expect(find.byType(CourseReaderScreen), findsNothing);
+      expect(entry('СОВЕТ'), findsOneWidget);
     });
 
     testWidgets('на чужой дате ничего не открывается само', (tester) async {

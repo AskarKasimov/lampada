@@ -5,8 +5,9 @@ import 'day_card.dart';
 
 part 'day_progress.freezed.dart';
 
-/// Прогресс: прочитанные сегодня типы карточек и множество дней, в которые
-/// юзер заходил. Domain-модель, без JSON.
+/// Прогресс: прочитанные типы карточек по датам и множество дней, в которые
+/// юзер заходил. [readTypes] — срез сегодняшнего дня для сессии и напоминаний.
+/// Domain-модель, без JSON.
 ///
 /// Серия («Лампадка») здесь не хранится, а выводится из [visitedDays]. Так
 /// требует §«Key Entities» спеки — «производное от посещений». Раньше это был
@@ -22,9 +23,16 @@ abstract class DayProgress with _$DayProgress {
     /// Даты (yyyy-MM-dd) с активностью. День засчитывается, когда прочитана
     /// хотя бы одна его карточка: по §1 сессия состоялась уже после первой.
     required Set<String> visitedDays,
+
+    /// Типы прочитанного контента по календарным датам.
+    @Default(<String, Set<CardType>>{})
+    Map<String, Set<CardType>> readTypesByDate,
   }) = _DayProgress;
 
   bool isRead(CardType type) => readTypes.contains(type);
+
+  bool isReadOn(DateTime date, CardType type) =>
+      readTypesByDate[dateKey(date)]?.contains(type) ?? false;
 
   int get readCount => readTypes.length;
 

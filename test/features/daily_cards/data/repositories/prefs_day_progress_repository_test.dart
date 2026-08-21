@@ -75,6 +75,59 @@ void main() {
     },
   );
 
+  test('хранит прочитанные типы для прошлых дней', () async {
+    final repo = await build();
+    await repo.markRead(CardType.quote);
+
+    fixedNow = DateTime(2026, 7, 18);
+    await repo.markRead(CardType.advice);
+
+    final prefs = await SharedPreferences.getInstance();
+    final stored =
+        jsonDecode(prefs.getString('day_progress')!) as Map<String, dynamic>;
+    expect(stored['readTypesByDate'], {
+      '2026-07-17': ['quote'],
+      '2026-07-18': ['advice'],
+    });
+    final progress = _unwrap(await repo.loadToday());
+    expect(progress.isReadOn(DateTime(2026, 7, 17), CardType.quote), isTrue);
+  });
+
+  test('прочтение прошлого дня не засчитывает посещение', () async {
+    final repo = await build();
+    final yesterday = DateTime(2026, 7, 16);
+
+    final progress = _unwrap(
+      await repo.markRead(CardType.quote, date: yesterday, markVisited: false),
+    );
+
+    expect(progress.isReadOn(yesterday, CardType.quote), isTrue);
+    expect(progress.isLit(yesterday), isFalse);
+  });
+
+  test('переносит прочитанные типы из прежнего формата', () async {
+    SharedPreferences.setMockInitialValues({
+      'flutter.day_progress': jsonEncode({
+        'date': '2026-07-16',
+        'readTypes': ['quote'],
+        'visitedDays': ['2026-07-16'],
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final repo = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
+
+    await repo.markRead(CardType.advice);
+
+    final stored =
+        jsonDecode(prefs.getString('day_progress')!) as Map<String, dynamic>;
+    expect(stored['readTypesByDate'], {
+      '2026-07-16': ['quote'],
+      '2026-07-17': ['advice'],
+    });
+    final progress = _unwrap(await repo.loadToday());
+    expect(progress.isReadOn(DateTime(2026, 7, 16), CardType.quote), isTrue);
+  });
+
   test('серия растёт по дням, а не по прочитанным карточкам', () async {
     final repo = await build();
     await repo.markRead(CardType.quote);

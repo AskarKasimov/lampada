@@ -65,8 +65,11 @@ class _FailingDayProgressRepository implements DayProgressRepository {
       const Success(DayProgress(readTypes: {}, visitedDays: {}));
 
   @override
-  Future<Result<DayProgress>> markRead(CardType type) async =>
-      const Failure(_failure);
+  Future<Result<DayProgress>> markRead(
+    CardType type, {
+    DateTime? date,
+    bool markVisited = true,
+  }) async => const Failure(_failure);
 }
 
 Future<ProviderContainer> _container(

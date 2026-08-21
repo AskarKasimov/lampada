@@ -16,6 +16,13 @@ extension DayProgressDtoMapper on DayProgressDto {
         .map((name) => CardType.values.asNameMap()[name])
         .nonNulls
         .toSet(),
+    readTypesByDate: {
+      for (final entry in readTypesByDate.entries)
+        entry.key: entry.value
+            .map((name) => CardType.values.asNameMap()[name])
+            .nonNulls
+            .toSet(),
+    },
     visitedDays: visitedDays.toSet(),
   );
 }

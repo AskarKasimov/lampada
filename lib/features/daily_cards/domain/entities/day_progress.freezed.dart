@@ -16,7 +16,8 @@ mixin _$DayProgress {
 
  Set<CardType> get readTypes;/// Даты (yyyy-MM-dd) с активностью. День засчитывается, когда прочитана
 /// хотя бы одна его карточка: по §1 сессия состоялась уже после первой.
- Set<String> get visitedDays;
+ Set<String> get visitedDays;/// Типы прочитанного контента по календарным датам.
+ Map<String, Set<CardType>> get readTypesByDate;
 /// Create a copy of DayProgress
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +28,16 @@ $DayProgressCopyWith<DayProgress> get copyWith => _$DayProgressCopyWithImpl<DayP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayProgress&&const DeepCollectionEquality().equals(other.readTypes, readTypes)&&const DeepCollectionEquality().equals(other.visitedDays, visitedDays));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayProgress&&const DeepCollectionEquality().equals(other.readTypes, readTypes)&&const DeepCollectionEquality().equals(other.visitedDays, visitedDays)&&const DeepCollectionEquality().equals(other.readTypesByDate, readTypesByDate));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(readTypes),const DeepCollectionEquality().hash(visitedDays));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(readTypes),const DeepCollectionEquality().hash(visitedDays),const DeepCollectionEquality().hash(readTypesByDate));
 
 @override
 String toString() {
-  return 'DayProgress(readTypes: $readTypes, visitedDays: $visitedDays)';
+  return 'DayProgress(readTypes: $readTypes, visitedDays: $visitedDays, readTypesByDate: $readTypesByDate)';
 }
 
 
@@ -47,7 +48,7 @@ abstract mixin class $DayProgressCopyWith<$Res>  {
   factory $DayProgressCopyWith(DayProgress value, $Res Function(DayProgress) _then) = _$DayProgressCopyWithImpl;
 @useResult
 $Res call({
- Set<CardType> readTypes, Set<String> visitedDays
+ Set<CardType> readTypes, Set<String> visitedDays, Map<String, Set<CardType>> readTypesByDate
 });
 
 
@@ -64,11 +65,12 @@ class _$DayProgressCopyWithImpl<$Res>
 
 /// Create a copy of DayProgress
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? readTypes = null,Object? visitedDays = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? readTypes = null,Object? visitedDays = null,Object? readTypesByDate = null,}) {
   return _then(_self.copyWith(
 readTypes: null == readTypes ? _self.readTypes : readTypes // ignore: cast_nullable_to_non_nullable
 as Set<CardType>,visitedDays: null == visitedDays ? _self.visitedDays : visitedDays // ignore: cast_nullable_to_non_nullable
-as Set<String>,
+as Set<String>,readTypesByDate: null == readTypesByDate ? _self.readTypesByDate : readTypesByDate // ignore: cast_nullable_to_non_nullable
+as Map<String, Set<CardType>>,
   ));
 }
 
@@ -153,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Set<CardType> readTypes,  Set<String> visitedDays)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Set<CardType> readTypes,  Set<String> visitedDays,  Map<String, Set<CardType>> readTypesByDate)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DayProgress() when $default != null:
-return $default(_that.readTypes,_that.visitedDays);case _:
+return $default(_that.readTypes,_that.visitedDays,_that.readTypesByDate);case _:
   return orElse();
 
 }
@@ -174,10 +176,10 @@ return $default(_that.readTypes,_that.visitedDays);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Set<CardType> readTypes,  Set<String> visitedDays)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Set<CardType> readTypes,  Set<String> visitedDays,  Map<String, Set<CardType>> readTypesByDate)  $default,) {final _that = this;
 switch (_that) {
 case _DayProgress():
-return $default(_that.readTypes,_that.visitedDays);case _:
+return $default(_that.readTypes,_that.visitedDays,_that.readTypesByDate);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -194,10 +196,10 @@ return $default(_that.readTypes,_that.visitedDays);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Set<CardType> readTypes,  Set<String> visitedDays)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Set<CardType> readTypes,  Set<String> visitedDays,  Map<String, Set<CardType>> readTypesByDate)?  $default,) {final _that = this;
 switch (_that) {
 case _DayProgress() when $default != null:
-return $default(_that.readTypes,_that.visitedDays);case _:
+return $default(_that.readTypes,_that.visitedDays,_that.readTypesByDate);case _:
   return null;
 
 }
@@ -209,7 +211,7 @@ return $default(_that.readTypes,_that.visitedDays);case _:
 
 
 class _DayProgress extends DayProgress {
-  const _DayProgress({required final  Set<CardType> readTypes, required final  Set<String> visitedDays}): _readTypes = readTypes,_visitedDays = visitedDays,super._();
+  const _DayProgress({required final  Set<CardType> readTypes, required final  Set<String> visitedDays, final  Map<String, Set<CardType>> readTypesByDate = const <String, Set<CardType>>{}}): _readTypes = readTypes,_visitedDays = visitedDays,_readTypesByDate = readTypesByDate,super._();
   
 
  final  Set<CardType> _readTypes;
@@ -230,6 +232,15 @@ class _DayProgress extends DayProgress {
   return EqualUnmodifiableSetView(_visitedDays);
 }
 
+/// Типы прочитанного контента по календарным датам.
+ final  Map<String, Set<CardType>> _readTypesByDate;
+/// Типы прочитанного контента по календарным датам.
+@override@JsonKey() Map<String, Set<CardType>> get readTypesByDate {
+  if (_readTypesByDate is EqualUnmodifiableMapView) return _readTypesByDate;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_readTypesByDate);
+}
+
 
 /// Create a copy of DayProgress
 /// with the given fields replaced by the non-null parameter values.
@@ -241,16 +252,16 @@ _$DayProgressCopyWith<_DayProgress> get copyWith => __$DayProgressCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayProgress&&const DeepCollectionEquality().equals(other._readTypes, _readTypes)&&const DeepCollectionEquality().equals(other._visitedDays, _visitedDays));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayProgress&&const DeepCollectionEquality().equals(other._readTypes, _readTypes)&&const DeepCollectionEquality().equals(other._visitedDays, _visitedDays)&&const DeepCollectionEquality().equals(other._readTypesByDate, _readTypesByDate));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_readTypes),const DeepCollectionEquality().hash(_visitedDays));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_readTypes),const DeepCollectionEquality().hash(_visitedDays),const DeepCollectionEquality().hash(_readTypesByDate));
 
 @override
 String toString() {
-  return 'DayProgress(readTypes: $readTypes, visitedDays: $visitedDays)';
+  return 'DayProgress(readTypes: $readTypes, visitedDays: $visitedDays, readTypesByDate: $readTypesByDate)';
 }
 
 
@@ -261,7 +272,7 @@ abstract mixin class _$DayProgressCopyWith<$Res> implements $DayProgressCopyWith
   factory _$DayProgressCopyWith(_DayProgress value, $Res Function(_DayProgress) _then) = __$DayProgressCopyWithImpl;
 @override @useResult
 $Res call({
- Set<CardType> readTypes, Set<String> visitedDays
+ Set<CardType> readTypes, Set<String> visitedDays, Map<String, Set<CardType>> readTypesByDate
 });
 
 
@@ -278,11 +289,12 @@ class __$DayProgressCopyWithImpl<$Res>
 
 /// Create a copy of DayProgress
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? readTypes = null,Object? visitedDays = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? readTypes = null,Object? visitedDays = null,Object? readTypesByDate = null,}) {
   return _then(_DayProgress(
 readTypes: null == readTypes ? _self._readTypes : readTypes // ignore: cast_nullable_to_non_nullable
 as Set<CardType>,visitedDays: null == visitedDays ? _self._visitedDays : visitedDays // ignore: cast_nullable_to_non_nullable
-as Set<String>,
+as Set<String>,readTypesByDate: null == readTypesByDate ? _self._readTypesByDate : readTypesByDate // ignore: cast_nullable_to_non_nullable
+as Map<String, Set<CardType>>,
   ));
 }
 

@@ -6,6 +6,7 @@ import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
+import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/screens/reading_screen.dart';
 import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
@@ -71,6 +72,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   late final CalendarPageMapper _pageMapper;
   late final PageController _pageController;
 
+  /// Автооткрытие относится ко входу на экран, а не к отдельной странице
+  /// [PageView]: листание календаря может пересоздать страницу «Сегодня».
+  bool _hasAutoOpened = false;
+
   @override
   void initState() {
     super.initState();
@@ -105,6 +110,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     );
   }
 
+  void _markAutoOpened() {
+    if (_hasAutoOpened) return;
+    setState(() => _hasAutoOpened = true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = ref.watch(selectedDateProvider);
@@ -129,8 +139,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
             onPageChanged: (page) => ref
                 .read(selectedDateProvider.notifier)
                 .select(_pageMapper.dateForPage(page)),
-            itemBuilder: (context, page) =>
-                _TodayDayPage(date: _pageMapper.dateForPage(page)),
+            itemBuilder: (context, page) => _TodayDayPage(
+              date: _pageMapper.dateForPage(page),
+              hasAutoOpened: _hasAutoOpened,
+              onAutoOpened: _markAutoOpened,
+            ),
           ),
         ),
       ],
@@ -139,9 +152,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
 }
 
 class _TodayDayPage extends ConsumerWidget {
-  const _TodayDayPage({required this.date});
+  const _TodayDayPage({
+    required this.date,
+    required this.hasAutoOpened,
+    required this.onAutoOpened,
+  });
 
   final DateTime date;
+  final bool hasAutoOpened;
+  final VoidCallback onAutoOpened;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -149,16 +168,28 @@ class _TodayDayPage extends ConsumerWidget {
     final isSelected = dateKey(selected) == dateKey(date);
     final isNeighbour = CalendarPageMapper.dayOffset(selected, date).abs() == 1;
     return isSelected || isNeighbour
-        ? _SelectedDayContent(date: date, isSelected: isSelected)
+        ? _SelectedDayContent(
+            date: date,
+            isSelected: isSelected,
+            hasAutoOpened: hasAutoOpened,
+            onAutoOpened: onAutoOpened,
+          )
         : const BrandLoadingView();
   }
 }
 
 class _SelectedDayContent extends ConsumerWidget {
-  const _SelectedDayContent({required this.date, required this.isSelected});
+  const _SelectedDayContent({
+    required this.date,
+    required this.isSelected,
+    required this.hasAutoOpened,
+    required this.onAutoOpened,
+  });
 
   final DateTime date;
   final bool isSelected;
+  final bool hasAutoOpened;
+  final VoidCallback onAutoOpened;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -198,6 +229,8 @@ class _SelectedDayContent extends ConsumerWidget {
         progress: progress,
         isSelected: isSelected,
         courseTopic: courseTopic,
+        hasAutoOpened: hasAutoOpened,
+        onAutoOpened: onAutoOpened,
       );
     }
 
@@ -222,14 +255,10 @@ class _SelectedDayContent extends ConsumerWidget {
   /// Подменяет «Основы» дня на текущую тему курса.
   ///
   /// Только для сегодняшней даты: курс — это личный прогресс. Если тема не
-  /// доехала, скрываем календарные «Основы», чтобы не выдать их за курс.
+  /// доехала, остаются календарные «Основы», чтобы контент дня не пропадал.
   TodayCards _withCourseTopic(DateTime date, TodayCards day, DayCard? topic) {
     if (dateKey(date) != dateKey(DateTime.now())) return day;
-    if (topic == null) {
-      return day.copyWith(
-        cards: day.cards.where((c) => c.type != CardType.basics).toList(),
-      );
-    }
+    if (topic == null) return day;
 
     final index = day.cards.indexWhere((c) => c.type == CardType.basics);
     if (index < 0) return day;
@@ -294,6 +323,8 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.progress,
     required this.isSelected,
     required this.courseTopic,
+    required this.hasAutoOpened,
+    required this.onAutoOpened,
   });
 
   final DateTime date;
@@ -301,17 +332,14 @@ class _DayBlocks extends ConsumerStatefulWidget {
   final DayProgress progress;
   final bool isSelected;
   final DayCard? courseTopic;
+  final bool hasAutoOpened;
+  final VoidCallback onAutoOpened;
 
   @override
   ConsumerState<_DayBlocks> createState() => _DayBlocksState();
 }
 
 class _DayBlocksState extends ConsumerState<_DayBlocks> {
-  /// Просмотрщик уже открывался автоматически в этот запуск. Без флага
-  /// возврат из него открывал бы его снова: прогресс пишется асинхронно,
-  /// и на один кадр непрочитанная карточка ещё выглядит непрочитанной.
-  bool _autoOpened = false;
-
   DateTime get date => widget.date;
   TodayCards get day => widget.day;
   DayProgress get progress => widget.progress;
@@ -344,18 +372,20 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       await _openReader(context, ref, card);
       return;
     }
-    if (card.type == CardType.basics) {
+    if (_isCourseTopic(card)) {
       await _openCourse(context, card);
       return;
     }
-    final pages = _pages;
+    final pages = card.type == CardType.basics ? [card] : _pages;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
         builder: (_) => CardViewerScreen(
           cards: pages,
           startIndex: pages.indexOf(card),
+          date: date,
           recordProgress: _recordProgress,
+          markCourseProgress: card.type != CardType.basics,
         ),
       ),
     );
@@ -397,9 +427,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     WidgetRef ref,
     DayCard card,
   ) async {
-    if (_recordProgress) {
-      ref.read(dayProgressProvider.notifier).markRead(card.type);
-    }
+    ref
+        .read(dayProgressProvider.notifier)
+        .markRead(card.type, date: date, markVisited: _recordProgress);
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ReadingScreen(reference: card.reference!),
@@ -434,21 +464,41 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     if (mounted) await _maybeAskReminders();
   }
 
-  /// Прочитанность — только для сегодняшнего дня: [DayProgress.readTypes]
-  /// хранит типы, прочитанные сегодня, и на чужой дате означала бы не то.
-  bool _isRead(DayCard card) => _isToday && progress.isRead(card.type);
+  bool _isRead(DayCard card) => _isToday
+      ? progress.isRead(card.type)
+      : progress.isReadOn(date, card.type);
+
+  bool _isCourseTopic(DayCard card) =>
+      RegExp(r'^basics-topic-\d+$').hasMatch(card.id);
 
   /// Обходим кэш репозитория, а после удачного ответа сбрасываем Riverpod,
   /// чтобы экран прочитал уже перезаписанную запись. Старый кэш до успеха не
   /// удаляем: pull-to-refresh в офлайне не должен превращать готовый день в
   /// пустой экран.
   Future<void> _refresh() async {
+    final courseRefresh = ref.read(getCourseTopicProvider)(forceRefresh: true);
     final result = await ref.read(getTodayCardsProvider)(
       date,
       forceRefresh: true,
     );
     if (result is Success<TodayCards>) {
       ref.invalidate(dayCardsProvider(dateKey(date)));
+      final reading = result.value.cards
+          .where((card) => card.type == CardType.reading)
+          .firstOrNull;
+      if (reading?.reference case final reference?) {
+        final readingRefresh = await ref.read(getDailyReadingProvider)(
+          reference,
+          forceRefresh: true,
+        );
+        if (readingRefresh is Success) {
+          ref.invalidate(dailyReadingProvider(reference));
+        }
+      }
+    }
+    final courseResult = await courseRefresh;
+    if (courseResult is Success) {
+      ref.invalidate(courseTopicProvider);
     }
   }
 
@@ -465,7 +515,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   /// «одна мысль за 15 секунд», но до него доходит только тот, кто закрыл
   /// первые три, то есть пришёл в приложение не в первый раз за день.
   void _maybeAutoOpen() {
-    if (_autoOpened) return;
+    if (widget.hasAutoOpened) return;
     if (!widget.isSelected) return;
     if (!_recordProgress) return;
 
@@ -474,9 +524,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     if (unread == null) return;
 
     final card = day.cards.firstWhere((c) => c.type == unread);
-    _autoOpened = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      widget.onAutoOpened();
       _open(context, ref, card);
     });
   }

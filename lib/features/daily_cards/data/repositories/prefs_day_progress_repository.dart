@@ -39,11 +39,23 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   Future<void> _write(DayProgressDto dto) =>
       requirePreferenceWrite(_prefs.setString(_key, jsonEncode(dto.toJson())));
 
-  /// Приводит DTO к сегодняшнему дню: если дата не сегодня —
-  /// список прочитанного обнуляется, посещённые дни сохраняются.
-  DayProgressDto _forToday(DayProgressDto dto) => dto.date == _today
-      ? dto
-      : dto.copyWith(date: _today, readTypes: const []);
+  /// Приводит DTO к сегодняшнему дню и переносит старое одиночное поле
+  /// [DayProgressDto.readTypes] в историю. Старые версии не знают о карте,
+  /// но новые продолжают читать их JSON без потери прогресса.
+  DayProgressDto _forToday(DayProgressDto dto) {
+    final history = {...dto.readTypesByDate};
+    final visited = {...dto.visitedDays};
+    if (dto.readTypes.isNotEmpty && !history.containsKey(dto.date)) {
+      history[dto.date] = dto.readTypes;
+      visited.add(dto.date);
+    }
+    return dto.copyWith(
+      date: _today,
+      readTypes: history[_today] ?? const [],
+      readTypesByDate: history,
+      visitedDays: visited.toList()..sort(),
+    );
+  }
 
   @override
   Future<Result<DayProgress>> loadToday() async {
@@ -61,15 +73,36 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   }
 
   @override
-  Future<Result<DayProgress>> markRead(CardType type) async {
+  Future<Result<DayProgress>> markRead(
+    CardType type, {
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
     try {
       final dto = _forToday(_read());
-      final visited = {...dto.visitedDays, _today}.toList()..sort();
+      final day = dateKey(date ?? _clock());
+      final visited = {...dto.visitedDays, if (markVisited) day}.toList()
+        ..sort();
+      final retainedVisited = visited.length > _maxVisitedDays
+          ? visited.sublist(visited.length - _maxVisitedDays)
+          : visited;
+      final readTypes = {
+        ...dto.readTypesByDate[day] ?? const <String>[],
+        type.name,
+      }.toList();
+      final byDate = {...dto.readTypesByDate, day: readTypes};
+      final retainedReadDates = byDate.keys.toList()..sort();
+      if (retainedReadDates.length > _maxVisitedDays) {
+        for (final expired in retainedReadDates.take(
+          retainedReadDates.length - _maxVisitedDays,
+        )) {
+          byDate.remove(expired);
+        }
+      }
       final updated = dto.copyWith(
-        readTypes: {...dto.readTypes, type.name}.toList(),
-        visitedDays: visited.length > _maxVisitedDays
-            ? visited.sublist(visited.length - _maxVisitedDays)
-            : visited,
+        readTypes: day == _today ? readTypes : dto.readTypes,
+        readTypesByDate: byDate,
+        visitedDays: retainedVisited,
       );
       await _write(updated);
       return Success(updated.toEntity());
