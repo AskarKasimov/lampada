@@ -6,6 +6,7 @@ import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
+import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/screens/reading_screen.dart';
 import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
@@ -254,14 +255,10 @@ class _SelectedDayContent extends ConsumerWidget {
   /// Подменяет «Основы» дня на текущую тему курса.
   ///
   /// Только для сегодняшней даты: курс — это личный прогресс. Если тема не
-  /// доехала, скрываем календарные «Основы», чтобы не выдать их за курс.
+  /// доехала, остаются календарные «Основы», чтобы контент дня не пропадал.
   TodayCards _withCourseTopic(DateTime date, TodayCards day, DayCard? topic) {
     if (dateKey(date) != dateKey(DateTime.now())) return day;
-    if (topic == null) {
-      return day.copyWith(
-        cards: day.cards.where((c) => c.type != CardType.basics).toList(),
-      );
-    }
+    if (topic == null) return day;
 
     final index = day.cards.indexWhere((c) => c.type == CardType.basics);
     if (index < 0) return day;
@@ -375,11 +372,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       await _openReader(context, ref, card);
       return;
     }
-    if (card.type == CardType.basics) {
+    if (_isCourseTopic(card)) {
       await _openCourse(context, card);
       return;
     }
-    final pages = _pages;
+    final pages = card.type == CardType.basics ? [card] : _pages;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
@@ -388,6 +385,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           startIndex: pages.indexOf(card),
           date: date,
           recordProgress: _recordProgress,
+          markCourseProgress: card.type != CardType.basics,
         ),
       ),
     );
@@ -470,17 +468,37 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       ? progress.isRead(card.type)
       : progress.isReadOn(date, card.type);
 
+  bool _isCourseTopic(DayCard card) =>
+      RegExp(r'^basics-topic-\d+$').hasMatch(card.id);
+
   /// Обходим кэш репозитория, а после удачного ответа сбрасываем Riverpod,
   /// чтобы экран прочитал уже перезаписанную запись. Старый кэш до успеха не
   /// удаляем: pull-to-refresh в офлайне не должен превращать готовый день в
   /// пустой экран.
   Future<void> _refresh() async {
+    final courseRefresh = ref.read(getCourseTopicProvider)(forceRefresh: true);
     final result = await ref.read(getTodayCardsProvider)(
       date,
       forceRefresh: true,
     );
     if (result is Success<TodayCards>) {
       ref.invalidate(dayCardsProvider(dateKey(date)));
+      final reading = result.value.cards
+          .where((card) => card.type == CardType.reading)
+          .firstOrNull;
+      if (reading?.reference case final reference?) {
+        final readingRefresh = await ref.read(getDailyReadingProvider)(
+          reference,
+          forceRefresh: true,
+        );
+        if (readingRefresh is Success) {
+          ref.invalidate(dailyReadingProvider(reference));
+        }
+      }
+    }
+    final courseResult = await courseRefresh;
+    if (courseResult is Success) {
+      ref.invalidate(courseTopicProvider);
     }
   }
 

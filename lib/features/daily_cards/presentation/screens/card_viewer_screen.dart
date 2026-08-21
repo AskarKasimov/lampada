@@ -25,6 +25,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     required this.startIndex,
     required this.date,
     required this.recordProgress,
+    required this.markCourseProgress,
     super.key,
   });
 
@@ -36,6 +37,10 @@ class CardViewerScreen extends ConsumerStatefulWidget {
 
   /// Засчитывать ли дату посещённой. Само прочтение пишется всегда.
   final bool recordProgress;
+
+  /// Продвигать ли личный курс при чтении «Основ». Календарная запасная
+  /// карточка не является темой последовательного курса.
+  final bool markCourseProgress;
 
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
@@ -77,6 +82,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
             widget.cards[index].type,
             date: widget.date,
             markVisited: widget.recordProgress,
+            markCourseProgress: widget.markCourseProgress,
           );
     });
   }

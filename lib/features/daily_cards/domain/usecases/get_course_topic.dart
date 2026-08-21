@@ -17,24 +17,31 @@ class GetCourseTopic {
   final CourseProgressRepository _progress;
   final DayCardsRepository _cards;
 
-  Future<Result<DayCard>> call() async {
+  Future<Result<DayCard>> call({bool forceRefresh = false}) async {
     final topicResult = await _progress.currentTopic();
     switch (topicResult) {
       case Failure(failure: final f):
         return Failure(f);
       case Success(value: final topic):
-        return forTopic(topic);
+        return forTopic(topic, forceRefresh: forceRefresh);
     }
   }
 
   /// Карточка «Основы» для явно запрошенной темы курса.
-  Future<Result<DayCard>> forTopic(int topic) => _topicCard(topic);
+  Future<Result<DayCard>> forTopic(int topic, {bool forceRefresh = false}) =>
+      _topicCard(topic, forceRefresh: forceRefresh);
 
-  Future<Result<DayCard>> _topicCard(int topic) async {
+  Future<Result<DayCard>> _topicCard(
+    int topic, {
+    bool forceRefresh = false,
+  }) async {
     // Тема живёт на странице дня, у которого день года равен её номеру —
     // отдельного эндпоинта по номеру у Азбуки нет. Идём через тот же
     // репозиторий дня: кэш, ретраи и бюджет уже там.
-    final dayResult = await _cards.getCardsFor(dateForCourseTopic(topic));
+    final dayResult = await _cards.getCardsFor(
+      dateForCourseTopic(topic),
+      forceRefresh: forceRefresh,
+    );
 
     // Типизированный switch, а не `as Success`: сырой каст без параметра типа
     // делает `.value` динамическим, и дальше extension-методы (`firstOrNull`)
