@@ -16,6 +16,7 @@ import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
+import '../widgets/course_progress_header.dart';
 import '../widgets/day_entry_row.dart';
 import '../widgets/day_name_header.dart';
 import '../widgets/today_offline_view.dart';
@@ -119,6 +120,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   Widget build(BuildContext context) {
     final selected = ref.watch(selectedDateProvider);
     final progress = ref.watch(dayProgressProvider).value;
+    final courseTopic = ref.watch(courseTopicProvider).value;
     final selectedPage = _pageMapper.pageForDate(selected);
     ref.watch(
       dayCardsProvider(dateKey(_pageMapper.dateForPage(selectedPage - 1))),
@@ -133,6 +135,15 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     return Column(
       children: [
         _Header(selected: selected, progress: progress),
+        if (courseTopic != null)
+          CourseProgressHeader(
+            topic: courseTopic,
+            onTap: () async {
+              await _openCourse(context, courseTopic);
+              if (!context.mounted) return;
+              await _maybeAskForReminders(context, ref);
+            },
+          ),
         Expanded(
           child: PageView.builder(
             controller: _pageController,
@@ -228,7 +239,6 @@ class _SelectedDayContent extends ConsumerWidget {
         day: _withCourseTopic(selected, day, courseTopic),
         progress: progress,
         isSelected: isSelected,
-        courseTopic: courseTopic,
         hasAutoOpened: hasAutoOpened,
         onAutoOpened: onAutoOpened,
       );
@@ -322,7 +332,6 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.day,
     required this.progress,
     required this.isSelected,
-    required this.courseTopic,
     required this.hasAutoOpened,
     required this.onAutoOpened,
   });
@@ -331,7 +340,6 @@ class _DayBlocks extends ConsumerStatefulWidget {
   final TodayCards day;
   final DayProgress progress;
   final bool isSelected;
-  final DayCard? courseTopic;
   final bool hasAutoOpened;
   final VoidCallback onAutoOpened;
 
@@ -355,17 +363,15 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   DayCard? get _reading =>
       day.cards.where((c) => c.type == CardType.reading).firstOrNull;
 
-  /// Личный курс показываем только на сегодняшнем дне: на остальных датах
-  /// календарная тема «Основ» не должна притворяться продолжением курса.
-  DayCard? get _basics => _isToday
-      ? day.cards.where((c) => c.type == CardType.basics).firstOrNull
-      : null;
-
-  DayCard? get _courseLink => _isToday ? null : widget.courseTopic;
-
   List<DayCard> get _pages => day.cards
       .where((c) => c.type != CardType.reading && c.type != CardType.basics)
       .toList();
+
+  /// Если тема курса не загрузилась, календарная «основа» не должна
+  /// подменять её: курс в этом случае остаётся недоступным, но день работает.
+  Iterable<DayCard> get _autoOpenCards => day.cards.where(
+    (card) => card.type != CardType.basics || _isCourseTopic(card),
+  );
 
   Future<void> _open(BuildContext context, WidgetRef ref, DayCard card) async {
     if (card.type == CardType.reading) {
@@ -402,24 +408,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   /// поэтому момент — возврат из просмотрщика, а не переход между карточками.
   Future<void> _maybeAskReminders() async {
     if (!_recordProgress) return;
-
-    // Прогресс читаем из провайдера, а не из widget.progress: отметка
-    // «прочитано» ставится асинхронно, и на кадре возврата поле виджета
-    // может отставать.
-    final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
-    if (read.isEmpty) return;
-
-    // Именно future, а не .value: при первом обращении AsyncNotifier ещё
-    // грузится, и проверка по value молча пропускала бы запрос навсегда.
-    final settings = await ref.read(reminderSettingsProvider.future);
-    if (settings.asked || !mounted) return;
-
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => const ReminderPermissionScreen(),
-      ),
-    );
+    await _maybeAskForReminders(context, ref);
   }
 
   Future<void> _openReader(
@@ -520,7 +509,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     if (!_recordProgress) return;
 
     // day.cards уже отсортированы по индексу CardType в GetTodayCards.
-    final unread = progress.firstUnreadOf(day.cards.map((c) => c.type));
+    final unread = progress.firstUnreadOf(_autoOpenCards.map((c) => c.type));
     if (unread == null) return;
 
     final card = day.cards.firstWhere((c) => c.type == unread);
@@ -536,11 +525,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     final colors = AppColorsExtension.of(context);
     _maybeAutoOpen();
     final reading = _reading;
-    final basics = _basics;
-    final courseLink = _courseLink;
     final rest = _pages;
 
-    if (reading == null && basics == null && rest.isEmpty) {
+    if (reading == null && rest.isEmpty) {
       return Center(
         child: Text(
           'За этот день карточек нет',
@@ -592,41 +579,38 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             onTap: () => _openReader(context, ref, reading),
           ),
         ],
-        if (basics != null) ...[
-          if (rest.isNotEmpty || reading != null) const DayEntryDivider(),
-          DayEntryRow(
-            label: _courseLabel(basics),
-            text: basics.title ?? basicsCourseTitle,
-            isUnread: !_isRead(basics),
-            showReadStatus: !_isFuture,
-            labelColor: CardType.basics.styleFor(brightness).accent,
-            textSize: 19,
-            onTap: () => _open(context, ref, basics),
-          ),
-        ],
-        if (courseLink != null) ...[
-          if (rest.isNotEmpty || reading != null) const DayEntryDivider(),
-          DayEntryRow(
-            label: _courseLabel(courseLink),
-            text: courseLink.title ?? basicsCourseTitle,
-            // На чужой дате прочитанность курса не показываем: readTypes
-            // хранит прогресс сегодняшнего дня, и метка там значила бы не то.
-            isUnread: false,
-            labelColor: CardType.basics.styleFor(brightness).accent,
-            textSize: 19,
-            onTap: () => _openCourse(context, courseLink),
-          ),
-        ],
       ],
     );
     return RefreshIndicator(onRefresh: _refresh, child: blocks);
   }
-
-  /// «ОСНОВЫ ВЕРЫ · 47». Номер темы берём из id карточки курса — его ставит
-  /// [GetCourseTopic], и это единственное место, где он известен.
-  String _courseLabel(DayCard card) {
-    final number = RegExp(r'^basics-topic-(\d+)$').firstMatch(card.id);
-    final title = basicsCourseTitle.toUpperCase();
-    return number == null ? title : '$title · ${number.group(1)}';
-  }
 }
+
+/// Просит разрешение на напоминания после закрытия первой карточки или темы.
+///
+/// Прогресс читаем из провайдера, а не из виджета: отметка «прочитано»
+/// сохраняется асинхронно и на кадре возврата может ещё не попасть в props.
+Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
+  final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
+  if (read.isEmpty) return;
+
+  // Именно future, а не .value: при первом обращении AsyncNotifier ещё
+  // грузится, и проверка по value молча пропускала бы запрос навсегда.
+  final settings = await ref.read(reminderSettingsProvider.future);
+  if (settings.asked || !context.mounted) return;
+
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => const ReminderPermissionScreen(),
+    ),
+  );
+}
+
+/// Тему прочитанной отмечает сам [CourseReaderScreen], отсюда — не отмечаем.
+Future<void> _openCourse(BuildContext context, DayCard card) =>
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => CourseReaderScreen(currentTopic: card),
+      ),
+    );
