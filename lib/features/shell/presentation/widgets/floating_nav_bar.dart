@@ -104,19 +104,58 @@ class FloatingNavBar extends StatelessWidget {
                   ?header,
                   SizedBox(
                     height: _barHeight,
-                    child: Row(
-                      children: [
-                        for (final item in _items)
-                          Expanded(
-                            child: _NavItem(
-                              icon: item.icon,
-                              activeIcon: item.activeIcon,
-                              label: item.label,
-                              isSelected: item.tab == current,
-                              onTap: () => onSelect(item.tab),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final itemWidth = constraints.maxWidth / _items.length;
+                        return Stack(
+                          children: [
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOutCubic,
+                              left: itemWidth * current.index + 4,
+                              top: 4,
+                              width: itemWidth - 8,
+                              height: _barHeight - 8,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: colors.background.withValues(
+                                    alpha: isDark ? 0.42 : 0.48,
+                                  ),
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: colors.ink.withValues(
+                                      alpha: isDark ? 0.20 : 0.10,
+                                    ),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colors.background.withValues(
+                                        alpha: isDark ? 0.16 : 0.34,
+                                      ),
+                                      blurRadius: 8,
+                                      spreadRadius: -2,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                      ],
+                            Row(
+                              children: [
+                                for (final item in _items)
+                                  Expanded(
+                                    child: _NavItem(
+                                      icon: item.icon,
+                                      activeIcon: item.activeIcon,
+                                      label: item.label,
+                                      isSelected: item.tab == current,
+                                      onTap: () => onSelect(item.tab),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -155,30 +194,52 @@ class _NavItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         customBorder: const StadiumBorder(),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              size: 20,
-              color: isSelected ? colors.accent : colors.homeIcon,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                // 11pt — минимум по HIG; на 10pt подписи были мельче нормы.
-                fontSize: 11,
-                letterSpacing: 0.1,
-                // Активная вкладка отличается акцентом и насыщенностью, а не
-                // наличием подписи: без ярлыков неочевидно, куда ведут иконки.
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? colors.accent : colors.homeSubtitle,
-              ),
-            ),
-          ],
+        child: _NavItemContent(
+          icon: isSelected ? activeIcon : icon,
+          label: label,
+          color: isSelected ? colors.accent : colors.homeIcon,
+          isSelected: isSelected,
         ),
       ),
+    );
+  }
+}
+
+class _NavItemContent extends StatelessWidget {
+  const _NavItemContent({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.isSelected,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool isSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(
+            // 11pt — минимум по HIG; на 10pt подписи были мельче нормы.
+            fontSize: 11,
+            letterSpacing: 0.1,
+            // Активную вкладку отличают акцент и лёгкая стеклянная рамка,
+            // но подписи остаются у всех — так переходы понятны сразу.
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? color : colors.homeSubtitle,
+          ),
+        ),
+      ],
     );
   }
 }
