@@ -27,7 +27,7 @@ const kFloatingNavWithHeaderInset = kFloatingNavInset + 90;
 ///
 /// Не системный Liquid Glass: Flutter рисует свой UI и нативный материал
 /// iOS 26 ему недоступен — это его приближение размытием и прозрачностью.
-class FloatingNavBar extends StatelessWidget {
+class FloatingNavBar extends StatefulWidget {
   const FloatingNavBar({
     required this.current,
     required this.onSelect,
@@ -59,6 +59,15 @@ class FloatingNavBar extends StatelessWidget {
       label: 'Профиль',
     ),
   ];
+
+  @override
+  State<FloatingNavBar> createState() => _FloatingNavBarState();
+}
+
+class _FloatingNavBarState extends State<FloatingNavBar> {
+  static const _frameInset = 4.0;
+
+  double? _dragLeft;
 
   @override
   Widget build(BuildContext context) {
@@ -101,59 +110,74 @@ class FloatingNavBar extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ?header,
+                  ?widget.header,
                   SizedBox(
                     height: _barHeight,
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final itemWidth = constraints.maxWidth / _items.length;
-                        return Stack(
-                          children: [
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeOutCubic,
-                              left: itemWidth * current.index + 4,
-                              top: 4,
-                              width: itemWidth - 8,
-                              height: _barHeight - 8,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: colors.background.withValues(
-                                    alpha: isDark ? 0.42 : 0.48,
-                                  ),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: colors.ink.withValues(
-                                      alpha: isDark ? 0.20 : 0.10,
+                        final itemWidth =
+                            constraints.maxWidth / FloatingNavBar._items.length;
+                        return GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onHorizontalDragStart: (details) =>
+                              _startDrag(details, itemWidth),
+                          onHorizontalDragUpdate: (details) =>
+                              _updateDrag(details, itemWidth),
+                          onHorizontalDragEnd: (_) => _finishDrag(itemWidth),
+                          onHorizontalDragCancel: _cancelDrag,
+                          child: Stack(
+                            children: [
+                              AnimatedPositioned(
+                                duration: _dragLeft == null
+                                    ? const Duration(milliseconds: 300)
+                                    : Duration.zero,
+                                curve: Curves.easeOutCubic,
+                                left:
+                                    _dragLeft ??
+                                    itemWidth * widget.current.index +
+                                        _frameInset,
+                                top: _frameInset,
+                                width: itemWidth - _frameInset * 2,
+                                height: _barHeight - _frameInset * 2,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: colors.background.withValues(
+                                      alpha: isDark ? 0.42 : 0.48,
                                     ),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: colors.background.withValues(
-                                        alpha: isDark ? 0.16 : 0.34,
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color: colors.ink.withValues(
+                                        alpha: isDark ? 0.20 : 0.10,
                                       ),
-                                      blurRadius: 8,
-                                      spreadRadius: -2,
                                     ),
-                                  ],
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: colors.background.withValues(
+                                          alpha: isDark ? 0.16 : 0.34,
+                                        ),
+                                        blurRadius: 8,
+                                        spreadRadius: -2,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                            Row(
-                              children: [
-                                for (final item in _items)
-                                  Expanded(
-                                    child: _NavItem(
-                                      icon: item.icon,
-                                      activeIcon: item.activeIcon,
-                                      label: item.label,
-                                      isSelected: item.tab == current,
-                                      onTap: () => onSelect(item.tab),
+                              Row(
+                                children: [
+                                  for (final item in FloatingNavBar._items)
+                                    Expanded(
+                                      child: _NavItem(
+                                        icon: item.icon,
+                                        activeIcon: item.activeIcon,
+                                        label: item.label,
+                                        isSelected: item.tab == widget.current,
+                                        onTap: () => widget.onSelect(item.tab),
+                                      ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -166,6 +190,35 @@ class FloatingNavBar extends StatelessWidget {
       ),
     );
   }
+
+  void _startDrag(DragStartDetails details, double itemWidth) {
+    _setDragLeft(details.localPosition.dx, itemWidth);
+  }
+
+  void _updateDrag(DragUpdateDetails details, double itemWidth) {
+    _setDragLeft(details.localPosition.dx, itemWidth);
+  }
+
+  void _setDragLeft(double pointerX, double itemWidth) {
+    final maxLeft =
+        itemWidth * (FloatingNavBar._items.length - 1) + _frameInset;
+    final left = (pointerX - itemWidth / 2).clamp(_frameInset, maxLeft);
+    setState(() => _dragLeft = left.toDouble());
+  }
+
+  void _finishDrag(double itemWidth) {
+    final left = _dragLeft;
+    if (left == null) return;
+
+    final index = ((left - _frameInset) / itemWidth).round().clamp(
+      0,
+      FloatingNavBar._items.length - 1,
+    );
+    setState(() => _dragLeft = null);
+    widget.onSelect(FloatingNavBar._items[index].tab);
+  }
+
+  void _cancelDrag() => setState(() => _dragLeft = null);
 }
 
 class _NavItem extends StatelessWidget {

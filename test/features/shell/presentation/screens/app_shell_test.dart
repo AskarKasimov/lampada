@@ -175,6 +175,32 @@ void main() {
     expect(movingLeft, lessThan(endLeft));
   });
 
+  testWidgets('перетаскивание рамки выбирает вкладку под пальцем', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
+    await dismissAutoOpened(tester);
+
+    final selectionFinder = find.descendant(
+      of: find.byType(FloatingNavBar),
+      matching: find.byType(AnimatedPositioned),
+    );
+    final startLeft = tester.getRect(selectionFinder).left;
+    final gesture = await tester.startGesture(
+      tester.getCenter(selectionFinder),
+    );
+    await gesture.moveBy(const Offset(500, 0));
+    await tester.pump();
+
+    expect(tester.getRect(selectionFinder).left, greaterThan(startLeft));
+
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(tabIcon(Icons.person), findsOneWidget);
+  });
+
   testWidgets('на iOS навигацию рисует Flutter-капсула', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
