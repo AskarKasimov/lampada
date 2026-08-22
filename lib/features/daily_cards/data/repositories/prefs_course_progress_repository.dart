@@ -7,11 +7,10 @@ import '../../../../core/storage/preference_write.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 
-/// Прогресс курса в shared_preferences: номер текущей темы.
+/// Прогресс курса в shared_preferences: номер последней открытой темы.
 ///
 /// Ограничения «не больше темы в день» нет: сколько тем прочитать за раз,
-/// решает юзер, и открыть следующую сразу после предыдущей — нормальный
-/// сценарий, а не обход правила. Поэтому день последнего сдвига не хранится.
+/// решает юзер. Поэтому день последнего сдвига не хранится.
 class PrefsCourseProgressRepository implements CourseProgressRepository {
   PrefsCourseProgressRepository(this._prefs);
 
@@ -37,25 +36,13 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
   @override
   Future<Result<int>> currentTopic() => _guard(() async => _read());
 
-  /// Операция продвижения в процессе — конкурентный вызов дожидается ЕЁ,
-  /// а не запускает свою.
-  ///
-  /// Раньше отметка «Основы прочитаны» звалась из двух мест на одно открытие
-  /// курса, и оба вызова доходили до продвижения почти одновременно: тема
-  /// перескакивала на две вперёд за одно открытие («с 1-й на 3-ю»). Дубликат
-  /// убран, но дедупликация оставлена: без дневного гарда она единственное,
-  /// что защищает от быстрого повторного тапа, который успел бы прочитать
-  /// номер темы до того, как первый вызов его записал.
-  ///
-  /// Работает, пока конкурентные вызовы идут через ОДИН инстанс — так и есть,
-  /// `courseProgressRepositoryProvider` не `.family` и не `autoDispose`.
-  Future<Result<void>>? _advancing;
+  /// Записи выстраиваются в очередь, поэтому быстрые свайпы сохраняют тему
+  /// в том же порядке, в котором юзер их видел.
+  Future<Result<void>> _writing = Future.value(const Success(null));
 
   @override
-  Future<Result<void>> markCurrentTopicRead() =>
-      _advancing ??= _guard(() async {
-        await _write(normalizeCourseTopic(_read() + 1));
-      }).whenComplete(() => _advancing = null);
+  Future<Result<void>> saveCurrentTopic(int topic) =>
+      _writing = _writing.then((_) => _guard(() => _write(topic)));
 
   Future<Result<T>> _guard<T>(Future<T> Function() op) async {
     try {

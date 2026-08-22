@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
+import '../../../daily_cards/domain/entities/day_card.dart';
+import '../../../daily_cards/presentation/providers/providers.dart';
+import '../../../daily_cards/presentation/screens/course_reader_screen.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
+import '../../../daily_cards/presentation/widgets/course_progress_header.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../reminders/presentation/providers/providers.dart';
+import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_scheduler.dart';
 import '../providers/shell_providers.dart';
 import '../widgets/floating_nav_bar.dart';
@@ -24,6 +30,9 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(selectedTabProvider);
+    final courseTopic = tab == ShellTab.today
+        ? ref.watch(courseTopicProvider).value
+        : null;
 
     return ReminderScheduler(
       child: Scaffold(
@@ -48,6 +57,13 @@ class AppShell extends ConsumerWidget {
                 current: tab,
                 onSelect: (selected) =>
                     ref.read(selectedTabProvider.notifier).select(selected),
+                header: courseTopic == null
+                    ? null
+                    : CourseProgressHeader(
+                        topic: courseTopic,
+                        compact: true,
+                        onTap: () => _openCourse(context, ref, courseTopic),
+                      ),
               ),
             ),
           ],
@@ -55,4 +71,32 @@ class AppShell extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _openCourse(
+  BuildContext context,
+  WidgetRef ref,
+  DayCard courseTopic,
+) async {
+  final currentTopic =
+      await ref.read(courseTopicProvider.future) ?? courseTopic;
+  if (!context.mounted) return;
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => CourseReaderScreen(currentTopic: currentTopic),
+    ),
+  );
+  if (!context.mounted) return;
+
+  final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
+  if (read.isEmpty) return;
+  final settings = await ref.read(reminderSettingsProvider.future);
+  if (settings.asked || !context.mounted) return;
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => const ReminderPermissionScreen(),
+    ),
+  );
 }

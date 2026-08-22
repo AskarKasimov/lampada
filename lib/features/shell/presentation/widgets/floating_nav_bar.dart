@@ -16,6 +16,7 @@ const _bottomMargin = 10.0;
 /// элемент не оказался под капсулой. Прибавляется к нижнему padding списков.
 ///
 const kFloatingNavInset = _barHeight + _bottomMargin + 12;
+const kFloatingNavWithHeaderInset = kFloatingNavInset + 90;
 
 /// Плавающая навигация капсулой поверх контента.
 ///
@@ -30,11 +31,13 @@ class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({
     required this.current,
     required this.onSelect,
+    this.header,
     super.key,
   });
 
   final ShellTab current;
   final void Function(ShellTab tab) onSelect;
+  final Widget? header;
 
   static const _items = [
     (
@@ -95,22 +98,28 @@ class FloatingNavBar extends StatelessWidget {
                   ),
                 ],
               ),
-              child: SizedBox(
-                height: _barHeight,
-                child: Row(
-                  children: [
-                    for (final item in _items)
-                      Expanded(
-                        child: _NavItem(
-                          icon: item.icon,
-                          activeIcon: item.activeIcon,
-                          label: item.label,
-                          isSelected: item.tab == current,
-                          onTap: () => onSelect(item.tab),
-                        ),
-                      ),
-                  ],
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ?header,
+                  SizedBox(
+                    height: _barHeight,
+                    child: Row(
+                      children: [
+                        for (final item in _items)
+                          Expanded(
+                            child: _NavItem(
+                              icon: item.icon,
+                              activeIcon: item.activeIcon,
+                              label: item.label,
+                              isSelected: item.tab == current,
+                              onTap: () => onSelect(item.tab),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

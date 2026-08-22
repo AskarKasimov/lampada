@@ -15,6 +15,7 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
@@ -268,7 +269,7 @@ void main() {
   );
 
   group('вкладка «Сегодня»', () {
-    testWidgets('показывает последовательный курс отдельной карточкой', (
+    testWidgets('оставляет курс в капсуле шелла, а не на странице', (
       tester,
     ) async {
       final progress = _FakeProgressRepository()
@@ -286,11 +287,31 @@ void main() {
       );
       await settle(tester);
 
-      // Вход в курс называет тему и её номер: до этого блок обещал «Основы
-      // веры» и ничего больше, тогда как чтение рядом честно показывало отрывок.
-      expect(entry('ОСНОВЫ ВЕРЫ'), findsOneWidget);
-      expect(find.text('ОСНОВЫ ВЕРЫ · 1'), findsOneWidget);
-      expect(find.text('О вере и жизни христианина'), findsOneWidget);
+      expect(find.byType(CourseProgressHeader), findsNothing);
+    });
+
+    testWidgets('страницы календаря не содержат вход в курс', (tester) async {
+      // Личный курс живёт в капсуле шелла и не пересоздаётся внутри
+      // календарных страниц.
+      final progress = _FakeProgressRepository()
+        ..seedRead({
+          CardType.quote,
+          CardType.advice,
+          CardType.reading,
+          CardType.basics,
+        });
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(cards: [..._cards, _basics]),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.fling(find.byType(PageView), const Offset(-500, 0), 1000);
+      await settle(tester);
+
+      expect(find.byType(CourseProgressHeader), findsNothing);
     });
 
     testWidgets('седмица стоит над полоской дат, а не над памятью дня', (
@@ -453,7 +474,7 @@ void main() {
       expect(reading.forceRefreshReferences, ['Jn.10:1-9']);
     });
 
-    testWidgets('показывает основы дня, если личная тема не загрузилась', (
+    testWidgets('скрывает курс, если личная тема не загрузилась', (
       tester,
     ) async {
       final progress = _FakeProgressRepository()
@@ -469,8 +490,8 @@ void main() {
       );
       await settle(tester);
 
-      expect(entry('ОСНОВЫ ВЕРЫ'), findsOneWidget);
-      expect(find.text('О вере и жизни христианина'), findsOneWidget);
+      expect(find.byType(CourseProgressHeader), findsNothing);
+      expect(find.text('Первая карточка'), findsOneWidget);
     });
 
     testWidgets('прочитанные блоки видны и после прохождения дня', (
@@ -516,11 +537,8 @@ void main() {
       expect(pageView.childrenDelegate.estimatedChildCount, _pageCards.length);
     });
 
-    testWidgets('тап по герою курса открывает ридер и засчитывает тему', (
-      tester,
-    ) async {
-      // Курс засеян прочитанным, иначе автооткрытие само уведёт в его ридер
-      // и до блока-героя тест не доберётся.
+    testWidgets('дневная страница не дублирует вход в курс', (tester) async {
+      // Курс засеян прочитанным, чтобы автооткрытие не скрывало страницу.
       final progress = _FakeProgressRepository()
         ..seedRead({
           CardType.quote,
@@ -536,17 +554,7 @@ void main() {
       );
       await settle(tester);
 
-      await tester.tap(entry('ОСНОВЫ ВЕРЫ'));
-      await settle(tester);
-
-      expect(find.byType(CourseReaderScreen), findsOneWidget);
-      expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.text(_basics.body), findsOneWidget);
-      // Регрессия: CourseReaderScreen отмечал тему ЕЩЁ РАЗ в своём initState,
-      // дублируя вот этот вызов из _openCourse. Оба доходили до
-      // продвижение почти одновременно, и тема курса продвигалась на 2
-      // за один показ вместо одной — «перескакивает с 1-й на 3-ю».
-      expect(progress.marked.where((t) => t == CardType.basics), hasLength(1));
+      expect(find.byType(CourseProgressHeader), findsNothing);
     });
 
     testWidgets('тап по блоку открывает карточку без таб-бара', (tester) async {
@@ -833,7 +841,7 @@ void main() {
       expect(find.textContaining('Далее длинный текст темы'), findsNothing);
     });
 
-    testWidgets('на другом дне оставляет ссылку на текущую тему курса', (
+    testWidgets('на другом дне не дублирует тему курса в календаре', (
       tester,
     ) async {
       final progress = _FakeProgressRepository()
@@ -854,11 +862,10 @@ void main() {
       await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
       await settle(tester);
 
-      expect(entry('ОСНОВЫ ВЕРЫ'), findsOneWidget);
-      expect(find.text('О вере и жизни христианина'), findsOneWidget);
+      expect(find.byType(CourseProgressHeader), findsNothing);
     });
 
-    testWidgets('тап по ссылке курса на другом дне открывает ридер', (
+    testWidgets('на другом дне курс остаётся вне страницы календаря', (
       tester,
     ) async {
       final progress = _FakeProgressRepository()
@@ -878,11 +885,7 @@ void main() {
 
       await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
       await settle(tester);
-      await tester.tap(entry('ОСНОВЫ ВЕРЫ'));
-      await settle(tester);
-
-      expect(find.byType(CourseReaderScreen), findsOneWidget);
-      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(find.byType(CourseProgressHeader), findsNothing);
     });
 
     testWidgets('открывает дату, выбранную до показа экрана', (tester) async {
@@ -1033,6 +1036,29 @@ void main() {
 
       expect(find.byType(ReminderPermissionScreen), findsOneWidget);
       expect(find.textContaining('Чтобы не остановиться'), findsOneWidget);
+    });
+
+    testWidgets('страница не рисует курс рядом с напоминаниями', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      prefs = await SharedPreferences.getInstance();
+      final progress = _FakeProgressRepository()
+        ..seedRead({
+          CardType.quote,
+          CardType.advice,
+          CardType.reading,
+          CardType.basics,
+        });
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(cards: [..._cards, _basics]),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      expect(find.byType(CourseProgressHeader), findsNothing);
     });
 
     testWidgets('спрашиваем один раз, даже после отказа', (tester) async {

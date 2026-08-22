@@ -20,8 +20,8 @@ import '../../domain/repositories/day_progress_repository.dart';
 import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
 import '../../domain/usecases/load_day_progress.dart';
-import '../../domain/usecases/mark_course_topic_read.dart';
 import '../../domain/usecases/record_card_read.dart';
+import '../../domain/usecases/save_course_topic.dart';
 
 final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
   (ref) => AzbykaDayCardsRepository(
@@ -96,8 +96,8 @@ final getCourseTopicProvider = Provider<GetCourseTopic>(
   ),
 );
 
-final markCourseTopicReadProvider = Provider<MarkCourseTopicRead>(
-  (ref) => MarkCourseTopicRead(ref.watch(courseProgressRepositoryProvider)),
+final saveCourseTopicProvider = Provider<SaveCourseTopic>(
+  (ref) => SaveCourseTopic(ref.watch(courseProgressRepositoryProvider)),
 );
 
 /// Карточка «Основы» для текущей темы курса.
@@ -176,7 +176,6 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     CardType type, {
     DateTime? date,
     bool markVisited = true,
-    bool markCourseProgress = true,
   }) async {
     if (markVisited && _session == null) return false;
     final saved = await _apply(
@@ -186,15 +185,6 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
         markVisited: markVisited,
       ),
     );
-    if (markCourseProgress && type == CardType.basics) {
-      final result = await ref.read(markCourseTopicReadProvider)();
-      if (result is Success<void>) {
-        ref.invalidate(courseTopicProvider);
-      } else {
-        netLog('не удалось отметить тему курса прочитанной: $result');
-        return false;
-      }
-    }
     return saved;
   }
 }

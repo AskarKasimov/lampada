@@ -27,30 +27,15 @@ class _FreshCardsRepository implements DayCardsRepository {
 }
 
 class _CourseProgressRepository implements CourseProgressRepository {
-  var markCalls = 0;
+  final savedTopics = <int>[];
 
   @override
   Future<Result<int>> currentTopic() async => const Success(1);
 
   @override
-  Future<Result<void>> markCurrentTopicRead() async {
-    markCalls++;
+  Future<Result<void>> saveCurrentTopic(int topic) async {
+    savedTopics.add(topic);
     return const Success(null);
-  }
-}
-
-class _FailingCourseProgressRepository implements CourseProgressRepository {
-  var markCalls = 0;
-
-  @override
-  Future<Result<int>> currentTopic() async => const Success(1);
-
-  @override
-  Future<Result<void>> markCurrentTopicRead() async {
-    markCalls++;
-    return const Failure(
-      AppFailure('не удалось сохранить курс', kind: FailureKind.unknown),
-    );
   }
 }
 
@@ -110,7 +95,7 @@ void main() {
     expect(progress.isLit(DateTime.now()), isTrue);
   });
 
-  test('прочтение основ отмечает текущую тему курса', () async {
+  test('прочтение основ не сдвигает тему личного курса', () async {
     final courseRepository = _CourseProgressRepository();
     final container = await _container(
       _FreshCardsRepository(),
@@ -121,10 +106,10 @@ void main() {
         .read(dayProgressProvider.notifier)
         .markRead(CardType.basics);
 
-    expect(courseRepository.markCalls, 1);
+    expect(courseRepository.savedTopics, isEmpty);
   });
 
-  test('ошибка записи прогресса всё равно отмечает тему курса', () async {
+  test('ошибка записи прогресса не меняет тему личного курса', () async {
     final courseRepository = _CourseProgressRepository();
     final container = await _container(
       _FreshCardsRepository(),
@@ -137,28 +122,10 @@ void main() {
         .markRead(CardType.basics);
 
     expect(saved, isFalse);
-    expect(courseRepository.markCalls, 1);
+    expect(courseRepository.savedTopics, isEmpty);
     expect(
       container.read(dayProgressProvider).requireValue,
       const DayProgress(readTypes: {}, visitedDays: {}),
     );
-  });
-
-  test('ошибка записи темы курса возвращает неуспех', () async {
-    final courseRepository = _FailingCourseProgressRepository();
-    final container = await _container(
-      _FreshCardsRepository(),
-      courseRepository: courseRepository,
-    );
-
-    final saved = await container
-        .read(dayProgressProvider.notifier)
-        .markRead(CardType.basics);
-
-    expect(saved, isFalse);
-    expect(courseRepository.markCalls, 1);
-    expect(container.read(dayProgressProvider).requireValue.readTypes, {
-      CardType.basics,
-    });
   });
 }
