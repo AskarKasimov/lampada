@@ -45,11 +45,6 @@ class CourseProgressHeader extends StatelessWidget {
           child: Container(
             margin: const EdgeInsets.fromLTRB(20, 0, 20, 4),
             padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: colors.chipUnreadBorder),
-              ),
-            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
