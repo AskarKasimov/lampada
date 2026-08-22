@@ -66,6 +66,7 @@ class FloatingNavBar extends StatefulWidget {
 
 class _FloatingNavBarState extends State<FloatingNavBar> {
   static const _frameInset = 4.0;
+  static const _frameRadius = (_barHeight - _frameInset * 2) / 2;
 
   double? _dragLeft;
 
@@ -144,7 +145,11 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
                                     color: colors.background.withValues(
                                       alpha: isDark ? 0.42 : 0.48,
                                     ),
-                                    borderRadius: BorderRadius.circular(18),
+                                    // Та же капсула, что и сам бар: радиус
+                                    // равен половине высоты движущейся рамки.
+                                    borderRadius: BorderRadius.circular(
+                                      _frameRadius,
+                                    ),
                                     border: Border.all(
                                       color: colors.ink.withValues(
                                         alpha: isDark ? 0.20 : 0.10,

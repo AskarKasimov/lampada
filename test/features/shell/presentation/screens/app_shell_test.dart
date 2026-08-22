@@ -162,6 +162,7 @@ void main() {
     final decoration =
         (selection.child as DecoratedBox).decoration as BoxDecoration;
     expect(decoration.border, isNotNull);
+    expect(decoration.borderRadius, BorderRadius.circular(25));
 
     final startLeft = tester.getRect(selectionFinder).left;
     await tester.tap(tabIcon(Icons.person_outline));
