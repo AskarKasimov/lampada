@@ -14,11 +14,13 @@ class CourseProgressHeader extends StatelessWidget {
   const CourseProgressHeader({
     required this.topic,
     required this.onTap,
+    this.compact = false,
     super.key,
   });
 
   final DayCard topic;
   final VoidCallback onTap;
+  final bool compact;
 
   int get _topicNumber {
     final match = RegExp(r'^basics-topic-(\d+)$').firstMatch(topic.id);
@@ -43,8 +45,12 @@ class CourseProgressHeader extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Container(
-            margin: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            margin: compact
+                ? const EdgeInsets.fromLTRB(18, 10, 18, 6)
+                : const EdgeInsets.fromLTRB(20, 0, 20, 4),
+            padding: compact
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

@@ -16,7 +16,6 @@ import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
-import '../widgets/course_progress_header.dart';
 import '../widgets/day_entry_row.dart';
 import '../widgets/day_name_header.dart';
 import '../widgets/today_offline_view.dart';
@@ -120,7 +119,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   Widget build(BuildContext context) {
     final selected = ref.watch(selectedDateProvider);
     final progress = ref.watch(dayProgressProvider).value;
-    final courseTopic = ref.watch(courseTopicProvider).value;
     final selectedPage = _pageMapper.pageForDate(selected);
     ref.watch(
       dayCardsProvider(dateKey(_pageMapper.dateForPage(selectedPage - 1))),
@@ -135,15 +133,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     return Column(
       children: [
         _Header(selected: selected, progress: progress),
-        if (courseTopic != null)
-          CourseProgressHeader(
-            topic: courseTopic,
-            onTap: () async {
-              await _openCourse(context, courseTopic);
-              if (!context.mounted) return;
-              await _maybeAskForReminders(context, ref);
-            },
-          ),
         Expanded(
           child: PageView.builder(
             controller: _pageController,
@@ -239,6 +228,7 @@ class _SelectedDayContent extends ConsumerWidget {
         day: _withCourseTopic(selected, day, courseTopic),
         progress: progress,
         isSelected: isSelected,
+        hasCourseHeader: courseTopic != null,
         hasAutoOpened: hasAutoOpened,
         onAutoOpened: onAutoOpened,
       );
@@ -332,6 +322,7 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.day,
     required this.progress,
     required this.isSelected,
+    required this.hasCourseHeader,
     required this.hasAutoOpened,
     required this.onAutoOpened,
   });
@@ -340,6 +331,7 @@ class _DayBlocks extends ConsumerStatefulWidget {
   final TodayCards day;
   final DayProgress progress;
   final bool isSelected;
+  final bool hasCourseHeader;
   final bool hasAutoOpened;
   final VoidCallback onAutoOpened;
 
@@ -541,7 +533,15 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       physics: const AlwaysScrollableScrollPhysics(),
       // Снизу оставляем место под плавающую капсулу навигации: контент
       // уходит под неё, и без запаса последняя запись оказалась бы закрыта.
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, kFloatingNavInset + 32),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        4,
+        20,
+        (widget.hasCourseHeader
+                ? kFloatingNavWithHeaderInset
+                : kFloatingNavInset) +
+            32,
+      ),
       children: [
         if (day.hasName) ...[
           DayNameHeader(
@@ -605,12 +605,3 @@ Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
     ),
   );
 }
-
-/// Тему прочитанной отмечает сам [CourseReaderScreen], отсюда — не отмечаем.
-Future<void> _openCourse(BuildContext context, DayCard card) =>
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => CourseReaderScreen(currentTopic: card),
-      ),
-    );

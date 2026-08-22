@@ -12,7 +12,9 @@ import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
 import 'package:lampada/features/profile/presentation/screens/profile_screen.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
@@ -31,6 +33,13 @@ class _FakeCardsRepository implements DayCardsRepository {
           id: 'quote',
           type: CardType.quote,
           body: 'Мысль дня',
+          source: 'Источник',
+        ),
+        DayCard(
+          id: 'basics-topic-1',
+          type: CardType.basics,
+          body: 'Первая тема курса',
+          title: 'О вере и жизни христианина',
           source: 'Источник',
         ),
       ],
@@ -133,6 +142,55 @@ void main() {
     expect(tabIcon(Icons.wb_twilight), findsOneWidget);
     expect(tabIcon(Icons.bookmark_border), findsOneWidget);
     expect(tabIcon(Icons.person_outline), findsOneWidget);
+  });
+
+  testWidgets('курс и навигация живут в одной нижней капсуле', (tester) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
+    await dismissAutoOpened(tester);
+
+    expect(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.byType(CourseProgressHeader),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.text('О вере и жизни христианина'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('плашка курса открывает ридер из нижней капсулы', (tester) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
+    await dismissAutoOpened(tester);
+
+    await tester.tap(find.byType(CourseProgressHeader));
+    await settle(tester);
+
+    expect(find.byType(CourseReaderScreen), findsOneWidget);
+  });
+
+  testWidgets('курс не утяжеляет капсулу на других вкладках', (tester) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
+    await dismissAutoOpened(tester);
+
+    await tester.tap(tabIcon(Icons.person_outline));
+    await settle(tester);
+
+    expect(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.byType(CourseProgressHeader),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('подписи видны у всех вкладок, не только у активной', (
