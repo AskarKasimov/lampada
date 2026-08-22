@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -144,7 +145,78 @@ void main() {
     expect(tabIcon(Icons.person_outline), findsOneWidget);
   });
 
-  testWidgets('курс и навигация живут в одной нижней капсуле', (tester) async {
+  testWidgets('стеклянная рамка плавно переезжает к выбранной вкладке', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
+    await dismissAutoOpened(tester);
+
+    final selectionFinder = find.descendant(
+      of: find.byType(FloatingNavBar),
+      matching: find.byType(AnimatedPositioned),
+    );
+    expect(selectionFinder, findsOneWidget);
+
+    final selection = tester.widget<AnimatedPositioned>(selectionFinder);
+    final decoration =
+        (selection.child as DecoratedBox).decoration as BoxDecoration;
+    expect(decoration.border, isNotNull);
+    expect(decoration.borderRadius, BorderRadius.circular(25));
+
+    final startLeft = tester.getRect(selectionFinder).left;
+    await tester.tap(tabIcon(Icons.person_outline));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    final movingLeft = tester.getRect(selectionFinder).left;
+    await tester.pump(const Duration(milliseconds: 300));
+    final endLeft = tester.getRect(selectionFinder).left;
+
+    expect(movingLeft, greaterThan(startLeft));
+    expect(movingLeft, lessThan(endLeft));
+  });
+
+  testWidgets('перетаскивание рамки выбирает вкладку под пальцем', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
+    await dismissAutoOpened(tester);
+
+    final selectionFinder = find.descendant(
+      of: find.byType(FloatingNavBar),
+      matching: find.byType(AnimatedPositioned),
+    );
+    final startLeft = tester.getRect(selectionFinder).left;
+    final gesture = await tester.startGesture(
+      tester.getCenter(selectionFinder),
+    );
+    await gesture.moveBy(const Offset(500, 0));
+    await tester.pump();
+
+    expect(tester.getRect(selectionFinder).left, greaterThan(startLeft));
+
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(tabIcon(Icons.person), findsOneWidget);
+  });
+
+  testWidgets('на iOS навигацию рисует Flutter-капсула', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await tester.pumpWidget(buildApp());
+
+      expect(find.byType(FloatingNavBar), findsOneWidget);
+      expect(find.byType(UiKitView), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('курс с прогрессом входит в общую капсулу навигации', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
@@ -159,13 +231,13 @@ void main() {
     expect(
       find.descendant(
         of: find.byType(FloatingNavBar),
-        matching: find.text('О вере и жизни христианина'),
+        matching: find.byType(LinearProgressIndicator),
       ),
       findsOneWidget,
     );
   });
 
-  testWidgets('плашка курса открывает ридер из нижней капсулы', (tester) async {
+  testWidgets('вход в курс из капсулы открывает ридер', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
