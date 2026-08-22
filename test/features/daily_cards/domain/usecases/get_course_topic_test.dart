@@ -8,7 +8,7 @@ import 'package:lampada/features/daily_cards/domain/usecases/get_course_topic.da
 
 class _CourseProgressRepository implements CourseProgressRepository {
   @override
-  Future<Result<void>> markCurrentTopicRead() async => const Success(null);
+  Future<Result<void>> saveCurrentTopic(int topic) async => const Success(null);
 
   @override
   Future<Result<int>> currentTopic() async => const Success(1);

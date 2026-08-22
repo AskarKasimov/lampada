@@ -31,63 +31,51 @@ void main() {
     expect(valueOf(result), 1);
   });
 
-  test('прочтение сразу открывает следующую тему', () async {
+  test('сохраняет последнюю открытую тему', () async {
     final r = repo(await prefsWith());
 
-    await r.markCurrentTopicRead();
+    await r.saveCurrentTopic(2);
 
     expect(valueOf(await r.currentTopic()), 2);
   });
 
   test(
-    'открыть тему за темой сразу — нормальный сценарий, без ограничения',
+    'последняя из последовательных записей становится текущей темой',
     () async {
-      // Ограничения «не чаще раза в день» нет: юзер сам решает, сколько тем
-      // прочитать за раз, и каждое открытие двигает курс дальше. Заодно это
-      // проверяет, что дедуп через `_advancing ??=` сбрасывается после
-      // завершения — иначе второе и третье открытия молча не сработали бы.
       final r = repo(await prefsWith());
 
-      await r.markCurrentTopicRead();
-      await r.markCurrentTopicRead();
-      await r.markCurrentTopicRead();
+      await r.saveCurrentTopic(2);
+      await r.saveCurrentTopic(3);
+      await r.saveCurrentTopic(4);
 
       expect(valueOf(await r.currentTopic()), 4);
     },
   );
 
-  test(
-    'два конкурентных вызова на одно открытие продвигают тему только на одну',
-    () async {
-      // Регрессия: приложение звало markRead(CardType.basics) из двух мест
-      // (today_screen._openCourse и CourseReaderScreen.initState) на одно
-      // открытие курса. Оба вызова доходили до продвижения почти
-      // одновременно, БЕЗ ожидания друг друга — ровно как здесь, через
-      // Future.wait без промежуточного await. Тема прыгала с 1-й на 3-ю.
-      final r = repo(await prefsWith());
+  test('быстрые свайпы сохраняют последнюю из увиденных тем', () async {
+    final r = repo(await prefsWith());
 
-      await Future.wait([r.markCurrentTopicRead(), r.markCurrentTopicRead()]);
+    await Future.wait([r.saveCurrentTopic(2), r.saveCurrentTopic(3)]);
 
-      expect(valueOf(await r.currentTopic()), 2);
-    },
-  );
+    expect(valueOf(await r.currentTopic()), 3);
+  });
 
-  test('прочтение переживает пересоздание репозитория', () async {
+  test('выбранная тема переживает пересоздание репозитория', () async {
     final prefs = await prefsWith();
-    await repo(prefs).markCurrentTopicRead();
+    await repo(prefs).saveCurrentTopic(2);
 
     expect(valueOf(await repo(prefs).currentTopic()), 2);
   });
 
-  test('дойдя до конца курса, сразу начинаем сначала', () async {
+  test('последняя тема курса остаётся выбранной', () async {
     final prefs = await prefsWith({
       'flutter.course_progress_v4': jsonEncode({'topic': courseTopicCount}),
     });
     final r = repo(prefs);
 
-    await r.markCurrentTopicRead();
+    await r.saveCurrentTopic(courseTopicCount);
 
-    expect(valueOf(await r.currentTopic()), 1);
+    expect(valueOf(await r.currentTopic()), courseTopicCount);
   });
 
   test('запись прошлой схемы читается, лишний readOn игнорируется', () async {
@@ -127,6 +115,6 @@ void main() {
     final failing = repo(await SharedPreferences.getInstance());
     addTearDown(() => SharedPreferences.setMockInitialValues({}));
 
-    expect(await failing.markCurrentTopicRead(), isA<Failure<void>>());
+    expect(await failing.saveCurrentTopic(2), isA<Failure<void>>());
   });
 }

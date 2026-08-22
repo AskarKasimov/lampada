@@ -78,10 +78,13 @@ Future<void> _openCourse(
   WidgetRef ref,
   DayCard courseTopic,
 ) async {
+  final currentTopic =
+      await ref.read(courseTopicProvider.future) ?? courseTopic;
+  if (!context.mounted) return;
   await Navigator.of(context).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
-      builder: (_) => CourseReaderScreen(currentTopic: courseTopic),
+      builder: (_) => CourseReaderScreen(currentTopic: currentTopic),
     ),
   );
   if (!context.mounted) return;

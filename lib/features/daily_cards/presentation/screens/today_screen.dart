@@ -383,7 +383,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           startIndex: pages.indexOf(card),
           date: date,
           recordProgress: _recordProgress,
-          markCourseProgress: card.type != CardType.basics,
         ),
       ),
     );

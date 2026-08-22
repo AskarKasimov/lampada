@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -76,9 +79,19 @@ class _FailingCourseProgressRepository implements CourseProgressRepository {
   Future<Result<int>> currentTopic() async => const Success(3);
 
   @override
-  Future<Result<void>> markCurrentTopicRead() async => const Failure(
+  Future<Result<void>> saveCurrentTopic(int topic) async => const Failure(
     AppFailure('Не удалось сохранить тему курса', kind: FailureKind.unknown),
   );
+}
+
+class _DelayedCourseProgressRepository implements CourseProgressRepository {
+  final saved = Completer<Result<void>>();
+
+  @override
+  Future<Result<int>> currentTopic() async => const Success(3);
+
+  @override
+  Future<Result<void>> saveCurrentTopic(int topic) => saved.future;
 }
 
 const _currentTopic = DayCard(
@@ -163,6 +176,8 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
+    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.pumpAndSettle();
 
     expect(find.text('Не удалось сохранить прогресс'), findsOneWidget);
   });
@@ -226,15 +241,71 @@ void main() {
     expect(progress.markReadCalls, [CardType.basics]);
   });
 
-  testWidgets('a left swipe from the current topic stays on that topic', (
+  testWidgets('сохраняет тему, на которую юзер перелистнул курс', (
     tester,
   ) async {
+    await prefs.setString('course_progress_v4', '{"topic":3}');
+    await pumpReader(tester);
+
+    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.pumpAndSettle();
+
+    final saved = await PrefsCourseProgressRepository(prefs).currentTopic();
+
+    expect((saved as Success<int>).value, 2);
+  });
+
+  testWidgets('закрытие ожидает сохранения выбранной темы', (tester) async {
+    final courseProgress = _DelayedCourseProgressRepository();
+    await tester.pumpWidget(
+      buildApp(showLauncher: true, courseProgressRepository: courseProgress),
+    );
+    await tester.tap(find.text('Открыть основы'));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Закрыть'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseReaderScreen), findsOneWidget);
+
+    courseProgress.saved.complete(const Success(null));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseReaderScreen), findsNothing);
+  });
+
+  testWidgets('системный Back ожидает сохранения выбранной темы', (
+    tester,
+  ) async {
+    final courseProgress = _DelayedCourseProgressRepository();
+    await tester.pumpWidget(
+      buildApp(showLauncher: true, courseProgressRepository: courseProgress),
+    );
+    await tester.tap(find.text('Открыть основы'));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseReaderScreen), findsOneWidget);
+
+    courseProgress.saved.complete(const Success(null));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseReaderScreen), findsNothing);
+  });
+
+  testWidgets('a left swipe opens the next topic', (tester) async {
     await pumpReader(tester);
 
     await tester.drag(find.byType(PageView), const Offset(-500, 0));
     await tester.pumpAndSettle();
 
-    expect(find.text('Тема 3'), findsOneWidget);
+    expect(find.text('Тема 4'), findsOneWidget);
     expect(find.text('Тема 2'), findsNothing);
   });
 
@@ -249,6 +320,8 @@ void main() {
 
     expect(find.text('Тема недоступна'), findsOneWidget);
     expect(find.text('Повторить'), findsOneWidget);
+    final saved = await PrefsCourseProgressRepository(prefs).currentTopic();
+    expect((saved as Success<int>).value, 1);
     final topicOneRequestsBeforeRetry = cards.requestedTopics
         .where((topic) => topic == 1)
         .length;
@@ -257,6 +330,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Тема 2'), findsOneWidget);
+    final savedAfterRetry = await PrefsCourseProgressRepository(
+      prefs,
+    ).currentTopic();
+    expect((savedAfterRetry as Success<int>).value, 2);
     expect(cards.requestedTopics.where((topic) => topic == 2), hasLength(2));
     expect(
       cards.requestedTopics.where((topic) => topic == 1),
