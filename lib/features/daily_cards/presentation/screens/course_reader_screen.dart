@@ -236,14 +236,30 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   right: 20,
                   bottom: 8,
                   child: IgnorePointer(
-                    child: Text(
-                      '${visibleTopic > 1 ? '← Предыдущие темы · ' : ''}'
-                      'Тема $visibleTopic из $courseTopicCount',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.arrow_back_ios_new,
+                          size: 12,
+                          color: colors.textSecondary,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Тема $visibleTopic из $courseTopicCount',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ],
                     ),
                   ),
                 ),

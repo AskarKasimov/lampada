@@ -198,17 +198,18 @@ void main() {
     expect(find.text('Основы'), findsNothing);
   });
 
-  testWidgets('shows the course position and history swipe hint', (
-    tester,
-  ) async {
+  testWidgets('shows the course position between swipe arrows', (tester) async {
     await pumpReader(tester);
 
-    expect(find.text('← Предыдущие темы · Тема 3 из 365'), findsOneWidget);
+    expect(find.text('Тема 3 из 365'), findsOneWidget);
+    expect(find.textContaining('Предыдущие темы'), findsNothing);
+    expect(find.byIcon(Icons.arrow_back_ios_new), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_forward_ios), findsOneWidget);
 
     await tester.drag(find.byType(PageView), const Offset(500, 0));
     await tester.pumpAndSettle();
 
-    expect(find.text('← Предыдущие темы · Тема 2 из 365'), findsOneWidget);
+    expect(find.text('Тема 2 из 365'), findsOneWidget);
   });
 
   testWidgets('a fast downward swipe closes the course reader', (tester) async {
