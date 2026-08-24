@@ -239,9 +239,13 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     final uri = Uri.tryParse(href);
     if (uri == null) return null;
     if (uri.hasAuthority || uri.hasScheme) {
-      return uri.scheme == 'https' && uri.host == 'azbyka.ru'
-          ? uri.toString()
-          : null;
+      if (uri.host != 'azbyka.ru' ||
+          (uri.scheme != 'http' && uri.scheme != 'https')) {
+        return null;
+      }
+      // В живой разметке календаря Азбука иногда отдаёт внутреннюю ссылку
+      // по HTTP. Ридер грузит всё по HTTPS, поэтому сразу приводим к нему.
+      return uri.replace(scheme: 'https').toString();
     }
     return Uri.parse('https://azbyka.ru').resolveUri(uri).toString();
   }
