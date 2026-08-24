@@ -3,19 +3,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
+import { captureMode } from "../lib/capture_mode.mjs";
+import { screenshotCleanupMaskHeight } from "../lib/screenshot_cleanup.mjs";
 import { withTimeout } from "../lib/with_timeout.mjs";
+import { exportFormats } from "../lib/store_formats.mjs";
 
 /* ── Канва ─────────────────────────────────────────────────────────────── */
 
-// Дизайним в 6.9" — единственный обязательный размер App Store.
-const W = 1320;
-const H = 2868;
 const EXPORT_TIMEOUT_MS = 30_000;
-
-const SIZES = [
-  { label: '6.9"', w: 1320, h: 2868 },
-  { label: '6.5"', w: 1284, h: 2778 },
-] as const;
 
 /* ── Палитра из lib/core/theme/app_colors.dart ─────────────────────────── */
 
@@ -31,10 +26,6 @@ const DARK_MUTED = "#C9B8A8";
 
 const SERIF = "var(--font-lora), Georgia, serif";
 const SANS = "var(--font-inter), -apple-system, system-ui, sans-serif";
-
-const TEXT_LR = W * 0.08;
-const HEAD_TOP = H * 0.055;
-const HEAD_MIN = H * 0.235;
 
 /* ── Макет телефона (промеры под mockup.png) ───────────────────────────── */
 
@@ -81,83 +72,95 @@ function StatusBar({ screenW }: { screenW: number }) {
   const fs = screenW * 0.045;
   const icon = fs * 0.95;
   return (
-    <div
-      style={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        width: "100%",
-        height: `${5.6}%`,
-        background: CREAM,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: `0 ${screenW * 0.085}px 0 ${screenW * 0.09}px`,
-        zIndex: 5,
-      }}
-    >
-      <span
+    <>
+      <div
         style={{
-          fontFamily: SANS,
-          fontWeight: 600,
-          fontSize: fs,
-          color: INK,
-          letterSpacing: "-0.02em",
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: "100%",
+          height: `${screenshotCleanupMaskHeight}%`,
+          background: CREAM,
+          zIndex: 5,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: "100%",
+          height: `${5.6}%`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: `0 ${screenW * 0.085}px 0 ${screenW * 0.09}px`,
+          zIndex: 6,
         }}
       >
-        9:41
-      </span>
-      <div
-        style={{ display: "flex", alignItems: "center", gap: screenW * 0.022 }}
-      >
-        <svg width={icon * 1.15} height={icon * 0.8} viewBox="0 0 18 12">
-          {[0, 1, 2, 3].map((i) => (
-            <rect
-              key={i}
-              x={i * 4.6}
-              y={9 - i * 3}
-              width="3"
-              height={3 + i * 3}
-              rx="1"
-              fill={INK}
+        <span
+          style={{
+            fontFamily: SANS,
+            fontWeight: 600,
+            fontSize: fs,
+            color: INK,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          9:41
+        </span>
+        <div
+          style={{ display: "flex", alignItems: "center", gap: screenW * 0.022 }}
+        >
+          <svg width={icon * 1.15} height={icon * 0.8} viewBox="0 0 18 12">
+            {[0, 1, 2, 3].map((i) => (
+              <rect
+                key={i}
+                x={i * 4.6}
+                y={9 - i * 3}
+                width="3"
+                height={3 + i * 3}
+                rx="1"
+                fill={INK}
+              />
+            ))}
+          </svg>
+          <svg width={icon * 1.05} height={icon * 0.8} viewBox="0 0 16 12">
+            <path d="M8 10.4 6.1 8.3a2.7 2.7 0 0 1 3.8 0L8 10.4Z" fill={INK} />
+            <path
+              d="M3.6 5.8a6.4 6.4 0 0 1 8.8 0"
+              stroke={INK}
+              strokeWidth="1.5"
+              strokeLinecap="round"
             />
-          ))}
-        </svg>
-        <svg width={icon * 1.05} height={icon * 0.8} viewBox="0 0 16 12">
-          <path d="M8 10.4 6.1 8.3a2.7 2.7 0 0 1 3.8 0L8 10.4Z" fill={INK} />
-          <path
-            d="M3.6 5.8a6.4 6.4 0 0 1 8.8 0"
-            stroke={INK}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M5.5 7.8a3.8 3.8 0 0 1 5 0"
-            stroke={INK}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-        <svg width={icon * 1.7} height={icon * 0.8} viewBox="0 0 26 12">
-          <rect
-            x="0.6"
-            y="0.6"
-            width="22"
-            height="10.8"
-            rx="3"
-            stroke={INK}
-            strokeOpacity="0.35"
-            strokeWidth="1.2"
-          />
-          <rect x="2.2" y="2.2" width="18.8" height="7.6" rx="1.8" fill={INK} />
-          <path
-            d="M24.4 4.2v3.6c.9-.3 1.4-.9 1.4-1.8s-.5-1.5-1.4-1.8Z"
-            fill={INK}
-            fillOpacity="0.35"
-          />
-        </svg>
+            <path
+              d="M5.5 7.8a3.8 3.8 0 0 1 5 0"
+              stroke={INK}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <svg width={icon * 1.7} height={icon * 0.8} viewBox="0 0 26 12">
+            <rect
+              x="0.6"
+              y="0.6"
+              width="22"
+              height="10.8"
+              rx="3"
+              stroke={INK}
+              strokeOpacity="0.35"
+              strokeWidth="1.2"
+            />
+            <rect x="2.2" y="2.2" width="18.8" height="7.6" rx="1.8" fill={INK} />
+            <path
+              d="M24.4 4.2v3.6c.9-.3 1.4-.9 1.4-1.8s-.5-1.5-1.4-1.8Z"
+              fill={INK}
+              fillOpacity="0.35"
+            />
+          </svg>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -274,15 +277,24 @@ const SLIDES: Slide[] = [
 
 /* ── Слайд ─────────────────────────────────────────────────────────────── */
 
-function SlideView({ s }: { s: Slide }) {
+function SlideView({
+  s,
+  format,
+}: {
+  s: Slide;
+  format: (typeof exportFormats)[number];
+}) {
   const ink = s.dark ? DARK_INK : INK;
   const muted = s.dark ? DARK_MUTED : MUTED;
+  const textLr = format.w * 0.08;
+  const headTop = format.h * 0.055;
+  const headMin = format.h * 0.235;
 
   return (
     <div
       style={{
-        width: W,
-        height: H,
+        width: format.w,
+        height: format.h,
         background: s.dark ? DARK_BG : CREAM,
         overflow: "hidden",
         display: "flex",
@@ -291,10 +303,10 @@ function SlideView({ s }: { s: Slide }) {
     >
       <div
         style={{
-          padding: `${HEAD_TOP}px ${TEXT_LR}px 0`,
+          padding: `${headTop}px ${textLr}px 0`,
           display: "flex",
           flexDirection: "column",
-          minHeight: HEAD_MIN,
+          minHeight: headMin,
           flexShrink: 0,
         }}
       >
@@ -305,7 +317,7 @@ function SlideView({ s }: { s: Slide }) {
             // на коротких словах вроде "Scan anything", здесь строки вдвое
             // длиннее и на том же кегле уезжали в третью строку. Проверено
             // замером scrollWidth — на 0.082 все пять держат по две строки.
-            fontSize: W * 0.082,
+            fontSize: format.w * 0.082,
             fontWeight: 600,
             color: ink,
             lineHeight: 1.05,
@@ -321,10 +333,10 @@ function SlideView({ s }: { s: Slide }) {
         <p
           style={{
             fontFamily: SANS,
-            fontSize: W * 0.056,
+            fontSize: format.w * 0.056,
             fontWeight: 400,
             color: muted,
-            margin: `${W * 0.042}px 0 0`,
+            margin: `${format.w * 0.042}px 0 0`,
             lineHeight: 1.4,
           }}
         >
@@ -336,12 +348,12 @@ function SlideView({ s }: { s: Slide }) {
         <Phone
           src={s.src}
           alt={s.alt}
-          width={W * 0.84}
+          width={format.w * format.phoneWidthRatio}
           style={{
             position: "absolute",
             bottom: 0,
             left: "50%",
-            transform: "translateX(-50%) translateY(8%)",
+            transform: `translateX(-50%) translateY(${format.phoneTranslateY}%)`,
           }}
         />
       </div>
@@ -354,10 +366,12 @@ function SlideView({ s }: { s: Slide }) {
 function Preview({
   s,
   index,
+  format,
   onExport,
 }: {
   s: Slide;
   index: number;
+  format: (typeof exportFormats)[number];
   onExport: (id: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -367,7 +381,7 @@ function Preview({
     const node = ref.current;
     if (!node) return;
     const ro = new ResizeObserver(() =>
-      setScale(node.getBoundingClientRect().width / W),
+      setScale(node.getBoundingClientRect().width / format.w),
     );
     ro.observe(node);
     return () => ro.disconnect();
@@ -381,7 +395,7 @@ function Preview({
         title="Кликните, чтобы скачать"
         style={{
           width: "100%",
-          aspectRatio: `${W}/${H}`,
+          aspectRatio: `${format.w}/${format.h}`,
           overflow: "hidden",
           borderRadius: 10,
           cursor: "pointer",
@@ -390,13 +404,13 @@ function Preview({
       >
         <div
           style={{
-            width: W,
-            height: H,
+            width: format.w,
+            height: format.h,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
           }}
         >
-          <SlideView s={s} />
+          <SlideView s={s} format={format} />
         </div>
       </div>
       <p style={{ textAlign: "center", fontSize: 12, color: "#888", margin: "7px 0 0" }}>
@@ -411,12 +425,46 @@ function Preview({
 export default function Page() {
   const [busy, setBusy] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [sizeIdx, setSizeIdx] = useState(0);
+  const [formatIdx, setFormatIdx] = useState(0);
+  const [capture, setCapture] = useState<{
+    slideId: string;
+    formatId: string;
+  } | null>(null);
   const offRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const format = exportFormats[formatIdx];
+
+  useEffect(() => {
+    setCapture(
+      captureMode(
+        window.location.search,
+        SLIDES.map((slide) => slide.id),
+        exportFormats.map((item) => item.id),
+      ),
+    );
+  }, []);
+
+  if (capture) {
+    const slide = SLIDES.find((item) => item.id === capture.slideId);
+    const captureFormat = exportFormats.find(
+      (item) => item.id === capture.formatId,
+    );
+
+    if (slide && captureFormat) {
+      return (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            overflow: "hidden",
+          }}
+        >
+          <SlideView s={slide} format={captureFormat} />
+        </div>
+      );
+    }
+  }
 
   async function renderBlob(id: string, el: HTMLDivElement) {
-    const size = SIZES[sizeIdx];
-
     // Снимать за краем вьюпорта html-to-image не умеет — на время съёмки
     // выводим узел на экран под остальным содержимым.
     el.style.left = "0px";
@@ -440,9 +488,9 @@ export default function Page() {
       // pixelRatio вместо даунскейла канвасом: рендер сразу в целевом
       // разрешении, без потери резкости на тексте.
       const opts = {
-        width: W,
-        height: H,
-        pixelRatio: size.w / W,
+        width: format.w,
+        height: format.h,
+        pixelRatio: 1,
         cacheBust: true,
       };
       // Первый вызов прогревает шрифты и картинки, чистый кадр даёт второй.
@@ -459,12 +507,12 @@ export default function Page() {
       await img.decode();
 
       const cv = document.createElement("canvas");
-      cv.width = size.w;
-      cv.height = size.h;
-      cv.getContext("2d")!.drawImage(img, 0, 0, size.w, size.h);
+      cv.width = format.w;
+      cv.height = format.h;
+      cv.getContext("2d")!.drawImage(img, 0, 0, format.w, format.h);
 
       const idx = SLIDES.findIndex((s) => s.id === id);
-      const name = `${String(idx + 1).padStart(2, "0")}-${id}-${size.w}x${size.h}.png`;
+      const name = `${String(idx + 1).padStart(2, "0")}-${id}-${format.w}x${format.h}.png`;
       const blob = await new Promise<Blob>((res) =>
         cv.toBlob((b) => res(b!), "image/png"),
       );
@@ -515,7 +563,7 @@ export default function Page() {
       const out = await zip.generateAsync({ type: "blob" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(out);
-      a.download = `lampada-screenshots-ru-${SIZES[sizeIdx].w}x${SIZES[sizeIdx].h}.zip`;
+      a.download = `lampada-screenshots-ru-${format.id}-${format.w}x${format.h}.zip`;
       a.click();
     } catch (e) {
       console.error("экспорт архива упал", e);
@@ -538,7 +586,7 @@ export default function Page() {
         >
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 3px" }}>
-              Лампада — App Store скриншоты
+              Лампада — скриншоты магазинов
             </h1>
             <p style={{ fontSize: 12, color: "#666", margin: 0 }}>
               {SLIDES.length} слайда · RU · клик по превью — скачать
@@ -546,8 +594,8 @@ export default function Page() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <select
-              value={sizeIdx}
-              onChange={(e) => setSizeIdx(Number(e.target.value))}
+              value={formatIdx}
+              onChange={(e) => setFormatIdx(Number(e.target.value))}
               style={{
                 background: "#222",
                 color: "#fff",
@@ -559,9 +607,9 @@ export default function Page() {
                 cursor: "pointer",
               }}
             >
-              {SIZES.map((s, i) => (
-                <option key={s.label} value={i}>
-                  {s.label} — {s.w}×{s.h}
+              {exportFormats.map((item, i) => (
+                <option key={item.id} value={i}>
+                  {item.label} — {item.w}×{item.h}
                 </option>
               ))}
             </select>
@@ -598,7 +646,13 @@ export default function Page() {
           }}
         >
           {SLIDES.map((s, i) => (
-            <Preview key={s.id} s={s} index={i} onExport={exportOne} />
+            <Preview
+              key={s.id}
+              s={s}
+              index={i}
+              format={format}
+              onExport={exportOne}
+            />
           ))}
         </div>
       </div>
@@ -611,9 +665,15 @@ export default function Page() {
             ref={(el) => {
               offRefs.current[s.id] = el;
             }}
-            style={{ position: "absolute", left: "-9999px", top: 0, width: W, height: H }}
+            style={{
+              position: "absolute",
+              left: "-9999px",
+              top: 0,
+              width: format.w,
+              height: format.h,
+            }}
           >
-            <SlideView s={s} />
+            <SlideView s={s} format={format} />
           </div>
         ))}
       </div>
