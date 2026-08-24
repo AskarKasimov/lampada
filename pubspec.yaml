@@ -135,5 +135,6 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   adaptive_icon_background: "#F7EFE2"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
-  # Исходник уже нарисован с полями — штатный отступ 16% ужал бы огонёк ещё раз.
-  adaptive_icon_foreground_inset: 0
+  # Pixel маскирует adaptive icon кругом; с нулевым отступом крайние части
+  # лампады обрезались. 20% удерживает весь рисунок в безопасной зоне.
+  adaptive_icon_foreground_inset: 20
