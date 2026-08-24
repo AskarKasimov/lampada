@@ -372,6 +372,9 @@ function Preview({
 export default function Page() {
   const [content, setContent] = useState<LoadedContent | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [requestedLocale, setRequestedLocale] = useState<string | null | undefined>(
+    undefined,
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [formatIdx, setFormatIdx] = useState(0);
@@ -383,8 +386,14 @@ export default function Page() {
   const format = content?.formats[formatIdx];
 
   useEffect(() => {
+    setRequestedLocale(new URLSearchParams(window.location.search).get("locale"));
+  }, []);
+
+  useEffect(() => {
+    if (requestedLocale === undefined) return;
     let cancelled = false;
-    const requestedLocale = new URLSearchParams(window.location.search).get("locale");
+    setContent(null);
+    setLoadError(null);
 
     loadContent((url) => fetch(url), requestedLocale)
       .then((loaded) => {
@@ -401,7 +410,7 @@ export default function Page() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [requestedLocale]);
 
   useEffect(() => {
     if (!content) return;
@@ -444,6 +453,13 @@ export default function Page() {
         </div>
       );
     }
+  }
+
+  function changeLocale(locale: string) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("locale", locale);
+    window.history.replaceState(null, "", url);
+    setRequestedLocale(locale);
   }
 
   async function renderBlob(id: string, el: HTMLDivElement) {
@@ -581,6 +597,26 @@ export default function Page() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <select
+              value={content.locale}
+              onChange={(e) => changeLocale(e.target.value)}
+              style={{
+                background: "#222",
+                color: "#fff",
+                border: "1px solid #444",
+                borderRadius: 8,
+                padding: "8px 12px",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {content.locales.map((locale) => (
+                <option key={locale} value={locale}>
+                  {locale.toUpperCase()}
+                </option>
+              ))}
+            </select>
             <select
               value={formatIdx}
               onChange={(e) => setFormatIdx(Number(e.target.value))}

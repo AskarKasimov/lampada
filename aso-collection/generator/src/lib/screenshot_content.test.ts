@@ -33,7 +33,10 @@ test("загружает общий манифест, локаль по умол
     return new Response(url === "/config.yaml" ? rootYaml : localeYaml);
   };
 
-  await expect(loadContent(fetcher, "en")).resolves.toMatchObject({ locale: "ru" });
+  await expect(loadContent(fetcher, "en")).resolves.toMatchObject({
+    locale: "ru",
+    locales: ["ru"],
+  });
   expect(requests).toEqual(["/config.yaml", "/locales/ru/config.yaml"]);
 });
 

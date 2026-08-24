@@ -8,6 +8,7 @@ import {
 
 export type LoadedContent = {
   locale: string;
+  locales: string[];
   slides: LocaleSlide[];
   formats: StoreFormat[];
 };
@@ -33,5 +34,10 @@ export async function loadContent(
     locale,
   );
 
-  return { locale: content.locale, slides: content.slides, formats: root.formats };
+  return {
+    locale: content.locale,
+    locales: root.locales,
+    slides: content.slides,
+    formats: root.formats,
+  };
 }
