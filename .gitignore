@@ -34,6 +34,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Exported store-media packages are reproducible from ASO source screenshots.
+/aso-collection/generated/
+
 # Symbolication related
 app.*.symbols
 
