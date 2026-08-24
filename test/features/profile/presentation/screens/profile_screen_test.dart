@@ -17,6 +17,9 @@ class _FakeProfileActionsService implements ProfileActionsService {
   var reviewResult = true;
 
   @override
+  var reviewLabel = 'Оставить отзыв в App Store';
+
+  @override
   Future<void> openUrl(String url) async => openedUrls.add(url);
 
   @override
@@ -56,7 +59,7 @@ void main() {
     await tester.pumpWidget(app());
 
     expect(find.text('Поделиться приложением'), findsOneWidget);
-    expect(find.text('Оставить отзыв'), findsOneWidget);
+    expect(find.text(actions.reviewLabel), findsOneWidget);
     expect(find.text('Политика конфиденциальности'), findsOneWidget);
     expect(find.text('Условия использования'), findsOneWidget);
   });
@@ -73,7 +76,7 @@ void main() {
   testWidgets('«Оставить отзыв» зовёт запрос StoreKit', (tester) async {
     await tester.pumpWidget(app());
 
-    await tester.tap(find.text('Оставить отзыв'));
+    await tester.tap(find.text(actions.reviewLabel));
     await tester.pump();
 
     expect(actions.reviewCalls, 1);
@@ -83,7 +86,7 @@ void main() {
     actions.reviewResult = false;
     await tester.pumpWidget(app());
 
-    await tester.tap(find.text('Оставить отзыв'));
+    await tester.tap(find.text(actions.reviewLabel));
     await tester.pump();
 
     expect(find.text('Не удалось открыть форму отзыва'), findsOneWidget);

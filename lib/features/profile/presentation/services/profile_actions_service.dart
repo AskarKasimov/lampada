@@ -19,6 +19,8 @@ const shareText =
 /// платформенные каналы, которых в `flutter test` нет, и без него виджетные
 /// тесты кнопок падали бы с MissingPluginException.
 abstract interface class ProfileActionsService {
+  String get reviewLabel;
+
   Future<void> openUrl(String url);
   Future<void> shareApp();
   Future<bool> requestReview();
@@ -36,6 +38,10 @@ class PlatformProfileActionsService implements ProfileActionsService {
   final bool _isAndroid;
   final Future<void> Function() _requestAppStoreReview;
   final Future<void> Function() _requestRustoreReview;
+
+  @override
+  String get reviewLabel =>
+      _isAndroid ? 'Оставить отзыв в RuStore' : 'Оставить отзыв в App Store';
 
   @override
   Future<void> openUrl(String url) =>

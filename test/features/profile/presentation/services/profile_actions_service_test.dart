@@ -2,6 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/features/profile/presentation/services/profile_actions_service.dart';
 
 void main() {
+  test('на Android подпись отзыва называет RuStore', () {
+    final actions = PlatformProfileActionsService(isAndroid: true);
+
+    expect(actions.reviewLabel, 'Оставить отзыв в RuStore');
+  });
+
+  test('на iOS подпись отзыва называет App Store', () {
+    final actions = PlatformProfileActionsService(isAndroid: false);
+
+    expect(actions.reviewLabel, 'Оставить отзыв в App Store');
+  });
+
   test('на Android отзыв запрашивается через RuStore', () async {
     final calls = <String>[];
     final actions = PlatformProfileActionsService(

@@ -58,7 +58,7 @@ class ProfileScreen extends ConsumerWidget {
           label: 'Поделиться приложением',
           onTap: actions.shareApp,
         ),
-        ProfileLinkTile(label: 'Оставить отзыв', onTap: requestReview),
+        ProfileLinkTile(label: actions.reviewLabel, onTap: requestReview),
         ProfileLinkTile(
           label: 'Политика конфиденциальности',
           onTap: () => actions.openUrl(_privacyPolicyUrl),
