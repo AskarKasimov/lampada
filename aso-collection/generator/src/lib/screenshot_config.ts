@@ -13,7 +13,6 @@ export type StoreFormat = {
 
 export type RootConfig = {
   version: number;
-  defaultLocale: string;
   locales: string[];
   formats: StoreFormat[];
 };
@@ -110,14 +109,10 @@ function themeValue(value: unknown, name: string): ScreenshotTheme {
 export function parseRootConfig(source: string): RootConfig {
   const raw = yamlObject(source, "root config");
   const version = numberValue(raw.version, "version");
-  const defaultLocale = localeCode(raw.default_locale, "default_locale");
   const locales = stringArray(raw.locales, "locales").map((locale, index) =>
     localeCode(locale, `locales[${index}]`),
   );
   unique(locales, "locales");
-  if (!locales.includes(defaultLocale)) {
-    throw new ScreenshotConfigError("default_locale: missing from locales");
-  }
 
   const formats = recordArray(raw.formats, "formats").map((format, index) => ({
     id: stringValue(format.id, `formats[${index}].id`),
@@ -135,7 +130,7 @@ export function parseRootConfig(source: string): RootConfig {
   }));
   unique(formats.map((format) => format.id), "formats");
 
-  return { version, defaultLocale, locales, formats };
+  return { version, locales, formats };
 }
 
 export function parseLocaleConfig(source: string, expectedLocale: string): LocaleConfig {
@@ -166,7 +161,7 @@ export function parseLocaleConfig(source: string, expectedLocale: string): Local
 export function selectLocale(root: RootConfig, requested: string | null): string {
   return requested !== null && root.locales.includes(requested)
     ? requested
-    : root.defaultLocale;
+    : root.locales[0]!;
 }
 
 export function screenshotUrl(locale: string, filename: string): string {

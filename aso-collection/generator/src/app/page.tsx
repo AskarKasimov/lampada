@@ -397,7 +397,13 @@ export default function Page() {
 
     loadContent((url) => fetch(url), requestedLocale)
       .then((loaded) => {
-        if (!cancelled) setContent(loaded);
+        if (cancelled) return;
+        if (requestedLocale !== loaded.locale) {
+          const url = new URL(window.location.href);
+          url.searchParams.set("locale", loaded.locale);
+          window.history.replaceState(null, "", url);
+        }
+        setContent(loaded);
       })
       .catch((error) => {
         if (!cancelled) {

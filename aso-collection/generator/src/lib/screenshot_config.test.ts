@@ -11,7 +11,6 @@ import {
 
 const rootYaml = `
 version: 1
-default_locale: ru
 locales: [ru]
 formats:
   - id: rustore
@@ -38,6 +37,7 @@ test("принимает полный общий и локальный мани�
   const locale = parseLocaleConfig(localeYaml, "ru");
 
   expect(root.formats[0]?.id).toBe("rustore");
+  expect(root.locales).toEqual(["ru"]);
   expect(locale.slides[0]?.theme).toBe("light");
   expect(selectLocale(root, "en")).toBe("ru");
 });
@@ -75,7 +75,7 @@ test("коммитные манифесты ссылаются на соседн
     "ru",
   );
 
-  expect(root.defaultLocale).toBe("ru");
+  expect(root.locales[0]).toBe("ru");
   for (const slide of locale.slides) {
     expect(existsSync(join(publicDir, "locales/ru", slide.screenshot))).toBe(true);
   }

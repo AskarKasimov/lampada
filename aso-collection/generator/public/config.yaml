@@ -1,5 +1,4 @@
 version: 1
-default_locale: ru
 locales: [ru]
 formats:
   - id: app-store-6-9

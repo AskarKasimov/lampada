@@ -4,7 +4,6 @@ import { loadContent } from "./screenshot_content";
 
 const rootYaml = `
 version: 1
-default_locale: ru
 locales: [ru]
 formats:
   - id: rustore
@@ -26,7 +25,7 @@ slides:
     screenshot: 01-today.png
 `;
 
-test("загружает общий манифест, локаль по умолчанию и её слайды", async () => {
+test("загружает общий манифест, первую локаль и её слайды", async () => {
   const requests: string[] = [];
   const fetcher = async (url: string) => {
     requests.push(url);
