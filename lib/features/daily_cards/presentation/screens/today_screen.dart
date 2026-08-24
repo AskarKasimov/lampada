@@ -23,11 +23,7 @@ import '../widgets/week_strip.dart';
 import 'card_viewer_screen.dart';
 import 'course_reader_screen.dart';
 
-/// Вкладка «Сегодня»: полоска недели и блоки выбранного дня.
-///
-/// Календарь отдельной вкладкой не живёт — неделя сверху закрывает навигацию
-/// по датам (FR-018, FR-021). Сам контент открывается полноэкранно поверх
-/// шелла: под таб-баром «одна мысль на экране» из §6 не получается.
+/// Дневная сессия и навигация по календарным дням.
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
 
@@ -35,8 +31,7 @@ class TodayScreen extends ConsumerStatefulWidget {
   ConsumerState<TodayScreen> createState() => _TodayScreenState();
 }
 
-/// Сопоставляет страницы [PageView] с календарными днями без зависимости от
-/// длины суток в локальном часовом поясе.
+/// Преобразует страницы [PageView] в даты без арифметики длительностей.
 class CalendarPageMapper {
   const CalendarPageMapper(this.initialDate, {this.initialPage = 10000});
 
@@ -72,8 +67,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   late final CalendarPageMapper _pageMapper;
   late final PageController _pageController;
 
-  /// Автооткрытие относится ко входу на экран, а не к отдельной странице
-  /// [PageView]: листание календаря может пересоздать страницу «Сегодня».
+  // Автооткрытие относится к экрану, а не к странице календаря.
   bool _hasAutoOpened = false;
 
   @override
@@ -220,8 +214,7 @@ class _SelectedDayContent extends ConsumerWidget {
     DayProgress? progress,
     DayCard? courseTopic,
   ) {
-    // Контент важнее ошибки: если карточки на руках есть, показываем их,
-    // даже когда последнее обновление упало.
+    // Готовый день остаётся полезнее последней ошибки обновления.
     if (day != null && progress != null) {
       return _DayBlocks(
         date: selected,
@@ -252,10 +245,7 @@ class _SelectedDayContent extends ConsumerWidget {
     return const BrandLoadingView();
   }
 
-  /// Подменяет «Основы» дня на текущую тему курса.
-  ///
-  /// Только для сегодняшней даты: курс — это личный прогресс. Если тема не
-  /// доехала, остаются календарные «Основы», чтобы контент дня не пропадал.
+  // Личный курс подменяет календарный placeholder только на сегодняшнем дне.
   TodayCards _withCourseTopic(DateTime date, TodayCards day, DayCard? topic) {
     if (dateKey(date) != dateKey(DateTime.now())) return day;
     if (topic == null) return day;
@@ -266,8 +256,7 @@ class _SelectedDayContent extends ConsumerWidget {
   }
 }
 
-/// Полоска недели и подпись даты. «Лампадка» видна только здесь (FR-019):
-/// на самих карточках она читалась бы счётчиком, что запрещает FR-020.
+/// Полоска недели и заголовок выбранного дня.
 class _Header extends ConsumerWidget {
   const _Header({required this.selected, required this.progress});
 
@@ -277,14 +266,6 @@ class _Header extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = AppColorsExtension.of(context);
-    // Седмица стоит НАД полоской, а не над именем святого: это свойство
-    // недели, а не дня, и рядом с памятью она читалась как часть её титула.
-    //
-    // Номер один на всю полоску: у Азбуки седмица идёт с понедельника по
-    // субботу, а «Неделя N-я» — это её воскресенье (проверено на августе
-    // 2026: сб 8 — Седмица 10-я, вс 9 — Неделя 10-я, пн 10 — Седмица 11-я).
-    // Поэтому полоска начинается с понедельника: начни она с воскресенья,
-    // в неё попали бы «Неделя 9-я» и «Седмица 10-я» — два разных номера.
     final week = ref.watch(dayCardsProvider(dateKey(selected))).value?.week;
 
     return Padding(
@@ -350,8 +331,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
 
   bool get _recordProgress => _isToday;
 
-  /// Карточка чтения своей страницы в просмотрщике не имеет — экран с одной
-  /// ссылкой и кнопкой «Читать» был лишним шагом.
   DayCard? get _reading =>
       day.cards.where((c) => c.type == CardType.reading).firstOrNull;
 
@@ -359,8 +338,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       .where((c) => c.type != CardType.reading && c.type != CardType.basics)
       .toList();
 
-  /// Если тема курса не загрузилась, календарная «основа» не должна
-  /// подменять её: курс в этом случае остаётся недоступным, но день работает.
+  // Автооткрытие не должно вести в курс без загруженной личной темы.
   Iterable<DayCard> get _autoOpenCards => day.cards.where(
     (card) => card.type != CardType.basics || _isCourseTopic(card),
   );
@@ -389,14 +367,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     if (mounted) await _maybeAskReminders();
   }
 
-  /// Просит разрешение на напоминания — один раз, после того как контент
-  /// закрыт, а не до него.
-  ///
-  /// iOS показывает системный запрос ровно один раз за установку. Спросить
-  /// на старте значит потратить эту единственную попытку на человека, который
-  /// ещё ничего не получил. Здесь он уже прочитал карточку, и вопрос идёт
-  /// следом за ценностью, а не перед ней. Прерывать сессию тоже нельзя,
-  /// поэтому момент — возврат из просмотрщика, а не переход между карточками.
+  /// Просит разрешение после закрытия контента, не на старте сессии.
   Future<void> _maybeAskReminders() async {
     if (!_recordProgress) return;
     await _maybeAskForReminders(context, ref);
@@ -430,11 +401,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   );
 
   Future<void> _openCourse(BuildContext context, DayCard card) async {
-    // Тему прочитанной отмечает сам CourseReaderScreen, отсюда — НЕ отмечаем.
-    // Раньше это делали оба места, и пока курс держал гард «не чаще раза
-    // в день», второй вызов был холостым. Гарда больше нет (сколько тем
-    // читать за раз, решает юзер), поэтому дубль снова сдвигал бы тему на две
-    // за одно открытие — тот самый баг «перескакивает с 1-й на 3-ю».
+    // Прогресс темы сохраняет CourseReaderScreen.
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
@@ -451,10 +418,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   bool _isCourseTopic(DayCard card) =>
       RegExp(r'^basics-topic-\d+$').hasMatch(card.id);
 
-  /// Обходим кэш репозитория, а после удачного ответа сбрасываем Riverpod,
-  /// чтобы экран прочитал уже перезаписанную запись. Старый кэш до успеха не
-  /// удаляем: pull-to-refresh в офлайне не должен превращать готовый день в
-  /// пустой экран.
+  /// Обновляет кэш, не скрывая прежний контент при ошибке.
   Future<void> _refresh() async {
     final courseRefresh = ref.read(getCourseTopicProvider)(forceRefresh: true);
     final result = await ref.read(getTodayCardsProvider)(
@@ -482,24 +446,12 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     }
   }
 
-  /// Каждый вход открывает первый невзятый раздел дня: цитата → совет →
-  /// притча → Евангелие → основы. Один шаг за вход, порядок задаёт [CardType].
-  ///
-  /// Весь «момент ага» из §1 требований — открыть приложение и СРАЗУ получить
-  /// одну мысль. Список блоков отодвигал его за один тап, и на живом телефоне
-  /// это чувствуется потерей. Когда всё прочитано, вкладка открывается
-  /// блоками: гнать юзера по кругу незачем.
-  ///
-  /// Евангелие и курс в очереди стоят наравне с карточками, хотя ведут в свои
-  /// ридеры, а не в просмотрщик. Постишное чтение без спроса — это уже не
-  /// «одна мысль за 15 секунд», но до него доходит только тот, кто закрыл
-  /// первые три, то есть пришёл в приложение не в первый раз за день.
+  /// Открывает один первый непрочитанный раздел за вход в порядке [CardType].
   void _maybeAutoOpen() {
     if (widget.hasAutoOpened) return;
     if (!widget.isSelected) return;
     if (!_recordProgress) return;
 
-    // day.cards уже отсортированы по индексу CardType в GetTodayCards.
     final unread = progress.firstUnreadOf(_autoOpenCards.map((c) => c.type));
     if (unread == null) return;
 
@@ -530,8 +482,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     final brightness = Theme.of(context).brightness;
     final blocks = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      // Снизу оставляем место под плавающую капсулу навигации: контент
-      // уходит под неё, и без запаса последняя запись оказалась бы закрыта.
       padding: EdgeInsets.fromLTRB(
         20,
         4,
@@ -551,9 +501,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           ),
           const DayEntryDivider(),
         ],
-        // Сессия дня: цитата, совет, притча — одна группа, разделённая
-        // воздухом. Заголовка у группы нет: «ЕЩЁ ЗА СЕГОДНЯ» называл ядро
-        // дня остатком, а сами подписи записей уже говорят, что это.
         for (final card in rest)
           DayEntryRow(
             label: card.type.styleFor(brightness).shortLabel.toUpperCase(),
@@ -567,8 +514,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           if (rest.isNotEmpty) const DayEntryDivider(),
           DayEntryRow(
             label: 'ЕВАНГЕЛИЕ ДНЯ',
-            // В body карточки чтения лежит человекочитаемое «Ин.10:1–9» —
-            // это и есть содержание входа, ничего дописывать не нужно.
             text: reading.body,
             isUnread: !_isRead(reading),
             showReadStatus: !_isFuture,
@@ -584,16 +529,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   }
 }
 
-/// Просит разрешение на напоминания после закрытия первой карточки или темы.
-///
-/// Прогресс читаем из провайдера, а не из виджета: отметка «прочитано»
-/// сохраняется асинхронно и на кадре возврата может ещё не попасть в props.
 Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
   final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
   if (read.isEmpty) return;
 
-  // Именно future, а не .value: при первом обращении AsyncNotifier ещё
-  // грузится, и проверка по value молча пропускала бы запрос навсегда.
+  // Прогресс сохраняется асинхронно, поэтому ожидаем провайдер, а не value.
   final settings = await ref.read(reminderSettingsProvider.future);
   if (settings.asked || !context.mounted) return;
 
