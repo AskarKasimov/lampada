@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Тёплая нейтральная палитра «Лампады» — по одному инстансу на тему.
-/// Значения посчитаны из oklch-токенов дизайна (см. docs/superpowers —
-/// импорт из claude.ai/design).
+/// Семантические цвета светлой и тёмной тем.
 class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   const AppColorsExtension({
     required this.background,
@@ -31,8 +29,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color dotUpcoming;
   final Color flameLight;
 
-  /// Тёплый янтарный акцент: тёмный конец огонька лампадки и фон
-  /// кнопки «Дальше».
+  /// Акцент для главного действия и огонька лампады.
   final Color accent;
 
   final Color homeSubtitle;
@@ -43,25 +40,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color chipUnreadText;
   final Color chipUnreadBorder;
 
-  /// Фон круглой кнопки «на главный экран» — еле заметный тонированный
-  /// круг, не заявленный в дизайн-токенах отдельно. Раньше был хардкодом
-  /// `Colors.black.withValues(alpha: 0.05)` прямо в виджете; на тёмном фоне
-  /// чёрный на 5% почти не виден, поэтому на dark используем белый той же
-  /// логики «еле заметно».
+  /// Полупрозрачный фон кнопки возврата на главный экран.
   final Color homeButtonBackground;
 
-  /// Светлая тема. Значения выверены по WCAG 2.1 против [background]:
-  /// весь текст держит AA (>=4.5:1), точки прогресса — 3:1 как UI-элемент.
-  ///
-  /// Прошлый набор проваливал AA в восьми местах, и хуже всего — надпись на
-  /// основной кнопке (3.06:1). По §6 это единственный высококонтрастный
-  /// элемент экрана, а по факту он был самым слабым.
-  ///
-  /// Приглушённые роли (link / todayLabel / homeSubtitle / chipUnreadText /
-  /// textTertiary) сведены к ОДНОМУ значению: по отдельности они отличались
-  /// на доли процента яркости, то есть иерархию не создавали, а пять токенов
-  /// вместо одного мешали держать контраст под контролем. Имена оставлены —
-  /// они говорят о назначении, а не о цвете.
+  /// Палитра с контрастом, проверяемым `app_colors_contrast_test.dart`.
   static const light = AppColorsExtension(
     background: Color(0xFFFAF0E3),
     ink: Color(0xFF362418), // 13.10:1
@@ -76,17 +58,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     footer: Color(0xFF79695E), // 4.67:1
     link: Color(0xFF79695E), // 4.67:1
     homeIcon: Color(0xFF554438), // 8.21:1
-    chipUnreadText: Color(0xFF79695E), // 4.67:1
-    // 2.09:1 — сознательное отступление от 3:1. Рамка блока не единственный
-    // признак карточки (есть плашка типа, галочка, сам текст), а контур на
-    // 3:1 читается жирной обводкой и воюет с «тонкими линиями» §6. Прошлые
-    // 1.41:1 не были видны вовсе — это и починено.
+    chipUnreadText: Color(0xFF79695E),
+    // Контур вторичен: статус подтверждают плашка, галочка и текст.
     chipUnreadBorder: Color(0xFFB5A69C),
     homeButtonBackground: Color(0x0D000000),
   );
 
-  /// Тёплый тёмно-коричневый фон («комната при свече ночью»), не
-  /// чёрно-серая тема — сохраняет идентичность светлой палитры.
+  /// Тёмная палитра использует те же семантические роли.
   static const dark = AppColorsExtension(
     background: Color(0xFF1E1712),
     ink: Color(0xFFF2E6D8),
@@ -106,8 +84,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     homeButtonBackground: Color(0x14FFFFFF),
   );
 
-  /// Fallback на `light`, если тема её не регистрировала (например,
-  /// тестовый `MaterialApp` без явного `theme:`).
+  // Позволяет тестовым MaterialApp не регистрировать расширение темы.
   static AppColorsExtension of(BuildContext context) =>
       Theme.of(context).extension<AppColorsExtension>() ?? light;
 

@@ -1,0 +1,52 @@
+locale: ru
+slides:
+  - id: hero
+    label: Главный
+    title:
+      - Православие
+      - "по 5 минут в день."
+    subtitle:
+      - "Открыл, прочитал, закрыл."
+      - "Непрочитанное не копится."
+    theme: light
+    screenshot: 01-today.png
+  - id: session
+    label: Сессия дня
+    title:
+      - "Цитата, совет"
+      - "и притча."
+    subtitle:
+      - "Три коротких текста,"
+      - "новые каждый день."
+    theme: dark
+    screenshot: 02-card.png
+  - id: gospel
+    label: Евангелие
+    title:
+      - "Читайте Евангелие"
+      - "с толкованием."
+    subtitle:
+      - "Стих за стихом —"
+      - "с объяснением святых отцов."
+    theme: light
+    screenshot: 03-gospel.png
+  - id: course
+    label: Курс
+    title:
+      - "Курс «Основы веры»"
+      - "из 365 тем."
+    subtitle:
+      - "По одной теме за раз —"
+      - "или сколько захотите."
+    theme: dark
+    screenshot: 04-course.png
+  - id: story
+    label: Память дня
+    title:
+      - "Кого Церковь"
+      - "вспоминает сегодня."
+    subtitle:
+      - "Праздник, святой"
+      - "и рассказ о нём."
+    theme: light
+    screenshot: 05-story.png

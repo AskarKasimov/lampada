@@ -60,24 +60,17 @@ abstract interface class ReadingRemoteDatasource {
   Future<DailyReadingDto> fetch(String reference, {required Duration timeout});
 }
 
-/// Скрейпит две страницы Азбуки: сам текст отрывка и толкование к нему.
-///
-/// Толкования на странице Библии нет — там только список ссылок на
-/// /otechnik/. Автора не зашиваем в код: ссылку на Феофилакта берём из этого
-/// же списка, иначе пришлось бы держать карту «книга → slug книги толкований»
-/// и ловить её расхождения с сайтом.
+/// Загружает отрывок и необязательное толкование со страниц Азбуки.
 class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
   AzbykaReadingRemoteDatasource({http.Client? client})
     : _client = client ?? http.Client();
 
   final http.Client _client;
 
-  /// Толкователь по умолчанию. Феофилакт Болгарский покрывает все четыре
-  /// Евангелия и заметно короче Лопухина — на карточке это решает.
+  // Толкователь по умолчанию.
   static const _interpreterSlug = 'Feofilakt_Bolgarskij';
 
-  /// Русские сокращения книг — ими Феофилакт размечает стихи в тексте
-  /// («Ин.10:1 . …»), тогда как ссылки Азбуки используют латинский slug.
+  // URL использует латинский slug, страницы толкований — русские сокращения.
   static const _russianAbbr = {'Mt': 'Мф', 'Mk': 'Мк', 'Lk': 'Лк', 'Jn': 'Ин'};
 
   @override
@@ -95,8 +88,7 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
     }
 
     final elapsed = Stopwatch()..start();
-    // `&r` обязателен: без него Азбука на части отрывков отдаёт
-    // церковнославянский, и юзер получает нечитаемый для новоначального текст.
+    // `&r` запрашивает синодальный, а не церковнославянский текст.
     final passageDoc = await _get(
       Uri.parse('https://azbyka.ru/biblia/?$reference&r'),
       timeout,
@@ -112,8 +104,7 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
     }
     netLog('${verses.length} стихов за ${elapsed.elapsedMilliseconds}мс');
 
-    // Толкование необязательно: без него чтение всё ещё состоятельно,
-    // поэтому его сбой день не роняет.
+    // Сбой толкования не должен скрывать само чтение.
     var withInterpretations = verses;
     String? author;
     final link = _interpreterLink(passageDoc);
@@ -179,15 +170,12 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
       final (chapter, number) = parsed;
       if (!ref.contains(chapter, number)) continue;
 
-      // «[ Зач. 36. ]» — богослужебная пометка начала зачала, к тексту стиха
-      // отношения не имеет и на экране читается как мусор.
+      // Богослужебная пометка зачала не входит в текст стиха.
       el.querySelectorAll('.zachala').forEach((e) => e.remove());
       el.querySelectorAll('.checkbox').forEach((e) => e.remove());
 
       final text = el.text
           .replaceAll(RegExp(r'\s+'), ' ')
-          // Квадратные скобки вокруг зачала — отдельные текстовые узлы, а не
-          // часть спана, поэтому после его удаления от пометки остаётся «[]».
           .replaceFirst(RegExp(r'^\s*\[\s*\]\s*'), '')
           .trim();
       if (text.isEmpty) continue;
@@ -221,21 +209,7 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
     return null;
   }
 
-  /// Толкования, разложенные по номерам стихов.
-  ///
-  /// Страница толкования устроена пробегами: сначала идут `p.h5` — ссылки на
-  /// стихи с их синодальным текстом, затем `p.txt` — комментарий на всю эту
-  /// группу сразу. Поэтому группируем структурно, а не нарезкой текста по
-  /// маркерам: у Феофилакта на Мф.20 один блок покрывает стихи 1–7, и
-  /// нарезка «по стиху» отдала бы юзеру сам стих вместо толкования.
-  ///
-  /// Толкование достаётся ТОЛЬКО последнему стиху группы, а не всем сразу:
-  /// оно написано на весь диапазон, и кнопка «Толкование» на промежуточном
-  /// стихе (например, на 23-м при диапазоне 23–24) звала бы за мыслью
-  /// раньше, чем дочитан стих, которым она завершается.
-  ///
-  /// Межглавный отрывок покрыт только первой главой: страница толкования
-  /// одна на главу, а тянуть вторую ради хвоста — ещё один HTTP-поход.
+  /// Группирует `p.h5`/`p.txt` и привязывает комментарий к последнему стиху.
   static Map<int, ({String text, String range})> _interpretationsByVerse(
     Document doc,
     PassageRef ref,
@@ -260,7 +234,6 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
 
     for (final p in doc.querySelectorAll('p.h5, p.txt')) {
       if (p.classes.contains('h5')) {
-        // Стихи после комментария — уже следующая группа.
         if (commentary.isNotEmpty) flush();
         final number = _verseNumberOf(p, ref);
         if (number != null) group.add(number);
@@ -274,8 +247,7 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
     return result;
   }
 
-  /// Номер стиха из ссылки в `p.h5`. Не все `p.h5` её несут — бывают
-  /// подзаголовки, их пропускаем.
+  // Часть `p.h5` — подзаголовки без ссылки на стих.
   static int? _verseNumberOf(Element paragraph, PassageRef ref) {
     for (final a in paragraph.querySelectorAll('a[href]')) {
       final m = RegExp(
@@ -289,8 +261,7 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
     return null;
   }
 
-  /// `Jn.10:1-9` → «Ин.10:1–9». Ссылка приходит из карточки дня уже
-  /// человекочитаемой, но кэш и тесты зовут датасорс напрямую.
+  // Преобразует URL-формат ссылки в подпись для интерфейса.
   static String _labelFor(String reference) {
     final ref = PassageRef.tryParse(reference);
     if (ref == null) return reference;

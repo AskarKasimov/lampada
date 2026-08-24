@@ -14,18 +14,7 @@ abstract interface class DayStoryRemoteDatasource {
   Future<DayStoryDto> fetch(String url, {required Duration timeout});
 }
 
-/// Скрейпит страницу праздника/святого — ту, что находится по `storyUrl`
-/// со страницы дня (`day_cards_remote_datasource.dart`).
-///
-/// У Азбуки два шаблона такой страницы: `.holiday-description .brif` —
-/// у праздников, `.saint-description .brif` — у отдельных святых. Перед
-/// `.brif` часто стоит `.short-description` — короткая версия того же
-/// текста, но она лежит СНАРУЖИ `.brif` и в выборку не попадает: полная
-/// версия внутри рассказывает то же самое подробнее.
-///
-/// Иногда `storyUrl` ведёт на совсем другой шаблон (у больших праздников —
-/// на отдельную статью без `.brif` вовсе, например «Пасха в …году»). Это не
-/// повод падать: сбоем считается только страница, где искомого блока нет.
+/// Извлекает полный текст рассказа из блока `.brif` страницы Азбуки.
 class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
   AzbykaDayStoryRemoteDatasource({http.Client? client})
     : _client = client ?? http.Client();
@@ -86,11 +75,8 @@ class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
     return DayStoryDto(paragraphs: paragraphs);
   }
 
-  /// Абзацы рассказа. Заголовок секции (`Житие …`, `Праздник … празднуется …`)
-  /// вырезаем как служебный — заголовок дня уже показан экраном, который
-  /// сюда привёл. Ссылки на сноски (`[1]`, `[2]`…) — тоже: без работающего
-  /// перехода к примечанию это просто мусор посреди фразы.
   static List<String> _paragraphsFrom(Element container) {
+    // Заголовки и сноски уже не нужны на экране рассказа.
     container.querySelectorAll('h2, h3, h4').forEach((e) => e.remove());
     container.querySelectorAll('sup').forEach((e) => e.remove());
 
@@ -103,7 +89,7 @@ class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
     return parts;
   }
 
-  /// <br> не даёт пробела в Element.text — заменяем на \n.
+  // Element.text не добавляет пробел для <br>.
   static String _textWithBreaks(Element el) {
     final withBreaks = el.innerHtml.replaceAll(
       RegExp(r'<br\s*/?>', caseSensitive: false),

@@ -8,17 +8,13 @@ import '../../../../core/network/network_status.dart';
 import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/storage/preference_write.dart';
-import '../../domain/entities/day_card.dart';
 import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../datasources/day_cards_remote_datasource.dart';
 import '../dto/day_dto.dart';
 import '../mappers/day_card_mapper.dart';
 
-/// Скрейпит день через [DayCardsRemoteDatasource]. Кэш за нужную дату —
-/// сеть не трогаем. При сетевой ошибке или сломанной вёрстке без кэша нужной
-/// даты честно отдаём Failure: чужой день нельзя выдавать за выбранный.
-/// Единственное место, где исключения data-слоя превращаются в Failure.
+/// Кэширует карточки по точной дате и преобразует ошибки data-слоя в Failure.
 class AzbykaDayCardsRepository implements DayCardsRepository {
   AzbykaDayCardsRepository(
     this._remote,
@@ -38,40 +34,19 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   final DayCardsRemoteDatasource _remote;
   final SharedPreferences _prefs;
 
-  /// Потолок на весь цикл попыток — время, которое видит юзер в мёртвой сети
-  /// (captive portal). 10 секунд, потому что сплэш показывает спиннер через
-  /// 3с: с индикатором ожидание читается как работа, без него — как зависание.
+  // Общий бюджет включает все попытки и паузы между ними.
   final Duration _budget;
   final Duration _attemptTimeout;
   final List<Duration> _retryDelays;
   final NetworkStatus? _networkStatus;
 
-  /// Кэш подневный: календарь листает прошлые дни, а один общий ключ держал
-  /// ровно последний загруженный день и на шаг назад уже ничего не помнил.
-  ///
-  /// Версия в ключе обязательна. Записи хранят `type` карточки строкой, а
-  /// маппер разворачивает её через `CardType.values.byName` — то есть стоит
-  /// убрать или переименовать тип, и запись прошлой схемы роняет разбор уже
-  /// НА КЭШЕ, не доходя до сети. Ровно это и случилось, когда убрали
-  /// «вопрос дня»: приложение показывало офлайн-экран при живом интернете.
-  /// Меняется набор [CardType] или поля DTO — версия растёт.
-  /// v4: запись стала объектом (карточки + имя дня) вместо голого массива
-  /// карточек.
-  /// v5: добавилось необязательное поле storyUrl. Само оно не ломает разбор
-  /// старой записи (null и есть null), но БЕЗ роста версии старый кэш тихо
-  /// оставлял бы рассказ дня недоступным до истечения TTL — версия растёт,
-  /// хоть парсинг и не падал бы.
-  /// v6: Азбука иногда отдаёт storyUrl по HTTP. После его нормализации
-  /// старые записи с null всё так же выглядели бы валидными, но не открывали
-  /// рассказ, поэтому перезапрашиваем их при следующем входе.
+  // Меняйте версию при изменении схемы кэша или нормализации его данных.
   static const _cachePrefix = 'day_cards_cache_v6:';
 
-  /// Даты в кэше, старые слева. Отдельный индекс, потому что SharedPreferences
-  /// не умеет перечислять ключи по префиксу без чтения всего хранилища.
+  // SharedPreferences не умеет перечислять ключи по префиксу.
   static const _cacheIndexKey = 'day_cards_cached_dates_v6';
 
-  /// Потолок кэша. Дни хранят распарсенный текст, не разметку, так что это
-  /// сотни килобайт — но расти бесконечно ему всё равно незачем.
+  // Не даём подневному кэшу расти без ограничения.
   static const _maxCachedDays = 60;
 
   /// Меньше этого остатка попытку не начинаем — она гарантированно не успеет.
@@ -188,8 +163,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
       _prefs.setString('$_cachePrefix$key', jsonEncode(dto.toJson())),
     );
 
-    // Индекс держим отсортированным по дате: по нему же выбирается stale-день,
-    // и «последний» должен значить «самый поздний», а не «записанный позже».
+    // Последним stale-днём должна быть поздняя дата, не последняя запись.
     final dates = {..._cachedDates(), key}.toList()..sort();
     for (final stale in dates.take(
       dates.length > _maxCachedDays ? dates.length - _maxCachedDays : 0,
@@ -206,17 +180,10 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     );
   }
 
-  /// Разбирает запись кэша сразу до entity. Негодная запись — промах кэша,
-  /// а не сбой: сходим в сеть и перезапишем.
-  ///
-  /// Разворот в entity делается ЗДЕСЬ, внутри защищённого блока, и ловится не
-  /// только [Exception]. `CardType.values.byName` на неизвестном типе бросает
-  /// `ArgumentError` — это `Error`, и он пролетал мимо `on Exception`. Так
-  /// удаление «вопроса дня» превратило старую запись кэша в офлайн-экран при
-  /// живом интернете: разбор падал, не доходя до сети.
   TodayCards? _readCache(String key) {
     final raw = _prefs.getString('$_cachePrefix$key');
     if (raw == null) return null;
+    // Старые CardType бросают Error, поэтому считаем неразборный кэш промахом.
     try {
       return _toEntity(
         DayDto.fromJson(jsonDecode(raw) as Map<String, dynamic>),
