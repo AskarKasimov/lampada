@@ -282,6 +282,22 @@ void main() {
       expect(day.storyUrl, isNull);
     });
 
+    test('http-ссылка Азбуки на праздник нормализуется для рассказа', () async {
+      final day = await _fetchDay(
+        _datasourceServing(
+          _page(
+            headerHtml:
+                '<div class="text day__text"><ul><li>'
+                '<a href="http://azbyka.ru/days/prazdnik-preobrazhenie">'
+                'Попразднство Преображения Господня</a>'
+                '</li></ul></div>',
+          ),
+        ),
+      );
+
+      expect(day.storyUrl, 'https://azbyka.ru/days/prazdnik-preobrazhenie');
+    });
+
     test('без шапки день остаётся безымянным, но не падает', () async {
       final day = await _fetchDay(_datasourceServing(_page()));
 

@@ -61,11 +61,14 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   /// старой записи (null и есть null), но БЕЗ роста версии старый кэш тихо
   /// оставлял бы рассказ дня недоступным до истечения TTL — версия растёт,
   /// хоть парсинг и не падал бы.
-  static const _cachePrefix = 'day_cards_cache_v5:';
+  /// v6: Азбука иногда отдаёт storyUrl по HTTP. После его нормализации
+  /// старые записи с null всё так же выглядели бы валидными, но не открывали
+  /// рассказ, поэтому перезапрашиваем их при следующем входе.
+  static const _cachePrefix = 'day_cards_cache_v6:';
 
   /// Даты в кэше, старые слева. Отдельный индекс, потому что SharedPreferences
   /// не умеет перечислять ключи по префиксу без чтения всего хранилища.
-  static const _cacheIndexKey = 'day_cards_cached_dates_v5';
+  static const _cacheIndexKey = 'day_cards_cached_dates_v6';
 
   /// Потолок кэша. Дни хранят распарсенный текст, не разметку, так что это
   /// сотни килобайт — но расти бесконечно ему всё равно незачем.
