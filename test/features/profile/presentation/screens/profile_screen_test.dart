@@ -14,6 +14,7 @@ class _FakeProfileActionsService implements ProfileActionsService {
   final openedUrls = <String>[];
   var shareCalls = 0;
   var reviewCalls = 0;
+  var reviewResult = true;
 
   @override
   Future<void> openUrl(String url) async => openedUrls.add(url);
@@ -22,7 +23,10 @@ class _FakeProfileActionsService implements ProfileActionsService {
   Future<void> shareApp() async => shareCalls++;
 
   @override
-  Future<void> requestReview() async => reviewCalls++;
+  Future<bool> requestReview() async {
+    reviewCalls++;
+    return reviewResult;
+  }
 }
 
 void main() {
@@ -73,6 +77,16 @@ void main() {
     await tester.pump();
 
     expect(actions.reviewCalls, 1);
+  });
+
+  testWidgets('ошибка формы отзыва показывается пользователю', (tester) async {
+    actions.reviewResult = false;
+    await tester.pumpWidget(app());
+
+    await tester.tap(find.text('Оставить отзыв'));
+    await tester.pump();
+
+    expect(find.text('Не удалось открыть форму отзыва'), findsOneWidget);
   });
 
   testWidgets('политика конфиденциальности открывает ссылку разработчика', (

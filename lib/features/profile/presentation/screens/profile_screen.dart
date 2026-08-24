@@ -25,6 +25,18 @@ class ProfileScreen extends ConsumerWidget {
     final colors = AppColorsExtension.of(context);
     final actions = ref.read(profileActionsServiceProvider);
 
+    Future<void> requestReview() async {
+      final opened = await actions.requestReview();
+      if (opened || !context.mounted) return;
+
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось открыть форму отзыва'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, kFloatingNavInset),
       children: [
@@ -46,7 +58,7 @@ class ProfileScreen extends ConsumerWidget {
           label: 'Поделиться приложением',
           onTap: actions.shareApp,
         ),
-        ProfileLinkTile(label: 'Оставить отзыв', onTap: actions.requestReview),
+        ProfileLinkTile(label: 'Оставить отзыв', onTap: requestReview),
         ProfileLinkTile(
           label: 'Политика конфиденциальности',
           onTap: () => actions.openUrl(_privacyPolicyUrl),
