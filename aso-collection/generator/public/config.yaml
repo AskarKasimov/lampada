@@ -1,0 +1,22 @@
+version: 1
+default_locale: ru
+locales: [ru]
+formats:
+  - id: app-store-6-9
+    label: App Store · 6.9"
+    width: 1320
+    height: 2868
+    phone_width_ratio: 0.84
+    phone_translate_y: 8
+  - id: app-store-6-5
+    label: App Store · 6.5"
+    width: 1284
+    height: 2778
+    phone_width_ratio: 0.84
+    phone_translate_y: 8
+  - id: rustore
+    label: RuStore
+    width: 1080
+    height: 1920
+    phone_width_ratio: 0.65
+    phone_translate_y: 7

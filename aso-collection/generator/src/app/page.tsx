@@ -6,7 +6,12 @@ import JSZip from "jszip";
 import { captureMode } from "../lib/capture_mode.mjs";
 import { screenshotCleanupMaskHeight } from "../lib/screenshot_cleanup.mjs";
 import { withTimeout } from "../lib/with_timeout.mjs";
-import { exportFormats } from "../lib/store_formats.mjs";
+import { loadContent, type LoadedContent } from "../lib/screenshot_content";
+import {
+  screenshotUrl,
+  type LocaleSlide,
+  type StoreFormat,
+} from "../lib/screenshot_config";
 
 /* ── Канва ─────────────────────────────────────────────────────────────── */
 
@@ -37,8 +42,6 @@ const SC_W = (918 / MK_W) * 100;
 const SC_H = (1990 / MK_H) * 100;
 const SC_RX = (126 / 918) * 100;
 const SC_RY = (126 / 1990) * 100;
-
-const BASE = "/screenshots/ru";
 
 /** Разбивка заголовка по строкам — переносы задаём вручную, не автопереносом. */
 function L({ lines }: { lines: string[] }) {
@@ -216,86 +219,30 @@ function Phone({
   );
 }
 
-/* ── Тексты ────────────────────────────────────────────────────────────── */
-
-type Slide = {
-  id: string;
-  label: string;
-  h: string[];
-  sub: string[];
-  src: string;
-  alt: string;
-  dark?: boolean;
-};
-
-// Заголовок продаёт, подзаголовок объясняет конкретикой — без него человек,
-// который о приложении ничего не знает, читает одни обещания.
-const SLIDES: Slide[] = [
-  {
-    id: "hero",
-    label: "Главный",
-    h: ["Православие", "по 5 минут в день."],
-    sub: ["Открыл, прочитал, закрыл.", "Непрочитанное не копится."],
-    src: `${BASE}/01-today.png`,
-    alt: "Сегодня",
-  },
-  {
-    id: "session",
-    label: "Сессия дня",
-    h: ["Цитата, совет", "и притча."],
-    sub: ["Три коротких текста,", "новые каждый день."],
-    src: `${BASE}/02-card.png`,
-    alt: "Цитата дня",
-    dark: true,
-  },
-  {
-    id: "gospel",
-    label: "Евангелие",
-    h: ["Читайте Евангелие", "с толкованием."],
-    sub: ["Стих за стихом —", "с объяснением святых отцов."],
-    src: `${BASE}/03-gospel.png`,
-    alt: "Евангелие дня",
-  },
-  {
-    id: "course",
-    label: "Курс",
-    h: ["Курс «Основы веры»", "из 365 тем."],
-    sub: ["По одной теме за раз —", "или сколько захотите."],
-    src: `${BASE}/04-course.png`,
-    alt: "Основы веры",
-    dark: true,
-  },
-  {
-    id: "story",
-    label: "Память дня",
-    h: ["Кого Церковь", "вспоминает сегодня."],
-    sub: ["Праздник, святой", "и рассказ о нём."],
-    src: `${BASE}/05-story.png`,
-    alt: "Рассказ о дне",
-  },
-];
-
 /* ── Слайд ─────────────────────────────────────────────────────────────── */
 
 function SlideView({
   s,
+  locale,
   format,
 }: {
-  s: Slide;
-  format: (typeof exportFormats)[number];
+  s: LocaleSlide;
+  locale: string;
+  format: StoreFormat;
 }) {
-  const ink = s.dark ? DARK_INK : INK;
-  const muted = s.dark ? DARK_MUTED : MUTED;
-  const textLr = format.w * 0.08;
-  const headTop = format.h * 0.055;
-  const headMin = format.h * 0.235;
+  const dark = s.theme === "dark";
+  const ink = dark ? DARK_INK : INK;
+  const muted = dark ? DARK_MUTED : MUTED;
+  const textLr = format.width * 0.08;
+  const headTop = format.height * 0.055;
+  const headMin = format.height * 0.235;
 
   return (
     <div
       style={{
-        width: format.w,
-        height: format.h,
-        background: s.dark ? DARK_BG : CREAM,
+        width: format.width,
+        height: format.height,
+        background: dark ? DARK_BG : CREAM,
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
@@ -317,7 +264,7 @@ function SlideView({
             // на коротких словах вроде "Scan anything", здесь строки вдвое
             // длиннее и на том же кегле уезжали в третью строку. Проверено
             // замером scrollWidth — на 0.082 все пять держат по две строки.
-            fontSize: format.w * 0.082,
+            fontSize: format.width * 0.082,
             fontWeight: 600,
             color: ink,
             lineHeight: 1.05,
@@ -325,7 +272,7 @@ function SlideView({
             margin: 0,
           }}
         >
-          <L lines={s.h} />
+          <L lines={s.title} />
         </h1>
         {/* Фиксированный отступ, а не распорка flex:1: та прижимала
             подзаголовок к низу шапки, и зазор гулял от слайда к слайду
@@ -333,22 +280,22 @@ function SlideView({
         <p
           style={{
             fontFamily: SANS,
-            fontSize: format.w * 0.056,
+            fontSize: format.width * 0.056,
             fontWeight: 400,
             color: muted,
-            margin: `${format.w * 0.042}px 0 0`,
+            margin: `${format.width * 0.042}px 0 0`,
             lineHeight: 1.4,
           }}
         >
-          <L lines={s.sub} />
+          <L lines={s.subtitle} />
         </p>
       </div>
 
       <div style={{ flex: 1, position: "relative" }}>
         <Phone
-          src={s.src}
-          alt={s.alt}
-          width={format.w * format.phoneWidthRatio}
+          src={screenshotUrl(locale, s.screenshot)}
+          alt={s.label}
+          width={format.width * format.phoneWidthRatio}
           style={{
             position: "absolute",
             bottom: 0,
@@ -365,13 +312,15 @@ function SlideView({
 
 function Preview({
   s,
+  locale,
   index,
   format,
   onExport,
 }: {
-  s: Slide;
+  s: LocaleSlide;
+  locale: string;
   index: number;
-  format: (typeof exportFormats)[number];
+  format: StoreFormat;
   onExport: (id: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -381,7 +330,7 @@ function Preview({
     const node = ref.current;
     if (!node) return;
     const ro = new ResizeObserver(() =>
-      setScale(node.getBoundingClientRect().width / format.w),
+      setScale(node.getBoundingClientRect().width / format.width),
     );
     ro.observe(node);
     return () => ro.disconnect();
@@ -395,7 +344,7 @@ function Preview({
         title="Кликните, чтобы скачать"
         style={{
           width: "100%",
-          aspectRatio: `${format.w}/${format.h}`,
+          aspectRatio: `${format.width}/${format.height}`,
           overflow: "hidden",
           borderRadius: 10,
           cursor: "pointer",
@@ -404,13 +353,13 @@ function Preview({
       >
         <div
           style={{
-            width: format.w,
-            height: format.h,
+            width: format.width,
+            height: format.height,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
           }}
         >
-          <SlideView s={s} format={format} />
+          <SlideView s={s} locale={locale} format={format} />
         </div>
       </div>
       <p style={{ textAlign: "center", fontSize: 12, color: "#888", margin: "7px 0 0" }}>
@@ -423,6 +372,8 @@ function Preview({
 /* ── Страница ──────────────────────────────────────────────────────────── */
 
 export default function Page() {
+  const [content, setContent] = useState<LoadedContent | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [formatIdx, setFormatIdx] = useState(0);
@@ -431,21 +382,54 @@ export default function Page() {
     formatId: string;
   } | null>(null);
   const offRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const format = exportFormats[formatIdx];
+  const format = content?.formats[formatIdx];
 
   useEffect(() => {
+    let cancelled = false;
+    const requestedLocale = new URLSearchParams(window.location.search).get("locale");
+
+    loadContent((url) => fetch(url), requestedLocale)
+      .then((loaded) => {
+        if (!cancelled) setContent(loaded);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setLoadError(
+            error instanceof Error ? error.message : "Не удалось загрузить конфигурацию.",
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!content) return;
     setCapture(
       captureMode(
         window.location.search,
-        SLIDES.map((slide) => slide.id),
-        exportFormats.map((item) => item.id),
+        content.slides.map((slide) => slide.id),
+        content.formats.map((item) => item.id),
       ),
     );
-  }, []);
+  }, [content]);
+
+  if (loadError) {
+    return <p role="alert">Ошибка конфигурации: {loadError}</p>;
+  }
+
+  if (!content || !format) {
+    return <p>Загружаю конфигурацию…</p>;
+  }
+
+  const loadedContent = content;
+  const selectedFormat = format;
 
   if (capture) {
-    const slide = SLIDES.find((item) => item.id === capture.slideId);
-    const captureFormat = exportFormats.find(
+    const slide = content.slides.find((item) => item.id === capture.slideId);
+    const captureFormat = content.formats.find(
       (item) => item.id === capture.formatId,
     );
 
@@ -458,7 +442,7 @@ export default function Page() {
             overflow: "hidden",
           }}
         >
-          <SlideView s={slide} format={captureFormat} />
+          <SlideView s={slide} locale={content.locale} format={captureFormat} />
         </div>
       );
     }
@@ -488,8 +472,8 @@ export default function Page() {
       // pixelRatio вместо даунскейла канвасом: рендер сразу в целевом
       // разрешении, без потери резкости на тексте.
       const opts = {
-        width: format.w,
-        height: format.h,
+        width: selectedFormat.width,
+        height: selectedFormat.height,
         pixelRatio: 1,
         cacheBust: true,
       };
@@ -507,12 +491,18 @@ export default function Page() {
       await img.decode();
 
       const cv = document.createElement("canvas");
-      cv.width = format.w;
-      cv.height = format.h;
-      cv.getContext("2d")!.drawImage(img, 0, 0, format.w, format.h);
+      cv.width = selectedFormat.width;
+      cv.height = selectedFormat.height;
+      cv.getContext("2d")!.drawImage(
+        img,
+        0,
+        0,
+        selectedFormat.width,
+        selectedFormat.height,
+      );
 
-      const idx = SLIDES.findIndex((s) => s.id === id);
-      const name = `${String(idx + 1).padStart(2, "0")}-${id}-${format.w}x${format.h}.png`;
+      const idx = loadedContent.slides.findIndex((s) => s.id === id);
+      const name = `${String(idx + 1).padStart(2, "0")}-${id}-${selectedFormat.width}x${selectedFormat.height}.png`;
       const blob = await new Promise<Blob>((res) =>
         cv.toBlob((b) => res(b!), "image/png"),
       );
@@ -552,7 +542,7 @@ export default function Page() {
     setBusy("all");
     try {
       const zip = new JSZip();
-      for (const s of SLIDES) {
+      for (const s of loadedContent.slides) {
         const el = offRefs.current[s.id];
         if (!el) continue;
         setBusy(s.id);
@@ -563,7 +553,7 @@ export default function Page() {
       const out = await zip.generateAsync({ type: "blob" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(out);
-      a.download = `lampada-screenshots-ru-${format.id}-${format.w}x${format.h}.zip`;
+      a.download = `lampada-screenshots-${loadedContent.locale}-${selectedFormat.id}-${selectedFormat.width}x${selectedFormat.height}.zip`;
       a.click();
     } catch (e) {
       console.error("экспорт архива упал", e);
@@ -589,7 +579,7 @@ export default function Page() {
               Лампада — скриншоты магазинов
             </h1>
             <p style={{ fontSize: 12, color: "#666", margin: 0 }}>
-              {SLIDES.length} слайда · RU · клик по превью — скачать
+              {content.slides.length} слайда · {content.locale.toUpperCase()} · клик по превью — скачать
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -607,9 +597,9 @@ export default function Page() {
                 cursor: "pointer",
               }}
             >
-              {exportFormats.map((item, i) => (
+              {content.formats.map((item, i) => (
                 <option key={item.id} value={i}>
-                  {item.label} — {item.w}×{item.h}
+                  {item.label} — {item.width}×{item.height}
                 </option>
               ))}
             </select>
@@ -645,10 +635,11 @@ export default function Page() {
             gap: 20,
           }}
         >
-          {SLIDES.map((s, i) => (
+          {content.slides.map((s, i) => (
             <Preview
               key={s.id}
               s={s}
+              locale={content.locale}
               index={i}
               format={format}
               onExport={exportOne}
@@ -659,7 +650,7 @@ export default function Page() {
 
       {/* Экспортные копии в натуральную величину, за краем вьюпорта */}
       <div style={{ position: "absolute", top: 0, overflow: "hidden" }}>
-        {SLIDES.map((s) => (
+        {content.slides.map((s) => (
           <div
             key={`off-${s.id}`}
             ref={(el) => {
@@ -669,11 +660,11 @@ export default function Page() {
               position: "absolute",
               left: "-9999px",
               top: 0,
-              width: format.w,
-              height: format.h,
+              width: format.width,
+              height: format.height,
             }}
           >
-            <SlideView s={s} format={format} />
+            <SlideView s={s} locale={content.locale} format={format} />
           </div>
         ))}
       </div>
