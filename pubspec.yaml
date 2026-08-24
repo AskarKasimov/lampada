@@ -47,6 +47,7 @@ dependencies:
   url_launcher: ^6.3.2
   share_plus: ^13.3.0
   in_app_review: ^2.0.12
+  flutter_rustore_review: ^10.5.0
 
 dev_dependencies:
   flutter_test:
@@ -135,5 +136,6 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   adaptive_icon_background: "#F7EFE2"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
-  # Исходник уже нарисован с полями — штатный отступ 16% ужал бы огонёк ещё раз.
-  adaptive_icon_foreground_inset: 0
+  # Pixel маскирует adaptive icon кругом; с нулевым отступом крайние части
+  # лампады обрезались. 20% удерживает весь рисунок в безопасной зоне.
+  adaptive_icon_foreground_inset: 20
