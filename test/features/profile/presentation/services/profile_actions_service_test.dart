@@ -2,6 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/features/profile/presentation/services/profile_actions_service.dart';
 
 void main() {
+  test('текст шаринга содержит ссылки на оба магазина', () {
+    expect(
+      shareText,
+      contains(
+        'https://apps.apple.com/ru/app/%D0%BB%D0%B0%D0%BC%D0%BF%D0%B0%D0%B4%D0%B0-%D1%82%D0%BE%D0%BB%D0%BA%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5-%D0%B5%D0%B2%D0%B0%D0%BD%D0%B3%D0%B5%D0%BB%D0%B8%D1%8F/id6799424044',
+      ),
+    );
+    expect(
+      shareText,
+      contains('https://www.rustore.ru/catalog/app/ru.lampada.lampada'),
+    );
+  });
+
   test('на Android подпись отзыва называет RuStore', () {
     final actions = PlatformProfileActionsService(isAndroid: true);
 
