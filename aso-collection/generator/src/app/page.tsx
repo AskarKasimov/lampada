@@ -7,6 +7,7 @@ import { captureMode } from "../lib/capture_mode.mjs";
 import { screenshotCleanupMaskHeight } from "../lib/screenshot_cleanup.mjs";
 import { withTimeout } from "../lib/with_timeout.mjs";
 import { loadContent, type LoadedContent } from "../lib/screenshot_content";
+import { previewSize } from "../lib/preview_size";
 import {
   screenshotUrl,
   type LocaleSlide,
@@ -16,6 +17,7 @@ import {
 /* ── Канва ─────────────────────────────────────────────────────────────── */
 
 const EXPORT_TIMEOUT_MS = 30_000;
+const PREVIEW_HEIGHT = 420;
 
 /* ── Палитра из lib/core/theme/app_colors.dart ─────────────────────────── */
 
@@ -325,6 +327,7 @@ function Preview({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.15);
+  const size = previewSize(format, PREVIEW_HEIGHT);
 
   useEffect(() => {
     const node = ref.current;
@@ -337,14 +340,14 @@ function Preview({
   }, []);
 
   return (
-    <div>
+    <div style={{ width: size.width }}>
       <div
         ref={ref}
         onClick={() => onExport(s.id)}
         title="Кликните, чтобы скачать"
         style={{
-          width: "100%",
-          aspectRatio: `${format.width}/${format.height}`,
+          width: size.width,
+          height: size.height,
           overflow: "hidden",
           borderRadius: 10,
           cursor: "pointer",
@@ -630,8 +633,9 @@ export default function Page() {
 
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
             gap: 20,
           }}
         >
