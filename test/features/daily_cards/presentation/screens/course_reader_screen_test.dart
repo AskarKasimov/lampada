@@ -8,6 +8,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/core/widgets/app_pill_badge.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
@@ -212,6 +213,10 @@ void main() {
   ) async {
     await pumpReader(tester);
 
+    final badge = tester.widget<AppPillBadge>(find.byType(AppPillBadge));
+    expect(badge.label, 'Основы веры');
+    expect(badge.background, const Color(0xFFD1E8FA));
+    expect(badge.foreground, const Color(0xFF00476D));
     expect(find.text('Основы'), findsNothing);
   });
 

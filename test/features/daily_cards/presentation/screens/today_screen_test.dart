@@ -6,6 +6,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/core/widgets/app_pill_badge.dart';
 import 'package:lampada/features/daily_cards/domain/course_calendar.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
@@ -16,6 +17,7 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
@@ -574,6 +576,27 @@ void main() {
           of: find.byType(CardViewerScreen),
           matching: find.byType(FloatingNavBar),
         ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('бейдж карточки закреплён в шапке просмотрщика', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildApp());
+      await settle(tester);
+      await dismissAutoOpened(tester);
+
+      await tester.tap(entry('ЦИТАТА'));
+      await settle(tester);
+
+      final badge = find.descendant(
+        of: find.byType(CardViewerScreen),
+        matching: find.byType(AppPillBadge),
+      );
+      expect(badge, findsOneWidget);
+      expect(
+        find.ancestor(of: badge, matching: find.byType(CardContent)),
         findsNothing,
       );
     });
