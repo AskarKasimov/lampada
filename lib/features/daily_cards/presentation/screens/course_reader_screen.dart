@@ -278,8 +278,11 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   right: 8,
                   child: IconButton(
                     onPressed: () => unawaited(_dismiss()),
-                    icon: const Icon(CupertinoIcons.xmark),
-                    color: colors.homeIcon,
+                    icon: Icon(
+                      CupertinoIcons.xmark,
+                      size: 22,
+                      color: colors.homeSubtitle,
+                    ),
                     tooltip: 'Закрыть',
                   ),
                 ),

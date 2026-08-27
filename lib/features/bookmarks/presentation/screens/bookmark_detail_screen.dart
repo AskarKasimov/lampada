@@ -107,8 +107,11 @@ class BookmarkDetailScreen extends StatelessWidget {
                 right: 8,
                 child: IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(CupertinoIcons.xmark),
-                  color: colors.homeIcon,
+                  icon: Icon(
+                    CupertinoIcons.xmark,
+                    size: 22,
+                    color: colors.homeSubtitle,
+                  ),
                   tooltip: 'Закрыть',
                 ),
               ),

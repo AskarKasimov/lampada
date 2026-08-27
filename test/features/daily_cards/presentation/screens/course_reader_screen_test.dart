@@ -191,6 +191,16 @@ void main() {
     expect(find.text('Основы веры'), findsOneWidget);
   });
 
+  testWidgets('крестик совпадает с размером и цветом действий ридера', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.xmark));
+    expect(icon.size, 22);
+    expect(icon.color, const Color(0xFF79695E));
+  });
+
   testWidgets('показывает кнопку отправки рядом с закладкой', (tester) async {
     await pumpReader(tester);
 
