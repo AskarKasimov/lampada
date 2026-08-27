@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_link_button.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
+import '../../../../core/widgets/selectable_share_area.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/entities/day_story.dart';
@@ -97,7 +98,7 @@ class _StoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    return SingleChildScrollView(
+    final content = SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 8, 20, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,6 +129,7 @@ class _StoryView extends StatelessWidget {
         ],
       ),
     );
+    return SelectableShareArea(child: content);
   }
 }
 
