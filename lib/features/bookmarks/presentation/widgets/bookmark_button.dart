@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -54,8 +55,8 @@ class BookmarkButton extends ConsumerWidget {
         );
       },
       icon: Icon(
-        saved ? Icons.bookmark : Icons.bookmark_border,
-        size: 20,
+        saved ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
+        size: 22,
         color: saved ? colors.accent : colors.homeSubtitle,
       ),
     );

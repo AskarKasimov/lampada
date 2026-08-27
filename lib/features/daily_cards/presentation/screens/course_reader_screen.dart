@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_link_button.dart';
+import '../../../../core/widgets/app_share_button.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/course_calendar.dart';
@@ -182,6 +183,8 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     savedAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
 
+  String _shareTextFor(DayCard card) => '${card.body}\n\n— ${card.source}';
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
@@ -217,8 +220,14 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   left: 8,
                   child: currentCard == null
                       ? const SizedBox.square(dimension: 40)
-                      : BookmarkButton(
-                          bookmark: _bookmarkFor(currentCard, brightness),
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            BookmarkButton(
+                              bookmark: _bookmarkFor(currentCard, brightness),
+                            ),
+                            AppShareButton(text: _shareTextFor(currentCard)),
+                          ],
                         ),
                 ),
                 Positioned(

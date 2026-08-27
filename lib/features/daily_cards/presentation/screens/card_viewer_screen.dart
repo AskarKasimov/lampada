@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_share_button.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/entities/day_card.dart';
@@ -156,8 +157,14 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
               Positioned(
                 top: 0,
                 left: 8,
-                child: BookmarkButton(
-                  bookmark: _bookmarkFor(widget.cards[_index], brightness),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    BookmarkButton(
+                      bookmark: _bookmarkFor(widget.cards[_index], brightness),
+                    ),
+                    AppShareButton(text: _shareTextFor(widget.cards[_index])),
+                  ],
                 ),
               ),
             ],
@@ -189,4 +196,6 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     label: card.type.styleFor(brightness).label,
     savedAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
+
+  String _shareTextFor(DayCard card) => '${card.body}\n\n— ${card.source}';
 }

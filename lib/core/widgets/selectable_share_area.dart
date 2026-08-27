@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show SelectedContent;
 import 'package:share_plus/share_plus.dart';
 
+import '../format/app_download_links.dart';
+
 /// Делает вложенный текст выделяемым, не отнимая горизонтальные свайпы у
 /// PageView на Android.
 class SelectableShareArea extends StatefulWidget {
@@ -82,7 +84,7 @@ class _SelectableShareAreaState extends State<SelectableShareArea> {
     final box = context.findRenderObject()! as RenderBox;
     await SharePlus.instance.share(
       ShareParams(
-        text: text,
+        text: appendAppDownloadLinks(text),
         // На iPad лист отправки открывается поповером; задаём его источник.
         sharePositionOrigin: box.localToGlobal(Offset.zero) & box.size,
       ),

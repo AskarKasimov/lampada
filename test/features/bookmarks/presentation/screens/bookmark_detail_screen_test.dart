@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,8 +67,8 @@ void main() {
     (tester) async {
       await pump(tester);
 
-      expect(find.byIcon(Icons.bookmark), findsOneWidget);
-      expect(find.byIcon(Icons.bookmark_border), findsNothing);
+      expect(find.byIcon(CupertinoIcons.bookmark_fill), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.bookmark), findsNothing);
     },
   );
 
@@ -79,7 +80,7 @@ void main() {
       await tester.tap(find.byType(BookmarkButton));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.bookmark), findsOneWidget);
       // Текст никуда не пропадает — снялась только закладка.
       expect(find.text(_bookmark.text), findsOneWidget);
       expect(find.byType(BookmarkDetailScreen), findsOneWidget);

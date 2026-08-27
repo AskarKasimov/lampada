@@ -190,6 +190,12 @@ void main() {
     expect(find.text('Основы веры'), findsOneWidget);
   });
 
+  testWidgets('показывает кнопку отправки рядом с закладкой', (tester) async {
+    await pumpReader(tester);
+
+    expect(find.byTooltip('Поделиться'), findsOneWidget);
+  });
+
   testWidgets('uses the reader header instead of the repeated basics badge', (
     tester,
   ) async {

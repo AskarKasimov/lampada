@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -99,11 +100,11 @@ void main() {
     await tester.pumpWidget(wrap(repo));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.bookmark_border));
+    expect(find.byIcon(CupertinoIcons.bookmark), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.bookmark));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.bookmark), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.bookmark_fill), findsOneWidget);
     final container = ProviderScope.containerOf(
       tester.element(find.byType(DayStoryScreen)),
     );

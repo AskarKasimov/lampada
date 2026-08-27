@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
+import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/selectable_share_area.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
@@ -49,6 +50,11 @@ class InterpretationSheet extends StatelessWidget {
     savedAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
 
+  String get _shareText => [
+    verse.interpretation ?? '',
+    if (author != null && author!.isNotEmpty) '— $author',
+  ].join('\n\n');
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
@@ -76,6 +82,7 @@ class InterpretationSheet extends StatelessWidget {
                     fontSize: 11.5,
                   ),
                   const Spacer(),
+                  AppShareButton(text: _shareText),
                   BookmarkButton(bookmark: _bookmark),
                 ],
               ),
