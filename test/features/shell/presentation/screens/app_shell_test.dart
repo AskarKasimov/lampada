@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -115,8 +116,8 @@ void main() {
   /// «Сегодня» сама открывает первую непрочитанную карточку на весь экран,
   /// и она перекрывает таб-бар — тестам про навигацию её надо закрыть.
   Future<void> dismissAutoOpened(WidgetTester tester) async {
-    if (find.byIcon(Icons.close).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(Icons.close));
+    if (find.byIcon(CupertinoIcons.xmark).evaluate().isEmpty) return;
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
     await settle(tester);
   }
 
@@ -140,9 +141,9 @@ void main() {
     await dismissAutoOpened(tester);
 
     expect(find.byType(FloatingNavBar), findsOneWidget);
-    expect(tabIcon(Icons.wb_twilight), findsOneWidget);
-    expect(tabIcon(Icons.bookmark_border), findsOneWidget);
-    expect(tabIcon(Icons.person_outline), findsOneWidget);
+    expect(tabIcon(CupertinoIcons.sunset_fill), findsOneWidget);
+    expect(tabIcon(CupertinoIcons.bookmark), findsOneWidget);
+    expect(tabIcon(CupertinoIcons.person), findsOneWidget);
   });
 
   testWidgets('стеклянная рамка плавно переезжает к выбранной вкладке', (
@@ -165,7 +166,7 @@ void main() {
     expect(decoration.borderRadius, BorderRadius.circular(25));
 
     final startLeft = tester.getRect(selectionFinder).left;
-    await tester.tap(tabIcon(Icons.person_outline));
+    await tester.tap(tabIcon(CupertinoIcons.person));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
     final movingLeft = tester.getRect(selectionFinder).left;
@@ -199,7 +200,7 @@ void main() {
     await gesture.up();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(tabIcon(Icons.person), findsOneWidget);
+    expect(tabIcon(CupertinoIcons.person_fill), findsOneWidget);
   });
 
   testWidgets('на iOS навигацию рисует Flutter-капсула', (tester) async {
@@ -253,7 +254,7 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    await tester.tap(tabIcon(Icons.person_outline));
+    await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
 
     expect(
@@ -329,14 +330,14 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    await tester.tap(tabIcon(Icons.person_outline));
+    await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
     await dismissAutoOpened(tester);
     // Тумблер «Тёмная тема» заменён выбором из трёх: система / светлая / тёмная.
     expect(find.text('Тема'), findsOneWidget);
     expect(find.text('Система'), findsOneWidget);
 
-    await tester.tap(tabIcon(Icons.bookmark_border));
+    await tester.tap(tabIcon(CupertinoIcons.bookmark));
     await settle(tester);
     await dismissAutoOpened(tester);
     expect(find.byType(BookmarksScreen), findsOneWidget);
@@ -370,10 +371,10 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    await tester.tap(tabIcon(Icons.bookmark_border));
+    await tester.tap(tabIcon(CupertinoIcons.bookmark));
     await settle(tester);
     await dismissAutoOpened(tester);
-    await tester.tap(tabIcon(Icons.wb_twilight_outlined));
+    await tester.tap(tabIcon(CupertinoIcons.sunset));
     await settle(tester);
     await dismissAutoOpened(tester);
 

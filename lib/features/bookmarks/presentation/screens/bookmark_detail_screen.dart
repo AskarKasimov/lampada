@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/format/russian_date.dart';
@@ -106,7 +107,7 @@ class BookmarkDetailScreen extends StatelessWidget {
                 right: 8,
                 child: IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(CupertinoIcons.xmark),
                   color: colors.homeIcon,
                   tooltip: 'Закрыть',
                 ),

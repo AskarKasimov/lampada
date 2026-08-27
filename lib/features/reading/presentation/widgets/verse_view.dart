@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -94,7 +95,7 @@ class VerseInterpretationButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.menu_book_outlined, size: 15, color: colors.accent),
+              Icon(CupertinoIcons.book, size: 15, color: colors.accent),
               const SizedBox(width: 7),
               Text(
                 'Толкование',

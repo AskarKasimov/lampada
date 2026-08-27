@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -133,7 +134,7 @@ class _CardContentState extends State<CardContent> {
                           ),
                         ),
                         child: Icon(
-                          Icons.keyboard_arrow_down,
+                          CupertinoIcons.chevron_down,
                           size: 20,
                           color: colors.textSecondary,
                         ),

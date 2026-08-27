@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -45,7 +46,7 @@ class DayNameHeader extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.only(left: 6),
                         child: Icon(
-                          Icons.chevron_right,
+                          CupertinoIcons.chevron_right,
                           size: 22,
                           color: colors.homeSubtitle,
                         ),

@@ -125,7 +125,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BookmarkDetailScreen), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
     await tester.pumpAndSettle();
 
     expect(find.byType(BookmarkDetailScreen), findsNothing);

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -209,8 +210,8 @@ void main() {
 
     expect(find.text('Тема 3 из 365'), findsOneWidget);
     expect(find.textContaining('Предыдущие темы'), findsNothing);
-    expect(find.byIcon(Icons.arrow_back_ios_new), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_forward_ios), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.chevron_left), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.chevron_right), findsOneWidget);
 
     await tester.drag(find.byType(PageView), const Offset(500, 0));
     await tester.pumpAndSettle();

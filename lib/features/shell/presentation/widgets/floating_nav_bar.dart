@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -42,20 +43,20 @@ class FloatingNavBar extends StatefulWidget {
   static const _items = [
     (
       tab: ShellTab.today,
-      icon: Icons.wb_twilight_outlined,
-      activeIcon: Icons.wb_twilight,
+      icon: CupertinoIcons.sunset,
+      activeIcon: CupertinoIcons.sunset_fill,
       label: 'Сегодня',
     ),
     (
       tab: ShellTab.bookmarks,
-      icon: Icons.bookmark_border,
-      activeIcon: Icons.bookmark,
+      icon: CupertinoIcons.bookmark,
+      activeIcon: CupertinoIcons.bookmark_fill,
       label: 'Закладки',
     ),
     (
       tab: ShellTab.profile,
-      icon: Icons.person_outline,
-      activeIcon: Icons.person,
+      icon: CupertinoIcons.person,
+      activeIcon: CupertinoIcons.person_fill,
       label: 'Профиль',
     ),
   ];

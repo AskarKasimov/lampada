@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -75,7 +76,11 @@ class CourseProgressHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 2),
-                    Icon(Icons.chevron_right, size: 18, color: colors.homeIcon),
+                    Icon(
+                      CupertinoIcons.chevron_right,
+                      size: 18,
+                      color: colors.homeIcon,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 5),

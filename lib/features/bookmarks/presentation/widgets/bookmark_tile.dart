@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/format/russian_date.dart';
@@ -35,7 +36,7 @@ class BookmarkTile extends StatelessWidget {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 12),
-        child: Icon(Icons.delete_outline, color: colors.textSecondary),
+        child: Icon(CupertinoIcons.trash, color: colors.textSecondary),
       ),
       child: Material(
         color: Colors.transparent,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -249,7 +250,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.arrow_back_ios_new,
+                          CupertinoIcons.chevron_left,
                           size: 12,
                           color: colors.textSecondary,
                         ),
@@ -264,7 +265,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                         ),
                         const SizedBox(width: 10),
                         Icon(
-                          Icons.arrow_forward_ios,
+                          CupertinoIcons.chevron_right,
                           size: 12,
                           color: colors.textSecondary,
                         ),
@@ -277,7 +278,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   right: 8,
                   child: IconButton(
                     onPressed: () => unawaited(_dismiss()),
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(CupertinoIcons.xmark),
                     color: colors.homeIcon,
                     tooltip: 'Закрыть',
                   ),
