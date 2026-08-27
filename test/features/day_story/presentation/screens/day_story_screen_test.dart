@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart'
     show bookmarksProvider;
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
@@ -61,6 +62,20 @@ void main() {
     expect(find.text(_title), findsOneWidget);
     expect(find.text('Абзац первый.'), findsOneWidget);
     expect(find.text('Абзац второй.'), findsOneWidget);
+  });
+
+  testWidgets('показывает кнопку «Поделиться» для рассказа', (tester) async {
+    final repo = _FakeRepository(
+      const Success(DayStory(paragraphs: ['Абзац первый.'])),
+    );
+
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    final shareButton = tester.widget<AppShareButton>(
+      find.byType(AppShareButton),
+    );
+    expect(shareButton.text, '$_title\n\nАбзац первый.\n\n— Азбука веры');
   });
 
   testWidgets('сбой загрузки показывает сообщение и кнопку повтора', (
