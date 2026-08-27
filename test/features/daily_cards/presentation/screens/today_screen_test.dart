@@ -786,7 +786,7 @@ void main() {
       );
     });
 
-    testWidgets('на будущем дне не показывает статус прочтения', (
+    testWidgets('на будущем дне показывает точки непрочитанного', (
       tester,
     ) async {
       final progress = _FakeProgressRepository()
@@ -797,10 +797,26 @@ void main() {
       await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
       await settle(tester);
 
-      final futureEntries = find.byWidgetPredicate(
-        (widget) => widget is DayEntryRow && !widget.showReadStatus,
+      final futureEntries = tester.widgetList<DayEntryRow>(
+        find.byType(DayEntryRow),
       );
-      expect(futureEntries.hitTestable(), findsWidgets);
+      expect(futureEntries, isNotEmpty);
+      expect(futureEntries.every((entry) => entry.isUnread), isTrue);
+      expect(futureEntries.every((entry) => entry.showReadStatus), isTrue);
+
+      final future = DateTime.now().add(const Duration(days: 1));
+      await tester.tap(entry('ЦИТАТА'));
+      await settle(tester);
+      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await settle(tester);
+
+      expect(progress.marked, isNot(contains(CardType.quote)));
+      expect(progress.visitedDays, isNot(contains(dateKey(future))));
+
+      await tester.tap(entry('ЕВАНГЕЛИЕ ДНЯ'));
+      await settle(tester);
+
+      expect(progress.marked, isNot(contains(CardType.reading)));
     });
 
     testWidgets('на прошлом дне скрывает точки у прочитанного', (tester) async {

@@ -29,6 +29,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     required this.startIndex,
     required this.date,
     required this.recordProgress,
+    required this.recordRead,
     super.key,
   });
 
@@ -38,8 +39,12 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   final int startIndex;
   final DateTime date;
 
-  /// Засчитывать ли дату посещённой. Само прочтение пишется всегда.
+  /// Засчитывать ли дату посещённой.
   final bool recordProgress;
+
+  /// Записывать ли прочтение карточек. Для будущих дат выключено: их точки
+  /// непрочитанного должны оставаться видимыми после предварительного чтения.
+  final bool recordRead;
 
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
@@ -71,6 +76,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   /// «Дальше» — иначе, закрыв просмотрщик раньше конца, юзер оставил бы
   /// просмотренную карточку непрочитанной.
   void _markCurrentAsRead(int index) {
+    if (!widget.recordRead) return;
     if (index >= widget.cards.length || _markedIndex == index) return;
     _markedIndex = index;
     WidgetsBinding.instance.addPostFrameCallback((_) {

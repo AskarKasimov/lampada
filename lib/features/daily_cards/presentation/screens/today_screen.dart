@@ -331,6 +331,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
 
   bool get _recordProgress => _isToday;
 
+  // Будущий контент можно открыть заранее, но это не должно менять прогресс.
+  bool get _recordRead => !_isFuture;
+
   DayCard? get _reading =>
       day.cards.where((c) => c.type == CardType.reading).firstOrNull;
 
@@ -361,6 +364,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           startIndex: pages.indexOf(card),
           date: date,
           recordProgress: _recordProgress,
+          recordRead: _recordRead,
         ),
       ),
     );
@@ -378,9 +382,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     WidgetRef ref,
     DayCard card,
   ) async {
-    ref
-        .read(dayProgressProvider.notifier)
-        .markRead(card.type, date: date, markVisited: _recordProgress);
+    if (_recordRead) {
+      ref
+          .read(dayProgressProvider.notifier)
+          .markRead(card.type, date: date, markVisited: _recordProgress);
+    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ReadingScreen(reference: card.reference!),
@@ -506,7 +512,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             label: card.type.styleFor(brightness).shortLabel.toUpperCase(),
             text: card.body.replaceAll('\n', ' '),
             isUnread: !_isRead(card),
-            showReadStatus: !_isFuture,
             labelColor: card.type.styleFor(brightness).accent,
             onTap: () => _open(context, ref, card),
           ),
@@ -516,7 +521,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             label: 'ЕВАНГЕЛИЕ ДНЯ',
             text: reading.body,
             isUnread: !_isRead(reading),
-            showReadStatus: !_isFuture,
             labelColor: CardType.reading.styleFor(brightness).accent,
             textSize: 27,
             maxLines: 1,
