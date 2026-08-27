@@ -31,7 +31,6 @@ class BookmarkButton extends ConsumerWidget {
 
     return IconButton(
       tooltip: saved ? 'Убрать из копилки' : 'Сохранить в копилку',
-      visualDensity: VisualDensity.compact,
       onPressed: () async {
         final changed = await ref
             .read(bookmarksProvider.notifier)

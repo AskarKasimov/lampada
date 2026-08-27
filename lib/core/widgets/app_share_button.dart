@@ -17,7 +17,6 @@ class AppShareButton extends StatelessWidget {
     return Builder(
       builder: (buttonContext) => IconButton(
         tooltip: 'Поделиться',
-        visualDensity: VisualDensity.compact,
         onPressed: () => shareText(buttonContext, text),
         icon: Icon(CupertinoIcons.share, size: 22, color: colors.homeSubtitle),
       ),

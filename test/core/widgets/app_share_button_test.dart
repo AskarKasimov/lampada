@@ -32,6 +32,8 @@ void main() {
       ),
     );
 
+    expect(tester.getSize(find.byTooltip('Поделиться')), const Size(40, 40));
+
     await tester.tap(find.byTooltip('Поделиться'));
     await tester.pump();
 
