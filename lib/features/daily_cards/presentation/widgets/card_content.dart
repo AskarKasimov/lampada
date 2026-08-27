@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
+import '../../../../core/widgets/selectable_share_area.dart';
 import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
 
@@ -79,33 +80,35 @@ class _CardContentState extends State<CardContent> {
           child: LayoutBuilder(
             builder: (context, constraints) => Stack(
               children: [
-                SingleChildScrollView(
-                  controller: _scrollController,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            card.body,
-                            style: AppTheme.quoteStyle(
-                              context,
-                            ).copyWith(fontSize: fontSize),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '— ${card.source}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              letterSpacing: 0.2,
-                              color: colors.textSecondary,
+                SelectableShareArea(
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              card.body,
+                              style: AppTheme.quoteStyle(
+                                context,
+                              ).copyWith(fontSize: fontSize),
+                              textAlign: TextAlign.center,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            Text(
+                              '— ${card.source}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                letterSpacing: 0.2,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

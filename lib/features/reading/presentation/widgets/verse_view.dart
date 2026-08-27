@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/selectable_share_area.dart';
 import '../../domain/entities/daily_reading.dart';
 
 /// Один стих на весь экран — герой ридера (§6). Номер подписью снизу,
@@ -26,31 +27,34 @@ class VerseView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            verse.text,
-            textAlign: TextAlign.center,
-            style: AppTheme.quoteStyle(
-              context,
-            ).copyWith(fontSize: _fontSizeFor(verse.text.length), height: 1.5),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            '${verse.chapter}:${verse.number}',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 0.4,
-              color: colors.textSecondary,
+    return SelectableShareArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              verse.text,
+              textAlign: TextAlign.center,
+              style: AppTheme.quoteStyle(context).copyWith(
+                fontSize: _fontSizeFor(verse.text.length),
+                height: 1.5,
+              ),
             ),
-          ),
-          if (onOpenInterpretation != null) ...[
-            const SizedBox(height: 22),
-            VerseInterpretationButton(onPressed: onOpenInterpretation!),
+            const SizedBox(height: 18),
+            Text(
+              '${verse.chapter}:${verse.number}',
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 0.4,
+                color: colors.textSecondary,
+              ),
+            ),
+            if (onOpenInterpretation != null) ...[
+              const SizedBox(height: 22),
+              VerseInterpretationButton(onPressed: onOpenInterpretation!),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
