@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +8,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/core/widgets/app_pill_badge.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
@@ -190,11 +192,31 @@ void main() {
     expect(find.text('Основы веры'), findsOneWidget);
   });
 
+  testWidgets('крестик совпадает с размером и цветом действий ридера', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.xmark));
+    expect(icon.size, 22);
+    expect(icon.color, const Color(0xFF79695E));
+  });
+
+  testWidgets('показывает кнопку отправки рядом с закладкой', (tester) async {
+    await pumpReader(tester);
+
+    expect(find.byTooltip('Поделиться'), findsOneWidget);
+  });
+
   testWidgets('uses the reader header instead of the repeated basics badge', (
     tester,
   ) async {
     await pumpReader(tester);
 
+    final badge = tester.widget<AppPillBadge>(find.byType(AppPillBadge));
+    expect(badge.label, 'Основы веры');
+    expect(badge.background, const Color(0xFFD1E8FA));
+    expect(badge.foreground, const Color(0xFF00476D));
     expect(find.text('Основы'), findsNothing);
   });
 
@@ -203,8 +225,8 @@ void main() {
 
     expect(find.text('Тема 3 из 365'), findsOneWidget);
     expect(find.textContaining('Предыдущие темы'), findsNothing);
-    expect(find.byIcon(Icons.arrow_back_ios_new), findsOneWidget);
-    expect(find.byIcon(Icons.arrow_forward_ios), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.chevron_left), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.chevron_right), findsOneWidget);
 
     await tester.drag(find.byType(PageView), const Offset(500, 0));
     await tester.pumpAndSettle();

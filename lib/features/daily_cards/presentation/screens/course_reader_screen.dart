@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_link_button.dart';
+import '../../../../core/widgets/app_pill_badge.dart';
+import '../../../../core/widgets/app_share_button.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/course_calendar.dart';
@@ -182,10 +185,13 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     savedAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
 
+  String _shareTextFor(DayCard card) => '${card.body}\n\n— ${card.source}';
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
+    final basicsStyle = CardType.basics.styleFor(brightness);
     final currentCard = _cardForPage(_index);
     final visibleTopic = _topicForPage(_index);
 
@@ -217,18 +223,27 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   left: 8,
                   child: currentCard == null
                       ? const SizedBox.square(dimension: 40)
-                      : BookmarkButton(
-                          bookmark: _bookmarkFor(currentCard, brightness),
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            BookmarkButton(
+                              bookmark: _bookmarkFor(currentCard, brightness),
+                            ),
+                            AppShareButton(text: _shareTextFor(currentCard)),
+                          ],
                         ),
                 ),
                 Positioned(
                   top: 11,
                   left: 56,
                   right: 56,
-                  child: Text(
-                    'Основы веры',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: colors.ink),
+                  child: Center(
+                    child: AppPillBadge(
+                      label: 'Основы веры',
+                      background: basicsStyle.tagBackground,
+                      foreground: basicsStyle.tagForeground,
+                      letterSpacing: 0.2,
+                    ),
                   ),
                 ),
                 Positioned(
@@ -240,7 +255,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.arrow_back_ios_new,
+                          CupertinoIcons.chevron_left,
                           size: 12,
                           color: colors.textSecondary,
                         ),
@@ -255,7 +270,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                         ),
                         const SizedBox(width: 10),
                         Icon(
-                          Icons.arrow_forward_ios,
+                          CupertinoIcons.chevron_right,
                           size: 12,
                           color: colors.textSecondary,
                         ),
@@ -268,8 +283,11 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   right: 8,
                   child: IconButton(
                     onPressed: () => unawaited(_dismiss()),
-                    icon: const Icon(Icons.close),
-                    color: colors.homeIcon,
+                    icon: Icon(
+                      CupertinoIcons.xmark,
+                      size: 22,
+                      color: colors.homeSubtitle,
+                    ),
                     tooltip: 'Закрыть',
                   ),
                 ),

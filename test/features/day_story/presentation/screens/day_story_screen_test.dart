@@ -1,9 +1,12 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/core/widgets/app_share_button.dart';
+import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart'
     show bookmarksProvider;
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
@@ -62,6 +65,31 @@ void main() {
     expect(find.text('Абзац второй.'), findsOneWidget);
   });
 
+  testWidgets('показывает кнопку «Поделиться» для рассказа', (tester) async {
+    final repo = _FakeRepository(
+      const Success(DayStory(paragraphs: ['Абзац первый.'])),
+    );
+
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    final shareButton = tester.widget<AppShareButton>(
+      find.byType(AppShareButton),
+    );
+    expect(shareButton.text, '$_title\n\nАбзац первый.\n\n— Азбука веры');
+  });
+
+  testWidgets('текст рассказа можно выделить и отправить', (tester) async {
+    final repo = _FakeRepository(
+      const Success(DayStory(paragraphs: ['Абзац первый.'])),
+    );
+
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SelectableShareArea), findsOneWidget);
+  });
+
   testWidgets('сбой загрузки показывает сообщение и кнопку повтора', (
     tester,
   ) async {
@@ -99,11 +127,11 @@ void main() {
     await tester.pumpWidget(wrap(repo));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.bookmark_border));
+    expect(find.byIcon(CupertinoIcons.bookmark), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.bookmark));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.bookmark), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.bookmark_fill), findsOneWidget);
     final container = ProviderScope.containerOf(
       tester.element(find.byType(DayStoryScreen)),
     );

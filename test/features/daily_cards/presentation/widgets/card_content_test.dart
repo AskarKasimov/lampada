@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 
@@ -38,7 +40,7 @@ void main() {
       await tester.pump();
 
       expect(_fontSizeOf(tester, card.body), 24);
-      expect(find.byIcon(Icons.keyboard_arrow_down), findsNothing);
+      expect(find.byIcon(CupertinoIcons.chevron_down), findsNothing);
     },
   );
 
@@ -58,7 +60,7 @@ void main() {
       await tester.pump();
 
       expect(_fontSizeOf(tester, card.body), 18);
-      expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.chevron_down), findsOneWidget);
     },
   );
 
@@ -68,7 +70,7 @@ void main() {
     final card = _card(_filler(600));
     await tester.pumpWidget(_buildApp(card));
     await tester.pump();
-    expect(find.byIcon(Icons.keyboard_arrow_down), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.chevron_down), findsOneWidget);
 
     await tester.drag(
       find.byType(SingleChildScrollView),
@@ -76,7 +78,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byIcon(Icons.keyboard_arrow_down), findsNothing);
+    expect(find.byIcon(CupertinoIcons.chevron_down), findsNothing);
   });
 
   testWidgets('под текстом всегда подпись источника', (tester) async {
@@ -85,5 +87,11 @@ void main() {
     await tester.pump();
 
     expect(find.text('— Тестовый источник'), findsOneWidget);
+  });
+
+  testWidgets('текст карточки можно выделить и отправить', (tester) async {
+    await tester.pumpWidget(_buildApp(_card(_filler(50))));
+
+    expect(find.byType(SelectableShareArea), findsOneWidget);
   });
 }

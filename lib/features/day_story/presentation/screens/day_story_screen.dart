@@ -5,7 +5,9 @@ import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_link_button.dart';
+import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
+import '../../../../core/widgets/selectable_share_area.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/entities/day_story.dart';
@@ -38,6 +40,9 @@ class DayStoryScreen extends ConsumerWidget {
     savedAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
 
+  String _shareTextFor(DayStory story) =>
+      '$title\n\n${story.paragraphs.join('\n\n')}\n\n— Азбука веры';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dayStoryProvider(storyUrl));
@@ -63,6 +68,7 @@ class DayStoryScreen extends ConsumerWidget {
                   children: [
                     const Spacer(),
                     BookmarkButton(bookmark: _bookmarkFor(story)),
+                    AppShareButton(text: _shareTextFor(story)),
                     AppLinkButton(
                       label: 'Закрыть',
                       color: colors.homeSubtitle,
@@ -92,7 +98,7 @@ class _StoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    return SingleChildScrollView(
+    final content = SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 8, 20, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,6 +129,7 @@ class _StoryView extends StatelessWidget {
         ],
       ),
     );
+    return SelectableShareArea(child: content);
   }
 }
 

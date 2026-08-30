@@ -1,7 +1,10 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_pill_badge.dart';
+import '../../../../core/widgets/app_share_button.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/entities/day_card.dart';
@@ -13,6 +16,7 @@ import '../widgets/progress_dots.dart';
 
 /// Скорость свайпа вниз (лог.px/с), после которой просмотрщик закрывается.
 const _dismissVelocity = 700.0;
+const _readerHeaderHeight = 48.0;
 
 /// Полноэкранный просмотр карточек дня — без таб-бара и вообще без хрома
 /// вокруг: на экране остаётся одна мысль, как требует §6.
@@ -25,6 +29,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     required this.startIndex,
     required this.date,
     required this.recordProgress,
+    required this.recordRead,
     super.key,
   });
 
@@ -34,8 +39,12 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   final int startIndex;
   final DateTime date;
 
-  /// Засчитывать ли дату посещённой. Само прочтение пишется всегда.
+  /// Засчитывать ли дату посещённой.
   final bool recordProgress;
+
+  /// Записывать ли прочтение карточек. Для будущих дат выключено: их точки
+  /// непрочитанного должны оставаться видимыми после предварительного чтения.
+  final bool recordRead;
 
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
@@ -67,6 +76,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   /// «Дальше» — иначе, закрыв просмотрщик раньше конца, юзер оставил бы
   /// просмотренную карточку непрочитанной.
   void _markCurrentAsRead(int index) {
+    if (!widget.recordRead) return;
     if (index >= widget.cards.length || _markedIndex == index) return;
     _markedIndex = index;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -91,6 +101,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
+    final cardStyle = widget.cards[_index].type.styleFor(brightness);
     return Scaffold(
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -100,7 +111,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
             children: [
               Column(
                 children: [
-                  const SizedBox(height: 48),
+                  const SizedBox(height: _readerHeaderHeight),
                   Expanded(
                     child: PageView.builder(
                       controller: _controller,
@@ -148,16 +159,40 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
                 right: 8,
                 child: IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                  color: colors.homeIcon,
+                  icon: Icon(
+                    CupertinoIcons.xmark,
+                    size: 22,
+                    color: colors.homeSubtitle,
+                  ),
                   tooltip: 'Закрыть',
+                ),
+              ),
+              Positioned(
+                top: 8,
+                left: 80,
+                right: 80,
+                child: IgnorePointer(
+                  child: Center(
+                    child: AppPillBadge(
+                      label: cardStyle.label,
+                      background: cardStyle.tagBackground,
+                      foreground: cardStyle.tagForeground,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
                 ),
               ),
               Positioned(
                 top: 0,
                 left: 8,
-                child: BookmarkButton(
-                  bookmark: _bookmarkFor(widget.cards[_index], brightness),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    BookmarkButton(
+                      bookmark: _bookmarkFor(widget.cards[_index], brightness),
+                    ),
+                    AppShareButton(text: _shareTextFor(widget.cards[_index])),
+                  ],
                 ),
               ),
             ],
@@ -171,13 +206,18 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     final content = CardContent(
       key: ValueKey(widget.cards[index].id),
       card: widget.cards[index],
+      showBadge: false,
+    );
+    final spacedContent = Padding(
+      padding: const EdgeInsets.only(top: _readerHeaderHeight),
+      child: content,
     );
     return index == widget.startIndex && !_swipeNudgeHasStarted
         ? CardSwipeNudge(
             onConsumed: () => _swipeNudgeHasStarted = true,
-            child: content,
+            child: spacedContent,
           )
-        : content;
+        : spacedContent;
   }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
@@ -189,4 +229,6 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     label: card.type.styleFor(brightness).label,
     savedAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
+
+  String _shareTextFor(DayCard card) => '${card.body}\n\n— ${card.source}';
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_link_button.dart';
+import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
@@ -84,6 +85,7 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
   Widget _reader(DailyReading reading, AppColorsExtension colors) {
     final total = reading.pageCount;
     final isLast = _page >= total - 1;
+    final bookmark = _bookmarkForPage(reading);
 
     return Column(
       children: [
@@ -100,7 +102,8 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
                 ),
               ),
               const Spacer(),
-              BookmarkButton(bookmark: _bookmarkForPage(reading)),
+              AppShareButton(text: '${bookmark.text}\n\n— ${bookmark.source}'),
+              BookmarkButton(bookmark: bookmark),
               AppLinkButton(
                 label: isLast ? 'Готово' : 'Закрыть',
                 color: isLast ? colors.link : colors.homeSubtitle,

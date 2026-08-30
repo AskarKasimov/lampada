@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
+import '../../../../core/widgets/app_share_button.dart';
+import '../../../../core/widgets/selectable_share_area.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/entities/daily_reading.dart';
@@ -48,6 +50,11 @@ class InterpretationSheet extends StatelessWidget {
     savedAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
 
+  String get _shareText => [
+    verse.interpretation ?? '',
+    if (author != null && author!.isNotEmpty) '— $author',
+  ].join('\n\n');
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
@@ -75,6 +82,7 @@ class InterpretationSheet extends StatelessWidget {
                     fontSize: 11.5,
                   ),
                   const Spacer(),
+                  AppShareButton(text: _shareText),
                   BookmarkButton(bookmark: _bookmark),
                 ],
               ),
@@ -89,31 +97,33 @@ class InterpretationSheet extends StatelessWidget {
               ],
               const SizedBox(height: 14),
               Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        verse.interpretation ?? '',
-                        style: TextStyle(
-                          fontSize: 16,
-                          height: 1.6,
-                          color: colors.ink,
-                        ),
-                      ),
-                      if (author != null && author!.isNotEmpty) ...[
-                        const SizedBox(height: 18),
+                child: SelectableShareArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          '— $author',
+                          verse.interpretation ?? '',
                           style: TextStyle(
-                            fontSize: 13,
-                            letterSpacing: 0.2,
-                            color: colors.textSecondary,
+                            fontSize: 16,
+                            height: 1.6,
+                            color: colors.ink,
                           ),
                         ),
+                        if (author != null && author!.isNotEmpty) ...[
+                          const SizedBox(height: 18),
+                          Text(
+                            '— $author',
+                            style: TextStyle(
+                              fontSize: 13,
+                              letterSpacing: 0.2,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),

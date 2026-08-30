@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -31,7 +32,11 @@ class ProfileLinkTile extends StatelessWidget {
                   style: TextStyle(fontSize: 15, color: colors.ink),
                 ),
               ),
-              Icon(Icons.arrow_outward, size: 16, color: colors.homeSubtitle),
+              Icon(
+                CupertinoIcons.arrow_up_right,
+                size: 16,
+                color: colors.homeSubtitle,
+              ),
             ],
           ),
         ),

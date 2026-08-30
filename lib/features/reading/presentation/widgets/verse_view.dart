@@ -1,7 +1,9 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/selectable_share_area.dart';
 import '../../domain/entities/daily_reading.dart';
 
 /// Один стих на весь экран — герой ридера (§6). Номер подписью снизу,
@@ -26,31 +28,34 @@ class VerseView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            verse.text,
-            textAlign: TextAlign.center,
-            style: AppTheme.quoteStyle(
-              context,
-            ).copyWith(fontSize: _fontSizeFor(verse.text.length), height: 1.5),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            '${verse.chapter}:${verse.number}',
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 0.4,
-              color: colors.textSecondary,
+    return SelectableShareArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              verse.text,
+              textAlign: TextAlign.center,
+              style: AppTheme.quoteStyle(context).copyWith(
+                fontSize: _fontSizeFor(verse.text.length),
+                height: 1.5,
+              ),
             ),
-          ),
-          if (onOpenInterpretation != null) ...[
-            const SizedBox(height: 22),
-            VerseInterpretationButton(onPressed: onOpenInterpretation!),
+            const SizedBox(height: 18),
+            Text(
+              '${verse.chapter}:${verse.number}',
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 0.4,
+                color: colors.textSecondary,
+              ),
+            ),
+            if (onOpenInterpretation != null) ...[
+              const SizedBox(height: 22),
+              VerseInterpretationButton(onPressed: onOpenInterpretation!),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -90,7 +95,7 @@ class VerseInterpretationButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.menu_book_outlined, size: 15, color: colors.accent),
+              Icon(CupertinoIcons.book, size: 15, color: colors.accent),
               const SizedBox(width: 7),
               Text(
                 'Толкование',

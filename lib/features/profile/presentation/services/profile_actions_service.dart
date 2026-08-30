@@ -5,14 +5,14 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/format/app_download_links.dart';
+
 /// Ссылки на карточки приложения в магазинах нужны получателю, чтобы он мог
 /// установить Лампаду прямо из текста системного листа «Поделиться».
 const shareText =
-    'Лампада — приложение с ежедневным дозированным чтением: цитата, '
-    'совет и притча дня, Евангелие с толкованием, курс «Основы веры».\n\n'
-    'App Store: '
-    'https://apps.apple.com/ru/app/%D0%BB%D0%B0%D0%BC%D0%BF%D0%B0%D0%B4%D0%B0-%D1%82%D0%BE%D0%BB%D0%BA%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5-%D0%B5%D0%B2%D0%B0%D0%BD%D0%B3%D0%B5%D0%BB%D0%B8%D1%8F/id6799424044\n'
-    'RuStore: https://www.rustore.ru/catalog/app/ru.lampada.lampada';
+    'Лампада - приложение с ежедневным изучением Православия: цитата дня, '
+    'совет и притча, Евангелие с толкованием и последовательный курс «Основы веры»\n\n'
+    '$appDownloadLinks';
 
 /// Действия Профиля, ведущие за пределы приложения: браузер, системный лист
 /// «поделиться», запрос отзыва в магазине приложений.

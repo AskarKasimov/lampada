@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -132,12 +133,12 @@ void main() {
       await tester.pumpWidget(wrap(BookmarkButton(bookmark: _bookmark('q'))));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.bookmark), findsOneWidget);
 
       await tester.tap(find.byType(BookmarkButton));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.bookmark), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.bookmark_fill), findsOneWidget);
       // FR-016: подтверждение обязательно — смена иконки проходит мимо глаз.
       expect(find.text('Сохранено в копилку'), findsOneWidget);
     });
@@ -151,7 +152,7 @@ void main() {
       await tester.tap(find.byType(BookmarkButton));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.bookmark), findsOneWidget);
 
       final container = ProviderScope.containerOf(
         tester.element(find.byType(BookmarkButton)),
@@ -185,7 +186,7 @@ void main() {
 
       expect(find.text('Сохранено в копилку'), findsNothing);
       expect(find.text('Не удалось сохранить закладку'), findsOneWidget);
-      expect(find.byIcon(Icons.bookmark_border), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.bookmark), findsOneWidget);
     });
 
     testWidgets('момент сохранения ставится при нажатии, а не при сборке', (

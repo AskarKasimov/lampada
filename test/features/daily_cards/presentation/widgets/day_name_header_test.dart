@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
@@ -21,7 +22,7 @@ void main() {
       find.text('Мц. Христи́ны Тирской', findRichText: true),
       findsOneWidget,
     );
-    expect(find.byIcon(Icons.chevron_right), findsNothing);
+    expect(find.byIcon(CupertinoIcons.chevron_right), findsNothing);
   });
 
   testWidgets('со ссылкой на рассказ заголовок кликабелен и со стрелкой', (
@@ -38,7 +39,7 @@ void main() {
       _wrap(DayNameHeader(day: day, onTap: () => tapped = true)),
     );
 
-    expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.chevron_right), findsOneWidget);
     await tester.tap(find.byType(InkWell));
     expect(tapped, isTrue);
   });
@@ -54,6 +55,6 @@ void main() {
 
     await tester.pumpWidget(_wrap(const DayNameHeader(day: day)));
 
-    expect(find.byIcon(Icons.chevron_right), findsNothing);
+    expect(find.byIcon(CupertinoIcons.chevron_right), findsNothing);
   });
 }
