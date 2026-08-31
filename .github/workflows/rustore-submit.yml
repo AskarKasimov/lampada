@@ -153,6 +153,7 @@ jobs:
             --aab build/app/outputs/bundle/release/app-release.aab
             --package ru.lampada.lampada
             --whats-new "$whats_new"
+            --screenshots-dir metadata/rustore
           )
           if [[ -n "$DRAFT_VERSION_ID" ]]; then
             args+=(--draft-version-id "$DRAFT_VERSION_ID")
