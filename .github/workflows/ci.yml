@@ -25,6 +25,8 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.44.8
+          cache: true
+          pub-cache: true
 
       - name: Получить зависимости
         run: flutter pub get
