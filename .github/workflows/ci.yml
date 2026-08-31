@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Проверить исходный код
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Установить Flutter
+        uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+
+      - name: Получить зависимости
+        run: flutter pub get
+
+      - name: Проверить форматирование
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Проверить Dart-код
+        run: flutter analyze
+
+      - name: Запустить Flutter-тесты
+        run: flutter test
+
+      - name: Проверить workflow
+        uses: docker://rhysd/actionlint@sha256:1d74bfc9fd1963af8f89a7c22afaaafd42f49aad711a09951d02cb996398f61d # v1.7.7 linux/amd64
