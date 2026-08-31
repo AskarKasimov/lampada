@@ -291,3 +291,87 @@ debug/profile манифесты — на `flutter run` это незаметн�
 разрешения в `android/app/src/main/AndroidManifest.xml` — эта категория багов
 из `flutter test` не видна, проверяется только сборкой release/profile APK на
 реальном или Android-эмуляторе.
+
+## Поток разработки
+
+В репозитории две постоянные ветки:
+
+* `master` — только последний стабильный выпущенный код;
+* `dev` — общая интеграционная ветка для незарелизованных изменений.
+
+Обычная работа идёт в короткоживущих ветках `feature/<краткое-имя>`:
+
+```text
+feature/* → PR → dev → PR → master → tag vX.Y.Z → ручной RuStore workflow
+```
+
+В `master` и `dev` не делаем прямой push: нужен PR, успешный CI и review
+второго разработчика. Force-push и удаление этих веток запрещены. CI
+запускается на PR в `dev`/`master` и на push в эти ветки.
+
+### Выпуск версии
+
+1. Временно не вливайте новые PR в `dev`.
+2. Последним коммитом в `dev` обновите `version` в `pubspec.yaml`:
+   `versionName` должен совпасть с будущим tag без `v`, а `versionCode` быть
+   строго больше уже выпущенного в RuStore.
+3. Откройте PR `dev → master`, дождитесь CI и review, затем выполните merge.
+4. Создайте tag `vX.Y.Z` на merge-коммите в `master` и отправьте его в GitHub.
+5. Запустите ручной workflow RuStore с этим tag.
+6. После модерации вручную опубликуйте версию в RuStore Console.
+
+Срочный фикс делается в `hotfix/<краткое-имя>` от `master`, вливается в
+`master`, выпускается тем же способом, а затем переносится обратно в `dev`
+отдельным PR или merge `master → dev`.
+
+Первый `dev` создайте от `master` после того, как текущая ветка с CD будет
+влита в `master`. Постоянные `release/*`-ветки и `develop` не используются.
+
+## CD в RuStore
+
+Отправка на модерацию — ручной workflow **«RuStore: отправить на
+модерацию»** во вкладке Actions. Он принимает только tag `vX.Y.Z`, собирает
+подписанный AAB, сохраняет его с SHA-256 и отправляет черновик с типом
+публикации `MANUAL`. После одобрения в RuStore версию публикуем вручную в
+RuStore Console; GitHub Release создаём только после этого.
+
+### Однократная настройка
+
+В GitHub repository Settings создайте Environment `rustore-production` и
+настройте для него required reviewers. В него, а не в repository secrets,
+добавьте:
+
+* `ANDROID_KEYSTORE_BASE64`;
+* `ANDROID_KEY_ALIAS`;
+* `ANDROID_KEY_PASSWORD`;
+* `ANDROID_KEYSTORE_PASSWORD`;
+* `RUSTORE_KEY_ID`;
+* `RUSTORE_PRIVATE_KEY`.
+
+Значение `ANDROID_KEYSTORE_BASE64` получают локально, не добавляя keystore в
+репозиторий:
+
+```sh
+base64 < path/to/release.jks | tr -d '\n'
+```
+
+### Отправка новой версии
+
+1. Подготовьте версию в `dev` и влейте PR `dev → master` по правилам выше.
+   Например, для `version: 1.2.3+42` tag — `v1.2.3`.
+2. Создайте tag на merge-коммите в `master` и отправьте tag в GitHub.
+3. Во вкладке Actions выберите workflow, нажмите **Run workflow** и укажите
+   `tag` и текст `whats_new`. Не включайте в него секреты.
+4. Подтвердите запуск в Environment. В Summary появятся commit, версия, ID
+   черновика и SHA-256; AAB с той же контрольной суммой хранится в artifact
+   90 дней.
+
+Если после создания черновика загрузка или отправка на модерацию не удалась,
+job напечатает `draft_version_id`. Запустите workflow повторно с теми же
+`tag` и `whats_new`, передав этот ID в `draft_version_id`; workflow продолжит
+только указанный черновик. Он не выбирает черновик по тексту ошибки и не
+делает автоматических повторных отправок.
+
+После первого живого запуска проверьте Android release/profile на устройстве:
+холодный старт в светлой и тёмной теме, доступ к сети и установку подписанного
+AAB из RuStore. Не размещайте секреты в `whats_new`, логах, issue или commit.
