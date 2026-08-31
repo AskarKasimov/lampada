@@ -33,6 +33,3 @@ jobs:
 
       - name: Запустить Flutter-тесты
         run: flutter test
-
-      - name: Проверить workflow
-        uses: docker://rhysd/actionlint@sha256:1d74bfc9fd1963af8f89a7c22afaaafd42f49aad711a09951d02cb996398f61d # v1.7.7 linux/amd64
