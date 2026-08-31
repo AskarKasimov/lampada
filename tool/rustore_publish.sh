@@ -112,7 +112,8 @@ fi
 
 [[ -n "${RUSTORE_KEY_ID:-}" ]] || die 'missing RUSTORE_KEY_ID'
 [[ -n "${RUSTORE_PRIVATE_KEY:-}" ]] || die 'missing RUSTORE_PRIVATE_KEY'
-for value in "$package_name" "$whats_new" "$draft_version_id"   "$RUSTORE_KEY_ID" "$RUSTORE_PRIVATE_KEY"; do
+# Release notes are multiline by design and are safely JSON-escaped by jq below.
+for value in "$package_name" "$draft_version_id" "$RUSTORE_KEY_ID" "$RUSTORE_PRIVATE_KEY"; do
   has_line_break "$value" && die 'options and secrets must not contain line breaks'
 done
 
