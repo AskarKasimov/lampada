@@ -106,7 +106,7 @@ if [[ -n "$screenshots_dir" ]]; then
       \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) -print0 |
       sort -z
   )
-  (${#screenshot_files[@]} >= 3 && ${#screenshot_files[@]} <= 10) || \
+  (( ${#screenshot_files[@]} >= 3 && ${#screenshot_files[@]} <= 10 )) || \
     die 'provide 3 to 10 screenshots in --screenshots-dir'
 fi
 
