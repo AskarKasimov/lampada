@@ -1,0 +1,175 @@
+name: 'RuStore: отправить на модерацию'
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Существующий release tag, например v1.2.3'
+        required: true
+        type: string
+      whats_new:
+        description: 'Текст «Что нового» для RuStore'
+        required: true
+        type: string
+      draft_version_id:
+        description: 'ID черновика только для безопасного повтора после сбоя'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rustore-production
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    name: Собрать и отправить AAB
+    runs-on: ubuntu-24.04
+    environment: rustore-production
+
+    steps:
+      - name: Проверить исходный код
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Установить Flutter
+        uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+
+      - name: Проверить tag и версию
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          git check-ref-format --allow-onelevel "refs/tags/$TAG"
+          tag_ref="refs/tags/$TAG"
+          tag_commit="$(git rev-parse --verify "${tag_ref}^{commit}")"
+          git fetch --no-tags origin master
+          git merge-base --is-ancestor "$tag_commit" origin/master || {
+            printf 'Tag %s must point to a commit reachable from master.\n' "$TAG" >&2
+            exit 1
+          }
+
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\+[0-9]+[[:space:]]*$/\1/p' pubspec.yaml)"
+          [[ -n "$pubspec_version" && "$TAG" == "v$pubspec_version" ]] || {
+            printf 'Tag %s must match pubspec version v%s.\n' "$TAG" "$pubspec_version" >&2
+            exit 1
+          }
+
+          {
+            printf '## RuStore submission\n\n'
+            printf -- '- Tag: `%s`\n' "$TAG"
+            printf -- '- Commit: `%s`\n' "$tag_commit"
+            printf -- '- Version: `%s`\n\n' "$pubspec_version"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Собрать подписанный AAB
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          reject_line_break() {
+            [[ "$1" != *$'\n'* && "$1" != *$'\r'* ]] || {
+              printf 'Android signing values must not contain line breaks.\n' >&2
+              exit 1
+            }
+          }
+
+          escape_properties_value() {
+            local value="$1"
+            reject_line_break "$value"
+            printf '%s' "${value//\\/\\\\}"
+          }
+
+          write_property() {
+            local name="$1"
+            local value="$2"
+            printf '%s=%s\n' "$name" "$(escape_properties_value "$value")" \
+              >> android/key.properties
+          }
+
+          [[ -n "$ANDROID_KEYSTORE_BASE64" ]] || {
+            printf 'ANDROID_KEYSTORE_BASE64 is not configured.\n' >&2
+            exit 1
+          }
+          keystore_path="$RUNNER_TEMP/lampada-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          [[ -s "$keystore_path" ]] || {
+            printf 'Decoded Android keystore is empty.\n' >&2
+            exit 1
+          }
+          chmod 600 "$keystore_path"
+
+          : > android/key.properties
+          write_property storeFile "$keystore_path"
+          write_property storePassword "$ANDROID_KEYSTORE_PASSWORD"
+          write_property keyAlias "$ANDROID_KEY_ALIAS"
+          write_property keyPassword "$ANDROID_KEY_PASSWORD"
+
+          flutter pub get
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+          flutter test
+          flutter build appbundle --release
+          sha256sum build/app/outputs/bundle/release/app-release.aab \
+            > build/app/outputs/bundle/release/app-release.aab.sha256
+
+      - name: Удалить временные данные подписи
+        if: always()
+        run: |
+          rm -f -- "$RUNNER_TEMP/lampada-release.jks" android/key.properties
+
+      - name: Отправить AAB в RuStore
+        env:
+          RUSTORE_KEY_ID: ${{ secrets.RUSTORE_KEY_ID }}
+          RUSTORE_PRIVATE_KEY: ${{ secrets.RUSTORE_PRIVATE_KEY }}
+          WHATS_NEW: ${{ inputs.whats_new }}
+          DRAFT_VERSION_ID: ${{ inputs.draft_version_id }}
+        run: |
+          set -euo pipefail
+          output_file="$RUNNER_TEMP/rustore-submit-output.txt"
+          args=(
+            --aab build/app/outputs/bundle/release/app-release.aab
+            --package ru.lampada.lampada
+            --whats-new "$WHATS_NEW"
+          )
+          if [[ -n "$DRAFT_VERSION_ID" ]]; then
+            args+=(--draft-version-id "$DRAFT_VERSION_ID")
+          fi
+
+          tool/rustore_publish.sh "${args[@]}" | tee "$output_file"
+          version_id="$(awk -F= '$1 == "version_id" {print $2}' "$output_file")"
+          [[ "$version_id" =~ ^[1-9][0-9]*$ ]] || {
+            printf 'RuStore client did not return a valid draft ID.\n' >&2
+            exit 1
+          }
+
+          {
+            printf -- '- Draft ID: `%s`\n' "$version_id"
+            printf -- '- Status: `submitted`\n'
+            printf -- '- AAB SHA-256: `%s`\n' \
+              "$(cut -d ' ' -f 1 build/app/outputs/bundle/release/app-release.aab.sha256)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Сохранить AAB и контрольную сумму
+        if: always() && hashFiles('build/app/outputs/bundle/release/app-release.aab') != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lampada-${{ inputs.tag }}-aab
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/bundle/release/app-release.aab.sha256
+          if-no-files-found: error
+          retention-days: 90
