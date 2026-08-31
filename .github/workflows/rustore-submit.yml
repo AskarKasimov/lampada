@@ -157,15 +157,10 @@ jobs:
         run: |
           set -euo pipefail
           output_file="$RUNNER_TEMP/rustore-submit-output.txt"
-          [[ -f WHATS_NEW.md ]] || {
-            printf 'WHATS_NEW.md is missing from the tagged commit.\n' >&2
-            exit 1
-          }
-          whats_new="$(< WHATS_NEW.md)"
-          [[ -n "${whats_new//[[:space:]]/}" ]] || {
-            printf 'WHATS_NEW.md must not be empty.\n' >&2
-            exit 1
-          }
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\+[0-9]+[[:space:]]*$/\1/p' pubspec.yaml)"
+          whats_new="$(bash tool/extract_release_notes.sh \
+            --version "$pubspec_version" \
+            --file CHANGELOG.md)"
           args=(
             --aab build/app/outputs/bundle/release/app-release.aab
             --package ru.lampada.lampada
@@ -186,7 +181,7 @@ jobs:
           {
             printf -- '- Draft ID: `%s`\n' "$version_id"
             printf -- '- Status: `submitted`\n'
-            printf -- '- Release notes: `WHATS_NEW.md`\n'
+            printf -- '- Release notes: `CHANGELOG.md`\n'
             printf -- '- AAB SHA-256: `%s`\n' \
               "$(cut -d ' ' -f 1 build/app/outputs/bundle/release/app-release.aab.sha256)"
           } >> "$GITHUB_STEP_SUMMARY"
