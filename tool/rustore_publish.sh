@@ -127,6 +127,7 @@ if [[ -z "$draft_version_id" ]]; then
   if ! draft_version_id="$(jq -er 'select(.code == "OK") | .body | select(type == "number" and . > 0) | floor'     <<< "$draft_response" 2>/dev/null)"; then
     die 'draft creation failed: response has no version ID'
   fi
+  printf 'RuStore submit: draft_version_id=%s\n' "$draft_version_id" >&2
 fi
 
 if ! upload_response="$("$CURL_BIN"   --silent   --show-error   --request POST   --header "Public-Token: $token"   --form "file=@$aab"   "$RUSTORE_API_BASE_URL/public/v1/application/$package_path/version/$draft_version_id/aab")"; then

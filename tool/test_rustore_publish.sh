@@ -65,7 +65,11 @@ case "$url" in
     fi
     ;;
   */version/*/aab|*/commit\?priorityUpdate=0)
-    printf '%s\n' '{"code":"OK","body":null}'
+    if [[ "${MOCK_UPLOAD_ERROR:-0}" == '1' && "$url" == */aab ]]; then
+      printf '%s\n' '{"code":"ERROR","message":"upload rejected"}'
+    else
+      printf '%s\n' '{"code":"OK","body":null}'
+    fi
     ;;
   */version)
     printf '%s\n' '{"code":"OK","body":243242}'
@@ -133,7 +137,21 @@ test_redacts_private_key_on_authentication_error() {
   assert_not_contains "$output" "$private_key_base64"
 }
 
+test_reports_created_draft_id_after_upload_error() {
+  : > "$curl_log"
+  local output status
+  set +e
+  output="$(MOCK_UPLOAD_ERROR=1 run_client 2>&1)"
+  status=$?
+  set -e
+
+  [[ "$status" -ne 0 ]] || fail 'upload error must fail'
+  assert_contains "$output" 'draft_version_id=243242'
+  assert_contains "$output" 'AAB upload failed'
+}
+
 test_successful_submission
 test_reuses_explicit_draft
 test_redacts_private_key_on_authentication_error
+test_reports_created_draft_id_after_upload_error
 printf 'PASS: rustore_publish.sh\n'
