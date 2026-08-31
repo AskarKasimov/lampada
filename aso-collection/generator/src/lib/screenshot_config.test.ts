@@ -67,16 +67,17 @@ test("отклоняет пустые строки и массивы", () => {
   expect(() => parseLocaleConfig(localeYaml.replace("label: Главный", "label: ''"), "ru")).toThrow("label");
 });
 
-test("коммитные манифесты ссылаются на соседние изображения", () => {
+test("все коммитные манифесты ссылаются на соседние изображения", () => {
   const publicDir = join(import.meta.dir, "../../public");
   const root = parseRootConfig(readFileSync(join(publicDir, "config.yaml"), "utf8"));
-  const locale = parseLocaleConfig(
-    readFileSync(join(publicDir, "locales/ru/config.yaml"), "utf8"),
-    "ru",
-  );
 
-  expect(root.locales[0]).toBe("ru");
-  for (const slide of locale.slides) {
-    expect(existsSync(join(publicDir, "locales/ru", slide.screenshot))).toBe(true);
+  for (const localeId of root.locales) {
+    const locale = parseLocaleConfig(
+      readFileSync(join(publicDir, "locales", localeId, "config.yaml"), "utf8"),
+      localeId,
+    );
+    for (const slide of locale.slides) {
+      expect(existsSync(join(publicDir, "locales", localeId, slide.screenshot))).toBe(true);
+    }
   }
 });
