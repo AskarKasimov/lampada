@@ -23,6 +23,22 @@ bun run dev
 Откройте <http://localhost:3000>, выберите формат и скачайте отдельный слайд
 или ZIP со всеми слайдами.
 
+## CLI для витринных скриншотов
+
+Готовые PNG не хранятся: release workflow строит их в Linux из содержимого
+`public/` и передаёт в свой временный каталог. Локально результат текущего
+формата можно получить так:
+
+```sh
+bun install
+bunx playwright install chromium
+output_dir=$(mktemp -d)
+bun run capture -- --locale ru --format rustore --output-dir "$output_dir"
+```
+
+`output_dir` должен существовать и быть пустым. Команда сама собирает Next
+перед capture; файлы именуются в порядке YAML, например `01-hero.png`.
+
 ## Проверка
 
 ```sh
