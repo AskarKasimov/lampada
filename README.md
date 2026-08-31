@@ -302,7 +302,7 @@ debug/profile манифесты — на `flutter run` это незаметн�
 Обычная работа идёт в короткоживущих ветках `feature/<краткое-имя>`:
 
 ```text
-feature/* → PR → dev → PR → master → tag vX.Y.Z → ручной RuStore workflow
+feature/* → PR → dev → PR → master → tag vX.Y.Z → автоматический RuStore workflow
 ```
 
 В `master` и `dev` не делаем прямой push: нужен PR, успешный CI и review
@@ -317,7 +317,8 @@ feature/* → PR → dev → PR → master → tag vX.Y.Z → ручной RuSto
    строго больше уже выпущенного в RuStore.
 3. Откройте PR `dev → master`, дождитесь CI и review, затем выполните merge.
 4. Создайте tag `vX.Y.Z` на merge-коммите в `master` и отправьте его в GitHub.
-5. Запустите ручной workflow RuStore с этим tag.
+5. Push tag автоматически запустит workflow RuStore и отправит AAB на
+   модерацию.
 6. После модерации вручную опубликуйте версию в RuStore Console.
 
 Срочный фикс делается в `hotfix/<краткое-имя>` от `master`, вливается в
@@ -329,17 +330,27 @@ feature/* → PR → dev → PR → master → tag vX.Y.Z → ручной RuSto
 
 ## CD в RuStore
 
-Отправка на модерацию — ручной workflow **«RuStore: отправить на
-модерацию»** во вкладке Actions. Он принимает только tag `vX.Y.Z`, собирает
-подписанный AAB, сохраняет его с SHA-256 и отправляет черновик с типом
-публикации `MANUAL`. После одобрения в RuStore версию публикуем вручную в
-RuStore Console; GitHub Release создаём только после этого.
+Отправка на модерацию запускается автоматически при push tag `vX.Y.Z`.
+Workflow **«RuStore: отправить на модерацию»** читает `WHATS_NEW.md` из этого
+же tag, собирает подписанный AAB, сохраняет его с SHA-256 и отправляет черновик
+с типом публикации `MANUAL`. После одобрения в RuStore версию публикуем вручную
+в RuStore Console; GitHub Release создаём только после этого.
+
+`WHATS_NEW.md` — единственный источник текста «Что нового». Меняйте его в
+`dev` вместе с версией, чтобы файл попал в tagged commit. Не включайте в него
+секреты.
+
+Скриншоты RuStore хранятся в metadata/rustore/. Это экспорт формата RuStore
+из aso-collection/generator; сейчас каталог содержит пять портретных PNG
+1080×1920. Workflow загружает от 3 до 10 файлов в лексикографическом порядке
+(01-..., 02-... и т. д.). После изменения экранов заново экспортируйте этот
+формат и замените файлы в каталоге.
 
 ### Однократная настройка
 
-В GitHub repository Settings создайте Environment `rustore-production` и
-настройте для него required reviewers. В него, а не в repository secrets,
-добавьте:
+В GitHub repository Settings создайте Environment `rustore-production` без
+required reviewers, иначе автоматический запуск будет ждать ручного
+подтверждения. В него, а не в repository secrets, добавьте:
 
 * `ANDROID_KEYSTORE_BASE64`;
 * `ANDROID_KEY_ALIAS`;
@@ -347,6 +358,10 @@ RuStore Console; GitHub Release создаём только после этог�
 * `ANDROID_KEYSTORE_PASSWORD`;
 * `RUSTORE_KEY_ID`;
 * `RUSTORE_PRIVATE_KEY`.
+
+В Rulesets ограничьте создание и обновление tag `v*.*.*` владельцами и
+maintainers: такой tag запускает отправку в RuStore без ручного запуска
+workflow.
 
 Значение `ANDROID_KEYSTORE_BASE64` получают локально, не добавляя keystore в
 репозиторий:
@@ -359,18 +374,16 @@ base64 < path/to/release.jks | tr -d '\n'
 
 1. Подготовьте версию в `dev` и влейте PR `dev → master` по правилам выше.
    Например, для `version: 1.2.3+42` tag — `v1.2.3`.
-2. Создайте tag на merge-коммите в `master` и отправьте tag в GitHub.
-3. Во вкладке Actions выберите workflow, нажмите **Run workflow** и укажите
-   `tag` и текст `whats_new`. Не включайте в него секреты.
-4. Подтвердите запуск в Environment. В Summary появятся commit, версия, ID
-   черновика и SHA-256; AAB с той же контрольной суммой хранится в artifact
-   90 дней.
+2. Создайте tag `vX.Y.Z` на merge-коммите в `master` и отправьте его в GitHub.
+   Workflow запустится автоматически.
+3. В Summary появятся commit, версия, ID черновика и SHA-256; AAB с той же
+   контрольной суммой хранится в artifact 90 дней.
 
 Если после создания черновика загрузка или отправка на модерацию не удалась,
-job напечатает `draft_version_id`. Запустите workflow повторно с теми же
-`tag` и `whats_new`, передав этот ID в `draft_version_id`; workflow продолжит
-только указанный черновик. Он не выбирает черновик по тексту ошибки и не
-делает автоматических повторных отправок.
+job напечатает `draft_version_id`. Для безопасного повтора вручную запустите
+workflow с тем же `tag` и передайте этот ID в `draft_version_id`; текст будет
+снова прочитан из `WHATS_NEW.md` в tag. Workflow не выбирает черновик по
+тексту ошибки и не делает автоматических повторных отправок.
 
 После первого живого запуска проверьте Android release/profile на устройстве:
 холодный старт в светлой и тёмной теме, доступ к сети и установку подписанного

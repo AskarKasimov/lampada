@@ -9,6 +9,7 @@ aab=''
 package_name=''
 whats_new=''
 draft_version_id=''
+screenshots_dir=''
 key_file=''
 
 die() {
@@ -79,6 +80,11 @@ while (($#)); do
       draft_version_id="$2"
       shift 2
       ;;
+    --screenshots-dir)
+      require_option_value "$@"
+      screenshots_dir="$2"
+      shift 2
+      ;;
     *)
       die "unknown option: $1"
       ;;
@@ -89,6 +95,20 @@ done
 [[ -n "$package_name" && "$package_name" =~ ^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+$ ]] ||   die 'provide an Android package name with --package'
 [[ -n "$whats_new" && ${#whats_new} -le 5000 ]] ||   die 'provide release notes of 1 to 5000 characters with --whats-new'
 [[ -z "$draft_version_id" || "$draft_version_id" =~ ^[1-9][0-9]*$ ]] ||   die 'draft version ID must be a positive integer'
+[[ -z "$screenshots_dir" || -d "$screenshots_dir" ]] ||   die 'screenshots directory does not exist'
+
+screenshot_files=()
+if [[ -n "$screenshots_dir" ]]; then
+  while IFS= read -r -d '' screenshot; do
+    screenshot_files+=("$screenshot")
+  done < <(
+    find "$screenshots_dir" -maxdepth 1 -type f \
+      \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) -print0 |
+      sort -z
+  )
+  (${#screenshot_files[@]} >= 3 && ${#screenshot_files[@]} <= 10) || \
+    die 'provide 3 to 10 screenshots in --screenshots-dir'
+fi
 
 [[ -n "${RUSTORE_KEY_ID:-}" ]] || die 'missing RUSTORE_KEY_ID'
 [[ -n "${RUSTORE_PRIVATE_KEY:-}" ]] || die 'missing RUSTORE_PRIVATE_KEY'
@@ -134,6 +154,20 @@ if ! upload_response="$("$CURL_BIN"   --silent   --show-error   --request POST  
   die "AAB upload request failed for draft $draft_version_id"
 fi
 require_api_success 'AAB upload' "$upload_response"
+
+for ordinal in "${!screenshot_files[@]}"; do
+  screenshot="${screenshot_files[$ordinal]}"
+  if ! screenshot_response="$("$CURL_BIN" \
+    --silent \
+    --show-error \
+    --request POST \
+    --header "Public-Token: $token" \
+    --form "file=@$screenshot" \
+    "$RUSTORE_API_BASE_URL/public/v1/application/$package_path/version/$draft_version_id/image/screenshot/PORTRAIT/$ordinal")"; then
+    die "screenshot upload request failed for draft $draft_version_id (ordinal $ordinal)"
+  fi
+  require_api_success "screenshot upload $((ordinal + 1))" "$screenshot_response"
+done
 
 if ! submit_response="$("$CURL_BIN"   --silent   --show-error   --request POST   --header "Public-Token: $token"   "$RUSTORE_API_BASE_URL/public/v1/application/$package_path/version/$draft_version_id/commit?priorityUpdate=0")"; then
   die "moderation submission request failed for draft $draft_version_id"
