@@ -43,7 +43,7 @@ jobs:
           channel: stable
           flutter-version: 3.44.8
           cache: true
-          pub-cache: false
+          pub-cache: true
 
       - name: Проверить tag и версию
         env:
