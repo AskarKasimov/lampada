@@ -1,0 +1,418 @@
+name: 'Stores: отправить на модерацию'
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Существующий release tag, например v1.2.3'
+        required: true
+        type: string
+      target:
+        description: 'В какую витрину отправить версию'
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - rustore
+          - appstore
+      draft_version_id:
+        description: 'ID черновика RuStore только для безопасного повтора после сбоя'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stores-production
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  validate-release:
+    name: Проверить исходный код и версию
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Проверить исходный код
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Установить Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+          cache: true
+          pub-cache: true
+
+      - name: Проверить tag и версию
+        env:
+          TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          set -euo pipefail
+
+          git check-ref-format --allow-onelevel "refs/tags/$TAG"
+          tag_ref="refs/tags/$TAG"
+          tag_commit="$(git rev-parse --verify "${tag_ref}^{commit}")"
+          git fetch --no-tags origin master
+          git merge-base --is-ancestor "$tag_commit" origin/master || {
+            printf 'Tag %s must point to a commit reachable from master.\n' "$TAG" >&2
+            exit 1
+          }
+
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\\+[0-9]+[[:space:]]*$/\\1/p' pubspec.yaml)"
+          [[ -n "$pubspec_version" && "$TAG" == "v$pubspec_version" ]] || {
+            printf 'Tag %s must match pubspec version v%s.\n' "$TAG" "$pubspec_version" >&2
+            exit 1
+          }
+
+          {
+            printf '## Release validation\n\n'
+            printf -- '- Tag: `%s`\n' "$TAG"
+            printf -- '- Commit: `%s`\n' "$tag_commit"
+            printf -- '- Version: `%s`\n\n' "$pubspec_version"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Проверить Dart-код
+        run: |
+          set -euo pipefail
+          flutter pub get
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+          flutter test
+
+  submit-rustore:
+    name: Собрать и отправить AAB в RuStore
+    needs: validate-release
+    if: ${{ github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'rustore' }}
+    runs-on: ubuntu-24.04
+    environment: rustore-production
+    steps:
+      - name: Проверить исходный код
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Установить Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+          cache: true
+          pub-cache: true
+
+      - name: Собрать подписанный AAB
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          reject_line_break() {
+            [[ "$1" != *$'\n'* && "$1" != *$'\r'* ]] || {
+              printf 'Android signing values must not contain line breaks.\n' >&2
+              exit 1
+            }
+          }
+
+          escape_properties_value() {
+            local value="$1"
+            reject_line_break "$value"
+            printf '%s' "${value//\\/\\\\}"
+          }
+
+          write_property() {
+            local name="$1"
+            local value="$2"
+            printf '%s=%s\n' "$name" "$(escape_properties_value "$value")" \
+              >> android/key.properties
+          }
+
+          [[ -n "$ANDROID_KEYSTORE_BASE64" ]] || {
+            printf 'ANDROID_KEYSTORE_BASE64 is not configured.\n' >&2
+            exit 1
+          }
+          keystore_path="$RUNNER_TEMP/lampada-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          [[ -s "$keystore_path" ]] || {
+            printf 'Decoded Android keystore is empty.\n' >&2
+            exit 1
+          }
+          chmod 600 "$keystore_path"
+
+          : > android/key.properties
+          write_property storeFile "$keystore_path"
+          write_property storePassword "$ANDROID_KEYSTORE_PASSWORD"
+          write_property keyAlias "$ANDROID_KEY_ALIAS"
+          write_property keyPassword "$ANDROID_KEY_PASSWORD"
+
+          flutter pub get
+          flutter build appbundle --release
+          sha256sum build/app/outputs/bundle/release/app-release.aab \
+            > build/app/outputs/bundle/release/app-release.aab.sha256
+
+      - name: Удалить временные данные подписи
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/lampada-release.jks" android/key.properties
+
+      - name: Установить Bun для витринных скриншотов
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.11
+
+      - name: Сгенерировать скриншоты RuStore
+        working-directory: aso-collection/generator
+        run: |
+          set -euo pipefail
+          bun ci
+          bunx playwright install --with-deps chromium
+          mkdir -p "$RUNNER_TEMP/rustore-screenshots"
+          bun run capture -- --locale ru --format rustore \
+            --output-dir "$RUNNER_TEMP/rustore-screenshots"
+
+      - name: Отправить AAB в RuStore
+        env:
+          RUSTORE_KEY_ID: ${{ secrets.RUSTORE_KEY_ID }}
+          RUSTORE_PRIVATE_KEY: ${{ secrets.RUSTORE_PRIVATE_KEY }}
+          DRAFT_VERSION_ID: ${{ inputs.draft_version_id }}
+        run: |
+          set -euo pipefail
+          output_file="$RUNNER_TEMP/rustore-submit-output.txt"
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\\+[0-9]+[[:space:]]*$/\\1/p' pubspec.yaml)"
+          whats_new="$(bash tool/extract_release_notes.sh \
+            --version "$pubspec_version" \
+            --file CHANGELOG.md)"
+          args=(
+            --aab build/app/outputs/bundle/release/app-release.aab
+            --package ru.lampada.lampada
+            --whats-new "$whats_new"
+            --screenshots-dir "$RUNNER_TEMP/rustore-screenshots"
+          )
+          if [[ -n "$DRAFT_VERSION_ID" ]]; then
+            args+=(--draft-version-id "$DRAFT_VERSION_ID")
+          fi
+
+          tool/rustore_publish.sh "${args[@]}" | tee "$output_file"
+          version_id="$(awk -F= '$1 == "version_id" {print $2}' "$output_file")"
+          [[ "$version_id" =~ ^[1-9][0-9]*$ ]] || {
+            printf 'RuStore client did not return a valid draft ID.\n' >&2
+            exit 1
+          }
+
+          {
+            printf '## RuStore submission\n\n'
+            printf -- '- Draft ID: `%s`\n' "$version_id"
+            printf -- '- Status: `submitted`\n'
+            printf -- '- Release notes: `CHANGELOG.md`\n'
+            printf -- '- AAB SHA-256: `%s`\n' \
+              "$(cut -d ' ' -f 1 build/app/outputs/bundle/release/app-release.aab.sha256)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Сохранить AAB и контрольную сумму
+        if: always() && hashFiles('build/app/outputs/bundle/release/app-release.aab') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lampada-${{ env.RELEASE_TAG }}-aab
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            build/app/outputs/bundle/release/app-release.aab.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+  submit-appstore:
+    name: Собрать IPA и отправить в App Store Review
+    needs: validate-release
+    if: ${{ github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'appstore' }}
+    runs-on: macos-15
+    environment: appstore-production
+    env:
+      APP_STORE_BUNDLE_ID: ${{ vars.APP_STORE_BUNDLE_ID }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+      IOS_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+      IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+      IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+      FASTLANE_SKIP_UPDATE_CHECK: 'true'
+    steps:
+      - name: Проверить исходный код
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Установить Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+          cache: true
+          pub-cache: true
+
+      - name: Установить Ruby и Fastlane
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Подготовить подпись iOS
+        run: |
+          set -euo pipefail
+          umask 077
+
+          for name in \
+            APP_STORE_BUNDLE_ID \
+            APP_STORE_CONNECT_KEY_ID \
+            APP_STORE_CONNECT_ISSUER_ID \
+            APP_STORE_CONNECT_PRIVATE_KEY_BASE64 \
+            IOS_DISTRIBUTION_CERTIFICATE_BASE64 \
+            IOS_DISTRIBUTION_CERTIFICATE_PASSWORD \
+            IOS_PROVISIONING_PROFILE_BASE64; do
+            [[ -n "${!name}" ]] || {
+              printf '%s is not configured.\n' "$name" >&2
+              exit 1
+            }
+          done
+
+          keychain_path="$RUNNER_TEMP/lampada-signing.keychain-db"
+          certificate_path="$RUNNER_TEMP/lampada-distribution.p12"
+          profile_path="$RUNNER_TEMP/lampada-appstore.mobileprovision"
+          api_key_path="$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          keychain_password="$(openssl rand -base64 32)"
+
+          printf '%s' "$IOS_DISTRIBUTION_CERTIFICATE_BASE64" | base64 -D > "$certificate_path"
+          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 -D > "$profile_path"
+          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 -D > "$api_key_path"
+          [[ -s "$certificate_path" && -s "$profile_path" && -s "$api_key_path" ]] || {
+            printf 'A decoded iOS signing file is empty.\n' >&2
+            exit 1
+          }
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" -k "$keychain_path" \
+            -P "$IOS_DISTRIBUTION_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s \
+            -k "$keychain_password" "$keychain_path"
+          security list-keychain -d user -s "$keychain_path"
+
+          profile_plist="$(security cms -D -i "$profile_path")"
+          profile_name="$(printf '%s' "$profile_plist" | plutil -extract Name raw -)"
+          profile_uuid="$(printf '%s' "$profile_plist" | plutil -extract UUID raw -)"
+          profile_team_id="$(printf '%s' "$profile_plist" | plutil -extract TeamIdentifier.0 raw -)"
+          [[ -n "$profile_name" && -n "$profile_uuid" && -n "$profile_team_id" ]] || {
+            printf 'Provisioning profile does not contain its name, UUID, or team ID.\n' >&2
+            exit 1
+          }
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$profile_path" "$HOME/Library/MobileDevice/Provisioning Profiles/$profile_uuid.mobileprovision"
+
+          export_options="$RUNNER_TEMP/ExportOptions.plist"
+          plutil -create xml1 "$export_options"
+          /usr/libexec/PlistBuddy -c 'Add :method string app-store-connect' "$export_options"
+          /usr/libexec/PlistBuddy -c 'Add :signingStyle string manual' "$export_options"
+          /usr/libexec/PlistBuddy -c "Add :teamID string $profile_team_id" "$export_options"
+          /usr/libexec/PlistBuddy -c 'Add :provisioningProfiles dict' "$export_options"
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:$APP_STORE_BUNDLE_ID string $profile_name" "$export_options"
+
+          {
+            printf 'IOS_KEYCHAIN_PATH=%s\n' "$keychain_path"
+            printf 'IOS_PROFILE_PATH=%s\n' "$profile_path"
+            printf 'APP_STORE_CONNECT_KEY_PATH=%s\n' "$api_key_path"
+            printf 'IOS_EXPORT_OPTIONS_PATH=%s\n' "$export_options"
+          } >> "$GITHUB_ENV"
+
+      - name: Собрать подписанный IPA
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build ipa --release \
+            --export-options-plist="$IOS_EXPORT_OPTIONS_PATH"
+          shasum -a 256 build/ipa/*.ipa > build/ipa/lampada.ipa.sha256
+
+      - name: Установить Bun для витринных скриншотов
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.11
+
+      - name: Подготовить метаданные и скриншоты App Store
+        run: |
+          set -euo pipefail
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\\+[0-9]+[[:space:]]*$/\\1/p' pubspec.yaml)"
+          build_number="$(sed -nE 's/^version:[[:space:]]*[^+[:space:]]+\\+([0-9]+)[[:space:]]*$/\\1/p' pubspec.yaml)"
+          [[ -n "$pubspec_version" && "$build_number" =~ ^[1-9][0-9]*$ ]] || {
+            printf 'pubspec.yaml must contain versionName+positive versionCode.\n' >&2
+            exit 1
+          }
+          whats_new="$(bash tool/extract_release_notes.sh \
+            --version "$pubspec_version" \
+            --file CHANGELOG.md \
+            --max-length 4000)"
+          metadata_dir="$RUNNER_TEMP/appstore-metadata"
+          screenshots_dir="$RUNNER_TEMP/appstore-screenshots"
+          ipa_path="$(find "$GITHUB_WORKSPACE/build/ipa" -maxdepth 1 -name '*.ipa' -print -quit)"
+          [[ -n "$ipa_path" && -f "$ipa_path" ]] || {
+            printf 'Flutter build did not produce an IPA.\n' >&2
+            exit 1
+          }
+          mkdir -p "$metadata_dir/ru-RU" "$screenshots_dir/ru-RU"
+          printf '%s\n' "$whats_new" > "$metadata_dir/ru-RU/release_notes.txt"
+
+          pushd aso-collection/generator >/dev/null
+          bun ci
+          bunx playwright install chromium
+          for format in app-store-6-9 app-store-6-5; do
+            capture_dir="$RUNNER_TEMP/$format-screenshots"
+            mkdir -p "$capture_dir"
+            bun run capture -- --locale ru --format "$format" \
+              --output-dir "$capture_dir"
+            for screenshot in "$capture_dir"/*.png; do
+              cp "$screenshot" \
+                "$screenshots_dir/ru-RU/${format}-$(basename "$screenshot")"
+            done
+          done
+          popd >/dev/null
+
+          {
+            printf 'APP_STORE_VERSION=%s\n' "$pubspec_version"
+            printf 'APP_STORE_BUILD_NUMBER=%s\n' "$build_number"
+            printf 'APP_STORE_METADATA_PATH=%s\n' "$metadata_dir"
+            printf 'APP_STORE_SCREENSHOTS_PATH=%s\n' "$screenshots_dir"
+            printf 'APP_STORE_IPA_PATH=%s\n' "$ipa_path"
+          } >> "$GITHUB_ENV"
+
+      - name: Отправить IPA на App Store Review
+        run: bundle exec fastlane ios submit_for_review
+
+      - name: Сохранить IPA и контрольную сумму
+        if: always() && hashFiles('build/ipa/*.ipa') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lampada-${{ env.RELEASE_TAG }}-ipa
+          path: |
+            build/ipa/*.ipa
+            build/ipa/lampada.ipa.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Удалить временные данные подписи
+        if: always()
+        run: |
+          rm -f -- \
+            "$IOS_PROFILE_PATH" \
+            "$APP_STORE_CONNECT_KEY_PATH" \
+            "$IOS_EXPORT_OPTIONS_PATH" \
+            "$RUNNER_TEMP/lampada-distribution.p12"
+          security delete-keychain "$IOS_KEYCHAIN_PATH" || true
