@@ -4,9 +4,10 @@ set -euo pipefail
 
 version=''
 changelog_file=''
+max_length=5000
 
 usage() {
-  printf 'Usage: %s --version VERSION --file CHANGELOG.md\n' "${0##*/}" >&2
+  printf 'Usage: %s --version VERSION --file CHANGELOG.md [--max-length CHARACTERS]\n' "${0##*/}" >&2
   exit 2
 }
 
@@ -22,6 +23,11 @@ while (($# > 0)); do
       changelog_file="$2"
       shift 2
       ;;
+    --max-length)
+      (($# >= 2)) || usage
+      max_length="$2"
+      shift 2
+      ;;
     *)
       usage
       ;;
@@ -29,6 +35,7 @@ while (($# > 0)); do
 done
 
 [[ -n "$version" && -n "$changelog_file" && -f "$changelog_file" ]] || usage
+[[ "$max_length" =~ ^[1-9][0-9]*$ ]] || usage
 
 notes="$(awk -v version="$version" '
   BEGIN {
@@ -64,8 +71,9 @@ notes="$(awk -v version="$version" '
   }
 ' "$changelog_file")"
 
-if ((${#notes} > 5000)); then
-  printf 'Release notes for %s exceed the 5000-character limit.\n' "$version" >&2
+if ((${#notes} > max_length)); then
+  printf 'Release notes for %s exceed the %s-character limit.\n' \
+    "$version" "$max_length" >&2
   exit 1
 fi
 
