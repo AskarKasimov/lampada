@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +6,7 @@ import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
+import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
 import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/screens/reading_screen.dart';
@@ -406,6 +408,31 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     ),
   );
 
+  Future<void> _openBookmarks(BuildContext context) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (context) => Scaffold(
+            body: SafeArea(
+              child: Stack(
+                children: [
+                  const BookmarksScreen(),
+                  Positioned(
+                    top: 0,
+                    right: 8,
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(CupertinoIcons.xmark),
+                      tooltip: 'Закрыть',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
   Future<void> _openCourse(BuildContext context, DayCard card) async {
     // Прогресс темы сохраняет CourseReaderScreen.
     await Navigator.of(context).push(
@@ -525,6 +552,12 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             textSize: 27,
             maxLines: 1,
             onTap: () => _openReader(context, ref, reading),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => _openBookmarks(context),
+            icon: const Icon(CupertinoIcons.bookmark),
+            label: const Text('Закладки'),
           ),
         ],
       ],

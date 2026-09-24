@@ -48,12 +48,6 @@ class FloatingNavBar extends StatefulWidget {
       label: 'Сегодня',
     ),
     (
-      tab: ShellTab.bookmarks,
-      icon: CupertinoIcons.bookmark,
-      activeIcon: CupertinoIcons.bookmark_fill,
-      label: 'Закладки',
-    ),
-    (
       tab: ShellTab.profile,
       icon: CupertinoIcons.person,
       activeIcon: CupertinoIcons.person_fill,

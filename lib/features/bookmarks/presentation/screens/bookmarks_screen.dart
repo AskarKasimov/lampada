@@ -7,7 +7,7 @@ import '../providers/providers.dart';
 import '../widgets/bookmark_tile.dart';
 import '../widgets/bookmarks_empty_view.dart';
 
-/// Вкладка «Закладки» — «Копилка смыслов». Локальная, без аккаунта (FR-017).
+/// Экран «Закладки» — «Копилка смыслов». Локальная, без аккаунта (FR-017).
 class BookmarksScreen extends ConsumerWidget {
   const BookmarksScreen({super.key});
 
