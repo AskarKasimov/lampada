@@ -399,9 +399,14 @@ void main() {
       await dismissAutoOpened(tester);
 
       expect(find.byType(WeekStrip), findsOneWidget);
-      // Две карточки сессии плюс вход в Евангелие — одним типом виджета.
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
+      // Две карточки сессии, Евангелие и копилка — одни строки дня.
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
       expect(entry('ЕВАНГЕЛИЕ ДНЯ'), findsOneWidget);
+      expect(entry('ЗАКЛАДКИ'), findsOneWidget);
+      expect(find.text('Копилка смыслов'), findsOneWidget);
+      final bookmarksEntry = tester.widget<DayEntryRow>(entry('ЗАКЛАДКИ'));
+      expect(bookmarksEntry.isUnread, isFalse);
+      expect(bookmarksEntry.showReadStatus, isFalse);
     });
 
     testWidgets('блок показывает начало текста карточки', (tester) async {
@@ -511,7 +516,7 @@ void main() {
       await settle(tester);
       await dismissAutoOpened(tester);
 
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
       expect(entry('ЕВАНГЕЛИЕ ДНЯ'), findsOneWidget);
       expect(find.text('Пройти снова'), findsNothing);
     });
@@ -634,7 +639,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
     });
 
     testWidgets('открытая карточка сразу засчитывается прочитанной', (
@@ -801,8 +806,14 @@ void main() {
         find.byType(DayEntryRow),
       );
       expect(futureEntries, isNotEmpty);
-      expect(futureEntries.every((entry) => entry.isUnread), isTrue);
-      expect(futureEntries.every((entry) => entry.showReadStatus), isTrue);
+      final futureContentEntries = futureEntries.where(
+        (entry) => entry.label != 'ЗАКЛАДКИ',
+      );
+      expect(futureContentEntries.every((entry) => entry.isUnread), isTrue);
+      expect(
+        futureContentEntries.every((entry) => entry.showReadStatus),
+        isTrue,
+      );
 
       final future = DateTime.now().add(const Duration(days: 1));
       await tester.tap(entry('ЦИТАТА'));
@@ -1194,7 +1205,7 @@ void main() {
 
       expect(find.byType(CardViewerScreen), findsNothing);
       expect(find.byType(ReadingScreen), findsNothing);
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
     });
 
     testWidgets('закрыл просмотрщик — он не открывается заново', (

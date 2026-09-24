@@ -357,7 +357,7 @@ void main() {
     );
     final button = find.descendant(
       of: find.byType(TodayScreen),
-      matching: find.text('Закладки'),
+      matching: find.text('Копилка смыслов'),
     );
     expect(button, findsOneWidget);
     expect(

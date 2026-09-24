@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -537,11 +536,13 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             maxLines: 1,
             onTap: () => _openReader(context, ref, reading),
           ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: () => _openBookmarks(context),
-            icon: const Icon(CupertinoIcons.bookmark),
-            label: const Text('Закладки'),
+          const DayEntryDivider(),
+          DayEntryRow(
+            label: 'ЗАКЛАДКИ',
+            text: 'Копилка смыслов',
+            isUnread: false,
+            showReadStatus: false,
+            onTap: () => _openBookmarks(context),
           ),
         ],
       ],
