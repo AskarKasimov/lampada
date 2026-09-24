@@ -369,7 +369,12 @@ void main() {
     await settle(tester);
 
     expect(find.byType(BookmarksScreen), findsOneWidget);
-    await tester.tap(find.byIcon(CupertinoIcons.xmark));
+    final closeButton = find.descendant(
+      of: find.byType(BookmarksScreen),
+      matching: find.byTooltip('Закрыть'),
+    );
+    expect(closeButton, findsOneWidget);
+    await tester.tap(closeButton);
     await settle(tester);
 
     expect(find.byType(BookmarksScreen), findsNothing);

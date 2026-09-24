@@ -412,24 +412,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           fullscreenDialog: true,
-          builder: (context) => Scaffold(
-            body: SafeArea(
-              child: Stack(
-                children: [
-                  const BookmarksScreen(),
-                  Positioned(
-                    top: 0,
-                    right: 8,
-                    child: IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(CupertinoIcons.xmark),
-                      tooltip: 'Закрыть',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          builder: (context) =>
+              BookmarksScreen(onClose: () => Navigator.of(context).pop()),
         ),
       );
 
