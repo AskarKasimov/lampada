@@ -4,152 +4,81 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_link_button.dart';
-import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
-import '../../../bookmarks/domain/entities/bookmark.dart';
-import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
+import '../../../daily_cards/domain/entities/day_card.dart';
+import '../../../daily_cards/presentation/screens/card_viewer_screen.dart';
 import '../../domain/entities/daily_reading.dart';
 import '../providers/providers.dart';
 import '../widgets/interpretation_sheet.dart';
-import '../widgets/reading_progress_line.dart';
 import '../widgets/verse_view.dart';
 
-/// Ридер чтения дня: один стих на экран, свайп к следующему, в конце
-/// отрывка — карточка толкования (FR-007…009).
-///
-/// Отдельный маршрут поверх шелла, а не вкладка: чтение — единственное место
-/// в приложении, где юзер уходит в длинную последовательность, и таб-бар под
-/// ней только мешал бы.
-class ReadingScreen extends ConsumerStatefulWidget {
-  const ReadingScreen({required this.reference, super.key});
+/// Загружает чтение дня и передаёт его стихи общему просмотрщику карточек.
+/// У этого маршрута нет своего визуального устройства: отдельный стих — одна
+/// страница [CardViewerScreen], как и у остальных материалов дня.
+class ReadingScreen extends ConsumerWidget {
+  const ReadingScreen({
+    required this.reference,
+    required this.date,
+    required this.recordProgress,
+    required this.recordRead,
+    super.key,
+  });
 
-  /// Машинная ссылка отрывка из карточки дня: `Jn.10:1-9`.
   final String reference;
+  final DateTime date;
+  final bool recordProgress;
+  final bool recordRead;
 
   @override
-  ConsumerState<ReadingScreen> createState() => _ReadingScreenState();
-}
-
-class _ReadingScreenState extends ConsumerState<ReadingScreen> {
-  final _controller = PageController();
-  int _page = 0;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _close() => Navigator.of(context).pop();
-
-  @override
-  Widget build(BuildContext context) {
-    final async = ref.watch(dailyReadingProvider(widget.reference));
-    final colors = AppColorsExtension.of(context);
-
-    return Scaffold(
-      body: SafeArea(
-        child: async.when(
-          loading: () => const BrandLoadingView(),
-          error: (e, _) => _ErrorView(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(dailyReadingProvider(reference));
+    return async.when(
+      loading: () => const Scaffold(body: BrandLoadingView()),
+      error: (e, _) => Scaffold(
+        body: SafeArea(
+          child: _ErrorView(
             kind: switch (e) {
               AppFailure(kind: final k) => k,
               _ => FailureKind.unknown,
             },
-            onRetry: () =>
-                ref.invalidate(dailyReadingProvider(widget.reference)),
-            onClose: _close,
+            onRetry: () => ref.invalidate(dailyReadingProvider(reference)),
+            onClose: () => Navigator.of(context).pop(),
           ),
-          data: (reading) => _reader(reading, colors),
         ),
+      ),
+      data: (reading) => CardViewerScreen(
+        cards: _cardsFor(reading),
+        startIndex: 0,
+        date: date,
+        recordProgress: recordProgress,
+        recordRead: recordRead,
+        pageBuilder: (context, index) {
+          final verse = reading.verses[index];
+          return VerseView(
+            verse: verse,
+            onOpenInterpretation: verse.hasInterpretation
+                ? () => InterpretationSheet.show(
+                    context,
+                    verse: verse,
+                    author: reading.interpretationAuthor,
+                  )
+                : null,
+          );
+        },
       ),
     );
   }
 
-  /// Закладка на текущий стих.
-  /// savedAt — заглушка, момент сохранения ставит сама кнопка.
-  Bookmark _bookmarkForPage(DailyReading reading) {
-    final verse = reading.verses[_page.clamp(0, reading.verses.length - 1)];
-    return Bookmark(
-      id: 'verse-${widget.reference}-${verse.chapter}:${verse.number}',
-      kind: BookmarkKind.verse,
-      text: verse.text,
-      source:
-          '${reading.label.split('.').first}.'
-          '${verse.chapter}:${verse.number}',
-      label: 'Стих',
-      savedAt: DateTime.fromMillisecondsSinceEpoch(0),
-    );
-  }
-
-  Widget _reader(DailyReading reading, AppColorsExtension colors) {
-    final total = reading.pageCount;
-    final isLast = _page >= total - 1;
-    final bookmark = _bookmarkForPage(reading);
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
-          child: Row(
-            children: [
-              Text(
-                reading.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  letterSpacing: 0.3,
-                  color: colors.textSecondary,
-                ),
-              ),
-              const Spacer(),
-              AppShareButton(text: '${bookmark.text}\n\n— ${bookmark.source}'),
-              BookmarkButton(bookmark: bookmark),
-              AppLinkButton(
-                label: isLast ? 'Готово' : 'Закрыть',
-                color: isLast ? colors.link : colors.homeSubtitle,
-                fontSize: 12,
-                onPressed: _close,
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: ReadingProgressLine(position: _page, total: total),
-        ),
-        Expanded(
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: total,
-            onPageChanged: (page) => setState(() => _page = page),
-            itemBuilder: (context, index) {
-              final verse = reading.verses[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 34,
-                  vertical: 24,
-                ),
-                child: Center(
-                  child: VerseView(
-                    verse: verse,
-                    // Толкование есть не у каждого стиха: у Феофилакта
-                    // покрыты не все, и обещать кнопкой пустоту незачем.
-                    onOpenInterpretation: verse.hasInterpretation
-                        ? () => InterpretationSheet.show(
-                            context,
-                            verse: verse,
-                            author: reading.interpretationAuthor,
-                          )
-                        : null,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+  List<DayCard> _cardsFor(DailyReading reading) => [
+    for (final verse in reading.verses)
+      DayCard(
+        id: 'verse-$reference-${verse.chapter}:${verse.number}',
+        type: CardType.reading,
+        body: verse.text,
+        source:
+            '${reading.label.split('.').first}.${verse.chapter}:${verse.number}',
+      ),
+  ];
 }
 
 class _ErrorView extends StatelessWidget {
@@ -166,8 +95,6 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    // Тот же принцип, что на «Сегодня»: советовать чинить Wi-Fi, когда лёг
-    // сам источник, — отправлять юзера чинить исправное.
     final title = kind == FailureKind.network
         ? 'Нет подключения к интернету'
         : 'Чтение сейчас недоступно';

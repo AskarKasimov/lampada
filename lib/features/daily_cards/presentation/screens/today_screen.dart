@@ -383,14 +383,15 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     WidgetRef ref,
     DayCard card,
   ) async {
-    if (_recordRead) {
-      ref
-          .read(dayProgressProvider.notifier)
-          .markRead(card.type, date: date, markVisited: _recordProgress);
-    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ReadingScreen(reference: card.reference!),
+        fullscreenDialog: true,
+        builder: (_) => ReadingScreen(
+          reference: card.reference!,
+          date: date,
+          recordProgress: _recordProgress,
+          recordRead: _recordRead,
+        ),
       ),
     );
     if (mounted) await _maybeAskReminders();
@@ -483,8 +484,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     _maybeAutoOpen();
-    final reading = _reading;
     final rest = _pages;
+    final reading = _reading;
 
     if (reading == null && rest.isEmpty) {
       return Center(

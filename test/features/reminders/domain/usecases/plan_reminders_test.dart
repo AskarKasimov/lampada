@@ -31,6 +31,17 @@ void main() {
     expect(morning.title, reminderTexts[CardType.parable]!.title);
   });
 
+  test('напоминание о Евангелии описывает карточку, а не ридер', () {
+    final plan = _plan(
+      now: _earlyMorning,
+      readToday: {CardType.quote, CardType.advice, CardType.parable},
+      sections: _sections,
+    );
+
+    final morning = today(plan, _earlyMorning).first;
+    expect(morning.body, 'Один стих Евангелия и толкование ждут вас.');
+  });
+
   test('всё прочитано — сегодня не напоминаем вовсе', () {
     final plan = _plan(
       now: _earlyMorning,

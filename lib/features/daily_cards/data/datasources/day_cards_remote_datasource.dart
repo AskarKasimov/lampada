@@ -107,8 +107,8 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     }
   }
 
-  /// Карточка чтения дня несёт только ссылку на отрывок — стихи и толкование
-  /// лежат на других страницах Азбуки и грузятся ридером по требованию.
+  /// Карточка Евангелия дня несёт ссылку на отрывок: стихи и толкование
+  /// загружаются лениво, когда их покажет общий просмотрщик.
   DayCardDto? _readingCard(Document doc, String dateStr) {
     final block = doc.querySelector('#chteniya');
     if (block == null) {
@@ -309,7 +309,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
 
   static final _liturgyMarker = RegExp(r'Лит\s*\.');
 
-  /// Апостол и ветхозаветные паремии в ридер не идут: по продуктовому решению
+  /// Апостол и ветхозаветные паремии в чтение не идут: по продуктовому решению
   /// показываем только Евангелие дня.
   static const _gospelSlugs = {'Mt', 'Mk', 'Lk', 'Jn'};
 

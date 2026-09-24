@@ -14,6 +14,8 @@ import '../widgets/card_content.dart';
 import '../widgets/card_swipe_nudge.dart';
 import '../widgets/progress_dots.dart';
 
+typedef CardPageBuilder = Widget Function(BuildContext context, int index);
+
 /// Скорость свайпа вниз (лог.px/с), после которой просмотрщик закрывается.
 const _dismissVelocity = 700.0;
 const _readerHeaderHeight = 48.0;
@@ -30,6 +32,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     required this.date,
     required this.recordProgress,
     required this.recordRead,
+    this.pageBuilder,
     super.key,
   });
 
@@ -45,6 +48,10 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// Записывать ли прочтение карточек. Для будущих дат выключено: их точки
   /// непрочитанного должны оставаться видимыми после предварительного чтения.
   final bool recordRead;
+
+  /// Дополнительное содержимое страницы. Рамка, жесты, шапка и действия
+  /// остаются общими для всех карточек; меняется только центральный материал.
+  final CardPageBuilder? pageBuilder;
 
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
@@ -203,11 +210,13 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   }
 
   Widget _cardPage(int index) {
-    final content = CardContent(
-      key: ValueKey(widget.cards[index].id),
-      card: widget.cards[index],
-      showBadge: false,
-    );
+    final content =
+        widget.pageBuilder?.call(context, index) ??
+        CardContent(
+          key: ValueKey(widget.cards[index].id),
+          card: widget.cards[index],
+          showBadge: false,
+        );
     final spacedContent = Padding(
       padding: const EdgeInsets.only(top: _readerHeaderHeight),
       child: content,

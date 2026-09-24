@@ -28,7 +28,8 @@ import 'package:lampada/features/day_story/presentation/screens/day_story_screen
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/domain/repositories/reading_repository.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
-import 'package:lampada/features/reading/presentation/screens/reading_screen.dart';
+import 'package:lampada/features/reading/presentation/widgets/interpretation_sheet.dart';
+import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 import 'package:lampada/features/reminders/presentation/screens/reminder_permission_screen.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,8 +56,8 @@ const _cards = [
   ),
 ];
 
-/// Карточки, которые попадают в просмотрщик: чтение живёт отдельным треком
-/// и своей страницы там не получает.
+/// Обычная сессия дня не содержит Евангелие: оно грузится лениво, но затем
+/// показывает стихи тем же просмотрщиком.
 final _pageCards = _cards
     .where((c) => c.type != CardType.reading && c.type != CardType.basics)
     .toList();
@@ -69,7 +70,8 @@ const _basics = DayCard(
   title: 'О вере и жизни христианина',
 );
 
-/// Ридер не должен ходить в сеть из виджет-тестов.
+/// Чтение загружается отдельно от карточек дня, но в UI должно стать
+/// страницами их общего просмотрщика.
 class _FakeReadingRepository implements ReadingRepository {
   final forceRefreshReferences = <String>[];
 
@@ -81,8 +83,17 @@ class _FakeReadingRepository implements ReadingRepository {
     if (forceRefresh) forceRefreshReferences.add(reference);
     return const Success(
       DailyReading(
-        label: 'Ин.10:1–9',
-        verses: [Verse(number: 1, chapter: 10, text: 'Истинно говорю вам')],
+        label: 'Ин.10:1–2',
+        interpretationAuthor: 'Феофилакт Болгарский',
+        verses: [
+          Verse(
+            number: 1,
+            chapter: 10,
+            text: 'Первый стих',
+            interpretation: 'Толкование первого стиха',
+          ),
+          Verse(number: 2, chapter: 10, text: 'Второй стих'),
+        ],
       ),
     );
   }
@@ -507,8 +518,8 @@ void main() {
     ) async {
       // Раньше пройденный день встречал экраном завершения с «Пройти снова»,
       // и чтобы перечитать одну карточку, надо было запускать день заново.
-      // День пройден целиком, включая чтение: иначе автооткрытие уведёт
-      // в ридер Евангелия и до блоков тест не дойдёт.
+      // День пройден целиком, включая Евангелие, поэтому автооткрытие не
+      // перекрывает список карточек.
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
 
@@ -658,10 +669,8 @@ void main() {
     });
   });
 
-  group('чтение дня без промежуточного экрана', () {
-    testWidgets('тап по блоку «Чтение» открывает ридер сразу', (tester) async {
-      // Экран с одной ссылкой «Ин.10:1–9» и кнопкой «Читать» был лишним
-      // шагом: он ничего не показывал, кроме того, что уже есть в блоке.
+  group('Евангелие как карточка дня', () {
+    testWidgets('тап по блоку открывает общий просмотрщик', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -669,11 +678,22 @@ void main() {
       await tester.tap(entry('ЕВАНГЕЛИЕ ДНЯ'));
       await settle(tester);
 
-      expect(find.byType(ReadingScreen), findsOneWidget);
-      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(find.byType(CardViewerScreen), findsOneWidget);
+      final pageView = tester.widget<PageView>(
+        find.descendant(
+          of: find.byType(CardViewerScreen),
+          matching: find.byType(PageView),
+        ),
+      );
+      expect(pageView.childrenDelegate.estimatedChildCount, 2);
+      expect(find.text('Первый стих'), findsOneWidget);
+      expect(find.byType(VerseInterpretationButton), findsOneWidget);
+      await tester.tap(find.byType(VerseInterpretationButton));
+      await settle(tester);
+      expect(find.byType(InterpretationSheet), findsOneWidget);
     });
 
-    testWidgets('карточка чтения не получает страницы в просмотрщике', (
+    testWidgets('просмотрщик сессии не смешивает Евангелие с карточками дня', (
       tester,
     ) async {
       await tester.pumpWidget(buildApp());
@@ -686,8 +706,6 @@ void main() {
       final viewer = tester.widget<CardViewerScreen>(
         find.byType(CardViewerScreen),
       );
-      // Просмотрщик — это сессия дня и только она. Евангелие и курс живут
-      // отдельными треками со своими ридерами.
       expect(
         viewer.cards.map((c) => c.type),
         isNot(contains(CardType.reading)),
@@ -695,12 +713,9 @@ void main() {
       expect(viewer.cards.map((c) => c.type), isNot(contains(CardType.basics)));
     });
 
-    testWidgets('сессия заканчивается на последней карточке, а не в ридере', (
-      tester,
-    ) async {
-      // Раньше с последней карточки кнопка менялась на «Читать» и утягивала
-      // в постишное Евангелие. Из-за этого сессия не кончалась там, где
-      // обещала, и три её карточки было не отличить от пяти частей дня.
+    testWidgets('сессия не уходит в отдельный ридер', (tester) async {
+      // У карточек нет специального перехода: Евангелие — ещё одна страница
+      // того же просмотрщика.
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -718,10 +733,9 @@ void main() {
       await settle(tester);
 
       expect(find.text('Читать'), findsNothing);
-      expect(find.byType(ReadingScreen), findsNothing);
     });
 
-    testWidgets('открытие ридера засчитывает чтение прочитанным', (
+    testWidgets('открытие карточки засчитывает Евангелие прочитанным', (
       tester,
     ) async {
       final progress = _FakeProgressRepository();
@@ -1168,15 +1182,14 @@ void main() {
 
     testWidgets('после сессии очередь доходит до Евангелия', (tester) async {
       // Очередь входа — цитата → совет → притча → Евангелие → основы,
-      // по шагу за вход. Сессия дня кончилась, следующий вход ведёт в ридер.
+      // по шагу за вход. Евангелие открывает общий просмотрщик.
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice});
 
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      expect(find.byType(ReadingScreen), findsOneWidget);
-      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(find.byType(CardViewerScreen), findsOneWidget);
     });
 
     testWidgets('после Евангелия очередь доходит до курса', (tester) async {
@@ -1204,7 +1217,6 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(ReadingScreen), findsNothing);
       expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
     });
 
@@ -1244,7 +1256,6 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(ReadingScreen), findsNothing);
       expect(find.byType(CourseReaderScreen), findsNothing);
       expect(entry('СОВЕТ'), findsOneWidget);
     });
