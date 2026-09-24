@@ -75,6 +75,13 @@ class BookmarksScreen extends ConsumerWidget {
     if (onClose == null) return body;
     return Scaffold(
       appBar: AppBar(
+        // Копилка начинается сразу под шапкой; Material 3 по умолчанию
+        // тонирует AppBar после первого пикселя прокрутки, и заголовок
+        // начинает выглядеть отдельной плашкой.
+        backgroundColor: colors.background,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
         title: const Text('Закладки'),
         automaticallyImplyLeading: false,
         actions: [
