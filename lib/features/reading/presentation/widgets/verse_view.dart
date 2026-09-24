@@ -29,32 +29,39 @@ class VerseView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     return SelectableShareArea(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              verse.text,
-              textAlign: TextAlign.center,
-              style: AppTheme.quoteStyle(context).copyWith(
-                fontSize: _fontSizeFor(verse.text.length),
-                height: 1.5,
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    verse.text,
+                    textAlign: TextAlign.center,
+                    style: AppTheme.quoteStyle(context).copyWith(
+                      fontSize: _fontSizeFor(verse.text.length),
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    '${verse.chapter}:${verse.number}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      letterSpacing: 0.4,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  if (onOpenInterpretation != null) ...[
+                    const SizedBox(height: 22),
+                    VerseInterpretationButton(onPressed: onOpenInterpretation!),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: 18),
-            Text(
-              '${verse.chapter}:${verse.number}',
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 0.4,
-                color: colors.textSecondary,
-              ),
-            ),
-            if (onOpenInterpretation != null) ...[
-              const SizedBox(height: 22),
-              VerseInterpretationButton(onPressed: onOpenInterpretation!),
-            ],
-          ],
+          ),
         ),
       ),
     );

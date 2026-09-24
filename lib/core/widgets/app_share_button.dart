@@ -7,9 +7,16 @@ import '../theme/app_colors.dart';
 
 /// Отправляет текущий материал через системный лист ОС.
 class AppShareButton extends StatelessWidget {
-  const AppShareButton({required this.text, super.key});
+  const AppShareButton({
+    required this.text,
+    this.iconSize = 22,
+    this.buttonSize,
+    super.key,
+  });
 
   final String text;
+  final double iconSize;
+  final double? buttonSize;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +25,15 @@ class AppShareButton extends StatelessWidget {
       builder: (buttonContext) => IconButton(
         tooltip: 'Поделиться',
         onPressed: () => shareText(buttonContext, text),
-        icon: Icon(CupertinoIcons.share, size: 22, color: colors.homeSubtitle),
+        constraints: buttonSize == null
+            ? null
+            : BoxConstraints.tightFor(width: buttonSize, height: buttonSize),
+        padding: buttonSize == null ? null : EdgeInsets.zero,
+        icon: Icon(
+          CupertinoIcons.share,
+          size: iconSize,
+          color: colors.homeSubtitle,
+        ),
       ),
     );
   }

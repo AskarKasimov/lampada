@@ -20,6 +20,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/today_screen.d
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
@@ -554,6 +555,77 @@ void main() {
         ),
       );
       expect(pageView.childrenDelegate.estimatedChildCount, _pageCards.length);
+      expect(pageView.scrollDirection, Axis.vertical);
+    });
+
+    testWidgets('длинная карточка открывает полноэкранный текст', (
+      tester,
+    ) async {
+      final longCard = DayCard(
+        id: 'long-advice',
+        type: CardType.advice,
+        body: List.filled(400, 'Длинный текст карточки').join(' '),
+        source: 'Тестовый источник',
+      );
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            cards: [_cards.first, longCard, _cards.last],
+          ),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(entry('СОВЕТ'));
+      await settle(tester);
+
+      final preview = '${longCard.body.substring(0, 200)}…';
+      expect(find.text(preview), findsOneWidget);
+      expect(find.text(longCard.body), findsNothing);
+      final fullscreen = find.byTooltip('Открыть полный текст');
+      final bookmark = find.byTooltip('Сохранить в копилку');
+      final share = find.byTooltip('Поделиться');
+      expect(fullscreen, findsOneWidget);
+      expect(
+        tester.getTopLeft(fullscreen).dy,
+        lessThan(tester.getTopLeft(bookmark).dy),
+      );
+      expect(
+        tester.getTopLeft(bookmark).dy,
+        lessThan(tester.getTopLeft(share).dy),
+      );
+      expect(tester.getSize(fullscreen), const Size(56, 56));
+      await tester.tap(fullscreen);
+      await settle(tester);
+
+      expect(find.text(longCard.body), findsOneWidget);
+    });
+
+    testWidgets('читалка не оставляет боковые safe-area для рельсов', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.tap(entry('ЦИТАТА'));
+      await settle(tester);
+
+      final safeArea = tester.widget<SafeArea>(
+        find.descendant(
+          of: find.byType(CardViewerScreen),
+          matching: find.byType(SafeArea),
+        ),
+      );
+      expect(safeArea.left, isFalse);
+      expect(safeArea.right, isFalse);
+      expect(tester.getTopLeft(find.byType(ProgressDots)).dx, 12);
+      expect(tester.getTopLeft(find.byType(PageView)).dx, 30);
+      expect(tester.getTopRight(find.byTooltip('Поделиться')).dx, 788);
     });
 
     testWidgets('дневная страница не дублирует вход в курс', (tester) async {

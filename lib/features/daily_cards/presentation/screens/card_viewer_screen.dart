@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,12 +12,10 @@ import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
 import '../widgets/card_swipe_nudge.dart';
 import '../widgets/progress_dots.dart';
+import '../widgets/vertical_card_reader.dart';
+import 'full_card_text_screen.dart';
 
 typedef CardPageBuilder = Widget Function(BuildContext context, int index);
-
-/// Скорость свайпа вниз (лог.px/с), после которой просмотрщик закрывается.
-const _dismissVelocity = 700.0;
-const _readerHeaderHeight = 48.0;
 
 /// Полноэкранный просмотр карточек дня — без таб-бара и вообще без хрома
 /// вокруг: на экране остаётся одна мысль, как требует §6.
@@ -98,113 +95,42 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     });
   }
 
-  void _handleVerticalDrag(DragEndDetails details) {
-    if ((details.primaryVelocity ?? 0) >= _dismissVelocity) {
-      Navigator.of(context).pop();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
     final cardStyle = widget.cards[_index].type.styleFor(brightness);
     return Scaffold(
-      body: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onVerticalDragEnd: _handleVerticalDrag,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  const SizedBox(height: _readerHeaderHeight),
-                  Expanded(
-                    child: PageView.builder(
-                      controller: _controller,
-                      itemCount: _pageCount,
-                      onPageChanged: (page) {
-                        setState(() => _index = page);
-                        _markCurrentAsRead(page);
-                      },
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 34),
-                        child: Center(child: _cardPage(index)),
-                      ),
-                    ),
-                  ),
-                  Visibility(
-                    visible: true,
-                    maintainAnimation: true,
-                    maintainSize: true,
-                    maintainState: true,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(height: 20),
-                          ProgressDots(
-                            count: _pageCount,
-                            currentIndex: _index,
-                            accentColors: [
-                              for (final card in widget.cards)
-                                card.type.styleFor(brightness).accent,
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-              // Закрыть можно и крестиком, и свайпом вниз — привычная для
-              // iOS пара жестов для модального экрана.
-              Positioned(
-                top: 0,
-                right: 8,
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(
-                    CupertinoIcons.xmark,
-                    size: 22,
-                    color: colors.homeSubtitle,
-                  ),
-                  tooltip: 'Закрыть',
-                ),
-              ),
-              Positioned(
-                top: 8,
-                left: 80,
-                right: 80,
-                child: IgnorePointer(
-                  child: Center(
-                    child: AppPillBadge(
-                      label: cardStyle.label,
-                      background: cardStyle.tagBackground,
-                      foreground: cardStyle.tagForeground,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 0,
-                left: 8,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    BookmarkButton(
-                      bookmark: _bookmarkFor(widget.cards[_index], brightness),
-                    ),
-                    AppShareButton(text: _shareTextFor(widget.cards[_index])),
-                  ],
-                ),
-              ),
-            ],
-          ),
+      body: VerticalCardReader(
+        controller: _controller,
+        itemCount: _pageCount,
+        onPageChanged: (page) {
+          setState(() => _index = page);
+          _markCurrentAsRead(page);
+        },
+        itemBuilder: (context, index) => _cardPage(index),
+        header: AppPillBadge(
+          label: cardStyle.label,
+          background: cardStyle.tagBackground,
+          foreground: cardStyle.tagForeground,
+          letterSpacing: 0.2,
         ),
+        leftRail: ProgressDots(
+          count: _pageCount,
+          currentIndex: _index,
+          axis: Axis.vertical,
+          accentColors: [
+            for (final card in widget.cards)
+              card.type.styleFor(brightness).accent,
+          ],
+        ),
+        actions: _actionsFor(
+          widget.cards[_index],
+          brightness,
+          colors.homeSubtitle,
+        ),
+        onClose: () => Navigator.of(context).pop(),
+        closeColor: colors.homeSubtitle,
       ),
     );
   }
@@ -216,17 +142,50 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
           key: ValueKey(widget.cards[index].id),
           card: widget.cards[index],
           showBadge: false,
+          scrollable: false,
         );
-    final spacedContent = Padding(
-      padding: const EdgeInsets.only(top: _readerHeaderHeight),
-      child: content,
-    );
     return index == widget.startIndex && !_swipeNudgeHasStarted
         ? CardSwipeNudge(
             onConsumed: () => _swipeNudgeHasStarted = true,
-            child: spacedContent,
+            child: content,
           )
-        : spacedContent;
+        : content;
+  }
+
+  Widget _actionsFor(DayCard card, Brightness brightness, Color actionColor) =>
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (CardContent.needsFullText(card)) ...[
+            ReaderActionButton(
+              tooltip: 'Открыть полный текст',
+              onPressed: () => _openFullText(card),
+              icon: Icons.aspect_ratio_outlined,
+              color: actionColor,
+            ),
+            const SizedBox(height: 4),
+          ],
+          BookmarkButton(
+            bookmark: _bookmarkFor(card, brightness),
+            iconSize: 28,
+            buttonSize: 56,
+          ),
+          const SizedBox(height: 4),
+          AppShareButton(
+            text: _shareTextFor(card),
+            iconSize: 28,
+            buttonSize: 56,
+          ),
+        ],
+      );
+
+  void _openFullText(DayCard card) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => FullCardTextScreen(card: card),
+      ),
+    );
   }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.

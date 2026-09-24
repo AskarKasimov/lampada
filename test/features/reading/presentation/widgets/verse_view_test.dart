@@ -34,6 +34,29 @@ void main() {
     expect(find.byType(VerseInterpretationButton), findsNothing);
   });
 
+  testWidgets('короткий стих расположен по центру области чтения', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: SizedBox(
+            width: 320,
+            height: 500,
+            child: VerseView(verse: _verse),
+          ),
+        ),
+      ),
+    );
+
+    final viewport = tester.getRect(find.byType(SingleChildScrollView));
+    final verse = tester.getRect(find.text(_verse.text));
+
+    expect(verse.center.dy, greaterThan(viewport.top + viewport.height * 0.35));
+    expect(verse.center.dy, lessThan(viewport.top + viewport.height * 0.65));
+  });
+
   testWidgets('кнопка зовёт колбэк', (tester) async {
     var opened = false;
     await tester.pumpWidget(

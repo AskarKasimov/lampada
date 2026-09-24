@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,13 +15,13 @@ import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
-
-const _dismissVelocity = 700.0;
+import '../widgets/vertical_card_reader.dart';
+import 'full_card_text_screen.dart';
 
 /// Полноэкранное чтение личного курса «Основы веры».
 ///
-/// Открывается на последней теме юзера. Движение вправо открывает предыдущие
-/// темы, движение влево — следующие.
+/// Открывается на последней теме юзера. Вертикальный жест вверх открывает
+/// следующие темы, вниз — предыдущие.
 class CourseReaderScreen extends ConsumerStatefulWidget {
   const CourseReaderScreen({required this.currentTopic, super.key});
 
@@ -73,12 +72,6 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         );
       }
     });
-  }
-
-  void _handleVerticalDrag(DragEndDetails details) {
-    if ((details.primaryVelocity ?? 0) >= _dismissVelocity) {
-      unawaited(_dismiss());
-    }
   }
 
   int _pageForTopic(int topic) => courseTopicCount - topic;
@@ -135,6 +128,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         key: ValueKey(widget.currentTopic.id),
         card: widget.currentTopic,
         showBadge: false,
+        scrollable: false,
       );
     }
 
@@ -142,8 +136,12 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     return ref
         .watch(courseTopicByNumberProvider(topic))
         .when(
-          data: (card) =>
-              CardContent(key: ValueKey(card.id), card: card, showBadge: false),
+          data: (card) => CardContent(
+            key: ValueKey(card.id),
+            card: card,
+            showBadge: false,
+            scrollable: false,
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => Center(
             child: Column(
@@ -201,103 +199,83 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         if (!didPop) unawaited(_dismiss());
       },
       child: Scaffold(
-        body: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onVerticalDragEnd: _handleVerticalDrag,
-          child: SafeArea(
-            child: Stack(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(34, 48, 34, 48),
-                  child: PageView.builder(
-                    controller: _controller,
-                    reverse: true,
-                    itemCount: courseTopicCount,
-                    onPageChanged: _onPageChanged,
-                    itemBuilder: (context, page) =>
-                        _contentForPage(page, colors),
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  left: 8,
-                  child: currentCard == null
-                      ? const SizedBox.square(dimension: 40)
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            BookmarkButton(
-                              bookmark: _bookmarkFor(currentCard, brightness),
-                            ),
-                            AppShareButton(text: _shareTextFor(currentCard)),
-                          ],
-                        ),
-                ),
-                Positioned(
-                  top: 11,
-                  left: 56,
-                  right: 56,
-                  child: Center(
-                    child: AppPillBadge(
-                      label: 'Основы веры',
-                      background: basicsStyle.tagBackground,
-                      foreground: basicsStyle.tagForeground,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 20,
-                  right: 20,
-                  bottom: 8,
-                  child: IgnorePointer(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          CupertinoIcons.chevron_left,
-                          size: 12,
-                          color: colors.textSecondary,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Тема $visibleTopic из $courseTopicCount',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Icon(
-                          CupertinoIcons.chevron_right,
-                          size: 12,
-                          color: colors.textSecondary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  right: 8,
-                  child: IconButton(
-                    onPressed: () => unawaited(_dismiss()),
-                    icon: Icon(
-                      CupertinoIcons.xmark,
-                      size: 22,
-                      color: colors.homeSubtitle,
-                    ),
-                    tooltip: 'Закрыть',
-                  ),
-                ),
-              ],
-            ),
+        body: VerticalCardReader(
+          controller: _controller,
+          itemCount: courseTopicCount,
+          reverse: true,
+          onPageChanged: _onPageChanged,
+          itemBuilder: (context, page) => _contentForPage(page, colors),
+          header: AppPillBadge(
+            label: 'Основы веры',
+            background: basicsStyle.tagBackground,
+            foreground: basicsStyle.tagForeground,
+            letterSpacing: 0.2,
           ),
+          leftRail: _CourseProgressRail(
+            topic: visibleTopic,
+            total: courseTopicCount,
+            color: colors.textSecondary,
+          ),
+          actions: _actionsFor(currentCard, brightness, colors.homeSubtitle),
+          onClose: () => unawaited(_dismiss()),
+          closeColor: colors.homeSubtitle,
         ),
       ),
     );
   }
+
+  Widget _actionsFor(DayCard? card, Brightness brightness, Color actionColor) {
+    if (card == null) return const SizedBox.square(dimension: 56);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (CardContent.needsFullText(card)) ...[
+          ReaderActionButton(
+            tooltip: 'Открыть полный текст',
+            onPressed: () => _openFullText(card),
+            icon: Icons.aspect_ratio_outlined,
+            color: actionColor,
+          ),
+          const SizedBox(height: 4),
+        ],
+        BookmarkButton(
+          bookmark: _bookmarkFor(card, brightness),
+          iconSize: 28,
+          buttonSize: 56,
+        ),
+        const SizedBox(height: 4),
+        AppShareButton(text: _shareTextFor(card), iconSize: 28, buttonSize: 56),
+      ],
+    );
+  }
+
+  void _openFullText(DayCard card) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => FullCardTextScreen(card: card),
+      ),
+    );
+  }
+}
+
+class _CourseProgressRail extends StatelessWidget {
+  const _CourseProgressRail({
+    required this.topic,
+    required this.total,
+    required this.color,
+  });
+
+  final int topic;
+  final int total;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    'Тема\n$topic\nиз\n$total',
+    textAlign: TextAlign.center,
+    style: TextStyle(fontSize: 12, color: color),
+  );
 }
 
 int _topicNumber(String id) {
