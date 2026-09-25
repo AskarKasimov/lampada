@@ -4,7 +4,9 @@
 require "yaml"
 
 ROOT = File.expand_path("..", __dir__)
-WORKFLOW_PATH = File.join(ROOT, ".github/workflows/release-submit.yml")
+ORCHESTRATOR_WORKFLOW_PATH = File.join(ROOT, ".github/workflows/release-validate.yml")
+RUSTORE_WORKFLOW_PATH = File.join(ROOT, ".github/workflows/release-rustore.yml")
+TESTFLIGHT_WORKFLOW_PATH = File.join(ROOT, ".github/workflows/release-testflight.yml")
 FASTFILE_PATH = File.join(ROOT, "fastlane/Fastfile")
 RUSTORE_PUBLISH_PATH = File.join(ROOT, "tool/rustore_publish.sh")
 
@@ -20,27 +22,53 @@ def require_value(container, key, context)
   value
 end
 
-fail!("missing #{WORKFLOW_PATH}") unless File.file?(WORKFLOW_PATH)
+fail!("missing #{ORCHESTRATOR_WORKFLOW_PATH}") unless File.file?(ORCHESTRATOR_WORKFLOW_PATH)
+fail!("missing #{RUSTORE_WORKFLOW_PATH}") unless File.file?(RUSTORE_WORKFLOW_PATH)
+fail!("missing #{TESTFLIGHT_WORKFLOW_PATH}") unless File.file?(TESTFLIGHT_WORKFLOW_PATH)
 fail!("missing #{FASTFILE_PATH}") unless File.file?(FASTFILE_PATH)
 fail!("missing #{RUSTORE_PUBLISH_PATH}") unless File.file?(RUSTORE_PUBLISH_PATH)
 
-workflow = YAML.safe_load(File.read(WORKFLOW_PATH), aliases: true)
-jobs = require_value(workflow, "jobs", "workflow")
+def load_workflow(path)
+  workflow = YAML.safe_load(File.read(path), aliases: true)
+  jobs = require_value(workflow, "jobs", "workflow")
 
-tag_pattern = require_value(require_value(workflow, true, "workflow"), "push", "workflow.on").fetch("tags")
-fail!("does not trigger on release tags") unless tag_pattern.include?("v*.*.*")
-
-validate = require_value(jobs, "validate-release", "jobs")
-fail!("validate-release must not access an Environment") if validate.key?("environment")
-
-%w[submit-rustore submit-appstore].each do |job_name|
-  job = require_value(jobs, job_name, "jobs")
-  dependencies = Array(job["needs"])
-  fail!("#{job_name} does not require validate-release") unless dependencies.include?("validate-release")
+  [workflow, jobs]
 end
 
-appstore_job = jobs.fetch("submit-appstore")
-fail!("submit-appstore must use appstore-production") unless appstore_job["environment"] == "appstore-production"
+orchestrator_workflow, orchestrator_jobs = load_workflow(ORCHESTRATOR_WORKFLOW_PATH)
+tag_pattern = require_value(require_value(orchestrator_workflow, true, "workflow"), "push", "workflow.on").fetch("tags")
+fail!("release validation does not trigger on release tags") unless tag_pattern.include?("v*.*.*")
+
+validate = require_value(orchestrator_jobs, "validate-release", "jobs")
+fail!("release validation must not access an Environment") if validate.key?("environment")
+
+rustore_workflow, rustore_jobs = load_workflow(RUSTORE_WORKFLOW_PATH)
+testflight_workflow, testflight_jobs = load_workflow(TESTFLIGHT_WORKFLOW_PATH)
+
+%w[release-rustore.yml release-testflight.yml].zip([rustore_workflow, testflight_workflow]).each do |filename, workflow|
+  fail!("#{filename} is not reusable") unless require_value(workflow, true, "workflow").key?("workflow_call")
+end
+
+fail!("RuStore workflow has unexpected TestFlight job") if rustore_jobs.key?("upload-testflight")
+fail!("TestFlight workflow has unexpected RuStore job") if testflight_jobs.key?("submit-rustore")
+
+{
+  "submit-rustore" => "./.github/workflows/release-rustore.yml",
+  "upload-testflight" => "./.github/workflows/release-testflight.yml",
+}.each do |job_name, workflow_path|
+  job = require_value(orchestrator_jobs, job_name, "jobs")
+  dependencies = Array(job["needs"])
+  fail!("#{job_name} does not require validate-release") unless dependencies.include?("validate-release")
+  fail!("#{job_name} does not call #{workflow_path}") unless job["uses"] == workflow_path
+end
+
+rustore_job = rustore_jobs.fetch("submit-rustore")
+fail!("submit-rustore must use rustore-production") unless rustore_job["environment"] == "rustore-production"
+fail!("RuStore workflow has no isolated concurrency") unless rustore_workflow.dig("concurrency", "group") == "rustore-production"
+
+testflight_job = testflight_jobs.fetch("upload-testflight")
+fail!("upload-testflight must use appstore-production") unless testflight_job["environment"] == "appstore-production"
+fail!("TestFlight workflow has no isolated concurrency") unless testflight_workflow.dig("concurrency", "group") == "testflight-production"
 
 fastfile = File.read(FASTFILE_PATH)
 fail!("TestFlight lane does not upload a build") unless fastfile.match?(/upload_to_testflight\s*\(/)

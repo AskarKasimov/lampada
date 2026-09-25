@@ -1,0 +1,111 @@
+name: 'Stores: проверить релиз и запустить загрузки'
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Существующий release tag, например v1.2.3'
+        required: true
+        type: string
+      target:
+        description: 'В какую витрину загрузить сборку'
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - rustore
+          - appstore
+      draft_version_id:
+        description: 'ID черновика RuStore только для безопасного повтора после сбоя'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  validate-release:
+    name: Проверить исходный код и версию
+    runs-on: ubuntu-24.04
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+    steps:
+      - name: Проверить исходный код
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Установить Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: 3.44.8
+          cache: true
+          pub-cache: true
+
+      - name: Проверить tag и версию
+        id: release
+        env:
+          TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          set -euo pipefail
+
+          git check-ref-format --allow-onelevel "refs/tags/$TAG"
+          tag_ref="refs/tags/$TAG"
+          tag_commit="$(git rev-parse --verify "${tag_ref}^{commit}")"
+          git fetch --no-tags origin master
+          git merge-base --is-ancestor "$tag_commit" origin/master || {
+            printf 'Tag %s must point to a commit reachable from master.\n' "$TAG" >&2
+            exit 1
+          }
+
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\\+[0-9]+[[:space:]]*$/\\1/p' pubspec.yaml)"
+          [[ -n "$pubspec_version" && "$TAG" == "v$pubspec_version" ]] || {
+            printf 'Tag %s must match pubspec version v%s.\n' "$TAG" "$pubspec_version" >&2
+            exit 1
+          }
+
+          {
+            printf 'release_tag=%s\n' "$TAG"
+          } >> "$GITHUB_OUTPUT"
+          {
+            printf '## Release validation\n\n'
+            printf -- '- Tag: `%s`\n' "$TAG"
+            printf -- '- Commit: `%s`\n' "$tag_commit"
+            printf -- '- Version: `%s`\n\n' "$pubspec_version"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Проверить Dart-код
+        run: |
+          set -euo pipefail
+          flutter pub get
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+          flutter test
+
+  submit-rustore:
+    name: Запустить загрузку в RuStore
+    needs: validate-release
+    if: ${{ github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'rustore' }}
+    uses: ./.github/workflows/release-rustore.yml
+    with:
+      release_tag: ${{ needs.validate-release.outputs.release_tag }}
+      draft_version_id: ${{ inputs.draft_version_id }}
+    secrets: inherit
+
+  upload-testflight:
+    name: Запустить загрузку в TestFlight
+    needs: validate-release
+    if: ${{ github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'appstore' }}
+    uses: ./.github/workflows/release-testflight.yml
+    with:
+      release_tag: ${{ needs.validate-release.outputs.release_tag }}
+    secrets: inherit
