@@ -81,10 +81,10 @@ void main() {
     expect(find.byIcon(CupertinoIcons.chevron_down), findsNothing);
   });
 
-  testWidgets('в читалке карточка показывает первые 200 символов и троеточие', (
+  testWidgets('в читалке карточка показывает первые 150 символов и троеточие', (
     tester,
   ) async {
-    final card = _card(_filler(3000));
+    final card = _card(_filler(3000), type: CardType.basics);
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -101,17 +101,16 @@ void main() {
     );
     await tester.pump();
 
-    final preview = '${card.body.substring(0, 200)}…';
+    final preview = '${card.body.substring(0, 150)}…';
     final text = tester.widget<Text>(find.text(preview));
     expect(text.style?.fontSize, 24);
     expect(find.text(card.body), findsNothing);
     expect(find.byTooltip('Открыть полный текст'), findsNothing);
   });
 
-  testWidgets('в Основах повторные переводы строк схлопываются в один', (
+  testWidgets('в Основах сохраняются разделяющие абзацы двойные переносы', (
     tester,
   ) async {
-    const displayed = 'Первый абзац\nВторой абзац\nТретий абзац';
     final card = _card(
       'Первый абзац\n\nВторой абзац\n\n\nТретий абзац',
       type: CardType.basics,
@@ -120,15 +119,14 @@ void main() {
     await tester.pumpWidget(_buildApp(card));
     await tester.pump();
 
-    expect(find.text(displayed), findsOneWidget);
-    expect(find.text(card.body), findsNothing);
+    expect(find.text(card.body), findsOneWidget);
   });
 
-  testWidgets('в Основах лимит превью считается после схлопывания переносов', (
+  testWidgets('в Основах лимит превью учитывает исходные переносы', (
     tester,
   ) async {
-    final displayed = '${'а' * 199}\n';
-    final card = _card('$displayed\n', type: CardType.basics);
+    final preview = '${'а' * 149}\n';
+    final card = _card('$preview\n', type: CardType.basics);
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -145,8 +143,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text(displayed), findsOneWidget);
-    expect(find.text('$displayed…'), findsNothing);
+    expect(find.text('$preview…'), findsOneWidget);
+    expect(find.text(card.body), findsNothing);
   });
 
   testWidgets('под текстом всегда подпись источника', (tester) async {

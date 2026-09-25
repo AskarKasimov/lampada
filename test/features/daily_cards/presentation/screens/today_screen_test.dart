@@ -74,7 +74,25 @@ const _basics = DayCard(
 /// Чтение загружается отдельно от карточек дня, но в UI должно стать
 /// страницами их общего просмотрщика.
 class _FakeReadingRepository implements ReadingRepository {
+  _FakeReadingRepository({DailyReading? reading})
+    : reading =
+          reading ??
+          const DailyReading(
+            label: 'Ин.10:1–2',
+            interpretationAuthor: 'Феофилакт Болгарский',
+            verses: [
+              Verse(
+                number: 1,
+                chapter: 10,
+                text: 'Первый стих',
+                interpretation: 'Толкование первого стиха',
+              ),
+              Verse(number: 2, chapter: 10, text: 'Второй стих'),
+            ],
+          );
+
   final forceRefreshReferences = <String>[];
+  final DailyReading reading;
 
   @override
   Future<Result<DailyReading>> getReading(
@@ -82,21 +100,7 @@ class _FakeReadingRepository implements ReadingRepository {
     bool forceRefresh = false,
   }) async {
     if (forceRefresh) forceRefreshReferences.add(reference);
-    return const Success(
-      DailyReading(
-        label: 'Ин.10:1–2',
-        interpretationAuthor: 'Феофилакт Болгарский',
-        verses: [
-          Verse(
-            number: 1,
-            chapter: 10,
-            text: 'Первый стих',
-            interpretation: 'Толкование первого стиха',
-          ),
-          Verse(number: 2, chapter: 10, text: 'Второй стих'),
-        ],
-      ),
-    );
+    return Success(reading);
   }
 }
 
@@ -582,7 +586,7 @@ void main() {
       await tester.tap(entry('СОВЕТ'));
       await settle(tester);
 
-      final preview = '${longCard.body.substring(0, 200)}…';
+      final preview = '${longCard.body.substring(0, 150)}…';
       expect(find.text(preview), findsOneWidget);
       expect(find.text(longCard.body), findsNothing);
       final fullscreen = find.byTooltip('Открыть полный текст');
@@ -624,7 +628,7 @@ void main() {
       expect(safeArea.left, isFalse);
       expect(safeArea.right, isFalse);
       expect(tester.getTopLeft(find.byType(ProgressDots)).dx, 12);
-      expect(tester.getTopLeft(find.byType(PageView)).dx, 30);
+      expect(tester.getTopLeft(find.byType(PageView)).dx, 33);
       expect(tester.getTopRight(find.byTooltip('Поделиться')).dx, 788);
     });
 
@@ -742,6 +746,28 @@ void main() {
   });
 
   group('Евангелие как карточка дня', () {
+    testWidgets('длинный стих предлагает раскрыть полную версию', (
+      tester,
+    ) async {
+      final verseText = List.filled(30, 'Длинный стих').join(' ');
+      final reading = DailyReading(
+        label: 'Мк.12:1',
+        verses: [Verse(number: 1, chapter: 12, text: verseText)],
+      );
+      await tester.pumpWidget(
+        buildApp(readingRepository: _FakeReadingRepository(reading: reading)),
+      );
+      await settle(tester);
+      await dismissAutoOpened(tester);
+
+      await tester.tap(entry('ЕВАНГЕЛИЕ ДНЯ'));
+      await settle(tester);
+
+      expect(find.text('${verseText.substring(0, 150)}…'), findsOneWidget);
+      expect(find.text(verseText), findsNothing);
+      expect(find.byTooltip('Открыть полный текст'), findsOneWidget);
+    });
+
     testWidgets('тап по блоку открывает общий просмотрщик', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);

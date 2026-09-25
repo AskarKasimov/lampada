@@ -250,12 +250,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   }
 
   void _openFullText(DayCard card) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => FullCardTextScreen(card: card),
-      ),
-    );
+    Navigator.of(context).push(FullCardTextRoute(card: card));
   }
 }
 

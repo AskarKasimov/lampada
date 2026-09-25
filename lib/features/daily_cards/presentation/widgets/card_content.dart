@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/content_preview.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
@@ -16,6 +17,7 @@ class CardContent extends StatefulWidget {
     super.key,
     this.showBadge = true,
     this.scrollable = true,
+    this.scrollController,
   });
 
   final DayCard card;
@@ -24,30 +26,28 @@ class CardContent extends StatefulWidget {
   /// Внутри листаемой читалки вертикальный жест принадлежит переключению
   /// страниц. Длинный текст там открывается в отдельном полноэкранном виде.
   final bool scrollable;
-  static const previewLength = 200;
-  static final _consecutiveNewlines = RegExp(r'\n{2,}');
 
-  /// «Основы» приходят с абзацами, разделёнными двойным переносом, который
-  /// в крупной читалке создаёт избыточные пустые строки. Одиночные переносы
-  /// из `<br>` сохраняем.
-  static String displayBody(DayCard card) => card.type == CardType.basics
-      ? card.body.replaceAll(_consecutiveNewlines, '\n')
-      : card.body;
+  /// Внешний контроллер нужен полноэкранному тексту, чтобы различать его
+  /// прокрутку и жест закрытия на границах материала.
+  final ScrollController? scrollController;
+  static const previewLength = contentPreviewLength;
 
-  static bool needsFullText(DayCard card) =>
-      displayBody(card).length > previewLength;
+  static bool needsFullText(DayCard card) => needsContentPreview(card.body);
 
   @override
   State<CardContent> createState() => _CardContentState();
 }
 
 class _CardContentState extends State<CardContent> {
-  final _scrollController = ScrollController();
+  late final ScrollController _scrollController;
+  late final bool _ownsScrollController;
   bool _hasMoreBelow = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = widget.scrollController ?? ScrollController();
+    _ownsScrollController = widget.scrollController == null;
     _scrollController.addListener(_updateHasMoreBelow);
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateHasMoreBelow());
   }
@@ -55,7 +55,7 @@ class _CardContentState extends State<CardContent> {
   @override
   void dispose() {
     _scrollController.removeListener(_updateHasMoreBelow);
-    _scrollController.dispose();
+    if (_ownsScrollController) _scrollController.dispose();
     super.dispose();
   }
 
@@ -76,10 +76,7 @@ class _CardContentState extends State<CardContent> {
     final style = card.type.styleFor(Theme.of(context).brightness);
     final colors = AppColorsExtension.of(context);
     final isPreview = !widget.scrollable && CardContent.needsFullText(card);
-    final displayBody = CardContent.displayBody(card);
-    final body = isPreview
-        ? '${displayBody.substring(0, CardContent.previewLength)}…'
-        : displayBody;
+    final body = isPreview ? contentPreview(card.body) : card.body;
 
     return Column(
       mainAxisSize: MainAxisSize.max,
@@ -123,7 +120,7 @@ class _CardContentState extends State<CardContent> {
                 children: [
                   Text(
                     body,
-                    style: AppTheme.quoteStyle(context),
+                    style: _bodyStyle(context, card),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -176,7 +173,7 @@ class _CardContentState extends State<CardContent> {
         SelectableShareArea(
           child: Text(
             body,
-            style: AppTheme.quoteStyle(context),
+            style: _bodyStyle(context, card),
             textAlign: TextAlign.center,
           ),
         ),
@@ -188,6 +185,11 @@ class _CardContentState extends State<CardContent> {
 
   Widget _sourceText(DayCard card, AppColorsExtension colors) =>
       Text('— ${card.source}', style: _sourceStyle(colors));
+
+  TextStyle _bodyStyle(BuildContext context, DayCard card) =>
+      card.type == CardType.reading
+      ? AppTheme.readingTextStyle(context)
+      : AppTheme.quoteStyle(context);
 
   TextStyle _sourceStyle(AppColorsExtension colors) =>
       TextStyle(fontSize: 13, letterSpacing: 0.2, color: colors.textSecondary);

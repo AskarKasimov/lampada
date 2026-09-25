@@ -180,12 +180,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
       );
 
   void _openFullText(DayCard card) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => FullCardTextScreen(card: card),
-      ),
-    );
+    Navigator.of(context).push(FullCardTextRoute(card: card));
   }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.

@@ -57,6 +57,33 @@ void main() {
     expect(verse.center.dy, lessThan(viewport.top + viewport.height * 0.65));
   });
 
+  testWidgets('длинный стих сохраняет кегль карточки Евангелия', (
+    tester,
+  ) async {
+    final longVerse = Verse(
+      number: 1,
+      chapter: 10,
+      text: List.filled(100, 'Длинный стих').join(' '),
+    );
+    await tester.pumpWidget(_app(VerseView(verse: longVerse)));
+
+    final text = tester.widget<Text>(
+      find.text('${longVerse.text.substring(0, 150)}…'),
+    );
+
+    expect(text.style?.fontSize, 27);
+  });
+
+  testWidgets('длинный стих показывает превью из 150 символов', (tester) async {
+    final longText = List.filled(30, 'Длинный стих').join(' ');
+    final verse = Verse(number: 1, chapter: 10, text: longText);
+
+    await tester.pumpWidget(_app(VerseView(verse: verse)));
+
+    expect(find.text('${longText.substring(0, 150)}…'), findsOneWidget);
+    expect(find.text(longText), findsNothing);
+  });
+
   testWidgets('кнопка зовёт колбэк', (tester) async {
     var opened = false;
     await tester.pumpWidget(

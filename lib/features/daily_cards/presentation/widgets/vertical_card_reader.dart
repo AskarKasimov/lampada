@@ -38,7 +38,9 @@ class VerticalCardReader extends StatelessWidget {
     child: Stack(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(30, 48, 24, 24),
+          // Текст продолжает линию карточки на «Сегодня»: 20px поля и 13px
+          // под метку непрочитанного.
+          padding: const EdgeInsets.fromLTRB(33, 48, 24, 24),
           child: PageView.builder(
             controller: controller,
             scrollDirection: Axis.vertical,

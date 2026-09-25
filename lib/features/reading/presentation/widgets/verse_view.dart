@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/content_preview.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/selectable_share_area.dart';
@@ -16,18 +17,10 @@ class VerseView extends StatelessWidget {
   /// null — у стиха толкования нет, действие не показываем.
   final VoidCallback? onOpenInterpretation;
 
-  /// Стихи бывают и в строку, и на добрый абзац — кегль подбираем по длине,
-  /// иначе длинный стих не влезает и «один стих = один экран» ломается.
-  static double _fontSizeFor(int length) {
-    if (length <= 160) return 26;
-    if (length <= 320) return 22;
-    if (length <= 520) return 19;
-    return 17;
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
+    final text = contentPreview(verse.text);
     return SelectableShareArea(
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
@@ -38,12 +31,9 @@ class VerseView extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    verse.text,
+                    text,
                     textAlign: TextAlign.center,
-                    style: AppTheme.quoteStyle(context).copyWith(
-                      fontSize: _fontSizeFor(verse.text.length),
-                      height: 1.5,
-                    ),
+                    style: AppTheme.readingTextStyle(context),
                   ),
                   const SizedBox(height: 18),
                   Text(
