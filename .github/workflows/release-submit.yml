@@ -90,7 +90,7 @@ jobs:
           flutter test
 
   submit-rustore:
-    name: Собрать и отправить AAB в RuStore
+    name: Собрать AAB и загрузить черновик RuStore
     needs: validate-release
     if: ${{ github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'rustore' }}
     runs-on: ubuntu-24.04
@@ -181,7 +181,7 @@ jobs:
           bun run capture -- --locale ru --format rustore \
             --output-dir "$RUNNER_TEMP/rustore-screenshots"
 
-      - name: Отправить AAB в RuStore
+      - name: Загрузить AAB в черновик RuStore
         env:
           RUSTORE_KEY_ID: ${{ secrets.RUSTORE_KEY_ID }}
           RUSTORE_PRIVATE_KEY: ${{ secrets.RUSTORE_PRIVATE_KEY }}
@@ -211,9 +211,9 @@ jobs:
           }
 
           {
-            printf '## RuStore submission\n\n'
+            printf '## RuStore draft\n\n'
             printf -- '- Draft ID: `%s`\n' "$version_id"
-            printf -- '- Status: `submitted`\n'
+            printf -- '- Status: `draft`\n'
             printf -- '- Release notes: `CHANGELOG.md`\n'
             printf -- '- AAB SHA-256: `%s`\n' \
               "$(cut -d ' ' -f 1 build/app/outputs/bundle/release/app-release.aab.sha256)"

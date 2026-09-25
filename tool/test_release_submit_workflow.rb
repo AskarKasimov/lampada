@@ -6,6 +6,7 @@ require "yaml"
 ROOT = File.expand_path("..", __dir__)
 WORKFLOW_PATH = File.join(ROOT, ".github/workflows/release-submit.yml")
 FASTFILE_PATH = File.join(ROOT, "fastlane/Fastfile")
+RUSTORE_PUBLISH_PATH = File.join(ROOT, "tool/rustore_publish.sh")
 
 def fail!(message)
   warn "release CD contract: #{message}"
@@ -21,6 +22,7 @@ end
 
 fail!("missing #{WORKFLOW_PATH}") unless File.file?(WORKFLOW_PATH)
 fail!("missing #{FASTFILE_PATH}") unless File.file?(FASTFILE_PATH)
+fail!("missing #{RUSTORE_PUBLISH_PATH}") unless File.file?(RUSTORE_PUBLISH_PATH)
 
 workflow = YAML.safe_load(File.read(WORKFLOW_PATH), aliases: true)
 jobs = require_value(workflow, "jobs", "workflow")
@@ -45,5 +47,8 @@ fail!("TestFlight lane does not upload a build") unless fastfile.match?(/upload_
 fail!("TestFlight lane can distribute the build") unless fastfile.match?(/skip_submission:\s*true/)
 fail!("TestFlight lane waits for build processing") unless fastfile.match?(/skip_waiting_for_build_processing:\s*true/)
 fail!("TestFlight lane can submit an App Store version") if fastfile.match?(/upload_to_app_store|submit_for_review|automatic_release/)
+
+rustore_script = File.read(RUSTORE_PUBLISH_PATH)
+fail!("RuStore script submits the draft for moderation") if rustore_script.match?(%r{/commit\?})
 
 puts "release CD contract: ok"

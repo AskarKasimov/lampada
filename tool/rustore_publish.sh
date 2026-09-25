@@ -170,9 +170,5 @@ for ordinal in "${!screenshot_files[@]}"; do
   require_api_success "screenshot upload $((ordinal + 1))" "$screenshot_response"
 done
 
-if ! submit_response="$("$CURL_BIN"   --silent   --show-error   --request POST   --header "Public-Token: $token"   "$RUSTORE_API_BASE_URL/public/v1/application/$package_path/version/$draft_version_id/commit?priorityUpdate=0")"; then
-  die "moderation submission request failed for draft $draft_version_id"
-fi
-require_api_success 'moderation submission' "$submit_response"
-
-printf 'version_id=%s\nstatus=submitted\n' "$draft_version_id"
+# Отправку на модерацию владелец версии делает вручную в кабинете RuStore.
+printf 'version_id=%s\nstatus=draft\n' "$draft_version_id"

@@ -66,9 +66,9 @@ subject. Не добавляйте AI-трейлеры, например `Co-Aut
 
 Push тега запускает workflow **«Stores: отправить в RuStore и TestFlight»**. Он без
 production-секретов проверяет tag, версию, форматирование, анализ и тесты, а
-затем в отдельных jobs собирает Android AAB и iOS IPA. AAB отправляется на
-модерацию RuStore с ручной публикацией; IPA загружается в TestFlight. Статусы
-TestFlight и App Store команда меняет вручную в App Store Connect.
+затем в отдельных jobs собирает Android AAB и iOS IPA. AAB загружается в
+черновик RuStore, а IPA — в TestFlight. Отправку на модерацию и все статусы
+RuStore, TestFlight и App Store команда меняет вручную в кабинетах сторов.
 
 Для каждой версии нужен непустой раздел changelog вида
 `## [X.Y.Z] - YYYY-MM-DD` до 5 000 символов для RuStore. Не включайте туда
