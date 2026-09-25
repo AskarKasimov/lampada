@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../bible/presentation/screens/bible_screen.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/course_reader_screen.dart';
@@ -41,7 +42,7 @@ class AppShell extends ConsumerWidget {
               bottom: false,
               child: IndexedStack(
                 index: tab.index,
-                children: const [TodayScreen(), ProfileScreen()],
+                children: const [TodayScreen(), BibleScreen(), ProfileScreen()],
               ),
             ),
             Positioned(

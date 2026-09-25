@@ -141,7 +141,7 @@ void main() {
     expect(find.text('Мысль дня'), findsOneWidget);
   });
 
-  testWidgets('в навигации две вкладки: календарь свёрнут в полоску недели', (
+  testWidgets('в навигации три вкладки: Сегодня, Библия, Профиль', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
@@ -150,6 +150,13 @@ void main() {
 
     expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(tabIcon(CupertinoIcons.sunset_fill), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.text('Библия'),
+      ),
+      findsOneWidget,
+    );
     expect(tabIcon(CupertinoIcons.bookmark), findsNothing);
     expect(tabIcon(CupertinoIcons.person), findsOneWidget);
   });
@@ -274,7 +281,7 @@ void main() {
     );
   });
 
-  testWidgets('подписи видны у обеих вкладок, не только у активной', (
+  testWidgets('подписи видны у всех вкладок, не только у активной', (
     tester,
   ) async {
     // Без ярлыков неочевидно, куда ведут иконки; активную вкладку отличает
@@ -283,7 +290,7 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    for (final label in ['Сегодня', 'Профиль']) {
+    for (final label in ['Сегодня', 'Библия', 'Профиль']) {
       expect(
         find.descendant(
           of: find.byType(FloatingNavBar),
