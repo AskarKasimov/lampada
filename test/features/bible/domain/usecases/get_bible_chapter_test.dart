@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
+import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
 import 'package:lampada/features/bible/domain/repositories/bible_repository.dart';
 import 'package:lampada/features/bible/domain/usecases/get_bible_chapter.dart';
@@ -20,6 +21,14 @@ class _FakeRepository implements BibleRepository {
       ),
     );
   }
+
+  @override
+  Future<Result<BibleChapterStatuses>> getChapterStatuses() async =>
+      Success((cached: <BibleChapterId>{}, read: <BibleChapterId>{}));
+
+  @override
+  Future<Result<void>> markChapterRead(String book, int chapter) async =>
+      const Success(null);
 }
 
 void main() {

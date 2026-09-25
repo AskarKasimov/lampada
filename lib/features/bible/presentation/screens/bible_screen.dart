@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../../domain/entities/bible_book.dart';
+import '../providers/providers.dart';
 import 'bible_reader_screen.dart';
 
 /// Книга раскрывает главы; выбранная глава открывается с первого стиха.
-class BibleScreen extends StatefulWidget {
+class BibleScreen extends ConsumerStatefulWidget {
   const BibleScreen({super.key});
 
   @override
-  State<BibleScreen> createState() => _BibleScreenState();
+  ConsumerState<BibleScreen> createState() => _BibleScreenState();
 }
 
-class _BibleScreenState extends State<BibleScreen> {
+class _BibleScreenState extends ConsumerState<BibleScreen> {
   // Каталог хранит книги в каноническом порядке: Новый Завет начинается с Mt.
   static final _oldTestamentBooks = [
     ...bibleBooks.takeWhile((book) => book.code != 'Mt'),
@@ -29,11 +31,11 @@ class _BibleScreenState extends State<BibleScreen> {
   ];
 
   String? _selectedBook;
-  int? _selectedChapter;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
+    final statuses = ref.watch(bibleChapterStatusesProvider).value;
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, kFloatingNavInset + 20),
       itemCount: _items.length + 1,
@@ -78,7 +80,6 @@ class _BibleScreenState extends State<BibleScreen> {
               ),
               onTap: () => setState(() {
                 _selectedBook = selected ? null : book.code;
-                _selectedChapter = null;
               }),
             ),
             if (selected) ...[
@@ -105,16 +106,25 @@ class _BibleScreenState extends State<BibleScreen> {
                     ),
                     itemBuilder: (context, chapterIndex) {
                       final chapter = chapterIndex + 1;
-                      final isSelected = _selectedChapter == chapter;
+                      final id = (book.code, chapter);
+                      final isRead = statuses?.read.contains(id) ?? false;
+                      final isCached = statuses?.cached.contains(id) ?? false;
                       return Material(
-                        color: isSelected
+                        key: ValueKey('bible-chapter-${book.code}-$chapter'),
+                        color: isRead
                             ? colors.accent
+                            : isCached
+                            ? colors.background
                             : colors.ink.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(11),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11),
+                          side: isCached && !isRead
+                              ? BorderSide(color: colors.accent, width: 1.5)
+                              : BorderSide.none,
+                        ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(11),
                           onTap: () {
-                            setState(() => _selectedChapter = chapter);
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
                                 builder: (_) => BibleReaderScreen(
@@ -130,8 +140,10 @@ class _BibleScreenState extends State<BibleScreen> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: isSelected
+                                color: isRead
                                     ? colors.background
+                                    : isCached
+                                    ? colors.accent
                                     : colors.ink,
                               ),
                             ),

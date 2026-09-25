@@ -74,6 +74,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         _lastChapter = widget.chapter;
         _loadingInitial = false;
       });
+      ref.read(bibleChapterStatusesProvider.notifier).refresh();
+      _markChapterReadIfFinished(_page);
       _loadNext();
     } on Object catch (error) {
       if (!mounted) return;
@@ -115,6 +117,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         _lastChapter = target.$2;
         _loadingNext = false;
       });
+      ref.read(bibleChapterStatusesProvider.notifier).refresh();
+      _markChapterReadIfFinished(_page);
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
@@ -126,10 +130,29 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
 
   void _onPageChanged(int page) {
     setState(() => _page = page);
+    _markChapterReadIfFinished(page);
     // Предзагружаем следующую главу у конца уже полученных стихов.
     if (page >= _verses.length - 3 && !_loadingNext && _nextError == null) {
       _loadNext();
     }
+  }
+
+  void _markChapterReadIfFinished(int page) {
+    if (page < 0 || page >= _verses.length) return;
+    final verse = _verses[page];
+    // Каждая загрузка приносит главу целиком, поэтому последний в ней стих
+    // можно узнать и до предзагрузки следующей главы.
+    if (page + 1 < _verses.length && _sameChapter(verse, _verses[page + 1])) {
+      return;
+    }
+    final id = (verse.book.code, verse.chapter);
+    if (ref.read(bibleChapterStatusesProvider).value?.read.contains(id) ??
+        false) {
+      return;
+    }
+    ref
+        .read(bibleChapterStatusesProvider.notifier)
+        .markRead(verse.book.code, verse.chapter);
   }
 
   @override

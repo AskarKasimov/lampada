@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
+import 'package:lampada/core/theme/app_colors.dart';
+import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_book.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
 import 'package:lampada/features/bible/domain/repositories/bible_repository.dart';
@@ -13,21 +15,36 @@ import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.
 import 'package:lampada/features/daily_cards/presentation/widgets/vertical_card_reader.dart';
 
 class _FakeRepository implements BibleRepository {
+  final cached = <BibleChapterId>{};
+  final read = <BibleChapterId>{};
+
   @override
-  Future<Result<BibleChapter>> getChapter(String book, int chapter) async =>
-      Success(
-        BibleChapter(
-          book: book,
-          number: chapter,
-          verses: const [
-            BibleVerse(number: 1, text: 'Первый стих'),
-            BibleVerse(number: 2, text: 'Второй стих'),
-          ],
-        ),
-      );
+  Future<Result<BibleChapter>> getChapter(String book, int chapter) async {
+    cached.add((book, chapter));
+    return Success(
+      BibleChapter(
+        book: book,
+        number: chapter,
+        verses: const [
+          BibleVerse(number: 1, text: 'Первый стих'),
+          BibleVerse(number: 2, text: 'Второй стих'),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Future<Result<BibleChapterStatuses>> getChapterStatuses() async =>
+      Success((cached: {...cached}, read: {...read}));
+
+  @override
+  Future<Result<void>> markChapterRead(String book, int chapter) async {
+    read.add((book, chapter));
+    return const Success(null);
+  }
 }
 
-class _LongVerseRepository implements BibleRepository {
+class _LongVerseRepository extends _FakeRepository {
   @override
   Future<Result<BibleChapter>> getChapter(String book, int chapter) async =>
       Success(
@@ -39,7 +56,7 @@ class _LongVerseRepository implements BibleRepository {
       );
 }
 
-class _LongChapterRepository implements BibleRepository {
+class _LongChapterRepository extends _FakeRepository {
   @override
   Future<Result<BibleChapter>> getChapter(String book, int chapter) async =>
       Success(
@@ -55,11 +72,71 @@ class _LongChapterRepository implements BibleRepository {
 }
 
 void main() {
+  testWidgets('скачанная глава имеет рамку, прочитанная — заливку', (
+    tester,
+  ) async {
+    final repository = _FakeRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
+        child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ),
+    );
+    await tester.scrollUntilVisible(find.text('От Иоанна'), 300);
+    await tester.tap(find.text('От Иоанна'));
+    await tester.pump();
+    final tile = find.byKey(const ValueKey('bible-chapter-Jn-3'));
+    final colors = AppColorsExtension.of(tester.element(tile));
+
+    await tester.tap(tile);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    Navigator.of(tester.element(find.byType(BibleReaderScreen))).pop();
+    await tester.pumpAndSettle();
+    final cachedTile = tester.widget<Material>(tile);
+    expect(cachedTile.color, colors.background);
+    expect(
+      (cachedTile.shape! as RoundedRectangleBorder).side.color,
+      colors.accent,
+    );
+    expect(
+      tester
+          .widget<Text>(find.descendant(of: tile, matching: find.text('3')))
+          .style!
+          .color,
+      colors.accent,
+    );
+
+    await tester.tap(tile);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    Navigator.of(tester.element(find.byType(BibleReaderScreen))).pop();
+    await tester.pumpAndSettle();
+    final readTile = tester.widget<Material>(tile);
+    expect(readTile.color, colors.accent);
+    expect((readTile.shape! as RoundedRectangleBorder).side, BorderSide.none);
+    expect(
+      tester
+          .widget<Text>(find.descendant(of: tile, matching: find.text('3')))
+          .style!
+          .color,
+      colors.background,
+    );
+  });
+
   testWidgets('список книг показывает Новый Завет перед Ветхим', (
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ),
     );
 
     expect(find.text('Новый Завет'), findsOneWidget);

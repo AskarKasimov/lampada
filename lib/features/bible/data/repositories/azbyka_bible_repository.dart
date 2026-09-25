@@ -1,19 +1,45 @@
+import 'dart:convert';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../core/log/net_log.dart';
 import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
+import '../../../../core/storage/preference_write.dart';
+import '../../domain/bible_chapter_statuses.dart';
 import '../../domain/entities/bible_chapter.dart';
 import '../../domain/repositories/bible_repository.dart';
 import '../datasources/bible_remote_datasource.dart';
+import '../dto/bible_chapter_dto.dart';
 import '../mappers/bible_chapter_mapper.dart';
 
 class AzbykaBibleRepository implements BibleRepository {
-  const AzbykaBibleRepository(this._source);
+  AzbykaBibleRepository(this._source, this._prefs);
 
   final BibleRemoteDatasource _source;
+  final SharedPreferences _prefs;
+  static const _cachePrefix = 'bible_chapter_v1:';
+  static const _readKey = 'bible_read_chapters_v1';
+  Future<void> _pendingReadWrite = Future.value();
 
   @override
   Future<Result<BibleChapter>> getChapter(String book, int chapter) async {
     try {
-      return Success((await _source.fetchChapter(book, chapter)).toEntity());
+      final cached = _readCache(book, chapter);
+      if (cached != null) return Success(cached.toEntity());
+      final downloaded = await _source.fetchChapter(book, chapter);
+      try {
+        await requirePreferenceWrite(
+          _prefs.setString(
+            '$_cachePrefix$book.$chapter',
+            jsonEncode(downloaded.toJson()),
+          ),
+        );
+      } on Object catch (error) {
+        // Текст остаётся доступен сейчас, но без записи не получит статус офлайн.
+        netLog('не удалось сохранить главу $book.$chapter: $error');
+      }
+      return Success(downloaded.toEntity());
     } on RemoteFetchException catch (error) {
       return Failure(
         AppFailure(
@@ -22,7 +48,7 @@ class AzbykaBibleRepository implements BibleRepository {
           cause: error,
         ),
       );
-    } on Exception catch (error) {
+    } on Object catch (error) {
       return Failure(
         AppFailure(
           'Не удалось прочитать главу',
@@ -31,5 +57,82 @@ class AzbykaBibleRepository implements BibleRepository {
         ),
       );
     }
+  }
+
+  @override
+  Future<Result<BibleChapterStatuses>> getChapterStatuses() async {
+    try {
+      final cached = <BibleChapterId>{};
+      for (final key in _prefs.getKeys()) {
+        if (!key.startsWith(_cachePrefix)) continue;
+        final parts = key.substring(_cachePrefix.length).split('.');
+        if (parts.length != 2) continue;
+        final chapter = int.tryParse(parts[1]);
+        if (chapter == null || _readCache(parts[0], chapter) == null) continue;
+        cached.add((parts[0], chapter));
+      }
+      return Success((cached: cached, read: _readChapters()));
+    } on Object catch (error) {
+      return Failure(
+        AppFailure(
+          'Не удалось открыть прогресс Библии',
+          kind: FailureKind.unknown,
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<void>> markChapterRead(String book, int chapter) {
+    final operation = _pendingReadWrite.then((_) async {
+      try {
+        final read = _readChapters()..add((book, chapter));
+        await requirePreferenceWrite(
+          _prefs.setStringList(_readKey, [
+            for (final id in read) '${id.$1}.${id.$2}',
+          ]),
+        );
+        return const Success<void>(null);
+      } on Object catch (error) {
+        return Failure<void>(
+          AppFailure(
+            'Не удалось сохранить прочитанную главу',
+            kind: FailureKind.unknown,
+            cause: error,
+          ),
+        );
+      }
+    });
+    _pendingReadWrite = operation.then((_) {});
+    return operation;
+  }
+
+  BibleChapterDto? _readCache(String book, int chapter) {
+    final raw = _prefs.getString('$_cachePrefix$book.$chapter');
+    if (raw == null) return null;
+    try {
+      final dto = BibleChapterDto.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+      if (dto.book != book || dto.number != chapter || dto.verses.isEmpty) {
+        return null;
+      }
+      return dto;
+    } on Object catch (error) {
+      netLog('кэш главы $book.$chapter повреждён: $error');
+      return null;
+    }
+  }
+
+  Set<BibleChapterId> _readChapters() {
+    final read = <BibleChapterId>{};
+    for (final raw in _prefs.getStringList(_readKey) ?? const <String>[]) {
+      final parts = raw.split('.');
+      if (parts.length != 2) continue;
+      final chapter = int.tryParse(parts[1]);
+      if (chapter != null) read.add((parts[0], chapter));
+    }
+    return read;
   }
 }
