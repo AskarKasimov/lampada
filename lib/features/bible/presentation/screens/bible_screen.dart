@@ -14,8 +14,19 @@ class BibleScreen extends StatefulWidget {
 }
 
 class _BibleScreenState extends State<BibleScreen> {
-  static final _books = [...bibleBooks]
-    ..sort((a, b) => a.title.compareTo(b.title));
+  // Каталог хранит книги в каноническом порядке: Новый Завет начинается с Mt.
+  static final _oldTestamentBooks = [
+    ...bibleBooks.takeWhile((book) => book.code != 'Mt'),
+  ]..sort((a, b) => a.title.compareTo(b.title));
+  static final _newTestamentBooks = [
+    ...bibleBooks.skipWhile((book) => book.code != 'Mt'),
+  ]..sort((a, b) => a.title.compareTo(b.title));
+  static final _items = <({String? heading, BibleBook? book})>[
+    (heading: 'Ветхий Завет', book: null),
+    for (final book in _oldTestamentBooks) (heading: null, book: book),
+    (heading: 'Новый Завет', book: null),
+    for (final book in _newTestamentBooks) (heading: null, book: book),
+  ];
 
   String? _selectedBook;
   int? _selectedChapter;
@@ -25,7 +36,7 @@ class _BibleScreenState extends State<BibleScreen> {
     final colors = AppColorsExtension.of(context);
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, kFloatingNavInset + 20),
-      itemCount: _books.length + 1,
+      itemCount: _items.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
           return Padding(
@@ -36,7 +47,21 @@ class _BibleScreenState extends State<BibleScreen> {
             ),
           );
         }
-        final book = _books[index - 1];
+        final item = _items[index - 1];
+        if (item.heading case final heading?) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
+            child: Text(
+              heading,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+              ),
+            ),
+          );
+        }
+        final book = item.book!;
         final selected = _selectedBook == book.code;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,7 +83,7 @@ class _BibleScreenState extends State<BibleScreen> {
             ),
             if (selected) ...[
               Text(
-                'Глава',
+                'Главы',
                 style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
               const SizedBox(height: 10),

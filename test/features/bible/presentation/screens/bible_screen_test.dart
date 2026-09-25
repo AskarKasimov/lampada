@@ -55,6 +55,28 @@ class _LongChapterRepository implements BibleRepository {
 }
 
 void main() {
+  testWidgets('список книг показывает границу Ветхого и Нового Завета', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: BibleScreen())),
+    );
+
+    expect(find.text('Ветхий Завет'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Новый Завет'), 300);
+    expect(find.text('Новый Завет'), findsOneWidget);
+    expect(find.text('Числа'), findsOneWidget);
+    expect(find.text('Деяния святых Апостолов'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Числа')).dy,
+      lessThan(tester.getTopLeft(find.text('Новый Завет')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('Новый Завет')).dy,
+      lessThan(tester.getTopLeft(find.text('Деяния святых Апостолов')).dy),
+    );
+  });
+
   testWidgets(
     'книга раскрывает главы, выбранная глава начинается с первого стиха',
     (tester) async {
@@ -70,7 +92,7 @@ void main() {
       await tester.scrollUntilVisible(find.text('От Иоанна'), 300);
       await tester.tap(find.text('От Иоанна'));
       await tester.pump();
-      expect(find.text('Глава'), findsOneWidget);
+      expect(find.text('Главы'), findsOneWidget);
       expect(find.text('Стих'), findsNothing);
       await tester.tap(find.text('3').first);
       await tester.pump();
