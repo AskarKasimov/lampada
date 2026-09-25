@@ -1,4 +1,4 @@
-name: 'Stores: отправить на модерацию'
+name: 'Stores: отправить в RuStore и TestFlight'
 
 on:
   push:
@@ -231,7 +231,7 @@ jobs:
           retention-days: 90
 
   submit-appstore:
-    name: Собрать IPA и отправить в App Store Review
+    name: Собрать IPA и загрузить в TestFlight
     needs: validate-release
     if: ${{ github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'appstore' }}
     runs-on: macos-15
@@ -340,61 +340,16 @@ jobs:
           flutter pub get
           flutter build ipa --release \
             --export-options-plist="$IOS_EXPORT_OPTIONS_PATH"
-          shasum -a 256 build/ipa/*.ipa > build/ipa/lampada.ipa.sha256
-
-      - name: Установить Bun для витринных скриншотов
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.3.11
-
-      - name: Подготовить метаданные и скриншоты App Store
-        run: |
-          set -euo pipefail
-          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\\+[0-9]+[[:space:]]*$/\\1/p' pubspec.yaml)"
-          build_number="$(sed -nE 's/^version:[[:space:]]*[^+[:space:]]+\\+([0-9]+)[[:space:]]*$/\\1/p' pubspec.yaml)"
-          [[ -n "$pubspec_version" && "$build_number" =~ ^[1-9][0-9]*$ ]] || {
-            printf 'pubspec.yaml must contain versionName+positive versionCode.\n' >&2
-            exit 1
-          }
-          whats_new="$(bash tool/extract_release_notes.sh \
-            --version "$pubspec_version" \
-            --file CHANGELOG.md \
-            --max-length 4000)"
-          metadata_dir="$RUNNER_TEMP/appstore-metadata"
-          screenshots_dir="$RUNNER_TEMP/appstore-screenshots"
           ipa_path="$(find "$GITHUB_WORKSPACE/build/ipa" -maxdepth 1 -name '*.ipa' -print -quit)"
           [[ -n "$ipa_path" && -f "$ipa_path" ]] || {
             printf 'Flutter build did not produce an IPA.\n' >&2
             exit 1
           }
-          mkdir -p "$metadata_dir/ru-RU" "$screenshots_dir/ru-RU"
-          printf '%s\n' "$whats_new" > "$metadata_dir/ru-RU/release_notes.txt"
+          shasum -a 256 "$ipa_path" > build/ipa/lampada.ipa.sha256
+          printf 'APP_STORE_IPA_PATH=%s\n' "$ipa_path" >> "$GITHUB_ENV"
 
-          pushd aso-collection/generator >/dev/null
-          bun ci
-          bunx playwright install chromium
-          for format in app-store-6-9 app-store-6-5; do
-            capture_dir="$RUNNER_TEMP/$format-screenshots"
-            mkdir -p "$capture_dir"
-            bun run capture -- --locale ru --format "$format" \
-              --output-dir "$capture_dir"
-            for screenshot in "$capture_dir"/*.png; do
-              cp "$screenshot" \
-                "$screenshots_dir/ru-RU/${format}-$(basename "$screenshot")"
-            done
-          done
-          popd >/dev/null
-
-          {
-            printf 'APP_STORE_VERSION=%s\n' "$pubspec_version"
-            printf 'APP_STORE_BUILD_NUMBER=%s\n' "$build_number"
-            printf 'APP_STORE_METADATA_PATH=%s\n' "$metadata_dir"
-            printf 'APP_STORE_SCREENSHOTS_PATH=%s\n' "$screenshots_dir"
-            printf 'APP_STORE_IPA_PATH=%s\n' "$ipa_path"
-          } >> "$GITHUB_ENV"
-
-      - name: Отправить IPA на App Store Review
-        run: bundle exec fastlane ios submit_for_review
+      - name: Загрузить IPA в TestFlight
+        run: bundle exec fastlane ios upload_testflight
 
       - name: Сохранить IPA и контрольную сумму
         if: always() && hashFiles('build/ipa/*.ipa') != ''

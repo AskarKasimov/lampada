@@ -7,7 +7,7 @@ changelog_file=''
 max_length=5000
 
 usage() {
-  printf 'Usage: %s --version VERSION --file CHANGELOG.md [--max-length CHARACTERS]\n' "${0##*/}" >&2
+  printf 'Usage: %s --version VERSION --file CHANGELOG.md\n' "${0##*/}" >&2
   exit 2
 }
 
@@ -21,11 +21,6 @@ while (($# > 0)); do
     --file)
       (($# >= 2)) || usage
       changelog_file="$2"
-      shift 2
-      ;;
-    --max-length)
-      (($# >= 2)) || usage
-      max_length="$2"
       shift 2
       ;;
     *)

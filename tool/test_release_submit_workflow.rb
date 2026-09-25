@@ -41,7 +41,9 @@ appstore_job = jobs.fetch("submit-appstore")
 fail!("submit-appstore must use appstore-production") unless appstore_job["environment"] == "appstore-production"
 
 fastfile = File.read(FASTFILE_PATH)
-fail!("App Store lane does not submit for review") unless fastfile.match?(/submit_for_review:\s*true/)
-fail!("App Store lane enables automatic release") unless fastfile.match?(/automatic_release:\s*false/)
+fail!("TestFlight lane does not upload a build") unless fastfile.match?(/upload_to_testflight\s*\(/)
+fail!("TestFlight lane can distribute the build") unless fastfile.match?(/skip_submission:\s*true/)
+fail!("TestFlight lane waits for build processing") unless fastfile.match?(/skip_waiting_for_build_processing:\s*true/)
+fail!("TestFlight lane can submit an App Store version") if fastfile.match?(/upload_to_app_store|submit_for_review|automatic_release/)
 
 puts "release CD contract: ok"

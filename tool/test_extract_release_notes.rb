@@ -14,20 +14,6 @@ Tempfile.create(["release-notes", ".md"]) do |changelog|
   changelog.write("## [1.2.3] - 2026-09-01\n\n#{"а" * 4_001}\n")
   changelog.flush
 
-  _output, error, status = run_notes(
-    "--version", "1.2.3",
-    "--file", changelog.path,
-    "--max-length", "4000",
-  )
-
-  abort("App Store limit must reject 4001 characters") if status.success?
-  abort("expected App Store limit in error: #{error}") unless error.include?("4000")
-end
-
-Tempfile.create(["release-notes", ".md"]) do |changelog|
-  changelog.write("## [1.2.3] - 2026-09-01\n\n#{"а" * 4_001}\n")
-  changelog.flush
-
   output, error, status = run_notes("--version", "1.2.3", "--file", changelog.path)
 
   abort("RuStore default limit unexpectedly rejected notes: #{error}") unless status.success?
