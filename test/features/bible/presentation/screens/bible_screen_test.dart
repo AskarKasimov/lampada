@@ -55,25 +55,25 @@ class _LongChapterRepository implements BibleRepository {
 }
 
 void main() {
-  testWidgets('список книг показывает границу Ветхого и Нового Завета', (
+  testWidgets('список книг показывает Новый Завет перед Ветхим', (
     tester,
   ) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: BibleScreen())),
     );
 
-    expect(find.text('Ветхий Завет'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Новый Завет'), 300);
     expect(find.text('Новый Завет'), findsOneWidget);
-    expect(find.text('Числа'), findsOneWidget);
-    expect(find.text('Деяния святых Апостолов'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Ветхий Завет'), 300);
+    expect(find.text('Ветхий Завет'), findsOneWidget);
+    expect(find.text('Петра 2-е'), findsOneWidget);
+    expect(find.text('Аввакума'), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('Числа')).dy,
-      lessThan(tester.getTopLeft(find.text('Новый Завет')).dy),
+      tester.getTopLeft(find.text('Петра 2-е')).dy,
+      lessThan(tester.getTopLeft(find.text('Ветхий Завет')).dy),
     );
     expect(
-      tester.getTopLeft(find.text('Новый Завет')).dy,
-      lessThan(tester.getTopLeft(find.text('Деяния святых Апостолов')).dy),
+      tester.getTopLeft(find.text('Ветхий Завет')).dy,
+      lessThan(tester.getTopLeft(find.text('Аввакума')).dy),
     );
   });
 
@@ -92,7 +92,7 @@ void main() {
       await tester.scrollUntilVisible(find.text('От Иоанна'), 300);
       await tester.tap(find.text('От Иоанна'));
       await tester.pump();
-      expect(find.text('Главы'), findsOneWidget);
+      expect(find.text('Глава'), findsOneWidget);
       expect(find.text('Стих'), findsNothing);
       await tester.tap(find.text('3').first);
       await tester.pump();

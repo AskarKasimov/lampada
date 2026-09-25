@@ -22,10 +22,10 @@ class _BibleScreenState extends State<BibleScreen> {
     ...bibleBooks.skipWhile((book) => book.code != 'Mt'),
   ]..sort((a, b) => a.title.compareTo(b.title));
   static final _items = <({String? heading, BibleBook? book})>[
-    (heading: 'Ветхий Завет', book: null),
-    for (final book in _oldTestamentBooks) (heading: null, book: book),
     (heading: 'Новый Завет', book: null),
     for (final book in _newTestamentBooks) (heading: null, book: book),
+    (heading: 'Ветхий Завет', book: null),
+    for (final book in _oldTestamentBooks) (heading: null, book: book),
   ];
 
   String? _selectedBook;
@@ -83,7 +83,7 @@ class _BibleScreenState extends State<BibleScreen> {
             ),
             if (selected) ...[
               Text(
-                'Главы',
+                'Глава',
                 style: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
               const SizedBox(height: 10),
