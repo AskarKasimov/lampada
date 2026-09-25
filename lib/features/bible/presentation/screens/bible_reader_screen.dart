@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,9 +17,14 @@ import '../../domain/entities/bible_chapter.dart';
 import '../providers/providers.dart';
 
 class BibleReaderScreen extends ConsumerStatefulWidget {
-  const BibleReaderScreen({required this.book, super.key});
+  const BibleReaderScreen({
+    required this.book,
+    required this.chapter,
+    super.key,
+  });
 
   final BibleBook book;
+  final int chapter;
 
   @override
   ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
@@ -55,16 +62,16 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     });
     try {
       final chapter = await ref.read(
-        bibleChapterProvider((widget.book.code, 1)).future,
+        bibleChapterProvider((widget.book.code, widget.chapter)).future,
       );
       if (!mounted) return;
       setState(() {
         _verses.addAll([
           for (final verse in chapter.verses)
-            (book: widget.book, chapter: 1, verse: verse),
+            (book: widget.book, chapter: widget.chapter, verse: verse),
         ]);
         _lastBook = widget.book;
-        _lastChapter = 1;
+        _lastChapter = widget.chapter;
         _loadingInitial = false;
       });
       _loadNext();
@@ -247,32 +254,88 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     }
     final count = last - first + 1;
     final current = page - first;
-    const visibleCount = 12;
-    final windowStart = (current - visibleCount ~/ 2).clamp(
-      0,
-      (count - visibleCount).clamp(0, count),
-    );
-    final windowLength = (count - windowStart).clamp(0, visibleCount);
-
-    // В Псалтири встречаются очень длинные главы: показываем окно точек,
-    // чтобы индикатор не выходил за пределы экрана.
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (windowStart > 0)
-          Text('⋮', style: TextStyle(color: colors.textSecondary)),
-        ProgressDots(
-          count: windowLength,
-          currentIndex: current - windowStart,
-          axis: Axis.vertical,
-          accentColors: List.filled(windowLength, colors.accent),
-        ),
-        if (windowStart + windowLength < count)
-          Text('⋮', style: TextStyle(color: colors.textSecondary)),
-      ],
+    return _ChapterProgressRail(
+      key: ValueKey('${position.book.code}-${position.chapter}'),
+      count: count,
+      currentIndex: current,
+      accent: colors.accent,
     );
   }
 
   bool _sameChapter(_ReadingVerse a, _ReadingVerse b) =>
       a.book.code == b.book.code && a.chapter == b.chapter;
+}
+
+/// Показывает все точки главы; длинная колонка прокручивается к текущей.
+class _ChapterProgressRail extends StatefulWidget {
+  const _ChapterProgressRail({
+    required this.count,
+    required this.currentIndex,
+    required this.accent,
+    super.key,
+  });
+
+  final int count;
+  final int currentIndex;
+  final Color accent;
+
+  @override
+  State<_ChapterProgressRail> createState() => _ChapterProgressRailState();
+}
+
+class _ChapterProgressRailState extends State<_ChapterProgressRail> {
+  final _controller = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _centerCurrent());
+  }
+
+  @override
+  void didUpdateWidget(covariant _ChapterProgressRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentIndex != widget.currentIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _centerCurrent());
+    }
+  }
+
+  void _centerCurrent() {
+    if (!mounted || !_controller.hasClients) return;
+    const dotStep = 14.0;
+    final position = _controller.position;
+    final offset =
+        (widget.currentIndex * dotStep -
+                position.viewportDimension / 2 +
+                dotStep / 2)
+            .clamp(0.0, position.maxScrollExtent);
+    _controller.animateTo(
+      offset,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SizedBox(
+      width: 8,
+      height: math.min(widget.count * 14.0, constraints.maxHeight),
+      child: SingleChildScrollView(
+        controller: _controller,
+        child: ProgressDots(
+          count: widget.count,
+          currentIndex: widget.currentIndex,
+          axis: Axis.vertical,
+          accentColors: List.filled(widget.count, widget.accent),
+        ),
+      ),
+    ),
+  );
 }

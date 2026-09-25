@@ -56,7 +56,7 @@ class _LongChapterRepository implements BibleRepository {
 
 void main() {
   testWidgets(
-    'выбор книги сразу открывает первый стих без сеток глав и стихов',
+    'книга раскрывает главы, выбранная глава начинается с первого стиха',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -70,10 +70,13 @@ void main() {
       await tester.scrollUntilVisible(find.text('От Иоанна'), 300);
       await tester.tap(find.text('От Иоанна'));
       await tester.pump();
+      expect(find.text('Глава'), findsOneWidget);
+      expect(find.text('Стих'), findsNothing);
+      await tester.tap(find.text('3').first);
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(BibleReaderScreen), findsOneWidget);
       expect(find.text('Первый стих'), findsOneWidget);
-      expect(find.text('Глава'), findsNothing);
       expect(find.text('Стих'), findsNothing);
       expect(
         find.descendant(
@@ -82,9 +85,9 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('1:1'), findsOneWidget);
-      expect(find.text('— 1:1'), findsNothing);
-      expect(find.text('От Иоанна 1:1'), findsNothing);
+      expect(find.text('3:1'), findsOneWidget);
+      expect(find.text('— 3:1'), findsNothing);
+      expect(find.text('От Иоанна 3:1'), findsNothing);
       expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);
     },
   );
@@ -98,7 +101,10 @@ void main() {
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(
-          home: BibleReaderScreen(book: BibleBook('Jn', 'От Иоанна', 21)),
+          home: BibleReaderScreen(
+            book: BibleBook('Jn', 'От Иоанна', 21),
+            chapter: 1,
+          ),
         ),
       ),
     );
@@ -136,7 +142,10 @@ void main() {
           bibleRepositoryProvider.overrideWithValue(_LongVerseRepository()),
         ],
         child: const MaterialApp(
-          home: BibleReaderScreen(book: BibleBook('Apok', 'Откровение', 1)),
+          home: BibleReaderScreen(
+            book: BibleBook('Apok', 'Откровение', 1),
+            chapter: 1,
+          ),
         ),
       ),
     );
@@ -158,7 +167,9 @@ void main() {
     );
   });
 
-  testWidgets('точки длинной главы остаются в пределах экрана', (tester) async {
+  testWidgets('все точки длинной главы доступны без многоточий', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(320, 400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
@@ -167,24 +178,37 @@ void main() {
           bibleRepositoryProvider.overrideWithValue(_LongChapterRepository()),
         ],
         child: const MaterialApp(
-          home: BibleReaderScreen(book: BibleBook('Apok', 'Откровение', 1)),
+          home: BibleReaderScreen(
+            book: BibleBook('Apok', 'Откровение', 1),
+            chapter: 1,
+          ),
         ),
       ),
     );
     await tester.pump();
     await tester.pump();
 
-    expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 12);
+    expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 176);
+    expect(find.text('⋮'), findsNothing);
     tester
         .widget<VerticalCardReader>(find.byType(VerticalCardReader))
         .controller
         .jumpToPage(30);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('1:31'), findsOneWidget);
     expect(
       tester.widget<ProgressDots>(find.byType(ProgressDots)).currentIndex,
-      6,
+      30,
     );
+    final railScroll = tester.widget<SingleChildScrollView>(
+      find.descendant(
+        of: find.byType(VerticalCardReader),
+        matching: find.byType(SingleChildScrollView),
+      ),
+    );
+    expect(railScroll.controller!.offset, greaterThan(0));
     expect(tester.takeException(), isNull);
   });
 }
