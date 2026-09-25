@@ -204,6 +204,28 @@ void main() {
     expect(today.cards.single.id, 'quote-2026-07-19');
   });
 
+  test('кэш чтения сохраняет reference для отката приложения', () async {
+    final prefs = await _emptyPrefs();
+    final legacyReading = DayCardDto.fromJson({
+      'id': 'reading-2026-07-19',
+      'type': 'reading',
+      'body': 'Ин.10:1–9',
+      'source': 'Азбука веры',
+      'reference': 'Jn.10:1-9',
+    });
+
+    await _repo(
+      _FakeDatasource([legacyReading]),
+      prefs,
+    ).getCardsFor(DateTime(2026, 7, 19));
+
+    final cached =
+        jsonDecode(prefs.getString('day_cards_cache_v6:2026-07-19')!)
+            as Map<String, dynamic>;
+    final card = (cached['cards'] as List).single as Map<String, dynamic>;
+    expect(card['reference'], 'Jn.10:1-9');
+  });
+
   test('кэш v5 без ссылки рассказа заменяется свежим днём', () async {
     SharedPreferences.setMockInitialValues({
       'flutter.day_cards_cache_v5:2026-08-24': jsonEncode({

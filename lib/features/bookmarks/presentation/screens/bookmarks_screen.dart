@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,16 +8,20 @@ import '../providers/providers.dart';
 import '../widgets/bookmark_tile.dart';
 import '../widgets/bookmarks_empty_view.dart';
 
-/// Вкладка «Закладки» — «Копилка смыслов». Локальная, без аккаунта (FR-017).
+/// Экран «Закладки» — «Копилка смыслов». Локальная, без аккаунта (FR-017).
 class BookmarksScreen extends ConsumerWidget {
-  const BookmarksScreen({super.key});
+  const BookmarksScreen({this.onClose, super.key});
+
+  /// Модальный вход в копилку должен явно вернуть на «Сегодня»: жест назад
+  /// на iOS для fullscreenDialog недоступен.
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(bookmarksProvider);
     final colors = AppColorsExtension.of(context);
 
-    return async.when(
+    final body = async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       // Сбой локального хранилища — не повод пугать: копилка просто пуста.
       error: (_, _) => const BookmarksEmptyView(),
@@ -65,6 +70,29 @@ class BookmarksScreen extends ConsumerWidget {
           },
         );
       },
+    );
+
+    if (onClose == null) return body;
+    return Scaffold(
+      appBar: AppBar(
+        // Копилка начинается сразу под шапкой; Material 3 по умолчанию
+        // тонирует AppBar после первого пикселя прокрутки, и заголовок
+        // начинает выглядеть отдельной плашкой.
+        backgroundColor: colors.background,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        title: const Text('Закладки'),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(CupertinoIcons.xmark),
+            tooltip: 'Закрыть',
+          ),
+        ],
+      ),
+      body: body,
     );
   }
 }

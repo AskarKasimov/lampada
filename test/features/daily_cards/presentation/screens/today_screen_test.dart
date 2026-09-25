@@ -20,6 +20,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/today_screen.d
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
@@ -28,7 +29,8 @@ import 'package:lampada/features/day_story/presentation/screens/day_story_screen
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/domain/repositories/reading_repository.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
-import 'package:lampada/features/reading/presentation/screens/reading_screen.dart';
+import 'package:lampada/features/reading/presentation/widgets/interpretation_sheet.dart';
+import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 import 'package:lampada/features/reminders/presentation/screens/reminder_permission_screen.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,8 +57,8 @@ const _cards = [
   ),
 ];
 
-/// Карточки, которые попадают в просмотрщик: чтение живёт отдельным треком
-/// и своей страницы там не получает.
+/// Обычная сессия дня не содержит Евангелие: оно грузится лениво, но затем
+/// показывает стихи тем же просмотрщиком.
 final _pageCards = _cards
     .where((c) => c.type != CardType.reading && c.type != CardType.basics)
     .toList();
@@ -69,9 +71,28 @@ const _basics = DayCard(
   title: 'О вере и жизни христианина',
 );
 
-/// Ридер не должен ходить в сеть из виджет-тестов.
+/// Чтение загружается отдельно от карточек дня, но в UI должно стать
+/// страницами их общего просмотрщика.
 class _FakeReadingRepository implements ReadingRepository {
+  _FakeReadingRepository({DailyReading? reading})
+    : reading =
+          reading ??
+          const DailyReading(
+            label: 'Ин.10:1–2',
+            interpretationAuthor: 'Феофилакт Болгарский',
+            verses: [
+              Verse(
+                number: 1,
+                chapter: 10,
+                text: 'Первый стих',
+                interpretation: 'Толкование первого стиха',
+              ),
+              Verse(number: 2, chapter: 10, text: 'Второй стих'),
+            ],
+          );
+
   final forceRefreshReferences = <String>[];
+  final DailyReading reading;
 
   @override
   Future<Result<DailyReading>> getReading(
@@ -79,12 +100,7 @@ class _FakeReadingRepository implements ReadingRepository {
     bool forceRefresh = false,
   }) async {
     if (forceRefresh) forceRefreshReferences.add(reference);
-    return const Success(
-      DailyReading(
-        label: 'Ин.10:1–9',
-        verses: [Verse(number: 1, chapter: 10, text: 'Истинно говорю вам')],
-      ),
-    );
+    return Success(reading);
   }
 }
 
@@ -260,7 +276,7 @@ void main() {
   /// открывать нечего и хелпер ничего не делает.
   Future<void> dismissAutoOpened(WidgetTester tester) async {
     if (find.byType(CardViewerScreen).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(CupertinoIcons.xmark));
+    await tester.tap(find.byIcon(Icons.arrow_back));
     await settle(tester);
   }
 
@@ -399,9 +415,14 @@ void main() {
       await dismissAutoOpened(tester);
 
       expect(find.byType(WeekStrip), findsOneWidget);
-      // Две карточки сессии плюс вход в Евангелие — одним типом виджета.
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
+      // Две карточки сессии, Евангелие и копилка — одни строки дня.
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
       expect(entry('ЕВАНГЕЛИЕ ДНЯ'), findsOneWidget);
+      expect(entry('ЗАКЛАДКИ'), findsOneWidget);
+      expect(find.text('Копилка смыслов'), findsOneWidget);
+      final bookmarksEntry = tester.widget<DayEntryRow>(entry('ЗАКЛАДКИ'));
+      expect(bookmarksEntry.isUnread, isFalse);
+      expect(bookmarksEntry.showReadStatus, isFalse);
     });
 
     testWidgets('блок показывает начало текста карточки', (tester) async {
@@ -502,8 +523,8 @@ void main() {
     ) async {
       // Раньше пройденный день встречал экраном завершения с «Пройти снова»,
       // и чтобы перечитать одну карточку, надо было запускать день заново.
-      // День пройден целиком, включая чтение: иначе автооткрытие уведёт
-      // в ридер Евангелия и до блоков тест не дойдёт.
+      // День пройден целиком, включая Евангелие, поэтому автооткрытие не
+      // перекрывает список карточек.
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
 
@@ -511,7 +532,7 @@ void main() {
       await settle(tester);
       await dismissAutoOpened(tester);
 
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
       expect(entry('ЕВАНГЕЛИЕ ДНЯ'), findsOneWidget);
       expect(find.text('Пройти снова'), findsNothing);
     });
@@ -538,6 +559,77 @@ void main() {
         ),
       );
       expect(pageView.childrenDelegate.estimatedChildCount, _pageCards.length);
+      expect(pageView.scrollDirection, Axis.vertical);
+    });
+
+    testWidgets('длинная карточка открывает полноэкранный текст', (
+      tester,
+    ) async {
+      final longCard = DayCard(
+        id: 'long-advice',
+        type: CardType.advice,
+        body: List.filled(400, 'Длинный текст карточки').join(' '),
+        source: 'Тестовый источник',
+      );
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            cards: [_cards.first, longCard, _cards.last],
+          ),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(entry('СОВЕТ'));
+      await settle(tester);
+
+      final preview = '${longCard.body.substring(0, 150)}…';
+      expect(find.text(preview), findsOneWidget);
+      expect(find.text(longCard.body), findsNothing);
+      final fullscreen = find.byTooltip('Открыть полный текст');
+      final bookmark = find.byTooltip('Сохранить в копилку');
+      final share = find.byTooltip('Поделиться');
+      expect(fullscreen, findsOneWidget);
+      expect(
+        tester.getTopLeft(fullscreen).dy,
+        lessThan(tester.getTopLeft(bookmark).dy),
+      );
+      expect(
+        tester.getTopLeft(bookmark).dy,
+        lessThan(tester.getTopLeft(share).dy),
+      );
+      expect(tester.getSize(fullscreen), const Size(56, 56));
+      await tester.tap(fullscreen);
+      await settle(tester);
+
+      expect(find.text(longCard.body), findsOneWidget);
+    });
+
+    testWidgets('читалка не оставляет боковые safe-area для рельсов', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
+      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await settle(tester);
+
+      await tester.tap(entry('ЦИТАТА'));
+      await settle(tester);
+
+      final safeArea = tester.widget<SafeArea>(
+        find.descendant(
+          of: find.byType(CardViewerScreen),
+          matching: find.byType(SafeArea),
+        ),
+      );
+      expect(safeArea.left, isFalse);
+      expect(safeArea.right, isFalse);
+      expect(tester.getTopLeft(find.byType(ProgressDots)).dx, 12);
+      expect(tester.getTopLeft(find.byType(PageView)).dx, 33);
+      expect(tester.getTopRight(find.byTooltip('Поделиться')).dx, 788);
     });
 
     testWidgets('дневная страница не дублирует вход в курс', (tester) async {
@@ -630,11 +722,11 @@ void main() {
 
       await tester.tap(entry('ЦИТАТА'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
     });
 
     testWidgets('открытая карточка сразу засчитывается прочитанной', (
@@ -653,10 +745,30 @@ void main() {
     });
   });
 
-  group('чтение дня без промежуточного экрана', () {
-    testWidgets('тап по блоку «Чтение» открывает ридер сразу', (tester) async {
-      // Экран с одной ссылкой «Ин.10:1–9» и кнопкой «Читать» был лишним
-      // шагом: он ничего не показывал, кроме того, что уже есть в блоке.
+  group('Евангелие как карточка дня', () {
+    testWidgets('длинный стих предлагает раскрыть полную версию', (
+      tester,
+    ) async {
+      final verseText = List.filled(30, 'Длинный стих').join(' ');
+      final reading = DailyReading(
+        label: 'Мк.12:1',
+        verses: [Verse(number: 1, chapter: 12, text: verseText)],
+      );
+      await tester.pumpWidget(
+        buildApp(readingRepository: _FakeReadingRepository(reading: reading)),
+      );
+      await settle(tester);
+      await dismissAutoOpened(tester);
+
+      await tester.tap(entry('ЕВАНГЕЛИЕ ДНЯ'));
+      await settle(tester);
+
+      expect(find.text('${verseText.substring(0, 150)}…'), findsOneWidget);
+      expect(find.text(verseText), findsNothing);
+      expect(find.byTooltip('Открыть полный текст'), findsOneWidget);
+    });
+
+    testWidgets('тап по блоку открывает общий просмотрщик', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -664,11 +776,22 @@ void main() {
       await tester.tap(entry('ЕВАНГЕЛИЕ ДНЯ'));
       await settle(tester);
 
-      expect(find.byType(ReadingScreen), findsOneWidget);
-      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(find.byType(CardViewerScreen), findsOneWidget);
+      final pageView = tester.widget<PageView>(
+        find.descendant(
+          of: find.byType(CardViewerScreen),
+          matching: find.byType(PageView),
+        ),
+      );
+      expect(pageView.childrenDelegate.estimatedChildCount, 2);
+      expect(find.text('Первый стих'), findsOneWidget);
+      expect(find.byType(VerseInterpretationButton), findsOneWidget);
+      await tester.tap(find.byType(VerseInterpretationButton));
+      await settle(tester);
+      expect(find.byType(InterpretationSheet), findsOneWidget);
     });
 
-    testWidgets('карточка чтения не получает страницы в просмотрщике', (
+    testWidgets('просмотрщик сессии не смешивает Евангелие с карточками дня', (
       tester,
     ) async {
       await tester.pumpWidget(buildApp());
@@ -681,8 +804,6 @@ void main() {
       final viewer = tester.widget<CardViewerScreen>(
         find.byType(CardViewerScreen),
       );
-      // Просмотрщик — это сессия дня и только она. Евангелие и курс живут
-      // отдельными треками со своими ридерами.
       expect(
         viewer.cards.map((c) => c.type),
         isNot(contains(CardType.reading)),
@@ -690,12 +811,9 @@ void main() {
       expect(viewer.cards.map((c) => c.type), isNot(contains(CardType.basics)));
     });
 
-    testWidgets('сессия заканчивается на последней карточке, а не в ридере', (
-      tester,
-    ) async {
-      // Раньше с последней карточки кнопка менялась на «Читать» и утягивала
-      // в постишное Евангелие. Из-за этого сессия не кончалась там, где
-      // обещала, и три её карточки было не отличить от пяти частей дня.
+    testWidgets('сессия не уходит в отдельный ридер', (tester) async {
+      // У карточек нет специального перехода: Евангелие — ещё одна страница
+      // того же просмотрщика.
       await tester.pumpWidget(buildApp());
       await settle(tester);
       await dismissAutoOpened(tester);
@@ -713,10 +831,9 @@ void main() {
       await settle(tester);
 
       expect(find.text('Читать'), findsNothing);
-      expect(find.byType(ReadingScreen), findsNothing);
     });
 
-    testWidgets('открытие ридера засчитывает чтение прочитанным', (
+    testWidgets('открытие карточки засчитывает Евангелие прочитанным', (
       tester,
     ) async {
       final progress = _FakeProgressRepository();
@@ -801,13 +918,19 @@ void main() {
         find.byType(DayEntryRow),
       );
       expect(futureEntries, isNotEmpty);
-      expect(futureEntries.every((entry) => entry.isUnread), isTrue);
-      expect(futureEntries.every((entry) => entry.showReadStatus), isTrue);
+      final futureContentEntries = futureEntries.where(
+        (entry) => entry.label != 'ЗАКЛАДКИ',
+      );
+      expect(futureContentEntries.every((entry) => entry.isUnread), isTrue);
+      expect(
+        futureContentEntries.every((entry) => entry.showReadStatus),
+        isTrue,
+      );
 
       final future = DateTime.now().add(const Duration(days: 1));
       await tester.tap(entry('ЦИТАТА'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(progress.marked, isNot(contains(CardType.quote)));
@@ -850,7 +973,7 @@ void main() {
       await settle(tester);
       await tester.tap(entry('ЦИТАТА'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(progress.marked, contains(CardType.quote));
@@ -1041,7 +1164,7 @@ void main() {
         await settle(tester);
       }
 
-      await tester.tap(find.byTooltip('Закрыть'));
+      await tester.tap(find.byTooltip('Назад'));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);
@@ -1071,7 +1194,7 @@ void main() {
     testWidgets('после закрытия первой карточки спрашиваем', (tester) async {
       await pumpFresh(tester);
 
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(find.byType(ReminderPermissionScreen), findsOneWidget);
@@ -1103,7 +1226,7 @@ void main() {
 
     testWidgets('спрашиваем один раз, даже после отказа', (tester) async {
       await pumpFresh(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       await tester.tap(find.text('Не сейчас'));
@@ -1114,7 +1237,7 @@ void main() {
       // системное разрешение всё равно показывается только однажды.
       await tester.tap(entry('СОВЕТ'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(find.byType(ReminderPermissionScreen), findsNothing);
@@ -1157,15 +1280,14 @@ void main() {
 
     testWidgets('после сессии очередь доходит до Евангелия', (tester) async {
       // Очередь входа — цитата → совет → притча → Евангелие → основы,
-      // по шагу за вход. Сессия дня кончилась, следующий вход ведёт в ридер.
+      // по шагу за вход. Евангелие открывает общий просмотрщик.
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice});
 
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      expect(find.byType(ReadingScreen), findsOneWidget);
-      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(find.byType(CardViewerScreen), findsOneWidget);
     });
 
     testWidgets('после Евангелия очередь доходит до курса', (tester) async {
@@ -1193,8 +1315,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(ReadingScreen), findsNothing);
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
     });
 
     testWidgets('закрыл просмотрщик — он не открывается заново', (
@@ -1204,7 +1325,7 @@ void main() {
       // непрочитанной: без флага возврат к блокам зацикливался.
       await tester.pumpWidget(buildApp());
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
@@ -1219,7 +1340,7 @@ void main() {
       // будто пользователь снова запустил приложение.
       await tester.pumpWidget(buildApp());
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       final container = ProviderScope.containerOf(
@@ -1233,7 +1354,6 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(ReadingScreen), findsNothing);
       expect(find.byType(CourseReaderScreen), findsNothing);
       expect(entry('СОВЕТ'), findsOneWidget);
     });
@@ -1241,7 +1361,7 @@ void main() {
     testWidgets('на чужой дате ничего не открывается само', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       final today = DateTime.now();

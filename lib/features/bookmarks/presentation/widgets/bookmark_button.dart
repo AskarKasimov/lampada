@@ -12,11 +12,18 @@ import '../providers/providers.dart';
 /// самому контенту и «Дальше». Подтверждение — снекбар «Сохранено в копилку»
 /// (FR-016), потому что смена иконки на 20 пикселей легко проходит мимо глаз.
 class BookmarkButton extends ConsumerWidget {
-  const BookmarkButton({required this.bookmark, super.key});
+  const BookmarkButton({
+    required this.bookmark,
+    this.iconSize = 22,
+    this.buttonSize,
+    super.key,
+  });
 
   /// Готовая запись: вызывающий знает и текст, и происхождение.
   /// savedAt проставляется в момент нажатия, поэтому здесь он не важен.
   final Bookmark bookmark;
+  final double iconSize;
+  final double? buttonSize;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,9 +60,13 @@ class BookmarkButton extends ConsumerWidget {
           ),
         );
       },
+      constraints: buttonSize == null
+          ? null
+          : BoxConstraints.tightFor(width: buttonSize, height: buttonSize),
+      padding: buttonSize == null ? null : EdgeInsets.zero,
       icon: Icon(
         saved ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
-        size: 22,
+        size: iconSize,
         color: saved ? colors.accent : colors.homeSubtitle,
       ),
     );

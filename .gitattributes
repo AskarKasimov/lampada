@@ -1,0 +1,2 @@
+# Freezed emits whitespace-only lines; keep diff checks focused on source files.
+*.freezed.dart whitespace=-blank-at-eol

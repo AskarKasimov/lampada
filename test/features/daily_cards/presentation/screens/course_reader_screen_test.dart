@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -178,7 +177,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
 
     expect(find.text('Не удалось сохранить прогресс'), findsOneWidget);
@@ -192,20 +191,59 @@ void main() {
     expect(find.text('Основы веры'), findsOneWidget);
   });
 
-  testWidgets('крестик совпадает с размером и цветом действий ридера', (
+  testWidgets('стрелка назад совпадает с размером и цветом действий ридера', (
     tester,
   ) async {
     await pumpReader(tester);
 
-    final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.xmark));
+    final icon = tester.widget<Icon>(find.byIcon(Icons.arrow_back));
     expect(icon.size, 22);
     expect(icon.color, const Color(0xFF79695E));
+    final position = tester.widget<Positioned>(
+      find.ancestor(
+        of: find.byTooltip('Назад'),
+        matching: find.byType(Positioned),
+      ),
+    );
+    expect(position.top, 0);
+    expect(position.left, 0);
+    expect(position.right, isNull);
   });
 
   testWidgets('показывает кнопку отправки рядом с закладкой', (tester) async {
     await pumpReader(tester);
 
     expect(find.byTooltip('Поделиться'), findsOneWidget);
+  });
+
+  testWidgets('длинная тема ставит полноэкранное чтение первой справа', (
+    tester,
+  ) async {
+    final longTopic = DayCard(
+      id: 'basics-topic-3',
+      type: CardType.basics,
+      body: List.filled(30, 'Длинная тема').join(' '),
+      source: 'Азбука веры',
+    );
+    await pumpReader(tester, currentTopic: longTopic);
+
+    final fullscreen = find.byTooltip('Открыть полный текст');
+    final bookmark = find.byTooltip('Сохранить в копилку');
+    expect(fullscreen, findsOneWidget);
+    expect(
+      tester.getTopLeft(fullscreen).dy,
+      lessThan(tester.getTopLeft(bookmark).dy),
+    );
+    expect(tester.getSize(fullscreen), const Size(56, 56));
+  });
+
+  testWidgets('листается вертикально, как карточки дня', (tester) async {
+    await pumpReader(tester);
+
+    expect(
+      tester.widget<PageView>(find.byType(PageView)).scrollDirection,
+      Axis.vertical,
+    );
   });
 
   testWidgets('uses the reader header instead of the repeated basics badge', (
@@ -220,21 +258,20 @@ void main() {
     expect(find.text('Основы'), findsNothing);
   });
 
-  testWidgets('shows the course position between swipe arrows', (tester) async {
+  testWidgets('показывает прогресс курса вертикально слева', (tester) async {
     await pumpReader(tester);
 
-    expect(find.text('Тема 3 из 365'), findsOneWidget);
-    expect(find.textContaining('Предыдущие темы'), findsNothing);
-    expect(find.byIcon(CupertinoIcons.chevron_left), findsOneWidget);
-    expect(find.byIcon(CupertinoIcons.chevron_right), findsOneWidget);
+    expect(find.text('Тема\n3\nиз\n365'), findsOneWidget);
 
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
 
-    expect(find.text('Тема 2 из 365'), findsOneWidget);
+    expect(find.text('Тема\n2\nиз\n365'), findsOneWidget);
   });
 
-  testWidgets('a fast downward swipe closes the course reader', (tester) async {
+  testWidgets('свайп вниз открывает предыдущую тему, не закрывая читалку', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp(showLauncher: true));
     await tester.tap(find.text('Открыть основы'));
     await tester.pumpAndSettle();
@@ -246,16 +283,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(CourseReaderScreen), findsNothing);
-    expect(find.text('Открыть основы'), findsOneWidget);
+    expect(find.byType(CourseReaderScreen), findsOneWidget);
+    expect(find.text('Тема 2'), findsOneWidget);
   });
 
-  testWidgets('a right swipe shows the immediately preceding topic', (
-    tester,
-  ) async {
+  testWidgets('свайп вниз открывает предыдущую тему', (tester) async {
     await pumpReader(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
 
     expect(find.text('Тема 2'), findsOneWidget);
@@ -270,7 +305,7 @@ void main() {
     await prefs.setString('course_progress_v4', '{"topic":3}');
     await pumpReader(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
 
     final saved = await PrefsCourseProgressRepository(prefs).currentTopic();
@@ -286,9 +321,9 @@ void main() {
     await tester.tap(find.text('Открыть основы'));
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Закрыть'));
+    await tester.tap(find.byTooltip('Назад'));
     await tester.pumpAndSettle();
 
     expect(find.byType(CourseReaderScreen), findsOneWidget);
@@ -309,7 +344,7 @@ void main() {
     await tester.tap(find.text('Открыть основы'));
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
@@ -322,10 +357,10 @@ void main() {
     expect(find.byType(CourseReaderScreen), findsNothing);
   });
 
-  testWidgets('a left swipe opens the next topic', (tester) async {
+  testWidgets('свайп вверх открывает следующую тему', (tester) async {
     await pumpReader(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(-500, 0));
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
     expect(find.text('Тема 4'), findsOneWidget);
@@ -338,7 +373,7 @@ void main() {
     cards = _CourseCardsRepository(failuresRemaining: {2: 1});
     await pumpReader(tester);
 
-    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
 
     expect(find.text('Тема недоступна'), findsOneWidget);
@@ -375,7 +410,7 @@ void main() {
       );
       await pumpReader(tester, currentTopic: firstTopic);
 
-      await tester.drag(find.byType(PageView), const Offset(500, 0));
+      await tester.drag(find.byType(PageView), const Offset(0, 500));
       await tester.pumpAndSettle();
 
       expect(find.text('Тема 1'), findsOneWidget);

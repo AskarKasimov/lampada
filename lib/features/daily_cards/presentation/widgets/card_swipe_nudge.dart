@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 const _nudgeDistance = 24.0;
 
-/// После показа экрана один раз плавно качает карточку в сторону свайпа.
+/// После показа экрана один раз плавно качает карточку вверх, подсказывая
+/// вертикальный жест перехода к следующей карточке.
 class CardSwipeNudge extends StatefulWidget {
   const CardSwipeNudge({
     required this.child,
@@ -65,6 +66,6 @@ class _CardSwipeNudgeState extends State<CardSwipeNudge>
     animation: _offset,
     child: widget.child,
     builder: (context, child) =>
-        Transform.translate(offset: Offset(_offset.value, 0), child: child),
+        Transform.translate(offset: Offset(0, _offset.value), child: child),
   );
 }

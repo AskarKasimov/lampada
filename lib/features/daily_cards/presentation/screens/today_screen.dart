@@ -5,6 +5,7 @@ import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
+import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
 import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/screens/reading_screen.dart';
@@ -382,14 +383,15 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     WidgetRef ref,
     DayCard card,
   ) async {
-    if (_recordRead) {
-      ref
-          .read(dayProgressProvider.notifier)
-          .markRead(card.type, date: date, markVisited: _recordProgress);
-    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ReadingScreen(reference: card.reference!),
+        fullscreenDialog: true,
+        builder: (_) => ReadingScreen(
+          reference: card.reference!,
+          date: date,
+          recordProgress: _recordProgress,
+          recordRead: _recordRead,
+        ),
       ),
     );
     if (mounted) await _maybeAskReminders();
@@ -405,6 +407,15 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       builder: (_) => DayStoryScreen(title: title, storyUrl: storyUrl),
     ),
   );
+
+  Future<void> _openBookmarks(BuildContext context) =>
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (context) =>
+              BookmarksScreen(onClose: () => Navigator.of(context).pop()),
+        ),
+      );
 
   Future<void> _openCourse(BuildContext context, DayCard card) async {
     // Прогресс темы сохраняет CourseReaderScreen.
@@ -473,8 +484,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     _maybeAutoOpen();
-    final reading = _reading;
     final rest = _pages;
+    final reading = _reading;
 
     if (reading == null && rest.isEmpty) {
       return Center(
@@ -525,6 +536,14 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             textSize: 27,
             maxLines: 1,
             onTap: () => _openReader(context, ref, reading),
+          ),
+          const DayEntryDivider(),
+          DayEntryRow(
+            label: 'ЗАКЛАДКИ',
+            text: 'Копилка смыслов',
+            isUnread: false,
+            showReadStatus: false,
+            onTap: () => _openBookmarks(context),
           ),
         ],
       ],

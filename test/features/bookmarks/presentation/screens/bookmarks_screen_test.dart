@@ -38,6 +38,23 @@ class _FailingRemoveRepository implements BookmarksRepository {
       Success([bookmark]);
 }
 
+class _LoadedBookmarksRepository implements BookmarksRepository {
+  const _LoadedBookmarksRepository(this.bookmarks);
+
+  final List<Bookmark> bookmarks;
+
+  @override
+  Future<Result<List<Bookmark>>> load() async => Success(bookmarks);
+
+  @override
+  Future<Result<List<Bookmark>>> remove(String id) async =>
+      Success(bookmarks.where((bookmark) => bookmark.id != id).toList());
+
+  @override
+  Future<Result<List<Bookmark>>> save(Bookmark bookmark) async =>
+      Success([bookmark, ...bookmarks]);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -124,6 +141,43 @@ void main() {
 
     expect(find.text('Сохранённая мысль'), findsOneWidget);
     expect(find.text('Не удалось удалить закладку'), findsOneWidget);
+  });
+
+  testWidgets('appbar не меняет тон при прокрутке копилки', (tester) async {
+    final bookmarks = List.generate(
+      6,
+      (index) => _bookmark(
+        'quote-$index',
+        text:
+            'И сказал Иисус: слово, которое должно занять несколько строк '
+            'и сделать список прокручиваемым.',
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          bookmarksRepositoryProvider.overrideWithValue(
+            _LoadedBookmarksRepository(bookmarks),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: BookmarksScreen(onClose: () {}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final appBarMaterial = find
+        .descendant(of: find.byType(AppBar), matching: find.byType(Material))
+        .first;
+    final beforeScroll = tester.widget<Material>(appBarMaterial).color;
+
+    await tester.drag(find.byType(ListView), const Offset(0, -100));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Material>(appBarMaterial).color, beforeScroll);
   });
 
   group('кнопка сохранения', () {

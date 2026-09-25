@@ -17,6 +17,7 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/profile/presentation/screens/profile_screen.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
@@ -36,6 +37,13 @@ class _FakeCardsRepository implements DayCardsRepository {
           type: CardType.quote,
           body: 'Мысль дня',
           source: 'Источник',
+        ),
+        DayCard(
+          id: 'reading',
+          type: CardType.reading,
+          body: 'Ин.10:1–9',
+          source: 'Азбука веры',
+          reference: 'Jn.10:1-9',
         ),
         DayCard(
           id: 'basics-topic-1',
@@ -116,8 +124,8 @@ void main() {
   /// «Сегодня» сама открывает первую непрочитанную карточку на весь экран,
   /// и она перекрывает таб-бар — тестам про навигацию её надо закрыть.
   Future<void> dismissAutoOpened(WidgetTester tester) async {
-    if (find.byIcon(CupertinoIcons.xmark).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(CupertinoIcons.xmark));
+    if (find.byIcon(Icons.arrow_back).evaluate().isEmpty) return;
+    await tester.tap(find.byIcon(Icons.arrow_back));
     await settle(tester);
   }
 
@@ -133,7 +141,7 @@ void main() {
     expect(find.text('Мысль дня'), findsOneWidget);
   });
 
-  testWidgets('в навигации три вкладки: календарь свёрнут в полоску недели', (
+  testWidgets('в навигации три вкладки: Сегодня, Библия, Профиль', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
@@ -142,7 +150,14 @@ void main() {
 
     expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(tabIcon(CupertinoIcons.sunset_fill), findsOneWidget);
-    expect(tabIcon(CupertinoIcons.bookmark), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.text('Библия'),
+      ),
+      findsOneWidget,
+    );
+    expect(tabIcon(CupertinoIcons.bookmark), findsNothing);
     expect(tabIcon(CupertinoIcons.person), findsOneWidget);
   });
 
@@ -275,7 +290,7 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    for (final label in ['Сегодня', 'Закладки', 'Профиль']) {
+    for (final label in ['Сегодня', 'Библия', 'Профиль']) {
       expect(
         find.descendant(
           of: find.byType(FloatingNavBar),
@@ -325,7 +340,7 @@ void main() {
     );
   });
 
-  testWidgets('переключение вкладки меняет содержимое', (tester) async {
+  testWidgets('переключение вкладки открывает профиль', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
@@ -336,11 +351,41 @@ void main() {
     // Тумблер «Тёмная тема» заменён выбором из трёх: система / светлая / тёмная.
     expect(find.text('Тема'), findsOneWidget);
     expect(find.text('Система'), findsOneWidget);
+  });
 
-    await tester.tap(tabIcon(CupertinoIcons.bookmark));
+  testWidgets('кнопка под Евангелием открывает закладки', (tester) async {
+    await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
+
+    final gospel = find.ancestor(
+      of: find.text('ЕВАНГЕЛИЕ ДНЯ'),
+      matching: find.byType(DayEntryRow),
+    );
+    final button = find.descendant(
+      of: find.byType(TodayScreen),
+      matching: find.text('Копилка смыслов'),
+    );
+    expect(button, findsOneWidget);
+    expect(
+      tester.getTopLeft(button).dy,
+      greaterThan(tester.getBottomLeft(gospel).dy),
+    );
+
+    await tester.tap(button);
+    await settle(tester);
+
     expect(find.byType(BookmarksScreen), findsOneWidget);
+    final closeButton = find.descendant(
+      of: find.byType(BookmarksScreen),
+      matching: find.byTooltip('Закрыть'),
+    );
+    expect(closeButton, findsOneWidget);
+    await tester.tap(closeButton);
+    await settle(tester);
+
+    expect(find.byType(BookmarksScreen), findsNothing);
+    expect(find.byType(TodayScreen), findsOneWidget);
   });
 
   testWidgets('выбранная дата переживает уход на другую вкладку', (
@@ -371,9 +416,8 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    await tester.tap(tabIcon(CupertinoIcons.bookmark));
+    await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
-    await dismissAutoOpened(tester);
     await tester.tap(tabIcon(CupertinoIcons.sunset));
     await settle(tester);
     await dismissAutoOpened(tester);

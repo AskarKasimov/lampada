@@ -36,4 +36,8 @@ abstract final class AppTheme {
     fontStyle: FontStyle.italic,
     color: AppColorsExtension.of(context).ink,
   );
+
+  /// Евангелие не меняет набор при переходе из карточки в полный текст.
+  static TextStyle readingTextStyle(BuildContext context) =>
+      quoteStyle(context).copyWith(fontSize: 27, height: 1.5);
 }

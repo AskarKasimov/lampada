@@ -19,14 +19,14 @@ void main() {
     expect(starts, 1);
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 20));
-    expect(_horizontalOffset(tester), 0);
+    expect(_verticalOffset(tester), 0);
 
     await tester.pump(const Duration(milliseconds: 180));
     await tester.pump(const Duration(milliseconds: 200));
-    expect(_horizontalOffset(tester), lessThan(-20));
+    expect(_verticalOffset(tester), lessThan(-20));
 
     await tester.pump(const Duration(milliseconds: 800));
-    expect(_horizontalOffset(tester), 0);
+    expect(_verticalOffset(tester), 0);
   });
 
   testWidgets('раннее закрытие отменяет задержку подсказки', (tester) async {
@@ -42,5 +42,5 @@ void main() {
 
 void _noop() {}
 
-double _horizontalOffset(WidgetTester tester) =>
-    tester.widget<Transform>(find.byType(Transform)).transform.storage[12];
+double _verticalOffset(WidgetTester tester) =>
+    tester.widget<Transform>(find.byType(Transform)).transform.storage[13];

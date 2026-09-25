@@ -78,15 +78,15 @@ extension CardTypeStyleX on CardType {
       CardType.reading =>
         isDark
             ? const CardTypeStyle(
-                label: 'Чтение',
-                shortLabel: 'Чтение',
+                label: 'Евангелие дня',
+                shortLabel: 'Евангелие',
                 accent: Color(0xFFDD8F90),
                 tagBackground: Color(0xFF3A2224),
                 tagForeground: Color(0xFFF4C3C4),
               )
             : const CardTypeStyle(
-                label: 'Чтение',
-                shortLabel: 'Чтение',
+                label: 'Евангелие дня',
+                shortLabel: 'Евангелие',
                 accent: Color(0xFFCB6C6D),
                 tagBackground: Color(0xFFFBDCDB),
                 tagForeground: Color(0xFF6A2B2E),
