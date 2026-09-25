@@ -276,7 +276,7 @@ void main() {
   /// открывать нечего и хелпер ничего не делает.
   Future<void> dismissAutoOpened(WidgetTester tester) async {
     if (find.byType(CardViewerScreen).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(CupertinoIcons.xmark));
+    await tester.tap(find.byIcon(Icons.arrow_back));
     await settle(tester);
   }
 
@@ -722,7 +722,7 @@ void main() {
 
       await tester.tap(entry('ЦИТАТА'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
@@ -930,7 +930,7 @@ void main() {
       final future = DateTime.now().add(const Duration(days: 1));
       await tester.tap(entry('ЦИТАТА'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(progress.marked, isNot(contains(CardType.quote)));
@@ -973,7 +973,7 @@ void main() {
       await settle(tester);
       await tester.tap(entry('ЦИТАТА'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(progress.marked, contains(CardType.quote));
@@ -1164,7 +1164,7 @@ void main() {
         await settle(tester);
       }
 
-      await tester.tap(find.byTooltip('Закрыть'));
+      await tester.tap(find.byTooltip('Назад'));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);
@@ -1194,7 +1194,7 @@ void main() {
     testWidgets('после закрытия первой карточки спрашиваем', (tester) async {
       await pumpFresh(tester);
 
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(find.byType(ReminderPermissionScreen), findsOneWidget);
@@ -1226,7 +1226,7 @@ void main() {
 
     testWidgets('спрашиваем один раз, даже после отказа', (tester) async {
       await pumpFresh(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       await tester.tap(find.text('Не сейчас'));
@@ -1237,7 +1237,7 @@ void main() {
       // системное разрешение всё равно показывается только однажды.
       await tester.tap(entry('СОВЕТ'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(find.byType(ReminderPermissionScreen), findsNothing);
@@ -1325,7 +1325,7 @@ void main() {
       // непрочитанной: без флага возврат к блокам зацикливался.
       await tester.pumpWidget(buildApp());
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
@@ -1340,7 +1340,7 @@ void main() {
       // будто пользователь снова запустил приложение.
       await tester.pumpWidget(buildApp());
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       final container = ProviderScope.containerOf(
@@ -1361,7 +1361,7 @@ void main() {
     testWidgets('на чужой дате ничего не открывается само', (tester) async {
       await tester.pumpWidget(buildApp());
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await settle(tester);
 
       final today = DateTime.now();

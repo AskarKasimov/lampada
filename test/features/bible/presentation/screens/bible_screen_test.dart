@@ -73,6 +73,75 @@ class _LongChapterRepository extends _FakeRepository {
 }
 
 void main() {
+  testWidgets('верхняя панель и раскрытый Завет закреплены', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ),
+    );
+
+    expect(
+      tester.widget<SliverAppBar>(find.byType(SliverAppBar)).pinned,
+      isTrue,
+    );
+    expect(find.byType(SliverPersistentHeader), findsOneWidget);
+    await tester.tap(find.text('Новый Завет'));
+    await tester.pump();
+    expect(find.byType(SliverPersistentHeader), findsNWidgets(2));
+  });
+
+  testWidgets('свёрнутый Новый Завет не занимает место над Ветхим', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ),
+    );
+
+    await tester.tap(find.text('Новый Завет'));
+    await tester.pump();
+    await tester.tap(find.text('Новый Завет'));
+    await tester.pump();
+    await tester.tap(find.text('Ветхий Завет'));
+    await tester.pump();
+
+    expect(find.byType(SliverPersistentHeader), findsNWidgets(2));
+  });
+
+  testWidgets('заветы изначально свёрнуты и раскрывают список книг', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ),
+    );
+
+    expect(find.text('Новый Завет'), findsOneWidget);
+    expect(find.text('Деяния святых Апостолов'), findsNothing);
+    expect(find.text('Аввакума'), findsNothing);
+
+    await tester.tap(find.text('Новый Завет'));
+    await tester.pump();
+    expect(find.text('Деяния святых Апостолов'), findsOneWidget);
+    expect(find.text('Аввакума'), findsNothing);
+
+    await tester.scrollUntilVisible(find.text('Ветхий Завет'), 300);
+    await tester.tap(find.text('Ветхий Завет'));
+    await tester.pump();
+    expect(find.text('Аввакума'), findsOneWidget);
+  });
+
   testWidgets('кнопка справки открывает пояснение статусов глав', (
     tester,
   ) async {
@@ -85,7 +154,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('О Библии'));
+    await tester.tap(find.byTooltip('Помощь'));
     await tester.pumpAndSettle();
 
     expect(find.byType(BibleInfoScreen), findsOneWidget);
@@ -104,7 +173,10 @@ void main() {
         child: const MaterialApp(home: Scaffold(body: BibleScreen())),
       ),
     );
+    await tester.tap(find.text('Новый Завет'));
+    await tester.pump();
     await tester.scrollUntilVisible(find.text('От Иоанна'), 300);
+    await tester.ensureVisible(find.text('От Иоанна'));
     await tester.tap(find.text('От Иоанна'));
     await tester.pump();
     final tile = find.byKey(const ValueKey('bible-chapter-Jn-3'));
@@ -162,18 +234,19 @@ void main() {
     );
 
     expect(find.text('Новый Завет'), findsOneWidget);
+    await tester.tap(find.text('Новый Завет'));
+    await tester.pump();
+    await tester.scrollUntilVisible(find.text('Петра 2-е'), 300);
+    expect(find.text('Петра 2-е'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Ветхий Завет'), 300);
+    await tester.tap(find.text('Ветхий Завет'));
+    await tester.pump();
     await tester.scrollUntilVisible(find.text('Ветхий Завет'), 300);
     expect(find.text('Ветхий Завет'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Петра 2-е'), 300);
     expect(find.text('Петра 2-е'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Аввакума'), 300);
     expect(find.text('Аввакума'), findsOneWidget);
-    expect(
-      tester.getTopLeft(find.text('Петра 2-е')).dy,
-      lessThan(tester.getTopLeft(find.text('Ветхий Завет')).dy),
-    );
-    expect(
-      tester.getTopLeft(find.text('Ветхий Завет')).dy,
-      lessThan(tester.getTopLeft(find.text('Аввакума')).dy),
-    );
   });
 
   testWidgets(
@@ -188,7 +261,10 @@ void main() {
         ),
       );
 
+      await tester.tap(find.text('Новый Завет'));
+      await tester.pump();
       await tester.scrollUntilVisible(find.text('От Иоанна'), 300);
+      await tester.ensureVisible(find.text('От Иоанна'));
       await tester.tap(find.text('От Иоанна'));
       await tester.pump();
       expect(find.text('Глава'), findsOneWidget);

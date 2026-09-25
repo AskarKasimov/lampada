@@ -92,8 +92,8 @@ class _FullCardTextScreenState extends State<FullCardTextScreen>
     duration: const Duration(milliseconds: 220),
   );
   Offset? _dragStart;
-  Offset _dragOffset = Offset.zero;
-  Animation<Offset>? _settleOffset;
+  double _dragX = 0;
+  Animation<double>? _settleX;
 
   @override
   void dispose() {
@@ -103,10 +103,12 @@ class _FullCardTextScreenState extends State<FullCardTextScreen>
   }
 
   void _onPointerDown(PointerDownEvent event) {
+    final x = _visibleX;
     _settleController.stop();
     setState(() {
       _dragStart = event.position;
-      _settleOffset = null;
+      _dragX = x;
+      _settleX = null;
     });
   }
 
@@ -114,38 +116,26 @@ class _FullCardTextScreenState extends State<FullCardTextScreen>
     final start = _dragStart;
     if (start == null) return;
     final offset = event.position - start;
-    if (!_canDismiss(offset)) return;
-    setState(() => _dragOffset = offset);
+    if (offset.dx.abs() <= offset.dy.abs()) return;
+    setState(() => _dragX = offset.dx);
   }
 
   void _onPointerUp(PointerUpEvent event) {
     _dragStart = null;
-    if (_dragOffset.distance < _dismissDistance) {
-      unawaited(_settleTo(Offset.zero));
+    if (_dragX.abs() < _dismissDistance) {
+      unawaited(_settleTo(0));
       return;
     }
-    unawaited(_settleTo(_dismissTarget(), dismiss: true));
+    unawaited(_settleTo(_dismissTargetX(), dismiss: true));
   }
 
-  bool _canDismiss(Offset offset) {
-    if (offset.dx.abs() > offset.dy.abs()) return true;
-    if (!_scrollController.hasClients) return true;
-    final position = _scrollController.position;
-    if (offset.dy > 0) return position.pixels <= position.minScrollExtent;
-    if (offset.dy < 0) return position.pixels >= position.maxScrollExtent;
-    return false;
-  }
-
-  Offset _dismissTarget() {
+  double _dismissTargetX() {
     final size = MediaQuery.sizeOf(context);
-    if (_dragOffset.dx.abs() > _dragOffset.dy.abs()) {
-      return Offset(_dragOffset.dx.sign * size.width * 1.1, _dragOffset.dy);
-    }
-    return Offset(_dragOffset.dx, _dragOffset.dy.sign * size.height * 1.1);
+    return _dragX.sign * size.width * 1.1;
   }
 
-  Future<void> _settleTo(Offset target, {bool dismiss = false}) async {
-    _settleOffset = Tween<Offset>(begin: _dragOffset, end: target).animate(
+  Future<void> _settleTo(double targetX, {bool dismiss = false}) async {
+    _settleX = Tween<double>(begin: _dragX, end: targetX).animate(
       CurvedAnimation(parent: _settleController, curve: Curves.easeOutCubic),
     );
     await _settleController.forward(from: 0);
@@ -155,28 +145,35 @@ class _FullCardTextScreenState extends State<FullCardTextScreen>
       return;
     }
     setState(() {
-      _dragOffset = Offset.zero;
-      _settleOffset = null;
+      _dragX = 0;
+      _settleX = null;
     });
   }
 
-  Offset get _visibleOffset => _settleOffset?.value ?? _dragOffset;
+  double get _visibleX => _settleX?.value ?? _dragX;
+
+  Offset _visibleOffset(BuildContext context) {
+    final x = _visibleX;
+    final width = MediaQuery.sizeOf(context).width;
+    // Путь повторяет жест карточки: при уходе в сторону она опускается вниз.
+    return Offset(x, x * x / (width * 4));
+  }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _settleController,
     builder: (context, child) {
-      final offset = _visibleOffset;
-      final progress =
-          (offset.distance / MediaQuery.sizeOf(context).longestSide).clamp(
-            0.0,
-            0.35,
-          );
+      final offset = _visibleOffset(context);
+      final progress = (offset.dx.abs() / MediaQuery.sizeOf(context).width)
+          .clamp(0.0, 0.35);
       return Transform.translate(
         offset: offset,
-        child: Transform.scale(
-          scale: 1 - progress * 0.16,
-          child: Opacity(opacity: 1 - progress * 0.5, child: child),
+        child: Transform.rotate(
+          angle: offset.dx / MediaQuery.sizeOf(context).width * 0.16,
+          child: Transform.scale(
+            scale: 1 - progress * 0.16,
+            child: Opacity(opacity: 1 - progress * 0.5, child: child),
+          ),
         ),
       );
     },

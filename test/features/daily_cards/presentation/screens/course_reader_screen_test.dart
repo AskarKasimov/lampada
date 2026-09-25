@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -192,14 +191,23 @@ void main() {
     expect(find.text('Основы веры'), findsOneWidget);
   });
 
-  testWidgets('крестик совпадает с размером и цветом действий ридера', (
+  testWidgets('стрелка назад совпадает с размером и цветом действий ридера', (
     tester,
   ) async {
     await pumpReader(tester);
 
-    final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.xmark));
+    final icon = tester.widget<Icon>(find.byIcon(Icons.arrow_back));
     expect(icon.size, 22);
     expect(icon.color, const Color(0xFF79695E));
+    final position = tester.widget<Positioned>(
+      find.ancestor(
+        of: find.byTooltip('Назад'),
+        matching: find.byType(Positioned),
+      ),
+    );
+    expect(position.top, 0);
+    expect(position.left, 0);
+    expect(position.right, isNull);
   });
 
   testWidgets('показывает кнопку отправки рядом с закладкой', (tester) async {
@@ -315,7 +323,7 @@ void main() {
 
     await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Закрыть'));
+    await tester.tap(find.byTooltip('Назад'));
     await tester.pumpAndSettle();
 
     expect(find.byType(CourseReaderScreen), findsOneWidget);

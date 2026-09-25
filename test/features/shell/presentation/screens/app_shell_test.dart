@@ -124,8 +124,8 @@ void main() {
   /// «Сегодня» сама открывает первую непрочитанную карточку на весь экран,
   /// и она перекрывает таб-бар — тестам про навигацию её надо закрыть.
   Future<void> dismissAutoOpened(WidgetTester tester) async {
-    if (find.byIcon(CupertinoIcons.xmark).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(CupertinoIcons.xmark));
+    if (find.byIcon(Icons.arrow_back).evaluate().isEmpty) return;
+    await tester.tap(find.byIcon(Icons.arrow_back));
     await settle(tester);
   }
 

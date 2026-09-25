@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
@@ -6,7 +7,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/full_card_text
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 
 void main() {
-  testWidgets('свайп в сторону закрывает полный текст', (tester) async {
+  testWidgets('свайп вправо закрывает полный текст', (tester) async {
     const card = DayCard(
       id: 'advice-1',
       type: CardType.advice,
@@ -21,7 +22,39 @@ void main() {
     expect(find.byType(FullCardTextScreen), findsNothing);
   });
 
-  testWidgets('свайп вниз с верхней границы закрывает полный текст', (
+  testWidgets('свайп влево закрывает полный текст', (tester) async {
+    const card = DayCard(
+      id: 'advice-1',
+      type: CardType.advice,
+      body: 'Текст карточки',
+      source: 'Тестовый источник',
+    );
+    await _pumpRouteHost(tester, card);
+
+    await tester.drag(find.byType(FullCardTextScreen), const Offset(-180, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FullCardTextScreen), findsNothing);
+  });
+
+  testWidgets('короткий горизонтальный свайп возвращает полный текст', (
+    tester,
+  ) async {
+    const card = DayCard(
+      id: 'advice-1',
+      type: CardType.advice,
+      body: 'Текст карточки',
+      source: 'Тестовый источник',
+    );
+    await _pumpRouteHost(tester, card);
+
+    await tester.drag(find.byType(FullCardTextScreen), const Offset(80, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FullCardTextScreen), findsOneWidget);
+  });
+
+  testWidgets('свайп вниз с верхней границы не закрывает полный текст', (
     tester,
   ) async {
     const card = DayCard(
@@ -35,7 +68,7 @@ void main() {
     await tester.drag(find.byType(FullCardTextScreen), const Offset(0, 180));
     await tester.pumpAndSettle();
 
-    expect(find.byType(FullCardTextScreen), findsNothing);
+    expect(find.byType(FullCardTextScreen), findsOneWidget);
   });
 
   testWidgets('свайп вверх прокручивает текст, пока не достигнут его конец', (
@@ -55,7 +88,7 @@ void main() {
     expect(find.byType(FullCardTextScreen), findsOneWidget);
   });
 
-  testWidgets('свайп вверх с нижней границы закрывает полный текст', (
+  testWidgets('свайп вверх с нижней границы не закрывает полный текст', (
     tester,
   ) async {
     final card = DayCard(
@@ -74,7 +107,7 @@ void main() {
     await tester.drag(find.byType(FullCardTextScreen), const Offset(0, -180));
     await tester.pumpAndSettle();
 
-    expect(find.byType(FullCardTextScreen), findsNothing);
+    expect(find.byType(FullCardTextScreen), findsOneWidget);
   });
 
   testWidgets('полный текст использует сетку сокращённой карточки', (
@@ -108,7 +141,9 @@ void main() {
     expect(safeArea.right, isFalse);
     expect(contentPadding.padding, const EdgeInsets.fromLTRB(33, 48, 24, 24));
     expect(closePosition.top, 0);
+    expect(closePosition.left, isNull);
     expect(closePosition.right, 0);
+    expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
   });
 
   testWidgets('полный текст раскрывается масштабом и прозрачностью', (

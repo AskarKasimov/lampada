@@ -14,7 +14,6 @@ class BibleInfoScreen extends StatelessWidget {
         backgroundColor: colors.background,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text('О Библии'),
       ),
       body: SafeArea(
         top: false,
