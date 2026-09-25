@@ -29,4 +29,26 @@ void main() {
     ]);
     expect(chapter.verses.map((verse) => verse.number), [1, 2]);
   });
+
+  test(
+    'убирает пустую пометку зачала и скрытую подсказку, сохраняя текст в скобках',
+    () async {
+      final source = AzbykaBibleRemoteDatasource(
+        client: MockClient(
+          (_) async => http.Response.bytes(
+            utf8.encode('''
+        <div class="verse lang-r" data-verse="Gen.1:1">[<span class="zachala">Зач. 1.</span>] В начале <abbr><span class="info" aria-hidden="true">Пояснение сайта</span>[сотворил Бог]</abbr> небо и землю.<span class="checkbox"></span></div>
+      '''),
+            200,
+          ),
+        ),
+      );
+
+      final chapter = await source.fetchChapter('Gen', 1);
+      expect(
+        chapter.verses.single.text,
+        'В начале [сотворил Бог] небо и землю.',
+      );
+    },
+  );
 }

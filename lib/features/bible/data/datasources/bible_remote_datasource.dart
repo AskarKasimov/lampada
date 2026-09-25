@@ -54,9 +54,14 @@ class AzbykaBibleRemoteDatasource implements BibleRemoteDatasource {
         continue;
       }
       element
-          .querySelectorAll('.checkbox, .zachala')
+          .querySelectorAll('.checkbox, .zachala, .info[aria-hidden]')
           .forEach((node) => node.remove());
-      final text = element.text.replaceAll(RegExp(r'\s+'), ' ').trim();
+      // Скобки вокруг зачала остаются после удаления его узла; это пометка
+      // сайта, а непустые скобки Синодального перевода сохраняем.
+      final text = element.text
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .replaceFirst(RegExp(r'^\s*\[\s*\]\s*'), '')
+          .trim();
       if (text.isEmpty) continue;
       verses.add(BibleVerseDto(number: int.parse(match.group(3)!), text: text));
     }
