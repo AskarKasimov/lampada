@@ -76,7 +76,6 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       });
       ref.read(bibleChapterStatusesProvider.notifier).refresh();
       _markChapterReadIfFinished(_page);
-      _loadNext();
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
@@ -131,8 +130,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   void _onPageChanged(int page) {
     setState(() => _page = page);
     _markChapterReadIfFinished(page);
-    // Предзагружаем следующую главу у конца уже полученных стихов.
-    if (page >= _verses.length - 3 && !_loadingNext && _nextError == null) {
+    // Скачиваем следующую главу только после явного свайпа за последний стих.
+    if (page == _verses.length && !_loadingNext && _nextError == null) {
       _loadNext();
     }
   }
@@ -141,7 +140,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     if (page < 0 || page >= _verses.length) return;
     final verse = _verses[page];
     // Каждая загрузка приносит главу целиком, поэтому последний в ней стих
-    // можно узнать и до предзагрузки следующей главы.
+    // можно узнать и до загрузки следующей главы.
     if (page + 1 < _verses.length && _sameChapter(verse, _verses[page + 1])) {
       return;
     }

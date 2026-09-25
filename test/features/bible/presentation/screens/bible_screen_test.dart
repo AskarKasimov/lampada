@@ -194,11 +194,10 @@ void main() {
   testWidgets('свайп от последнего стиха открывает начало следующей главы', (
     tester,
   ) async {
+    final repository = _FakeRepository();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
-        ],
+        overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
         child: const MaterialApp(
           home: BibleReaderScreen(
             book: BibleBook('Jn', 'От Иоанна', 21),
@@ -210,6 +209,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('Первый стих'), findsOneWidget);
+    expect(repository.cached, {('Jn', 1)});
 
     expect(
       tester.widget<PageView>(find.byType(PageView)).scrollDirection,
@@ -219,6 +219,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Второй стих'), findsOneWidget);
+    expect(repository.cached, {('Jn', 1)});
     expect(
       tester.widget<ProgressDots>(find.byType(ProgressDots)).currentIndex,
       1,
@@ -228,6 +229,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Первый стих'), findsOneWidget);
     expect(find.text('2:1'), findsOneWidget);
+    expect(repository.cached, {('Jn', 1), ('Jn', 2)});
     expect(
       tester.widget<ProgressDots>(find.byType(ProgressDots)).currentIndex,
       0,
