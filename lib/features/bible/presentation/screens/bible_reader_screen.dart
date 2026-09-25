@@ -8,22 +8,16 @@ import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/screens/full_card_text_screen.dart';
 import '../../../daily_cards/presentation/widgets/card_content.dart';
+import '../../../daily_cards/presentation/widgets/progress_dots.dart';
 import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
 import '../providers/providers.dart';
 
 class BibleReaderScreen extends ConsumerStatefulWidget {
-  const BibleReaderScreen({
-    required this.book,
-    required this.chapter,
-    required this.verse,
-    super.key,
-  });
+  const BibleReaderScreen({required this.book, super.key});
 
   final BibleBook book;
-  final int chapter;
-  final int verse;
 
   @override
   ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
@@ -61,18 +55,16 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     });
     try {
       final chapter = await ref.read(
-        bibleChapterProvider((widget.book.code, widget.chapter)).future,
+        bibleChapterProvider((widget.book.code, 1)).future,
       );
       if (!mounted) return;
-      final chosen = chapter.verses.where((v) => v.number >= widget.verse);
-      if (chosen.isEmpty) throw StateError('Стих не найден');
       setState(() {
         _verses.addAll([
-          for (final verse in chosen)
-            (book: widget.book, chapter: widget.chapter, verse: verse),
+          for (final verse in chapter.verses)
+            (book: widget.book, chapter: 1, verse: verse),
         ]);
         _lastBook = widget.book;
-        _lastChapter = widget.chapter;
+        _lastChapter = 1;
         _loadingInitial = false;
       });
       _loadNext();
@@ -198,24 +190,26 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             key: ValueKey(itemCard.id),
             card: itemCard,
             showBadge: false,
+            showSourceDash: false,
             scrollable: false,
           );
         },
         header: Text(
-          source,
+          position.book.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: 12, color: colors.textSecondary),
         ),
-        leftRail: const SizedBox.shrink(),
+        leftRail: _chapterProgress(position, colors),
         actions: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (CardContent.needsFullText(card))
               ReaderActionButton(
                 tooltip: 'Открыть полный текст',
-                onPressed: () =>
-                    Navigator.of(context).push(FullCardTextRoute(card: card)),
+                onPressed: () => Navigator.of(
+                  context,
+                ).push(FullCardTextRoute(card: card, showSourceDash: false)),
                 icon: Icons.aspect_ratio_outlined,
                 color: colors.homeSubtitle,
               ),
@@ -237,7 +231,48 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     id: 'bible-${position.book.code}-${position.chapter}:${position.verse.number}',
     type: CardType.reading,
     body: position.verse.text,
-    source:
-        '${position.book.title} ${position.chapter}:${position.verse.number}',
+    source: '${position.chapter}:${position.verse.number}',
   );
+
+  Widget _chapterProgress(_ReadingVerse position, AppColorsExtension colors) {
+    final page = _page.clamp(0, _verses.length - 1);
+    var first = page;
+    while (first > 0 && _sameChapter(_verses[first - 1], position)) {
+      first--;
+    }
+    var last = page;
+    while (last + 1 < _verses.length &&
+        _sameChapter(_verses[last + 1], position)) {
+      last++;
+    }
+    final count = last - first + 1;
+    final current = page - first;
+    const visibleCount = 12;
+    final windowStart = (current - visibleCount ~/ 2).clamp(
+      0,
+      (count - visibleCount).clamp(0, count),
+    );
+    final windowLength = (count - windowStart).clamp(0, visibleCount);
+
+    // В Псалтири встречаются очень длинные главы: показываем окно точек,
+    // чтобы индикатор не выходил за пределы экрана.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (windowStart > 0)
+          Text('⋮', style: TextStyle(color: colors.textSecondary)),
+        ProgressDots(
+          count: windowLength,
+          currentIndex: current - windowStart,
+          axis: Axis.vertical,
+          accentColors: List.filled(windowLength, colors.accent),
+        ),
+        if (windowStart + windowLength < count)
+          Text('⋮', style: TextStyle(color: colors.textSecondary)),
+      ],
+    );
+  }
+
+  bool _sameChapter(_ReadingVerse a, _ReadingVerse b) =>
+      a.book.code == b.book.code && a.chapter == b.chapter;
 }
