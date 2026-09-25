@@ -27,7 +27,6 @@ jobs:
       IOS_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
       IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
       IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
-      FASTLANE_SKIP_UPDATE_CHECK: 'true'
     steps:
       - name: Проверить исходный код
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,12 +40,6 @@ jobs:
           flutter-version: 3.44.8
           cache: true
           pub-cache: true
-
-      - name: Установить Ruby и Fastlane
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
 
       - name: Подготовить подпись iOS
         run: |
@@ -110,6 +103,13 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Add :provisioningProfiles dict' "$export_options"
           /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:$APP_STORE_BUNDLE_ID string $profile_name" "$export_options"
 
+          # Apple Action ожидает содержимое .p8, а секрет хранится в base64.
+          {
+            printf 'APP_STORE_CONNECT_PRIVATE_KEY<<EOF\n'
+            cat "$api_key_path"
+            printf 'EOF\n'
+          } >> "$GITHUB_ENV"
+
           {
             printf 'IOS_KEYCHAIN_PATH=%s\n' "$keychain_path"
             printf 'IOS_PROFILE_PATH=%s\n' "$profile_path"
@@ -132,7 +132,14 @@ jobs:
           printf 'APP_STORE_IPA_PATH=%s\n' "$ipa_path" >> "$GITHUB_ENV"
 
       - name: Загрузить IPA в TestFlight
-        run: bundle exec fastlane ios upload_testflight
+        uses: apple-actions/upload-testflight-build@1fc69ca369a60b813eaaa2d936eda22794b52e17 # v5
+        with:
+          app-path: ${{ env.APP_STORE_IPA_PATH }}
+          issuer-id: ${{ env.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ env.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ env.APP_STORE_CONNECT_PRIVATE_KEY }}
+          # Не дожидаемся обработки и не меняем статусы TestFlight вручную.
+          wait-for-processing: 'false'
 
       - name: Сохранить IPA и контрольную сумму
         if: always() && hashFiles('build/ipa/*.ipa') != ''
