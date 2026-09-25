@@ -8,6 +8,7 @@ import 'package:lampada/features/bible/domain/entities/bible_book.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
 import 'package:lampada/features/bible/domain/repositories/bible_repository.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
+import 'package:lampada/features/bible/presentation/screens/bible_info_screen.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/full_card_text_screen.dart';
@@ -72,6 +73,27 @@ class _LongChapterRepository extends _FakeRepository {
 }
 
 void main() {
+  testWidgets('кнопка справки открывает пояснение статусов глав', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('О Библии'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BibleInfoScreen), findsOneWidget);
+    expect(find.text('Русский Синодальный перевод'), findsOneWidget);
+    expect(find.text('Прочитанная глава'), findsOneWidget);
+    expect(find.text('Доступна офлайн'), findsOneWidget);
+  });
+
   testWidgets('скачанная глава имеет рамку, прочитанная — заливку', (
     tester,
   ) async {

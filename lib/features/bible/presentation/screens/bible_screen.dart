@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../../domain/entities/bible_book.dart';
 import '../providers/providers.dart';
+import 'bible_info_screen.dart';
 import 'bible_reader_screen.dart';
 
 /// Книга раскрывает главы; выбранная глава открывается с первого стиха.
@@ -43,9 +44,25 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
         if (index == 0) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 20),
-            child: Text(
-              'Библия',
-              style: TextStyle(fontSize: 30, color: colors.ink),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Библия',
+                    style: TextStyle(fontSize: 30, color: colors.ink),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'О Библии',
+                  color: colors.textSecondary,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const BibleInfoScreen(),
+                    ),
+                  ),
+                  icon: const Icon(Icons.info_outline),
+                ),
+              ],
             ),
           );
         }
