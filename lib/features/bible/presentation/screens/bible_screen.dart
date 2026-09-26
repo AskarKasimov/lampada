@@ -337,7 +337,7 @@ class _BibleBookTile extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           title: Text(
             book.title,
-            style: TextStyle(fontSize: 21, color: colors.ink),
+            style: TextStyle(fontSize: 17, color: colors.ink),
           ),
           trailing: Icon(
             selected ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
@@ -350,6 +350,7 @@ class _BibleBookTile extends StatelessWidget {
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const SizedBox(height: 2),
                     Text(
                       'Глава',
                       style: TextStyle(
@@ -429,7 +430,6 @@ class _BibleBookTile extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(height: 18),
                   ],
                 )
               : const SizedBox(width: double.infinity),

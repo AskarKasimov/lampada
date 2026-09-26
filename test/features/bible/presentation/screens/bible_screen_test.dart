@@ -74,6 +74,26 @@ class _LongChapterRepository extends _FakeRepository {
 }
 
 void main() {
+  testWidgets('заголовок Завета визуально крупнее названия книги', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ),
+    );
+    await tester.tap(find.text('Новый Завет'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.text('Новый Завет')).height,
+      greaterThan(tester.getSize(find.text('Иакова')).height),
+    );
+  });
+
   for (final reduceMotion in [false, true]) {
     testWidgets(
       'аккордеоны меняют высоту плавно, Reduce Motion: $reduceMotion',
