@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -233,7 +234,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
           ReaderActionButton(
             tooltip: 'Открыть полный текст',
             onPressed: () => _openFullText(card),
-            icon: Icons.aspect_ratio_outlined,
+            icon: CupertinoIcons.fullscreen,
             color: actionColor,
           ),
           const SizedBox(height: 4),

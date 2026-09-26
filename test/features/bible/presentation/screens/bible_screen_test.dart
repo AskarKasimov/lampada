@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -295,7 +296,7 @@ void main() {
       expect(find.text('— 3:1'), findsNothing);
       expect(find.text('От Иоанна 3:1'), findsNothing);
       expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);
-      final back = find.byIcon(Icons.arrow_back);
+      final back = find.byIcon(CupertinoIcons.arrow_left);
       expect(back, findsOneWidget);
       expect(
         tester.getCenter(back).dx,

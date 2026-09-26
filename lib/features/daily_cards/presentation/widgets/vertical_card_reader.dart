@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 /// Общая TikTok-подобная рамка читалок карточек и курса.
@@ -67,7 +68,7 @@ class VerticalCardReader extends StatelessWidget {
           left: 0,
           child: IconButton(
             onPressed: onClose,
-            icon: Icon(Icons.arrow_back, size: 22, color: closeColor),
+            icon: Icon(CupertinoIcons.arrow_left, size: 22, color: closeColor),
             tooltip: 'Назад',
           ),
         ),

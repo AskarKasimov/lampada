@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -250,7 +251,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
                 onPressed: () => Navigator.of(
                   context,
                 ).push(FullCardTextRoute(card: card, showSourceDash: false)),
-                icon: Icons.aspect_ratio_outlined,
+                icon: CupertinoIcons.fullscreen,
                 color: colors.homeSubtitle,
               ),
             BookmarkButton(bookmark: bookmark, iconSize: 28, buttonSize: 56),

@@ -124,8 +124,8 @@ void main() {
   /// «Домой» сама открывает первую непрочитанную карточку на весь экран,
   /// и она перекрывает таб-бар — тестам про навигацию её надо закрыть.
   Future<void> dismissAutoOpened(WidgetTester tester) async {
-    if (find.byIcon(Icons.arrow_back).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    if (find.byIcon(CupertinoIcons.arrow_left).evaluate().isEmpty) return;
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
     await settle(tester);
   }
 
@@ -258,7 +258,7 @@ void main() {
     await tester.tap(find.byType(CourseProgressHeader));
     await settle(tester);
     expect(find.byType(CourseReaderScreen), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
     await settle(tester);
     expect(find.byType(CourseProgressHeader), findsOneWidget);
   });

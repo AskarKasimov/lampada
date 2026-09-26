@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -39,7 +40,7 @@ class PlansScreen extends ConsumerWidget {
                   builder: (_) => const PlansInfoScreen(),
                 ),
               ),
-              icon: const Icon(Icons.info_outline),
+              icon: const Icon(CupertinoIcons.info),
             ),
           ],
         ),

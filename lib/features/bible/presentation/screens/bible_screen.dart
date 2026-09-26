@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -52,7 +53,7 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
                   builder: (_) => const BibleInfoScreen(),
                 ),
               ),
-              icon: const Icon(Icons.info_outline),
+              icon: const Icon(CupertinoIcons.info),
             ),
           ],
         ),
@@ -154,7 +155,7 @@ class _TestamentTile extends StatelessWidget {
         ),
       ),
       trailing: Icon(
-        expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+        expanded ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
         color: colors.textSecondary,
       ),
       onTap: onToggle,
@@ -253,7 +254,7 @@ class _BibleBookTile extends StatelessWidget {
             style: TextStyle(fontSize: 21, color: colors.ink),
           ),
           trailing: Icon(
-            selected ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+            selected ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
             color: colors.textSecondary,
           ),
           onTap: onTap,

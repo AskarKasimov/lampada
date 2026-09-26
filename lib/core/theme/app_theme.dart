@@ -1,11 +1,21 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 
 /// Спокойная благородная тема — светлый и тёмный варианты.
 abstract final class AppTheme {
+  // Material выбирает стрелку по платформе; обе темы сохраняют один набор
+  // даже для автоматически созданных AppBar кнопок назад и закрытия.
+  static final _actionIcons = ActionIconThemeData(
+    backButtonIconBuilder: (_) =>
+        const Icon(CupertinoIcons.arrow_left, size: 22),
+    closeButtonIconBuilder: (_) => const Icon(CupertinoIcons.xmark, size: 22),
+  );
+
   static ThemeData get light => ThemeData(
     useMaterial3: true,
+    actionIconTheme: _actionIcons,
     scaffoldBackgroundColor: AppColorsExtension.light.background,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColorsExtension.light.accent,
@@ -16,6 +26,7 @@ abstract final class AppTheme {
 
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
+    actionIconTheme: _actionIcons,
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColorsExtension.dark.background,
     colorScheme: ColorScheme.fromSeed(
