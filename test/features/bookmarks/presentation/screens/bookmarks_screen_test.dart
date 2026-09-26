@@ -8,6 +8,7 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/bookmarks/domain/entities/bookmark.dart';
 import 'package:lampada/features/bookmarks/domain/repositories/bookmarks_repository.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart';
+import 'package:lampada/features/bookmarks/presentation/screens/bookmark_detail_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmark_button.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmarks_empty_view.dart';
@@ -72,6 +73,48 @@ void main() {
       home: Scaffold(body: child),
     ),
   );
+
+  for (final modal in [false, true]) {
+    testWidgets('ink записи на всю ширину, модальная копилка: $modal', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(BookmarksScreen(onClose: modal ? () {} : null)),
+      );
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(BookmarksScreen)),
+      );
+      await container
+          .read(bookmarksProvider.notifier)
+          .toggle(_bookmark('quote-1'));
+      await tester.pumpAndSettle();
+
+      final ink = find.ancestor(
+        of: find.text('Сохранённая мысль'),
+        matching: find.byType(InkWell),
+      );
+      expect(tester.getRect(ink).left, 0);
+      expect(tester.getRect(ink).right, 800);
+      expect(tester.getTopLeft(find.text('Сохранённая мысль')).dx, 16);
+      await tester.tapAt(Offset(1, tester.getCenter(ink).dy));
+      await tester.pumpAndSettle();
+      expect(find.byType(BookmarkDetailScreen), findsOneWidget);
+    });
+  }
+
+  testWidgets('стрелка назад слева возвращает из закладок', (tester) async {
+    var backCalls = 0;
+    await tester.pumpWidget(wrap(BookmarksScreen(onClose: () => backCalls++)));
+    await tester.pumpAndSettle();
+    final back = find.byType(BackButton);
+    expect(back, findsOneWidget);
+    expect(find.byTooltip('Закрыть'), findsNothing);
+    final width = tester.getSize(find.byType(BookmarksScreen)).width;
+    expect(tester.getCenter(back).dx, lessThan(width / 2));
+    await tester.tap(back);
+    expect(backCalls, 1);
+  });
 
   testWidgets('пустая копилка — тёплое состояние без назидания', (
     tester,
@@ -141,6 +184,45 @@ void main() {
 
     expect(find.text('Сохранённая мысль'), findsOneWidget);
     expect(find.text('Не удалось удалить закладку'), findsOneWidget);
+  });
+
+  testWidgets('между первыми двумя закладками есть разделитель', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          bookmarksRepositoryProvider.overrideWithValue(
+            _LoadedBookmarksRepository([
+              _bookmark('first'),
+              _bookmark('second'),
+            ]),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const Scaffold(body: BookmarksScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final divider = find.byType(Divider);
+    expect(divider, findsOneWidget);
+    expect(tester.getRect(divider).left, 16);
+    expect(tester.getRect(divider).right, 784);
+    expect(
+      tester.getTopLeft(divider).dy,
+      greaterThanOrEqualTo(
+        tester.getBottomLeft(find.byKey(const ValueKey('first'))).dy,
+      ),
+    );
+    expect(
+      tester.getBottomLeft(divider).dy,
+      lessThanOrEqualTo(
+        tester.getTopLeft(find.byKey(const ValueKey('second'))).dy,
+      ),
+    );
   });
 
   testWidgets('appbar не меняет тон при прокрутке копилки', (tester) async {

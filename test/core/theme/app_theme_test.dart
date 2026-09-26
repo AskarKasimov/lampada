@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_colors.dart';
@@ -19,6 +20,30 @@ void main() {
       AppColorsExtension.dark,
     );
   });
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      testWidgets(
+        'Единые иконки назад и закрытия: $platform, ${theme.brightness}',
+        (tester) async {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: theme.copyWith(platform: platform),
+              home: const Scaffold(
+                body: Row(children: [BackButton(), CloseButton()]),
+              ),
+            ),
+          );
+          expect(find.byIcon(CupertinoIcons.arrow_left), findsOneWidget);
+          expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
+          expect(
+            tester.widget<Icon>(find.byIcon(CupertinoIcons.arrow_left)).size,
+            22,
+          );
+        },
+      );
+    }
+  }
 
   testWidgets('AppTheme.quoteStyle берёт цвет ink активной темы', (
     tester,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -196,7 +197,7 @@ void main() {
   ) async {
     await pumpReader(tester);
 
-    final icon = tester.widget<Icon>(find.byIcon(Icons.arrow_back));
+    final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.arrow_left));
     expect(icon.size, 22);
     expect(icon.color, const Color(0xFF79695E));
     final position = tester.widget<Positioned>(

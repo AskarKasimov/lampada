@@ -1,4 +1,7 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+
+import '../../../../core/theme/app_spacing.dart';
 
 /// Общая TikTok-подобная рамка читалок карточек и курса.
 ///
@@ -37,9 +40,8 @@ class VerticalCardReader extends StatelessWidget {
     child: Stack(
       children: [
         Padding(
-          // Текст продолжает линию карточки на «Сегодня»: 20px поля и 13px
-          // под метку непрочитанного.
-          padding: const EdgeInsets.fromLTRB(33, 48, 24, 24),
+          // Дополнительное поле слева оставляет место панели прогресса.
+          padding: AppSpacing.of(context).readerPadding,
           child: PageView.builder(
             controller: controller,
             scrollDirection: Axis.vertical,
@@ -67,7 +69,7 @@ class VerticalCardReader extends StatelessWidget {
           left: 0,
           child: IconButton(
             onPressed: onClose,
-            icon: Icon(Icons.arrow_back, size: 22, color: closeColor),
+            icon: Icon(CupertinoIcons.arrow_left, size: 22, color: closeColor),
             tooltip: 'Назад',
           ),
         ),

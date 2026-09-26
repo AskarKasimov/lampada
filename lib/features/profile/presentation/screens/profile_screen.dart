@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_setting_tile.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../providers/providers.dart';
+import '../widgets/profile_bookmarks_tile.dart';
 import '../widgets/profile_link_tile.dart';
 import '../widgets/theme_mode_toggle_button.dart';
 
@@ -37,45 +40,64 @@ class ProfileScreen extends ConsumerWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, kFloatingNavInset),
-      children: [
-        Text(
-          'ПРОФИЛЬ',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.9,
-            color: colors.todayLabel,
-          ),
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          backgroundColor: colors.background,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          title: Text('Профиль', style: TextStyle(color: colors.ink)),
         ),
-        const SizedBox(height: 20),
-        const ThemeModeSettingTile(),
-        const SizedBox(height: 24),
-        const ReminderSettingTile(),
-        const SizedBox(height: 28),
-        ProfileLinkTile(
-          label: 'Поделиться приложением',
-          onTap: actions.shareApp,
-        ),
-        ProfileLinkTile(label: actions.reviewLabel, onTap: requestReview),
-        ProfileLinkTile(
-          label: 'Политика конфиденциальности',
-          onTap: () => actions.openUrl(_privacyPolicyUrl),
-        ),
-        ProfileLinkTile(
-          label: 'Условия использования',
-          onTap: () => actions.openUrl(_termsOfUseUrl),
-        ),
-        const SizedBox(height: 24),
-        // FR-025: контент принадлежит Азбуке, и это должно быть видно
-        // не только мелкой подписью под карточкой.
-        Text(
-          'Контент дня — материалы портала «Азбука веры» (azbyka.ru).',
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.5,
-            color: colors.homeSubtitle,
+        SliverPadding(
+          padding: const EdgeInsets.only(top: 20, bottom: kFloatingNavInset),
+          sliver: SliverList.list(
+            children: [
+              ProfileBookmarksTile(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    fullscreenDialog: true,
+                    builder: (context) => BookmarksScreen(
+                      onClose: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const ReminderSettingTile(),
+              ProfileLinkTile(
+                label: 'Поделиться приложением',
+                onTap: actions.shareApp,
+              ),
+              ProfileLinkTile(label: actions.reviewLabel, onTap: requestReview),
+              ProfileLinkTile(
+                label: 'Политика конфиденциальности',
+                onTap: () => actions.openUrl(_privacyPolicyUrl),
+              ),
+              ProfileLinkTile(
+                label: 'Условия использования',
+                onTap: () => actions.openUrl(_termsOfUseUrl),
+              ),
+              const SizedBox(height: 24),
+              Padding(
+                padding: AppSpacing.of(context).horizontal,
+                child: const ThemeModeSettingTile(),
+              ),
+              const SizedBox(height: 24),
+              // FR-025: контент принадлежит Азбуке, и это должно быть видно
+              // не только мелкой подписью под карточкой.
+              Padding(
+                padding: AppSpacing.of(context).horizontal,
+                child: Text(
+                  'Контент дня — материалы портала «Азбука веры» (azbyka.ru).',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.5,
+                    color: colors.homeSubtitle,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

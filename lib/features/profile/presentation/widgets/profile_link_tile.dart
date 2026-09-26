@@ -2,10 +2,11 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 
 /// Строка-переход в Профиле: подпись слева, стрелка вовне справа.
 ///
-/// Стрелка «вовне» (`arrow_outward`), а не шеврон «вглубь» (`chevron_right`):
+/// Стрелка «вовне» (`arrow_up_right`), а не шеврон «вглубь» (`chevron_right`):
 /// все четыре действия здесь покидают приложение — браузер, системный лист
 /// «поделиться», StoreKit, — а не открывают следующий экран внутри него.
 class ProfileLinkTile extends StatelessWidget {
@@ -21,9 +22,10 @@ class ProfileLinkTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 11),
+          padding:
+              AppSpacing.of(context).horizontal +
+              const EdgeInsets.symmetric(vertical: 11),
           child: Row(
             children: [
               Expanded(

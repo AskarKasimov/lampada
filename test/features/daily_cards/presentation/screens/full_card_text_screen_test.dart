@@ -139,7 +139,7 @@ void main() {
 
     expect(safeArea.left, isFalse);
     expect(safeArea.right, isFalse);
-    expect(contentPadding.padding, const EdgeInsets.fromLTRB(33, 48, 24, 24));
+    expect(contentPadding.padding, const EdgeInsets.fromLTRB(29, 48, 16, 24));
     expect(closePosition.top, 0);
     expect(closePosition.left, isNull);
     expect(closePosition.right, 0);

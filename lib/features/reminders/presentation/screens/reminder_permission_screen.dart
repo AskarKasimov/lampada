@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_link_button.dart';
 import '../../../../core/widgets/app_primary_button.dart';
@@ -26,7 +27,9 @@ class ReminderPermissionScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
+          padding:
+              AppSpacing.of(context).horizontal +
+              const EdgeInsets.only(top: 24, bottom: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

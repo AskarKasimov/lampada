@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 
 /// Название курса «Основы» — одно на все входы в него.
@@ -9,10 +10,9 @@ const basicsCourseTitle = 'Основы веры';
 /// Диаметр метки непрочитанного.
 const _dotSize = 5.0;
 
-/// Отступ слева под метку: строки выключены по одной линии, метка стоит на
-/// поле — иначе прочитанный и непрочитанный вход были бы сдвинуты друг
-/// относительно друга.
-const _dotGutter = 13.0;
+/// Метка сдвигает только заголовок непрочитанной записи, а основной текст
+/// всегда начинается на одной линии.
+const _dotGutter = AppSpacing.unreadGutter;
 
 /// Одна запись дня на «Сегодня»: подпись разрядкой и текст антиквой.
 ///
@@ -35,6 +35,8 @@ class DayEntryRow extends StatelessWidget {
     this.textSize = 16,
     this.maxLines = 2,
     this.showReadStatus = true,
+    this.topSpacing = 0,
+    this.bottomSpacing = 0,
   });
 
   /// Подпись разрядкой: «ЦИТАТА», «ЕВАНГЕЛИЕ ДНЯ», «ОСНОВЫ ВЕРЫ · 47».
@@ -49,6 +51,10 @@ class DayEntryRow extends StatelessWidget {
   final int maxLines;
   final bool showReadStatus;
 
+  /// Воздух у разделителя входит в ink соседней записи, а не в разделитель.
+  final double topSpacing;
+  final double bottomSpacing;
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
@@ -58,50 +64,56 @@ class DayEntryRow extends StatelessWidget {
       label: '$label. $text${isUnread ? '' : '. Прочитано'}',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
           // Вертикальные 12 держат тап-таргет выше минимальных 44pt даже у
           // самой короткой строки.
-          padding: const EdgeInsets.fromLTRB(_dotGutter, 12, 0, 12),
-          child: Stack(
-            clipBehavior: Clip.none,
+          // Поля внутри кнопки сохраняют ink от края до края экрана.
+          padding:
+              AppSpacing.of(context).dayEntryHorizontal +
+              EdgeInsets.only(top: 12 + topSpacing, bottom: 12 + bottomSpacing),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      height: 1.4,
-                      letterSpacing: 1.1,
-                      color: labelColor ?? colors.textTertiary,
+                  if (showReadStatus && isUnread)
+                    SizedBox(
+                      width: _dotGutter,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        heightFactor: 1,
+                        child: Container(
+                          width: _dotSize,
+                          height: _dotSize,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colors.accent,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    text,
-                    maxLines: maxLines,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTheme.quoteStyle(
-                      context,
-                    ).copyWith(fontSize: textSize, height: 1.35),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        height: 1.4,
+                        letterSpacing: 1.1,
+                        color: labelColor ?? colors.textTertiary,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              if (showReadStatus && isUnread)
-                Positioned(
-                  left: -_dotGutter,
-                  top: 4,
-                  child: Container(
-                    width: _dotSize,
-                    height: _dotSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: colors.accent,
-                    ),
-                  ),
-                ),
+              const SizedBox(height: 6),
+              Text(
+                text,
+                maxLines: maxLines,
+                overflow: TextOverflow.ellipsis,
+                style: AppTheme.quoteStyle(
+                  context,
+                ).copyWith(fontSize: textSize, height: 1.35),
+              ),
             ],
           ),
         ),
@@ -117,7 +129,7 @@ class DayEntryDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 14),
+    padding: AppSpacing.of(context).horizontal,
     child: Container(
       height: 1,
       color: AppColorsExtension.of(context).chipUnreadBorder,

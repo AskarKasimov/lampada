@@ -17,7 +17,6 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/profile/presentation/screens/profile_screen.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
@@ -93,7 +92,7 @@ void main() {
   });
 
   /// IndexedStack строит все четыре вкладки сразу, поэтому Профиль читает
-  /// настройку темы уже на старте — prefs нужны даже тесту про «Сегодня».
+  /// настройку темы уже на старте — prefs нужны даже тесту про «Домой».
   Widget buildApp() => ProviderScope(
     overrides: [
       dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
@@ -121,15 +120,15 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
   }
 
-  /// «Сегодня» сама открывает первую непрочитанную карточку на весь экран,
+  /// «Домой» сама открывает первую непрочитанную карточку на весь экран,
   /// и она перекрывает таб-бар — тестам про навигацию её надо закрыть.
   Future<void> dismissAutoOpened(WidgetTester tester) async {
-    if (find.byIcon(Icons.arrow_back).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    if (find.byIcon(CupertinoIcons.arrow_left).evaluate().isEmpty) return;
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
     await settle(tester);
   }
 
-  testWidgets('стартует на «Сегодня» — карточка, а не экран-прослойка', (
+  testWidgets('стартует на «Домой» — карточка, а не экран-прослойка', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
@@ -141,7 +140,7 @@ void main() {
     expect(find.text('Мысль дня'), findsOneWidget);
   });
 
-  testWidgets('в навигации три вкладки: Сегодня, Библия, Профиль', (
+  testWidgets('в навигации четыре вкладки: Домой, Библия, Планы, Профиль', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
@@ -230,38 +229,37 @@ void main() {
     }
   });
 
-  testWidgets('курс с прогрессом входит в общую капсулу навигации', (
-    tester,
-  ) async {
+  testWidgets('курс доступен только на вкладке «Планы»', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
 
+    expect(find.byType(CourseProgressHeader), findsNothing);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.text('Планы'),
+      ),
+    );
+    await settle(tester);
+
+    expect(find.byType(CourseReaderScreen), findsNothing);
+    expect(find.byType(CourseProgressHeader), findsOneWidget);
+    expect(find.text('О вере и жизни христианина'), findsOneWidget);
+    expect(find.text('Тема 1 из 365'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(FloatingNavBar),
         matching: find.byType(CourseProgressHeader),
       ),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(
-      find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.byType(LinearProgressIndicator),
-      ),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('вход в курс из капсулы открывает ридер', (tester) async {
-    await tester.pumpWidget(buildApp());
-    await settle(tester);
-    await dismissAutoOpened(tester);
-
     await tester.tap(find.byType(CourseProgressHeader));
     await settle(tester);
-
     expect(find.byType(CourseReaderScreen), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    await settle(tester);
+    expect(find.byType(CourseProgressHeader), findsOneWidget);
   });
 
   testWidgets('курс не утяжеляет капсулу на других вкладках', (tester) async {
@@ -290,7 +288,7 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    for (final label in ['Сегодня', 'Библия', 'Профиль']) {
+    for (final label in ['Домой', 'Библия', 'Планы', 'Профиль']) {
       expect(
         find.descendant(
           of: find.byType(FloatingNavBar),
@@ -353,24 +351,17 @@ void main() {
     expect(find.text('Система'), findsOneWidget);
   });
 
-  testWidgets('кнопка под Евангелием открывает закладки', (tester) async {
+  testWidgets('копилка открывается из профиля и возвращается в него', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
-
-    final gospel = find.ancestor(
-      of: find.text('ЕВАНГЕЛИЕ ДНЯ'),
-      matching: find.byType(DayEntryRow),
-    );
-    final button = find.descendant(
-      of: find.byType(TodayScreen),
-      matching: find.text('Копилка смыслов'),
-    );
+    expect(find.text('Закладки').hitTestable(), findsNothing);
+    await tester.tap(tabIcon(CupertinoIcons.person));
+    await settle(tester);
+    final button = find.text('Закладки').hitTestable();
     expect(button, findsOneWidget);
-    expect(
-      tester.getTopLeft(button).dy,
-      greaterThan(tester.getBottomLeft(gospel).dy),
-    );
 
     await tester.tap(button);
     await settle(tester);
@@ -378,14 +369,15 @@ void main() {
     expect(find.byType(BookmarksScreen), findsOneWidget);
     final closeButton = find.descendant(
       of: find.byType(BookmarksScreen),
-      matching: find.byTooltip('Закрыть'),
+      matching: find.byType(BackButton),
     );
     expect(closeButton, findsOneWidget);
     await tester.tap(closeButton);
     await settle(tester);
 
     expect(find.byType(BookmarksScreen), findsNothing);
-    expect(find.byType(TodayScreen), findsOneWidget);
+    expect(find.text('Закладки').hitTestable(), findsOneWidget);
+    expect(find.text('Тема').hitTestable(), findsOneWidget);
   });
 
   testWidgets('выбранная дата переживает уход на другую вкладку', (
@@ -428,7 +420,7 @@ void main() {
   testWidgets('selectedTabProvider переключает вкладку снаружи', (
     tester,
   ) async {
-    // На этом держится FR-015: тап по пушу обязан открыть «Сегодня»,
+    // На этом держится FR-015: тап по пушу обязан открыть «Домой»,
     // где бы юзер ни был в прошлый раз.
     final container = ProviderContainer(
       overrides: [

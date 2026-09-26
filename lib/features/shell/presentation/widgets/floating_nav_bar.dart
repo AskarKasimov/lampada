@@ -4,20 +4,19 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../providers/shell_providers.dart';
 
 /// Высота самой капсулы.
 const _barHeight = 58.0;
 
 /// Отступ капсулы от краёв и от низа экрана.
-const _sideMargin = 22.0;
 const _bottomMargin = 10.0;
 
 /// Сколько места снизу должен оставить скроллящийся контент, чтобы последний
 /// элемент не оказался под капсулой. Прибавляется к нижнему padding списков.
 ///
 const kFloatingNavInset = _barHeight + _bottomMargin + 12;
-const kFloatingNavWithHeaderInset = kFloatingNavInset + 90;
 
 /// Плавающая навигация капсулой поверх контента.
 ///
@@ -32,26 +31,30 @@ class FloatingNavBar extends StatefulWidget {
   const FloatingNavBar({
     required this.current,
     required this.onSelect,
-    this.header,
     super.key,
   });
 
   final ShellTab current;
   final void Function(ShellTab tab) onSelect;
-  final Widget? header;
 
   static const _items = [
     (
       tab: ShellTab.today,
       icon: CupertinoIcons.sunset,
       activeIcon: CupertinoIcons.sunset_fill,
-      label: 'Сегодня',
+      label: 'Домой',
     ),
     (
       tab: ShellTab.bible,
       icon: CupertinoIcons.book,
       activeIcon: CupertinoIcons.book_fill,
       label: 'Библия',
+    ),
+    (
+      tab: ShellTab.plans,
+      icon: CupertinoIcons.list_bullet,
+      activeIcon: CupertinoIcons.list_bullet,
+      label: 'Планы',
     ),
     (
       tab: ShellTab.profile,
@@ -79,12 +82,9 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
     return SafeArea(
       minimum: const EdgeInsets.only(bottom: _bottomMargin),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          _sideMargin,
-          0,
-          _sideMargin,
-          _bottomMargin,
-        ),
+        padding:
+            AppSpacing.of(context).horizontal +
+            const EdgeInsets.only(bottom: _bottomMargin),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(_barHeight / 2),
           child: BackdropFilter(
@@ -112,7 +112,6 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ?widget.header,
                   SizedBox(
                     height: _barHeight,
                     child: LayoutBuilder(

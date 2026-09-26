@@ -11,6 +11,52 @@ Widget _wrap(Widget child) => MaterialApp(
 );
 
 void main() {
+  for (final fast in [false, true]) {
+    testWidgets('ink охватывает весь день и нижний отступ, пост: $fast', (
+      tester,
+    ) async {
+      final day = TodayCards(
+        cards: const [],
+        title: 'Название дня',
+        isFast: fast,
+        storyUrl: 'https://azbyka.ru/days/story',
+      );
+      var taps = 0;
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [DayNameHeader(day: day, onTap: () => taps++)],
+          ),
+        ),
+      );
+      final ink = tester.getRect(find.byType(InkWell));
+      final header = tester.getRect(find.byType(DayNameHeader));
+      final title = tester.getRect(
+        find.ancestor(
+          of: find.byIcon(CupertinoIcons.chevron_right),
+          matching: find.byType(Text),
+        ),
+      );
+      expect(ink, header);
+      expect(ink.bottom - title.bottom, 14);
+      final firstText = tester.getRect(
+        fast
+            ? find.text('ПОСТНЫЙ ДЕНЬ')
+            : find.ancestor(
+                of: find.byIcon(CupertinoIcons.chevron_right),
+                matching: find.byType(Text),
+              ),
+      );
+      expect(firstText.top - ink.top, 4);
+      await tester.tapAt(Offset(1, ink.bottom - 1));
+      expect(taps, 1);
+      if (fast) {
+        await tester.tap(find.text('ПОСТНЫЙ ДЕНЬ'));
+        expect(taps, 2);
+      }
+    });
+  }
+
   testWidgets('без ссылки на рассказ заголовок не кликабелен и без стрелки', (
     tester,
   ) async {

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,6 +31,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     required this.recordProgress,
     required this.recordRead,
     this.pageBuilder,
+    this.actionsBuilder,
     super.key,
   });
 
@@ -49,6 +51,10 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// Дополнительное содержимое страницы. Рамка, жесты, шапка и действия
   /// остаются общими для всех карточек; меняется только центральный материал.
   final CardPageBuilder? pageBuilder;
+
+  /// Служебная страница может заменить действия закладки и отправки текста.
+  /// null из builder оставляет стандартную панель текущей карточки.
+  final Widget? Function(BuildContext context, int index)? actionsBuilder;
 
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
@@ -124,11 +130,9 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
               card.type.styleFor(brightness).accent,
           ],
         ),
-        actions: _actionsFor(
-          widget.cards[_index],
-          brightness,
-          colors.homeSubtitle,
-        ),
+        actions:
+            widget.actionsBuilder?.call(context, _index) ??
+            _actionsFor(widget.cards[_index], brightness, colors.homeSubtitle),
         onClose: () => Navigator.of(context).pop(),
         closeColor: colors.homeSubtitle,
       ),
@@ -160,7 +164,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
             ReaderActionButton(
               tooltip: 'Открыть полный текст',
               onPressed: () => _openFullText(card),
-              icon: Icons.aspect_ratio_outlined,
+              icon: CupertinoIcons.fullscreen,
               color: actionColor,
             ),
             const SizedBox(height: 4),

@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
+import '../../../bible/presentation/screens/bible_reader_screen.dart';
+import '../../../daily_cards/domain/entities/day_card.dart';
+import '../../../daily_cards/presentation/theme/card_type_style.dart';
 import '../../domain/entities/bookmark.dart';
+import '../../domain/usecases/resolve_bookmark_chapter.dart';
 import '../widgets/bookmark_button.dart';
 
 /// Скорость свайпа вниз (лог.px/с), после которой экран закрывается —
@@ -16,7 +21,7 @@ const _dismissVelocity = 700.0;
 ///
 /// Список копилки показывает только начало (см. [BookmarkTile]) — весь текст
 /// живёт здесь, тем же полноэкранным приёмом, что карточки дня: одна мысль
-/// на экран, закрывается крестиком или свайпом вниз.
+/// на экран, возвращается к списку стрелкой назад или свайпом вниз.
 class BookmarkDetailScreen extends StatelessWidget {
   const BookmarkDetailScreen({required this.bookmark, super.key});
 
@@ -39,8 +44,53 @@ class BookmarkDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
+    final chapter = const ResolveBookmarkChapter()(bookmark);
+    final brightness = Theme.of(context).brightness;
+    final type = switch (bookmark.kind) {
+      BookmarkKind.verse || BookmarkKind.interpretation => CardType.reading,
+      BookmarkKind.story => CardType.quote,
+      BookmarkKind.card => CardType.values.firstWhere(
+        (type) => type.styleFor(brightness).label == bookmark.label,
+        orElse: () => CardType.quote,
+      ),
+    };
+    final style = type.styleFor(brightness);
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: colors.background,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        automaticallyImplyLeading: false,
+        centerTitle: true,
+        title: AppPillBadge(
+          label: bookmark.label,
+          background: style.tagBackground,
+          foreground: style.tagForeground,
+          letterSpacing: 0.2,
+        ),
+        leading: BackButton(
+          onPressed: () => Navigator.of(context).pop(),
+          color: colors.homeSubtitle,
+        ),
+        actions: [
+          if (chapter != null)
+            IconButton(
+              tooltip: 'Открыть главу',
+              icon: Icon(CupertinoIcons.book, color: colors.homeSubtitle),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => BibleReaderScreen(
+                    book: chapter.book,
+                    chapter: chapter.chapter,
+                    initialVerse: chapter.verse,
+                  ),
+                ),
+              ),
+            ),
+          BookmarkButton(bookmark: bookmark),
+        ],
+      ),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onVerticalDragEnd: (details) => _handleVerticalDrag(context, details),
@@ -48,18 +98,10 @@ class BookmarkDetailScreen extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 34),
+                padding: AppSpacing.of(context).horizontal,
                 child: Column(
                   children: [
-                    const SizedBox(height: 48),
-                    AppPillBadge(
-                      label: bookmark.label,
-                      background: Colors.transparent,
-                      foreground: colors.chipUnreadText,
-                      border: Border.all(color: colors.chipUnreadBorder),
-                      horizontalPadding: 13,
-                      fontSize: 11.5,
-                    ),
+                    const SizedBox(height: 20),
                     Expanded(
                       child: Center(
                         child: SingleChildScrollView(
@@ -99,30 +141,6 @@ class BookmarkDetailScreen extends StatelessWidget {
                     const SizedBox(height: 24),
                   ],
                 ),
-              ),
-              // Тот же жест, что на карточках дня: крестик и свайп вниз —
-              // обе привычные для iOS пары для модального экрана.
-              Positioned(
-                top: 0,
-                right: 8,
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(
-                    CupertinoIcons.xmark,
-                    size: 22,
-                    color: colors.homeSubtitle,
-                  ),
-                  tooltip: 'Закрыть',
-                ),
-              ),
-              // Та же кнопка, что на карточке дня, стихе и толковании — сюда
-              // попадают уже сохранённые записи, поэтому она стоит заполненной
-              // и повторный тап снимает закладку: экран остаётся открытым,
-              // текст никуда не пропадает, просто выходит из копилки.
-              Positioned(
-                top: 0,
-                left: 8,
-                child: BookmarkButton(bookmark: bookmark),
               ),
             ],
           ),

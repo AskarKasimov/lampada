@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 
 /// Пустая копилка. Тон приглашающий, без назидания (FR-017): человек ещё
@@ -13,7 +14,7 @@ class BookmarksEmptyView extends StatelessWidget {
     final colors = AppColorsExtension.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 44),
+        padding: AppSpacing.of(context).horizontal,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -1,21 +1,35 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'app_spacing.dart';
 
 /// Спокойная благородная тема — светлый и тёмный варианты.
 abstract final class AppTheme {
+  // Material выбирает стрелку по платформе; обе темы сохраняют один набор
+  // даже для автоматически созданных AppBar кнопок назад и закрытия.
+  static final _actionIcons = ActionIconThemeData(
+    backButtonIconBuilder: (_) =>
+        const Icon(CupertinoIcons.arrow_left, size: 22),
+    closeButtonIconBuilder: (_) => const Icon(CupertinoIcons.xmark, size: 22),
+  );
+
   static ThemeData get light => ThemeData(
     useMaterial3: true,
+    actionIconTheme: _actionIcons,
+    appBarTheme: AppBarThemeData(titleSpacing: const AppSpacing().screenInset),
     scaffoldBackgroundColor: AppColorsExtension.light.background,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColorsExtension.light.accent,
       surface: AppColorsExtension.light.background,
     ),
-    extensions: const [AppColorsExtension.light],
+    extensions: const [AppColorsExtension.light, AppSpacing()],
   );
 
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
+    actionIconTheme: _actionIcons,
+    appBarTheme: AppBarThemeData(titleSpacing: const AppSpacing().screenInset),
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColorsExtension.dark.background,
     colorScheme: ColorScheme.fromSeed(
@@ -23,7 +37,7 @@ abstract final class AppTheme {
       brightness: Brightness.dark,
       surface: AppColorsExtension.dark.background,
     ),
-    extensions: const [AppColorsExtension.dark],
+    extensions: const [AppColorsExtension.dark, AppSpacing()],
   );
 
   /// Курсивный serif (шрифт-ассет Lora-Italic.ttf) для цитаты/мысли дня —
