@@ -783,7 +783,7 @@ void main() {
           matching: find.byType(PageView),
         ),
       );
-      expect(pageView.childrenDelegate.estimatedChildCount, 2);
+      expect(pageView.childrenDelegate.estimatedChildCount, 3);
       expect(find.text('Первый стих'), findsOneWidget);
       expect(find.byType(VerseInterpretationButton), findsOneWidget);
       await tester.tap(find.byType(VerseInterpretationButton));
