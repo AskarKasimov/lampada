@@ -20,11 +20,15 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
   const BibleReaderScreen({
     required this.book,
     required this.chapter,
+    this.initialVerse = 1,
     super.key,
   });
 
   final BibleBook book;
   final int chapter;
+
+  /// Сохранённый стих открывается в контексте всей главы, без обрезки начала.
+  final int initialVerse;
 
   @override
   ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
@@ -33,7 +37,7 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
 typedef _ReadingVerse = ({BibleBook book, int chapter, BibleVerse verse});
 
 class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
-  final _controller = PageController();
+  PageController? _controller;
   final _verses = <_ReadingVerse>[];
   int _page = 0;
   BibleBook? _lastBook;
@@ -51,7 +55,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -65,7 +69,14 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         bibleChapterProvider((widget.book.code, widget.chapter)).future,
       );
       if (!mounted) return;
+      final startIndex = chapter.verses.indexWhere(
+        (verse) => verse.number == widget.initialVerse,
+      );
+      _controller?.dispose();
       setState(() {
+        // Ищем номер стиха, а не индекс: в тексте могут быть пропуски номеров.
+        _page = math.max(0, startIndex);
+        _controller = PageController(initialPage: _page);
         _verses.addAll([
           for (final verse in chapter.verses)
             (book: widget.book, chapter: widget.chapter, verse: verse),
@@ -193,7 +204,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
 
     return Scaffold(
       body: VerticalCardReader(
-        controller: _controller,
+        controller: _controller!,
         itemCount: _verses.length + (_nextTarget == null ? 0 : 1),
         onPageChanged: _onPageChanged,
         itemBuilder: (context, index) {

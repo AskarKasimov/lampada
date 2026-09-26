@@ -377,7 +377,7 @@ void main() {
     expect(find.byType(BookmarksScreen), findsOneWidget);
     final closeButton = find.descendant(
       of: find.byType(BookmarksScreen),
-      matching: find.byTooltip('Закрыть'),
+      matching: find.byType(BackButton),
     );
     expect(closeButton, findsOneWidget);
     await tester.tap(closeButton);

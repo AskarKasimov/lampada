@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,7 +11,7 @@ import '../widgets/bookmarks_empty_view.dart';
 class BookmarksScreen extends ConsumerWidget {
   const BookmarksScreen({this.onClose, super.key});
 
-  /// Модальный вход в копилку должен явно вернуть на «Сегодня»: жест назад
+  /// Модальный вход в копилку должен явно вернуть на «Домой»: жест назад
   /// на iOS для fullscreenDialog недоступен.
   final VoidCallback? onClose;
 
@@ -84,13 +83,7 @@ class BookmarksScreen extends ConsumerWidget {
         shadowColor: Colors.transparent,
         title: const Text('Закладки'),
         automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            onPressed: onClose,
-            icon: const Icon(CupertinoIcons.xmark),
-            tooltip: 'Закрыть',
-          ),
-        ],
+        leading: BackButton(onPressed: onClose, color: colors.homeSubtitle),
       ),
       body: body,
     );

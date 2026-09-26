@@ -257,7 +257,10 @@ void main() {
           overrides: [
             bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
           ],
-          child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+          child: MaterialApp(
+            theme: ThemeData(platform: TargetPlatform.iOS),
+            home: const Scaffold(body: BibleScreen()),
+          ),
         ),
       );
 
@@ -271,8 +274,14 @@ void main() {
       expect(find.text('Стих'), findsNothing);
       await tester.tap(find.text('3').first);
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      final reader = find.byType(BibleReaderScreen);
+      expect(ModalRoute.of(tester.element(reader))!.fullscreenDialog, isTrue);
+      final openingPosition = tester.getTopLeft(reader);
+      expect(openingPosition.dx, closeTo(0, 1));
+      expect(openingPosition.dy, greaterThan(0));
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.byType(BibleReaderScreen), findsOneWidget);
+      expect(reader, findsOneWidget);
       expect(find.text('Первый стих'), findsOneWidget);
       expect(find.text('Стих'), findsNothing);
       expect(
@@ -286,6 +295,16 @@ void main() {
       expect(find.text('— 3:1'), findsNothing);
       expect(find.text('От Иоанна 3:1'), findsNothing);
       expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);
+      final back = find.byIcon(Icons.arrow_back);
+      expect(back, findsOneWidget);
+      expect(
+        tester.getCenter(back).dx,
+        lessThan(tester.getSize(reader).width / 2),
+      );
+      await tester.tap(back);
+      await tester.pumpAndSettle();
+      expect(find.byType(BibleReaderScreen), findsNothing);
+      expect(find.byType(BibleScreen), findsOneWidget);
     },
   );
 

@@ -73,6 +73,19 @@ void main() {
     ),
   );
 
+  testWidgets('стрелка назад слева возвращает из закладок', (tester) async {
+    var backCalls = 0;
+    await tester.pumpWidget(wrap(BookmarksScreen(onClose: () => backCalls++)));
+    await tester.pumpAndSettle();
+    final back = find.byType(BackButton);
+    expect(back, findsOneWidget);
+    expect(find.byTooltip('Закрыть'), findsNothing);
+    final width = tester.getSize(find.byType(BookmarksScreen)).width;
+    expect(tester.getCenter(back).dx, lessThan(width / 2));
+    await tester.tap(back);
+    expect(backCalls, 1);
+  });
+
   testWidgets('пустая копилка — тёплое состояние без назидания', (
     tester,
   ) async {

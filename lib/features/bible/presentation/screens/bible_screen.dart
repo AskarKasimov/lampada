@@ -299,6 +299,7 @@ class _BibleBookTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(11),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
+                          fullscreenDialog: true,
                           builder: (_) =>
                               BibleReaderScreen(book: book, chapter: chapter),
                         ),
