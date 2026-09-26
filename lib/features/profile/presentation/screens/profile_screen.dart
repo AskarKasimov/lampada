@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_setting_tile.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../providers/providers.dart';
+import '../widgets/profile_bookmarks_tile.dart';
 import '../widgets/profile_link_tile.dart';
 import '../widgets/theme_mode_toggle_button.dart';
 
@@ -51,8 +53,17 @@ class ProfileScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 20, 24, kFloatingNavInset),
           sliver: SliverList.list(
             children: [
-              const ThemeModeSettingTile(),
-              const SizedBox(height: 24),
+              ProfileBookmarksTile(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    fullscreenDialog: true,
+                    builder: (context) => BookmarksScreen(
+                      onClose: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
               const ReminderSettingTile(),
               const SizedBox(height: 28),
               ProfileLinkTile(
@@ -68,6 +79,8 @@ class ProfileScreen extends ConsumerWidget {
                 label: 'Условия использования',
                 onTap: () => actions.openUrl(_termsOfUseUrl),
               ),
+              const SizedBox(height: 24),
+              const ThemeModeSettingTile(),
               const SizedBox(height: 24),
               // FR-025: контент принадлежит Азбуке, и это должно быть видно
               // не только мелкой подписью под карточкой.

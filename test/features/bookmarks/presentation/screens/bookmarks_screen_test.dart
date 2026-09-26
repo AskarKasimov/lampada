@@ -156,6 +156,43 @@ void main() {
     expect(find.text('Не удалось удалить закладку'), findsOneWidget);
   });
 
+  testWidgets('между первыми двумя закладками есть разделитель', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          bookmarksRepositoryProvider.overrideWithValue(
+            _LoadedBookmarksRepository([
+              _bookmark('first'),
+              _bookmark('second'),
+            ]),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const Scaffold(body: BookmarksScreen()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final divider = find.byType(Divider);
+    expect(divider, findsOneWidget);
+    expect(
+      tester.getTopLeft(divider).dy,
+      greaterThanOrEqualTo(
+        tester.getBottomLeft(find.byKey(const ValueKey('first'))).dy,
+      ),
+    );
+    expect(
+      tester.getBottomLeft(divider).dy,
+      lessThanOrEqualTo(
+        tester.getTopLeft(find.byKey(const ValueKey('second'))).dy,
+      ),
+    );
+  });
+
   testWidgets('appbar не меняет тон при прокрутке копилки', (tester) async {
     final bookmarks = List.generate(
       6,

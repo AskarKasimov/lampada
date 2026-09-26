@@ -17,7 +17,6 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/profile/presentation/screens/profile_screen.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
@@ -352,24 +351,17 @@ void main() {
     expect(find.text('Система'), findsOneWidget);
   });
 
-  testWidgets('кнопка под Евангелием открывает закладки', (tester) async {
+  testWidgets('копилка открывается из профиля и возвращается в него', (
+    tester,
+  ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
-
-    final gospel = find.ancestor(
-      of: find.text('ЕВАНГЕЛИЕ ДНЯ'),
-      matching: find.byType(DayEntryRow),
-    );
-    final button = find.descendant(
-      of: find.byType(TodayScreen),
-      matching: find.text('Копилка смыслов'),
-    );
+    expect(find.text('Закладки').hitTestable(), findsNothing);
+    await tester.tap(tabIcon(CupertinoIcons.person));
+    await settle(tester);
+    final button = find.text('Закладки').hitTestable();
     expect(button, findsOneWidget);
-    expect(
-      tester.getTopLeft(button).dy,
-      greaterThan(tester.getBottomLeft(gospel).dy),
-    );
 
     await tester.tap(button);
     await settle(tester);
@@ -384,7 +376,8 @@ void main() {
     await settle(tester);
 
     expect(find.byType(BookmarksScreen), findsNothing);
-    expect(find.byType(TodayScreen), findsOneWidget);
+    expect(find.text('Закладки').hitTestable(), findsOneWidget);
+    expect(find.text('Тема').hitTestable(), findsOneWidget);
   });
 
   testWidgets('выбранная дата переживает уход на другую вкладку', (

@@ -11,7 +11,7 @@ import '../widgets/bookmarks_empty_view.dart';
 class BookmarksScreen extends ConsumerWidget {
   const BookmarksScreen({this.onClose, super.key});
 
-  /// Модальный вход в копилку должен явно вернуть на «Домой»: жест назад
+  /// Модальный вход в копилку должен явно вернуть на предыдущий экран: жест назад
   /// на iOS для fullscreenDialog недоступен.
   final VoidCallback? onClose;
 
@@ -28,27 +28,12 @@ class BookmarksScreen extends ConsumerWidget {
         if (bookmarks.isEmpty) return const BookmarksEmptyView();
 
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, kFloatingNavInset),
-          itemCount: bookmarks.length + 1,
-          separatorBuilder: (context, index) => index == 0
-              ? const SizedBox.shrink()
-              : Divider(height: 1, color: colors.chipUnreadBorder),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, kFloatingNavInset),
+          itemCount: bookmarks.length,
+          separatorBuilder: (context, index) =>
+              Divider(height: 1, color: colors.chipUnreadBorder),
           itemBuilder: (context, index) {
-            if (index == 0) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  'КОПИЛКА СМЫСЛОВ',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.9,
-                    color: colors.todayLabel,
-                  ),
-                ),
-              );
-            }
-            final bookmark = bookmarks[index - 1];
+            final bookmark = bookmarks[index];
             return BookmarkTile(
               bookmark: bookmark,
               onRemove: () async {
@@ -81,7 +66,7 @@ class BookmarksScreen extends ConsumerWidget {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.transparent,
-        title: const Text('Закладки'),
+        title: const Text('Копилка смыслов'),
         automaticallyImplyLeading: false,
         leading: BackButton(onPressed: onClose, color: colors.homeSubtitle),
       ),

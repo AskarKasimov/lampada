@@ -5,7 +5,6 @@ import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
-import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
 import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/screens/reading_screen.dart';
@@ -399,15 +398,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     ),
   );
 
-  Future<void> _openBookmarks(BuildContext context) =>
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          fullscreenDialog: true,
-          builder: (context) =>
-              BookmarksScreen(onClose: () => Navigator.of(context).pop()),
-        ),
-      );
-
   bool _isRead(DayCard card) => _isToday
       ? progress.isRead(card.type)
       : progress.isReadOn(date, card.type);
@@ -505,14 +495,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             textSize: 27,
             maxLines: 1,
             onTap: () => _openReader(context, ref, reading),
-          ),
-          const DayEntryDivider(),
-          DayEntryRow(
-            label: 'ЗАКЛАДКИ',
-            text: 'Копилка смыслов',
-            isUnread: false,
-            showReadStatus: false,
-            onTap: () => _openBookmarks(context),
           ),
         ],
       ],

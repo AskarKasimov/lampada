@@ -69,6 +69,26 @@ void main() {
     );
   });
 
+  testWidgets('копилка стоит первой, выше настроек темы', (tester) async {
+    await tester.pumpWidget(app());
+    final bookmarks = find.text('Закладки');
+    expect(bookmarks, findsOneWidget);
+    expect(
+      tester.getBottomLeft(bookmarks).dy,
+      lessThan(tester.getTopLeft(find.text('Тема')).dy),
+    );
+  });
+
+  testWidgets('настройка темы находится после условий использования', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    expect(
+      tester.getTopLeft(find.text('Тема')).dy,
+      greaterThan(tester.getBottomLeft(find.text('Условия использования')).dy),
+    );
+  });
+
   testWidgets('показывает все четыре внешние ссылки', (tester) async {
     await tester.pumpWidget(app());
 

@@ -415,14 +415,10 @@ void main() {
       await dismissAutoOpened(tester);
 
       expect(find.byType(WeekStrip), findsOneWidget);
-      // Две карточки сессии, Евангелие и копилка — одни строки дня.
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
       expect(entry('ЕВАНГЕЛИЕ ДНЯ'), findsOneWidget);
-      expect(entry('ЗАКЛАДКИ'), findsOneWidget);
-      expect(find.text('Копилка смыслов'), findsOneWidget);
-      final bookmarksEntry = tester.widget<DayEntryRow>(entry('ЗАКЛАДКИ'));
-      expect(bookmarksEntry.isUnread, isFalse);
-      expect(bookmarksEntry.showReadStatus, isFalse);
+      expect(entry('ЗАКЛАДКИ'), findsNothing);
+      expect(find.text('Копилка смыслов'), findsNothing);
     });
 
     testWidgets('блок показывает начало текста карточки', (tester) async {
@@ -532,7 +528,7 @@ void main() {
       await settle(tester);
       await dismissAutoOpened(tester);
 
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
       expect(entry('ЕВАНГЕЛИЕ ДНЯ'), findsOneWidget);
       expect(find.text('Пройти снова'), findsNothing);
     });
@@ -726,7 +722,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
     });
 
     testWidgets('открытая карточка сразу засчитывается прочитанной', (
@@ -1317,7 +1313,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length + 1));
+      expect(find.byType(DayEntryRow), findsNWidgets(_cards.length));
     });
 
     testWidgets('закрыл просмотрщик — он не открывается заново', (
