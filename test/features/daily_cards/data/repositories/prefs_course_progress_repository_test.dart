@@ -31,12 +31,54 @@ void main() {
     expect(valueOf(result), 1);
   });
 
+  test('старое место чтения не превращается в завершённые темы', () async {
+    final r = repo(
+      await prefsWith({
+        'flutter.course_progress_v4': jsonEncode({'topic': 209}),
+      }),
+    );
+
+    expect(valueOf(await r.currentTopic()), 209);
+    expect((await r.completedTopics() as Success<Set<int>>).value, isEmpty);
+  });
+
+  test('чередование отметок и быстрых свайпов не теряет прогресс', () async {
+    final r = repo(await prefsWith());
+
+    await Future.wait([
+      r.completeTopic(1),
+      r.saveCurrentTopic(2),
+      r.completeTopic(3),
+      r.saveCurrentTopic(4),
+    ]);
+
+    expect(valueOf(await r.currentTopic()), 4);
+    expect((await r.completedTopics() as Success<Set<int>>).value, {1, 3});
+  });
+
   test('сохраняет последнюю открытую тему', () async {
     final r = repo(await prefsWith());
 
     await r.saveCurrentTopic(2);
 
     expect(valueOf(await r.currentTopic()), 2);
+  });
+
+  test('просмотр другой темы сохраняет отметки прочитанного', () async {
+    final prefs = await prefsWith({
+      'flutter.course_progress_v4': jsonEncode({
+        'topic': 3,
+        'completedTopics': [1, 3],
+      }),
+    });
+
+    await repo(prefs).saveCurrentTopic(2);
+
+    final stored =
+        jsonDecode(prefs.getString('course_progress_v4')!)
+            as Map<String, dynamic>;
+    expect(stored['topic'], 2);
+    expect(stored['completedTopics'], [1, 3]);
   });
 
   test(
@@ -117,4 +159,20 @@ void main() {
 
     expect(await failing.saveCurrentTopic(2), isA<Failure<void>>());
   });
+
+  test(
+    'отклонённая отметка не становится завершённой темой в памяти',
+    () async {
+      SharedPreferences.resetStatic();
+      installSharedPreferencesStore(RejectingWriteStore());
+      final failing = repo(await SharedPreferences.getInstance());
+      addTearDown(() => SharedPreferences.setMockInitialValues({}));
+
+      expect(await failing.completeTopic(3), isA<Failure<void>>());
+      expect(
+        (await failing.completedTopics() as Success<Set<int>>).value,
+        isEmpty,
+      );
+    },
+  );
 }

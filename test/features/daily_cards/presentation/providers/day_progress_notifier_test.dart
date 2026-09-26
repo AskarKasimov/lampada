@@ -27,6 +27,12 @@ class _FreshCardsRepository implements DayCardsRepository {
 }
 
 class _CourseProgressRepository implements CourseProgressRepository {
+  @override
+  Future<Result<Set<int>>> completedTopics() async => const Success({});
+
+  @override
+  Future<Result<void>> completeTopic(int topic) => saveCurrentTopic(topic);
+
   final savedTopics = <int>[];
 
   @override

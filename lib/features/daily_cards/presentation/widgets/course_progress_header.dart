@@ -13,6 +13,7 @@ class CourseProgressHeader extends StatelessWidget {
   const CourseProgressHeader({
     required this.topic,
     required this.onTap,
+    required this.completedTopicCount,
     this.compact = false,
     super.key,
   });
@@ -20,6 +21,7 @@ class CourseProgressHeader extends StatelessWidget {
   final DayCard topic;
   final VoidCallback onTap;
   final bool compact;
+  final int? completedTopicCount;
 
   int get _topicNumber {
     final match = RegExp(r'^basics-topic-(\d+)$').firstMatch(topic.id);
@@ -31,14 +33,20 @@ class CourseProgressHeader extends StatelessWidget {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
     final topicNumber = _topicNumber;
-    final title = topic.title ?? 'Тема $topicNumber';
+    final count = completedTopicCount;
+    final progressLabel = count == null
+        ? 'Тема $topicNumber из $courseTopicCount'
+        : 'Прочитано $count из $courseTopicCount';
+    final title = count == courseTopicCount
+        ? 'Курс пройден'
+        : topic.title ?? 'Тема $topicNumber';
     final courseAccent = CardType.basics.styleFor(brightness).accent;
 
     return Semantics(
       button: true,
       label:
           '$basicsCourseTitle. Тема $topicNumber из $courseTopicCount. '
-          '$title',
+          '$progressLabel. $title',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -69,7 +77,7 @@ class CourseProgressHeader extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Тема $topicNumber из $courseTopicCount',
+                      progressLabel,
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.textSecondary,
@@ -94,16 +102,18 @@ class CourseProgressHeader extends StatelessWidget {
                     color: colors.ink,
                   ),
                 ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(1),
-                  child: LinearProgressIndicator(
-                    value: topicNumber / courseTopicCount,
-                    minHeight: 2,
-                    color: courseAccent,
-                    backgroundColor: colors.chipUnreadBorder,
+                if (count != null) ...[
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(1),
+                    child: LinearProgressIndicator(
+                      value: count / courseTopicCount,
+                      minHeight: 2,
+                      color: courseAccent,
+                      backgroundColor: colors.chipUnreadBorder,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

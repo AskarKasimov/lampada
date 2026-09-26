@@ -6,23 +6,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/app_link_button.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/entities/day_card.dart';
+import '../../domain/split_course_text.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
+import '../widgets/reader_progress_rail.dart';
 import '../widgets/vertical_card_reader.dart';
 import 'full_card_text_screen.dart';
 
-/// Полноэкранное чтение личного курса «Основы веры».
-///
-/// Открывается на последней теме юзера. Вертикальный жест вверх открывает
-/// следующие темы, вниз — предыдущие.
+typedef _TopicPage = ({DayCard topic, String? text, int index, int count});
+
+/// Тема читается по чанкам, затем отдельная страница завершает её.
+/// Следующая тема загружается только после свайпа за страницу завершения.
 class CourseReaderScreen extends ConsumerStatefulWidget {
   const CourseReaderScreen({required this.currentTopic, super.key});
 
@@ -33,23 +34,33 @@ class CourseReaderScreen extends ConsumerStatefulWidget {
 }
 
 class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
-  late final int _currentTopicNumber = _topicNumber(widget.currentTopic.id);
-  late final _controller = PageController(
-    initialPage: _pageForTopic(_currentTopicNumber),
-  );
-  late var _index = _pageForTopic(_currentTopicNumber);
+  late final _pages = _pagesFor(widget.currentTopic);
+  late final _controller = PageController(initialPage: _leading);
+  late int _index = _leading;
+  late int _savedTopic = _topicNumber(widget.currentTopic.id);
+  late int _confirmedTopic = _topicNumber(widget.currentTopic.id);
   Future<void> _pendingSave = Future.value();
-  var _isDismissing = false;
-  var _canPop = false;
+  Future<void> _pendingCompletion = Future.value();
+  final _completing = <int>{};
+  final _completed = <int>{};
+  final _completionErrors = <int>{};
+  bool _loading = false;
+  final _loadErrors = <bool>{};
+  bool _isDismissing = false;
+  bool _canPop = false;
+
+  int get _leading => _topicNumber(_pages.first.topic.id) > 1 ? 1 : 0;
+  bool get _hasNext => _topicNumber(_pages.last.topic.id) < courseTopicCount;
+  bool get _isBoundary =>
+      _index < _leading || _index >= _leading + _pages.length;
+  _TopicPage get _visible =>
+      _pages[(_index - _leading).clamp(0, _pages.length - 1)];
 
   @override
   void initState() {
     super.initState();
-    _markCurrentTopicAsReadInDay();
-    if (_currentTopicNumber > 1) {
-      // Запускаем загрузку первой исторической страницы до жеста пользователя.
-      ref.read(courseTopicByNumberProvider(_currentTopicNumber - 1));
-    }
+    final topic = _topicNumber(widget.currentTopic.id);
+    if (topic > 1) ref.read(courseTopicByNumberProvider(topic - 1));
   }
 
   @override
@@ -58,142 +69,159 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     super.dispose();
   }
 
-  void _markCurrentTopicAsReadInDay() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      final saved = await ref
-          .read(dayProgressProvider.notifier)
-          .markRead(CardType.basics);
-      if (!saved && mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          const SnackBar(
-            content: Text('Не удалось сохранить прогресс'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    });
+  List<_TopicPage> _pagesFor(DayCard card) {
+    final chunks = splitCourseText(
+      card.body,
+    ).where((chunk) => chunk.trim().isNotEmpty).toList();
+    if (chunks.isEmpty) chunks.add('');
+    return [
+      for (var index = 0; index < chunks.length; index++)
+        (
+          topic: card,
+          text: chunks[index],
+          index: index,
+          count: chunks.length + 1,
+        ),
+      (topic: card, text: null, index: chunks.length, count: chunks.length + 1),
+    ];
   }
-
-  int _pageForTopic(int topic) => courseTopicCount - topic;
-
-  int _topicForPage(int page) => courseTopicCount - page;
 
   void _onPageChanged(int page) {
     setState(() => _index = page);
-    _pendingSave = _saveVisibleTopic(_topicForPage(page));
-    unawaited(_pendingSave);
-  }
-
-  Future<void> _saveVisibleTopic(int topic) async {
-    try {
-      if (topic != _currentTopicNumber) {
-        await ref.read(courseTopicByNumberProvider(topic).future);
+    if (_isBoundary) {
+      final previous = page < _leading;
+      if (!_loading && !_loadErrors.contains(previous)) {
+        unawaited(_loadTopic(previous));
       }
-    } on Object {
       return;
     }
-    if (!mounted || _topicForPage(_index) != topic) return;
+    final visible = _visible;
+    final topic = _topicNumber(visible.topic.id);
+    if (_savedTopic != topic) {
+      _savedTopic = topic;
+      _pendingSave = _pendingSave.then((_) => _saveTopic(topic));
+      unawaited(_pendingSave);
+    }
+    if (visible.text == null) _queueCompletion(topic);
+  }
+
+  Future<void> _saveTopic(int topic) async {
     final result = await ref.read(saveCourseTopicProvider)(topic);
     if (!mounted) return;
     if (result is Success<void>) {
+      _confirmedTopic = topic;
       ref.invalidate(courseTopicProvider);
+    } else {
+      // Отказ не подтверждает позицию: следующий чанк повторит запись.
+      if (_savedTopic == topic) _savedTopic = _confirmedTopic;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(content: Text('Не удалось сохранить прогресс')),
+      );
+    }
+  }
+
+  Future<void> _loadTopic(bool previous) async {
+    if (_loading || _isDismissing) return;
+    final number = previous
+        ? _topicNumber(_pages.first.topic.id) - 1
+        : _topicNumber(_pages.last.topic.id) + 1;
+    if (number < 1 || number > courseTopicCount) return;
+    setState(() {
+      _loading = true;
+      _loadErrors.remove(previous);
+    });
+    try {
+      final card = await ref.read(courseTopicByNumberProvider(number).future);
+      if (!mounted) return;
+      final added = _pagesFor(card);
+      final oldLeading = _leading;
+      final oldIndex = _index;
+      setState(() {
+        if (previous) {
+          _pages.insertAll(0, added);
+          // При движении назад открываем последний текстовый чанк,
+          // а не страницу завершения: один свайп не засчитывает чужую тему.
+          _index = oldIndex == 0
+              ? _leading + added.length - 2
+              : oldIndex + added.length + _leading - oldLeading;
+        } else {
+          _pages.addAll(added);
+        }
+        _loading = false;
+      });
+      if (previous) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_controller.hasClients) return;
+          _controller.jumpToPage(_index);
+          _onPageChanged(_index);
+        });
+      } else {
+        _onPageChanged(_index);
+      }
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadErrors.add(previous);
+      });
+      // За время запроса пользователь мог перейти к противоположной границе.
+      if (_isBoundary && (_index < _leading) != previous) {
+        _onPageChanged(_index);
+      }
+    }
+  }
+
+  void _queueCompletion(int topic) {
+    if (_completed.contains(topic) ||
+        _completing.contains(topic) ||
+        _isDismissing) {
       return;
     }
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(
-        content: Text('Не удалось сохранить прогресс'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    setState(() {
+      _completing.add(topic);
+      _completionErrors.remove(topic);
+    });
+    _pendingCompletion = _pendingCompletion.then((_) => _completeTopic(topic));
+    unawaited(_pendingCompletion);
+  }
+
+  Future<void> _completeTopic(int topic) async {
+    final result = await ref.read(completeCourseTopicProvider)(topic);
+    if (!mounted) return;
+    setState(() {
+      _completing.remove(topic);
+      if (result is Success) {
+        _completed.add(topic);
+      } else {
+        _completionErrors.add(topic);
+      }
+    });
+    // Тема могла сохраниться даже при неудачной записи активности дня.
+    ref.invalidate(completedCourseTopicsProvider);
+    ref.invalidate(courseTopicProvider);
+    if (result is Success) ref.invalidate(dayProgressProvider);
   }
 
   Future<void> _dismiss() async {
     if (_isDismissing) return;
-    _isDismissing = true;
+    setState(() => _isDismissing = true);
     await _pendingSave;
+    await _pendingCompletion;
     if (!mounted) return;
     setState(() => _canPop = true);
     await WidgetsBinding.instance.endOfFrame;
     if (mounted) Navigator.of(context).pop();
   }
 
-  DayCard? _cardForPage(int page) {
-    if (_topicForPage(page) == _currentTopicNumber) return widget.currentTopic;
-    return ref.watch(courseTopicByNumberProvider(_topicForPage(page))).value;
-  }
-
-  Widget _contentForPage(int page, AppColorsExtension colors) {
-    if (_topicForPage(page) == _currentTopicNumber) {
-      return CardContent(
-        key: ValueKey(widget.currentTopic.id),
-        card: widget.currentTopic,
-        showBadge: false,
-        scrollable: false,
-      );
-    }
-
-    final topic = _topicForPage(page);
-    return ref
-        .watch(courseTopicByNumberProvider(topic))
-        .when(
-          data: (card) => CardContent(
-            key: ValueKey(card.id),
-            card: card,
-            showBadge: false,
-            scrollable: false,
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Тема недоступна',
-                  style: TextStyle(fontSize: 14, color: colors.ink),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Не удалось загрузить эту тему',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: colors.homeSubtitle),
-                ),
-                const SizedBox(height: 12),
-                AppLinkButton(
-                  label: 'Повторить',
-                  color: colors.link,
-                  fontSize: 12,
-                  onPressed: () {
-                    ref.invalidate(courseTopicByNumberProvider(topic));
-                    _pendingSave = _saveVisibleTopic(topic);
-                    unawaited(_pendingSave);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-  }
-
-  Bookmark _bookmarkFor(DayCard card, Brightness brightness) => Bookmark(
-    id: card.id,
-    kind: BookmarkKind.card,
-    text: card.body,
-    source: card.source,
-    label: card.type.styleFor(brightness).label,
-    savedAt: DateTime.fromMillisecondsSinceEpoch(0),
-  );
-
-  String _shareTextFor(DayCard card) => '${card.body}\n\n— ${card.source}';
-
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final brightness = Theme.of(context).brightness;
-    final basicsStyle = CardType.basics.styleFor(brightness);
-    final currentCard = _cardForPage(_index);
-    final visibleTopic = _topicForPage(_index);
-
+    final style = CardType.basics.styleFor(brightness);
+    final visible = _visible;
+    final card = visible.topic;
+    final topic = _topicNumber(card.id);
+    final completed = ref.watch(completedCourseTopicsProvider).value;
     return PopScope<void>(
       canPop: _canPop,
       onPopInvokedWithResult: (didPop, _) {
@@ -202,22 +230,98 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       child: Scaffold(
         body: VerticalCardReader(
           controller: _controller,
-          itemCount: courseTopicCount,
-          reverse: true,
+          itemCount: _leading + _pages.length + (_hasNext ? 1 : 0),
           onPageChanged: _onPageChanged,
-          itemBuilder: (context, page) => _contentForPage(page, colors),
+          itemBuilder: (_, page) {
+            final index = page - _leading;
+            if (index < 0 || index >= _pages.length) {
+              return Center(
+                child: !_loadErrors.contains(index < 0)
+                    ? const CircularProgressIndicator()
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Тема недоступна'),
+                          TextButton(
+                            onPressed: () {
+                              final previous = index < 0;
+                              final number = previous
+                                  ? _topicNumber(_pages.first.topic.id) - 1
+                                  : _topicNumber(_pages.last.topic.id) + 1;
+                              ref.invalidate(
+                                courseTopicByNumberProvider(number),
+                              );
+                              unawaited(_loadTopic(previous));
+                            },
+                            child: const Text('Повторить'),
+                          ),
+                        ],
+                      ),
+              );
+            }
+            final item = _pages[index];
+            if (item.text == null) {
+              return _completionPage(item, colors, completed);
+            }
+            return CardContent(
+              key: ValueKey('${item.topic.id}-${item.index}'),
+              card: item.topic.copyWith(body: item.text!.trim(), title: null),
+              showBadge: false,
+              showSource: false,
+              scrollable: false,
+            );
+          },
           header: AppPillBadge(
-            label: 'Основы веры',
-            background: basicsStyle.tagBackground,
-            foreground: basicsStyle.tagForeground,
+            label: 'Основы веры · Тема №$topic',
+            background: style.tagBackground,
+            foreground: style.tagForeground,
             letterSpacing: 0.2,
           ),
-          leftRail: _CourseProgressRail(
-            topic: visibleTopic,
-            total: courseTopicCount,
-            color: colors.textSecondary,
+          leftRail: ReaderProgressRail(
+            key: ValueKey(card.id),
+            count: visible.count,
+            currentIndex: visible.index,
+            accent: style.accent,
           ),
-          actions: _actionsFor(currentCard, brightness, colors.homeSubtitle),
+          actions: _isBoundary || visible.text == null
+              ? const SizedBox.shrink()
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (visible.text!.length > CardContent.previewLength)
+                      ReaderActionButton(
+                        tooltip: 'Открыть полный текст',
+                        onPressed: () => Navigator.of(context).push(
+                          FullCardTextRoute(
+                            card: card.copyWith(
+                              body: visible.text!.trim(),
+                              title: null,
+                            ),
+                            showSource: false,
+                          ),
+                        ),
+                        icon: CupertinoIcons.fullscreen,
+                        color: colors.homeSubtitle,
+                      ),
+                    BookmarkButton(
+                      bookmark: Bookmark(
+                        id: card.id,
+                        kind: BookmarkKind.card,
+                        text: card.body,
+                        source: card.source,
+                        label: style.label,
+                        savedAt: DateTime.fromMillisecondsSinceEpoch(0),
+                      ),
+                      iconSize: 28,
+                      buttonSize: 56,
+                    ),
+                    AppShareButton(
+                      text: '${card.body}\n\n— ${card.source}',
+                      iconSize: 28,
+                      buttonSize: 56,
+                    ),
+                  ],
+                ),
           onClose: () => unawaited(_dismiss()),
           closeColor: colors.homeSubtitle,
         ),
@@ -225,53 +329,52 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     );
   }
 
-  Widget _actionsFor(DayCard? card, Brightness brightness, Color actionColor) {
-    if (card == null) return const SizedBox.square(dimension: 56);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (CardContent.needsFullText(card)) ...[
-          ReaderActionButton(
-            tooltip: 'Открыть полный текст',
-            onPressed: () => _openFullText(card),
-            icon: CupertinoIcons.fullscreen,
-            color: actionColor,
-          ),
-          const SizedBox(height: 4),
-        ],
-        BookmarkButton(
-          bookmark: _bookmarkFor(card, brightness),
-          iconSize: 28,
-          buttonSize: 56,
+  Widget _completionPage(
+    _TopicPage page,
+    AppColorsExtension colors,
+    Set<int>? completed,
+  ) {
+    final topic = _topicNumber(page.topic.id);
+    final failed = _completionErrors.contains(topic);
+    final saving = _completing.contains(topic);
+    final finished = completed?.length == courseTopicCount;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 70),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              failed
+                  ? 'Не удалось сохранить прогресс'
+                  : saving
+                  ? 'Сохраняем прогресс…'
+                  : finished
+                  ? 'Курс пройден'
+                  : 'Тема прочитана',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 24, color: colors.ink),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              topic == courseTopicCount
+                  ? 'Это последняя тема курса. Вы можете вернуться к предыдущим темам.'
+                  : 'Авторы рекомендуют читать по одной теме в день. '
+                        'Можно продолжить завтра или, если хочется читать дальше, '
+                        'свайпнуть вверх к следующей теме.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 17, height: 1.5, color: colors.ink),
+            ),
+            if (failed)
+              TextButton(
+                onPressed: _isDismissing ? null : () => _queueCompletion(topic),
+                child: const Text('Повторить сохранение'),
+              ),
+          ],
         ),
-        const SizedBox(height: 4),
-        AppShareButton(text: _shareTextFor(card), iconSize: 28, buttonSize: 56),
-      ],
+      ),
     );
   }
-
-  void _openFullText(DayCard card) {
-    Navigator.of(context).push(FullCardTextRoute(card: card));
-  }
-}
-
-class _CourseProgressRail extends StatelessWidget {
-  const _CourseProgressRail({
-    required this.topic,
-    required this.total,
-    required this.color,
-  });
-
-  final int topic;
-  final int total;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Text(
-    'Тема\n$topic\nиз\n$total',
-    textAlign: TextAlign.center,
-    style: TextStyle(fontSize: 12, color: color),
-  );
 }
 
 int _topicNumber(String id) {

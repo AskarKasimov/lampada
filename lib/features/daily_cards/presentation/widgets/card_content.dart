@@ -17,6 +17,7 @@ class CardContent extends StatefulWidget {
     super.key,
     this.showBadge = true,
     this.showSourceDash = true,
+    this.showSource = true,
     this.scrollable = true,
     this.scrollController,
   });
@@ -24,6 +25,7 @@ class CardContent extends StatefulWidget {
   final DayCard card;
   final bool showBadge;
   final bool showSourceDash;
+  final bool showSource;
 
   /// Внутри листаемой читалки вертикальный жест принадлежит переключению
   /// страниц. Длинный текст там открывается в отдельном полноэкранном виде.
@@ -125,8 +127,10 @@ class _CardContentState extends State<CardContent> {
                     style: _bodyStyle(context, card),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  _sourceText(card, colors),
+                  if (widget.showSource) ...[
+                    const SizedBox(height: 16),
+                    _sourceText(card, colors),
+                  ],
                 ],
               ),
             ),
@@ -179,8 +183,10 @@ class _CardContentState extends State<CardContent> {
             textAlign: TextAlign.center,
           ),
         ),
-        const SizedBox(height: 16),
-        _sourceText(card, colors),
+        if (widget.showSource) ...[
+          const SizedBox(height: 16),
+          _sourceText(card, colors),
+        ],
       ],
     ),
   );

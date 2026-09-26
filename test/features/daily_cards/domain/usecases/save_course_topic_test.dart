@@ -4,6 +4,12 @@ import 'package:lampada/features/daily_cards/domain/repositories/course_progress
 import 'package:lampada/features/daily_cards/domain/usecases/save_course_topic.dart';
 
 class _CourseProgressRepository implements CourseProgressRepository {
+  @override
+  Future<Result<Set<int>>> completedTopics() async => const Success({});
+
+  @override
+  Future<Result<void>> completeTopic(int topic) => saveCurrentTopic(topic);
+
   _CourseProgressRepository(this.result);
 
   final Result<void> result;

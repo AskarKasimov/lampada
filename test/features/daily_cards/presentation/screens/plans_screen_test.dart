@@ -20,7 +20,10 @@ void main() {
   );
 
   Widget buildApp(Future<DayCard?> Function() load) => ProviderScope(
-    overrides: [courseTopicProvider.overrideWith((ref) => load())],
+    overrides: [
+      courseTopicProvider.overrideWith((ref) => load()),
+      completedCourseTopicsProvider.overrideWith((ref) async => {1, 3}),
+    ],
     child: MaterialApp(
       theme: AppTheme.light,
       home: const Scaffold(body: PlansScreen()),
@@ -41,8 +44,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Как проходить планы'), findsOneWidget);
       expect(find.text('Основы веры'), findsOneWidget);
-      expect(find.textContaining('365 тем'), findsOneWidget);
+      expect(find.textContaining('один курс: 365 тем'), findsOneWidget);
       expect(find.textContaining('Свайп вверх'), findsOneWidget);
+      expect(find.textContaining('Тема прочитана'), findsOneWidget);
       expect(
         find.textContaining('не зависит от календарной даты'),
         findsOneWidget,
@@ -60,7 +64,13 @@ void main() {
     pending.complete(topic);
     await tester.pumpAndSettle();
     expect(find.byType(BrandLoadingView), findsNothing);
-    expect(find.text('Тема 12 из 365'), findsOneWidget);
+    expect(find.text('Прочитано 2 из 365'), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+          .value,
+      closeTo(2 / 365, 0.000001),
+    );
   });
 
   testWidgets('после ошибки повторно загружает личную тему', (tester) async {
@@ -77,7 +87,13 @@ void main() {
     await tester.tap(find.text('Повторить'));
     await tester.pumpAndSettle();
     expect(find.text('Двенадцатая тема'), findsOneWidget);
-    expect(find.text('Тема 12 из 365'), findsOneWidget);
+    expect(find.text('Прочитано 2 из 365'), findsOneWidget);
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+          .value,
+      closeTo(2 / 365, 0.000001),
+    );
     expect(find.text('Повторить'), findsNothing);
   });
 }

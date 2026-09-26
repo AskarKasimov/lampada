@@ -38,9 +38,9 @@ void main() {
   });
 
   group('нормализация номера', () {
-    test('курс замкнут: после последней темы снова первая', () {
-      expect(normalizeCourseTopic(courseTopicCount + 1), 1);
-      expect(normalizeCourseTopic(courseTopicCount + 2), 2);
+    test('номер за границей курса не начинает его заново', () {
+      expect(normalizeCourseTopic(366), 365);
+      expect(normalizeCourseTopic(367), 365);
     });
 
     test('номер в диапазоне не меняется', () {

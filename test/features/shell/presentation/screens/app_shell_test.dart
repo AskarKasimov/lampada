@@ -246,7 +246,7 @@ void main() {
     expect(find.byType(CourseReaderScreen), findsNothing);
     expect(find.byType(CourseProgressHeader), findsOneWidget);
     expect(find.text('О вере и жизни христианина'), findsOneWidget);
-    expect(find.text('Тема 1 из 365'), findsOneWidget);
+    expect(find.text('Прочитано 0 из 365'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(FloatingNavBar),
@@ -256,8 +256,16 @@ void main() {
     );
     await tester.tap(find.byType(CourseProgressHeader));
     await settle(tester);
+    expect(find.byType(CourseReaderScreen), findsNothing);
+    expect(find.text('О курсе'), findsOneWidget);
+    expect(find.text('Начать'), findsOneWidget);
+    await tester.tap(find.text('Начать'));
+    await settle(tester);
     expect(find.byType(CourseReaderScreen), findsOneWidget);
     await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    await settle(tester);
+    expect(find.text('О курсе'), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
     await settle(tester);
     expect(find.byType(CourseProgressHeader), findsOneWidget);
   });

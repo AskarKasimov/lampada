@@ -17,6 +17,8 @@ import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
+import '../../domain/usecases/complete_course_topic.dart';
+import '../../domain/usecases/get_completed_course_topics.dart';
 import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
 import '../../domain/usecases/load_day_progress.dart';
@@ -99,6 +101,26 @@ final getCourseTopicProvider = Provider<GetCourseTopic>(
 final saveCourseTopicProvider = Provider<SaveCourseTopic>(
   (ref) => SaveCourseTopic(ref.watch(courseProgressRepositoryProvider)),
 );
+
+final getCompletedCourseTopicsProvider = Provider<GetCompletedCourseTopics>(
+  (ref) =>
+      GetCompletedCourseTopics(ref.watch(courseProgressRepositoryProvider)),
+);
+
+final completeCourseTopicProvider = Provider<CompleteCourseTopic>(
+  (ref) => CompleteCourseTopic(
+    ref.watch(courseProgressRepositoryProvider),
+    ref.watch(dayProgressRepositoryProvider),
+  ),
+);
+
+final completedCourseTopicsProvider = FutureProvider<Set<int>>((ref) async {
+  final result = await ref.watch(getCompletedCourseTopicsProvider)();
+  return switch (result) {
+    Success(value: final topics) => topics,
+    Failure(failure: final failure) => throw failure,
+  };
+});
 
 /// Карточка «Основы» для текущей темы курса.
 ///

@@ -44,6 +44,7 @@ void main() {
                       onTap: () {},
                     ),
                     CourseProgressHeader(
+                      completedTopicCount: 0,
                       topic: const DayCard(
                         id: 'basics-topic-1',
                         type: CardType.basics,
