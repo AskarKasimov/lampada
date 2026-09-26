@@ -276,8 +276,45 @@ void main() {
     await tester.scrollUntilVisible(find.text('Ветхий Завет'), 300);
     await tester.tap(find.text('Ветхий Завет'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Аввакума'), -300);
     expect(find.text('Аввакума'), findsOneWidget);
   });
+
+  testWidgets(
+    'открытие завета закрывает другой, повторное нажатие закрывает текущий',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 6000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+          ],
+          child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+        ),
+      );
+
+      await tester.tap(find.text('Новый Завет'));
+      await tester.pumpAndSettle();
+      expect(find.text('Деяния святых Апостолов'), findsOneWidget);
+
+      await tester.tap(find.text('Ветхий Завет'));
+      await tester.pumpAndSettle();
+      expect(find.text('Деяния святых Апостолов'), findsNothing);
+      expect(find.text('Аввакума'), findsOneWidget);
+
+      await tester.tap(find.text('Новый Завет'));
+      await tester.pumpAndSettle();
+      expect(find.text('Аввакума'), findsNothing);
+      expect(find.text('Деяния святых Апостолов'), findsOneWidget);
+
+      await tester.tap(find.text('Новый Завет'));
+      await tester.pumpAndSettle();
+      expect(find.text('Деяния святых Апостолов'), findsNothing);
+      expect(find.text('Аввакума'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('кнопка справки открывает пояснение статусов глав', (
     tester,
@@ -378,11 +415,10 @@ void main() {
     await tester.scrollUntilVisible(find.text('Ветхий Завет'), 300);
     await tester.tap(find.text('Ветхий Завет'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Ветхий Завет'), 300);
+    await tester.scrollUntilVisible(find.text('Ветхий Завет'), -300);
     expect(find.text('Ветхий Завет'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Петра 2-е'), 300);
-    expect(find.text('Петра 2-е'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Аввакума'), 300);
+    expect(find.text('Петра 2-е'), findsNothing);
+    await tester.scrollUntilVisible(find.text('Аввакума'), -300);
     expect(find.text('Аввакума'), findsOneWidget);
   });
 

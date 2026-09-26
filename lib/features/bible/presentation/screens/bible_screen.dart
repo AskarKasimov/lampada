@@ -28,14 +28,14 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
     ...bibleBooks.skipWhile((book) => book.code != 'Mt'),
   ]..sort((a, b) => a.title.compareTo(b.title));
   String? _selectedBook;
-  final _expandedTestaments = <String>{};
+  String? _selectedTestament;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final statuses = ref.watch(bibleChapterStatusesProvider).value;
-    final newTestamentExpanded = _expandedTestaments.contains('Новый Завет');
-    final oldTestamentExpanded = _expandedTestaments.contains('Ветхий Завет');
+    final newTestamentExpanded = _selectedTestament == 'Новый Завет';
+    final oldTestamentExpanded = _selectedTestament == 'Ветхий Завет';
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -112,9 +112,7 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
   ];
 
   void _toggleTestament(String testament) => setState(() {
-    if (!_expandedTestaments.add(testament)) {
-      _expandedTestaments.remove(testament);
-    }
+    _selectedTestament = _selectedTestament == testament ? null : testament;
   });
 
   void _selectBook(BibleBook book) => setState(() {
