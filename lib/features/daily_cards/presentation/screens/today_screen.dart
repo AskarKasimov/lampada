@@ -22,7 +22,6 @@ import '../widgets/day_name_header.dart';
 import '../widgets/today_offline_view.dart';
 import '../widgets/week_strip.dart';
 import 'card_viewer_screen.dart';
-import 'course_reader_screen.dart';
 
 /// Дневная сессия и навигация по календарным дням.
 class TodayScreen extends ConsumerStatefulWidget {
@@ -222,7 +221,6 @@ class _SelectedDayContent extends ConsumerWidget {
         day: _withCourseTopic(selected, day, courseTopic),
         progress: progress,
         isSelected: isSelected,
-        hasCourseHeader: courseTopic != null,
         hasAutoOpened: hasAutoOpened,
         onAutoOpened: onAutoOpened,
       );
@@ -304,7 +302,6 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.day,
     required this.progress,
     required this.isSelected,
-    required this.hasCourseHeader,
     required this.hasAutoOpened,
     required this.onAutoOpened,
   });
@@ -313,7 +310,6 @@ class _DayBlocks extends ConsumerStatefulWidget {
   final TodayCards day;
   final DayProgress progress;
   final bool isSelected;
-  final bool hasCourseHeader;
   final bool hasAutoOpened;
   final VoidCallback onAutoOpened;
 
@@ -342,18 +338,13 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       .where((c) => c.type != CardType.reading && c.type != CardType.basics)
       .toList();
 
-  // Автооткрытие не должно вести в курс без загруженной личной темы.
-  Iterable<DayCard> get _autoOpenCards => day.cards.where(
-    (card) => card.type != CardType.basics || _isCourseTopic(card),
-  );
+  // Личный курс открывается только из «Планов», по выбору пользователя.
+  Iterable<DayCard> get _autoOpenCards =>
+      day.cards.where((card) => card.type != CardType.basics);
 
   Future<void> _open(BuildContext context, WidgetRef ref, DayCard card) async {
     if (card.type == CardType.reading) {
       await _openReader(context, ref, card);
-      return;
-    }
-    if (_isCourseTopic(card)) {
-      await _openCourse(context, card);
       return;
     }
     final pages = card.type == CardType.basics ? [card] : _pages;
@@ -417,23 +408,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ),
       );
 
-  Future<void> _openCourse(BuildContext context, DayCard card) async {
-    // Прогресс темы сохраняет CourseReaderScreen.
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => CourseReaderScreen(currentTopic: card),
-      ),
-    );
-    if (mounted) await _maybeAskReminders();
-  }
-
   bool _isRead(DayCard card) => _isToday
       ? progress.isRead(card.type)
       : progress.isReadOn(date, card.type);
-
-  bool _isCourseTopic(DayCard card) =>
-      RegExp(r'^basics-topic-\d+$').hasMatch(card.id);
 
   /// Обновляет кэш, не скрывая прежний контент при ошибке.
   Future<void> _refresh() async {
@@ -499,15 +476,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     final brightness = Theme.of(context).brightness;
     final blocks = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(
-        20,
-        4,
-        20,
-        (widget.hasCourseHeader
-                ? kFloatingNavWithHeaderInset
-                : kFloatingNavInset) +
-            32,
-      ),
+      padding: EdgeInsets.fromLTRB(20, 4, 20, kFloatingNavInset + 32),
       children: [
         if (day.hasName) ...[
           DayNameHeader(

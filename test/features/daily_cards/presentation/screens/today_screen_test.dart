@@ -1290,7 +1290,9 @@ void main() {
       expect(find.byType(CardViewerScreen), findsOneWidget);
     });
 
-    testWidgets('после Евангелия очередь доходит до курса', (tester) async {
+    testWidgets('после Евангелия курс не открывается автоматически', (
+      tester,
+    ) async {
       final progress = _FakeProgressRepository()
         ..seedRead({CardType.quote, CardType.advice, CardType.reading});
 
@@ -1302,7 +1304,7 @@ void main() {
       );
       await settle(tester);
 
-      expect(find.byType(CourseReaderScreen), findsOneWidget);
+      expect(find.byType(CourseReaderScreen), findsNothing);
     });
 
     testWidgets('всё прочитано — открываются блоки, а не просмотрщик', (

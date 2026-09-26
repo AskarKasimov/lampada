@@ -7,10 +7,7 @@ import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
 import 'day_entry_row.dart';
 
-/// Постоянный вход в личный курс над календарными страницами.
-///
-/// Курс не зависит от выбранной даты, поэтому его прогресс не должен уезжать
-/// вместе с содержимым дня при листании календаря.
+/// Вход в личный курс с текущей темой и прогрессом во вкладке «Планы».
 class CourseProgressHeader extends StatelessWidget {
   const CourseProgressHeader({
     required this.topic,

@@ -17,7 +17,6 @@ const _bottomMargin = 10.0;
 /// элемент не оказался под капсулой. Прибавляется к нижнему padding списков.
 ///
 const kFloatingNavInset = _barHeight + _bottomMargin + 12;
-const kFloatingNavWithHeaderInset = kFloatingNavInset + 90;
 
 /// Плавающая навигация капсулой поверх контента.
 ///
@@ -32,13 +31,11 @@ class FloatingNavBar extends StatefulWidget {
   const FloatingNavBar({
     required this.current,
     required this.onSelect,
-    this.header,
     super.key,
   });
 
   final ShellTab current;
   final void Function(ShellTab tab) onSelect;
-  final Widget? header;
 
   static const _items = [
     (
@@ -52,6 +49,12 @@ class FloatingNavBar extends StatefulWidget {
       icon: CupertinoIcons.book,
       activeIcon: CupertinoIcons.book_fill,
       label: 'Библия',
+    ),
+    (
+      tab: ShellTab.plans,
+      icon: CupertinoIcons.list_bullet,
+      activeIcon: CupertinoIcons.list_bullet,
+      label: 'Планы',
     ),
     (
       tab: ShellTab.profile,
@@ -112,7 +115,6 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ?widget.header,
                   SizedBox(
                     height: _barHeight,
                     child: LayoutBuilder(

@@ -141,7 +141,7 @@ void main() {
     expect(find.text('Мысль дня'), findsOneWidget);
   });
 
-  testWidgets('в навигации три вкладки: Сегодня, Библия, Профиль', (
+  testWidgets('в навигации четыре вкладки: Сегодня, Библия, Планы, Профиль', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
@@ -230,38 +230,37 @@ void main() {
     }
   });
 
-  testWidgets('курс с прогрессом входит в общую капсулу навигации', (
-    tester,
-  ) async {
+  testWidgets('курс доступен только на вкладке «Планы»', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
 
+    expect(find.byType(CourseProgressHeader), findsNothing);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.text('Планы'),
+      ),
+    );
+    await settle(tester);
+
+    expect(find.byType(CourseReaderScreen), findsNothing);
+    expect(find.byType(CourseProgressHeader), findsOneWidget);
+    expect(find.text('О вере и жизни христианина'), findsOneWidget);
+    expect(find.text('Тема 1 из 365'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(FloatingNavBar),
         matching: find.byType(CourseProgressHeader),
       ),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(
-      find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.byType(LinearProgressIndicator),
-      ),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('вход в курс из капсулы открывает ридер', (tester) async {
-    await tester.pumpWidget(buildApp());
-    await settle(tester);
-    await dismissAutoOpened(tester);
-
     await tester.tap(find.byType(CourseProgressHeader));
     await settle(tester);
-
     expect(find.byType(CourseReaderScreen), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await settle(tester);
+    expect(find.byType(CourseProgressHeader), findsOneWidget);
   });
 
   testWidgets('курс не утяжеляет капсулу на других вкладках', (tester) async {
@@ -290,7 +289,7 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    for (final label in ['Сегодня', 'Библия', 'Профиль']) {
+    for (final label in ['Сегодня', 'Библия', 'Планы', 'Профиль']) {
       expect(
         find.descendant(
           of: find.byType(FloatingNavBar),
