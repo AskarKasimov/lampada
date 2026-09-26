@@ -55,6 +55,20 @@ void main() {
     ),
   );
 
+  testWidgets('заголовок профиля находится в закреплённом AppBar', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    expect(find.text('ПРОФИЛЬ'), findsNothing);
+    final appBar = find.byType(SliverAppBar);
+    expect(appBar, findsOneWidget);
+    expect(tester.widget<SliverAppBar>(appBar).pinned, isTrue);
+    expect(
+      find.descendant(of: appBar, matching: find.text('Профиль')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('показывает все четыре внешние ссылки', (tester) async {
     await tester.pumpWidget(app());
 

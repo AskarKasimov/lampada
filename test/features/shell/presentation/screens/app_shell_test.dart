@@ -93,7 +93,7 @@ void main() {
   });
 
   /// IndexedStack строит все четыре вкладки сразу, поэтому Профиль читает
-  /// настройку темы уже на старте — prefs нужны даже тесту про «Сегодня».
+  /// настройку темы уже на старте — prefs нужны даже тесту про «Домой».
   Widget buildApp() => ProviderScope(
     overrides: [
       dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
@@ -121,7 +121,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
   }
 
-  /// «Сегодня» сама открывает первую непрочитанную карточку на весь экран,
+  /// «Домой» сама открывает первую непрочитанную карточку на весь экран,
   /// и она перекрывает таб-бар — тестам про навигацию её надо закрыть.
   Future<void> dismissAutoOpened(WidgetTester tester) async {
     if (find.byIcon(Icons.arrow_back).evaluate().isEmpty) return;
@@ -129,7 +129,7 @@ void main() {
     await settle(tester);
   }
 
-  testWidgets('стартует на «Сегодня» — карточка, а не экран-прослойка', (
+  testWidgets('стартует на «Домой» — карточка, а не экран-прослойка', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
@@ -141,7 +141,7 @@ void main() {
     expect(find.text('Мысль дня'), findsOneWidget);
   });
 
-  testWidgets('в навигации четыре вкладки: Сегодня, Библия, Планы, Профиль', (
+  testWidgets('в навигации четыре вкладки: Домой, Библия, Планы, Профиль', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
@@ -289,7 +289,7 @@ void main() {
     await settle(tester);
     await dismissAutoOpened(tester);
 
-    for (final label in ['Сегодня', 'Библия', 'Планы', 'Профиль']) {
+    for (final label in ['Домой', 'Библия', 'Планы', 'Профиль']) {
       expect(
         find.descendant(
           of: find.byType(FloatingNavBar),
@@ -427,7 +427,7 @@ void main() {
   testWidgets('selectedTabProvider переключает вкладку снаружи', (
     tester,
   ) async {
-    // На этом держится FR-015: тап по пушу обязан открыть «Сегодня»,
+    // На этом держится FR-015: тап по пушу обязан открыть «Домой»,
     // где бы юзер ни был в прошлый раз.
     final container = ProviderContainer(
       overrides: [

@@ -27,6 +27,32 @@ void main() {
     ),
   );
 
+  testWidgets(
+    'кнопка помощи открывает руководство по планам и возвращает к курсам',
+    (tester) async {
+      await tester.pumpWidget(buildApp(() async => topic));
+      await tester.pumpAndSettle();
+      final help = find.descendant(
+        of: find.byType(SliverAppBar),
+        matching: find.byTooltip('Помощь'),
+      );
+      expect(help, findsOneWidget);
+      await tester.tap(help);
+      await tester.pumpAndSettle();
+      expect(find.text('Как проходить планы'), findsOneWidget);
+      expect(find.text('Основы веры'), findsOneWidget);
+      expect(find.textContaining('365 тем'), findsOneWidget);
+      expect(find.textContaining('Свайп вверх'), findsOneWidget);
+      expect(
+        find.textContaining('не зависит от календарной даты'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Двенадцатая тема'), findsOneWidget);
+    },
+  );
+
   testWidgets('показывает загрузку курса', (tester) async {
     final pending = Completer<DayCard?>();
     await tester.pumpWidget(buildApp(() => pending.future));

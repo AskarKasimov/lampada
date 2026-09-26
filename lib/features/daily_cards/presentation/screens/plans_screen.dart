@@ -10,8 +10,9 @@ import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../widgets/course_progress_header.dart';
 import 'course_reader_screen.dart';
+import 'plans_info_screen.dart';
 
-/// Личные курсы не зависят от выбранной даты на «Сегодня».
+/// Личные курсы не зависят от выбранной даты на «Домой».
 class PlansScreen extends ConsumerWidget {
   const PlansScreen({super.key});
 
@@ -29,6 +30,18 @@ class PlansScreen extends ConsumerWidget {
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
           title: Text('Планы', style: TextStyle(color: colors.ink)),
+          actions: [
+            IconButton(
+              tooltip: 'Помощь',
+              color: colors.textSecondary,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const PlansInfoScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.info_outline),
+            ),
+          ],
         ),
         if (topic.value case final currentTopic?)
           SliverToBoxAdapter(

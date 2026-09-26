@@ -42,7 +42,7 @@ class FloatingNavBar extends StatefulWidget {
       tab: ShellTab.today,
       icon: CupertinoIcons.sunset,
       activeIcon: CupertinoIcons.sunset_fill,
-      label: 'Сегодня',
+      label: 'Домой',
     ),
     (
       tab: ShellTab.bible,

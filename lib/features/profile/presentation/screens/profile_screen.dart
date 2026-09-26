@@ -37,45 +37,49 @@ class ProfileScreen extends ConsumerWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, kFloatingNavInset),
-      children: [
-        Text(
-          'ПРОФИЛЬ',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.9,
-            color: colors.todayLabel,
-          ),
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          titleSpacing: 20,
+          backgroundColor: colors.background,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          title: Text('Профиль', style: TextStyle(color: colors.ink)),
         ),
-        const SizedBox(height: 20),
-        const ThemeModeSettingTile(),
-        const SizedBox(height: 24),
-        const ReminderSettingTile(),
-        const SizedBox(height: 28),
-        ProfileLinkTile(
-          label: 'Поделиться приложением',
-          onTap: actions.shareApp,
-        ),
-        ProfileLinkTile(label: actions.reviewLabel, onTap: requestReview),
-        ProfileLinkTile(
-          label: 'Политика конфиденциальности',
-          onTap: () => actions.openUrl(_privacyPolicyUrl),
-        ),
-        ProfileLinkTile(
-          label: 'Условия использования',
-          onTap: () => actions.openUrl(_termsOfUseUrl),
-        ),
-        const SizedBox(height: 24),
-        // FR-025: контент принадлежит Азбуке, и это должно быть видно
-        // не только мелкой подписью под карточкой.
-        Text(
-          'Контент дня — материалы портала «Азбука веры» (azbyka.ru).',
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.5,
-            color: colors.homeSubtitle,
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, kFloatingNavInset),
+          sliver: SliverList.list(
+            children: [
+              const ThemeModeSettingTile(),
+              const SizedBox(height: 24),
+              const ReminderSettingTile(),
+              const SizedBox(height: 28),
+              ProfileLinkTile(
+                label: 'Поделиться приложением',
+                onTap: actions.shareApp,
+              ),
+              ProfileLinkTile(label: actions.reviewLabel, onTap: requestReview),
+              ProfileLinkTile(
+                label: 'Политика конфиденциальности',
+                onTap: () => actions.openUrl(_privacyPolicyUrl),
+              ),
+              ProfileLinkTile(
+                label: 'Условия использования',
+                onTap: () => actions.openUrl(_termsOfUseUrl),
+              ),
+              const SizedBox(height: 24),
+              // FR-025: контент принадлежит Азбуке, и это должно быть видно
+              // не только мелкой подписью под карточкой.
+              Text(
+                'Контент дня — материалы портала «Азбука веры» (azbyka.ru).',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.5,
+                  color: colors.homeSubtitle,
+                ),
+              ),
+            ],
           ),
         ),
       ],
