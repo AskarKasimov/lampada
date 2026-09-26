@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_link_button.dart';
 import '../../../../core/widgets/brand_mark.dart';
 
@@ -40,7 +41,7 @@ class TodayOfflineView extends StatelessWidget {
     final copy = _copy;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 36),
+        padding: AppSpacing.of(context).horizontal,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/bookmark.dart';
 import '../screens/bookmark_detail_screen.dart';
@@ -35,7 +36,9 @@ class BookmarkTile extends StatelessWidget {
       confirmDismiss: (_) => onRemove(),
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 12),
+        padding:
+            AppSpacing.of(context).horizontal +
+            const EdgeInsets.only(right: 12),
         child: Icon(CupertinoIcons.trash, color: colors.textSecondary),
       ),
       child: Material(
@@ -48,9 +51,12 @@ class BookmarkTile extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18),
+            // Поля внутри строки не ограничивают ink и область нажатия.
+            padding:
+                AppSpacing.of(context).horizontal +
+                const EdgeInsets.symmetric(vertical: 18),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
                   bookmark.text,

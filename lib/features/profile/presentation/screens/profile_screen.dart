@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_setting_tile.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
@@ -43,14 +44,13 @@ class ProfileScreen extends ConsumerWidget {
       slivers: [
         SliverAppBar(
           pinned: true,
-          titleSpacing: 20,
           backgroundColor: colors.background,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
           title: Text('Профиль', style: TextStyle(color: colors.ink)),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, kFloatingNavInset),
+          padding: const EdgeInsets.only(top: 20, bottom: kFloatingNavInset),
           sliver: SliverList.list(
             children: [
               ProfileBookmarksTile(
@@ -63,9 +63,8 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 10),
               const ReminderSettingTile(),
-              const SizedBox(height: 28),
               ProfileLinkTile(
                 label: 'Поделиться приложением',
                 onTap: actions.shareApp,
@@ -80,16 +79,22 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => actions.openUrl(_termsOfUseUrl),
               ),
               const SizedBox(height: 24),
-              const ThemeModeSettingTile(),
+              Padding(
+                padding: AppSpacing.of(context).horizontal,
+                child: const ThemeModeSettingTile(),
+              ),
               const SizedBox(height: 24),
               // FR-025: контент принадлежит Азбуке, и это должно быть видно
               // не только мелкой подписью под карточкой.
-              Text(
-                'Контент дня — материалы портала «Азбука веры» (azbyka.ru).',
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 1.5,
-                  color: colors.homeSubtitle,
+              Padding(
+                padding: AppSpacing.of(context).horizontal,
+                child: Text(
+                  'Контент дня — материалы портала «Азбука веры» (azbyka.ru).',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.5,
+                    color: colors.homeSubtitle,
+                  ),
                 ),
               ),
             ],

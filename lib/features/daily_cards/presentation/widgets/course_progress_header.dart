@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
@@ -44,8 +45,10 @@ class CourseProgressHeader extends StatelessWidget {
           onTap: onTap,
           child: Container(
             margin: compact
-                ? const EdgeInsets.fromLTRB(18, 10, 18, 6)
-                : const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                ? AppSpacing.of(context).horizontal +
+                      const EdgeInsets.only(top: 10, bottom: 6)
+                : AppSpacing.of(context).horizontal +
+                      const EdgeInsets.only(bottom: 4),
             padding: compact
                 ? EdgeInsets.zero
                 : const EdgeInsets.symmetric(vertical: 10),

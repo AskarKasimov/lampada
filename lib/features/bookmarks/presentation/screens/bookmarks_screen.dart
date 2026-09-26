@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../providers/providers.dart';
 import '../widgets/bookmark_tile.dart';
@@ -28,10 +29,12 @@ class BookmarksScreen extends ConsumerWidget {
         if (bookmarks.isEmpty) return const BookmarksEmptyView();
 
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, kFloatingNavInset),
+          padding: const EdgeInsets.only(bottom: kFloatingNavInset),
           itemCount: bookmarks.length,
-          separatorBuilder: (context, index) =>
-              Divider(height: 1, color: colors.chipUnreadBorder),
+          separatorBuilder: (context, index) => Padding(
+            padding: AppSpacing.of(context).horizontal,
+            child: Divider(height: 1, color: colors.chipUnreadBorder),
+          ),
           itemBuilder: (context, index) {
             final bookmark = bookmarks[index];
             return BookmarkTile(

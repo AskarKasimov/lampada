@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/today_cards.dart';
 
@@ -15,32 +16,34 @@ class DayNameHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    final canOpen = onTap != null && day.storyUrl != null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (day.isFast) ...[
-          Text(
-            'ПОСТНЫЙ ДЕНЬ',
-            style: TextStyle(
-              fontSize: 10,
-              height: 1.4,
-              letterSpacing: 1.1,
-              color: colors.accent,
+    final canOpen =
+        onTap != null && day.storyUrl != null && (day.title ?? '').isNotEmpty;
+    final content = Padding(
+      // Пометка поста и воздух до разделителя входят в одну область ink.
+      padding:
+          AppSpacing.of(context).horizontal +
+          const EdgeInsets.only(top: 4, bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (day.isFast) ...[
+            Text(
+              'ПОСТНЫЙ ДЕНЬ',
+              style: TextStyle(
+                fontSize: 10,
+                height: 1.4,
+                letterSpacing: 1.1,
+                color: colors.accent,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-        ],
-        if ((day.title ?? '').isNotEmpty)
-          if (canOpen)
-            InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(8),
-              child: Text.rich(
-                TextSpan(
-                  text: day.title!,
-                  children: [
+            const SizedBox(height: 8),
+          ],
+          if ((day.title ?? '').isNotEmpty)
+            Text.rich(
+              TextSpan(
+                text: day.title!,
+                children: [
+                  if (canOpen)
                     WidgetSpan(
                       alignment: PlaceholderAlignment.middle,
                       child: Padding(
@@ -52,21 +55,15 @@ class DayNameHeader extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ],
-                ),
-                style: AppTheme.quoteStyle(
-                  context,
-                ).copyWith(fontSize: 25, height: 1.22),
+                ],
               ),
-            )
-          else
-            Text(
-              day.title!,
               style: AppTheme.quoteStyle(
                 context,
               ).copyWith(fontSize: 25, height: 1.22),
             ),
-      ],
+        ],
+      ),
     );
+    return canOpen ? InkWell(onTap: onTap, child: content) : content;
   }
 }

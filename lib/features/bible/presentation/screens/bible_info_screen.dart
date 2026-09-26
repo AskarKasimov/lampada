@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 
 /// Поясняет перевод и статусы плиток глав в каталоге Библии.
 class BibleInfoScreen extends StatelessWidget {
@@ -18,7 +19,9 @@ class BibleInfoScreen extends StatelessWidget {
       body: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+          padding:
+              AppSpacing.of(context).horizontal +
+              const EdgeInsets.only(top: 24, bottom: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

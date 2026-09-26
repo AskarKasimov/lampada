@@ -74,6 +74,39 @@ class _LongChapterRepository extends _FakeRepository {
 }
 
 void main() {
+  testWidgets('ink заветов и книг занимает всю ширину экрана', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const MaterialApp(home: Scaffold(body: BibleScreen())),
+      ),
+    );
+    void expectWideInk(String label) {
+      final tile = find.ancestor(
+        of: find.text(label),
+        matching: find.byType(ListTile),
+      );
+      expect(tester.getRect(tile).left, 0);
+      expect(tester.getRect(tile).right, 800);
+      expect(tester.getTopLeft(find.text(label)).dx, 16);
+    }
+
+    expectWideInk('Новый Завет');
+    expectWideInk('Ветхий Завет');
+    await tester.tapAt(
+      Offset(1, tester.getCenter(find.text('Новый Завет')).dy),
+    );
+    await tester.pumpAndSettle();
+    expectWideInk('Новый Завет');
+    expectWideInk('Иакова');
+    await tester.tapAt(Offset(1, tester.getCenter(find.text('Иакова')).dy));
+    await tester.pumpAndSettle();
+    expectWideInk('Иакова');
+    expect(tester.getTopLeft(find.text('Глава')).dx, 16);
+  });
+
   testWidgets('заголовок Завета визуально крупнее названия книги', (
     tester,
   ) async {

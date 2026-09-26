@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../bible/presentation/screens/bible_reader_screen.dart';
@@ -97,7 +98,7 @@ class BookmarkDetailScreen extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 34),
+                padding: AppSpacing.of(context).horizontal,
                 child: Column(
                   children: [
                     const SizedBox(height: 20),

@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/day_card.dart';
 import '../widgets/card_content.dart';
 
@@ -195,7 +196,7 @@ class _FullCardTextScreenState extends State<FullCardTextScreen>
               Padding(
                 // Полный текст продолжает сетку превью, чтобы раскрытие не
                 // сдвигало строку и крестик относительно карточки.
-                padding: const EdgeInsets.fromLTRB(33, 48, 24, 24),
+                padding: AppSpacing.of(context).readerPadding,
                 child: CardContent(
                   card: widget.card,
                   showBadge: false,

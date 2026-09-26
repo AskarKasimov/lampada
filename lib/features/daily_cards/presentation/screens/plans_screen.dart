@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
 import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
@@ -26,7 +27,6 @@ class PlansScreen extends ConsumerWidget {
       slivers: [
         SliverAppBar(
           pinned: true,
-          titleSpacing: 20,
           backgroundColor: colors.background,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
@@ -57,7 +57,9 @@ class PlansScreen extends ConsumerWidget {
           SliverFillRemaining(
             hasScrollBody: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, kFloatingNavInset),
+              padding:
+                  AppSpacing.of(context).horizontal +
+                  const EdgeInsets.only(top: 20, bottom: kFloatingNavInset),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

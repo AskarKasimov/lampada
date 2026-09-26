@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_link_button.dart';
 import '../../../../core/widgets/app_share_button.dart';
@@ -63,7 +64,9 @@ class DayStoryScreen extends ConsumerWidget {
           data: (story) => Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                padding:
+                    AppSpacing.of(context).horizontal +
+                    const EdgeInsets.only(top: 8),
                 child: Row(
                   children: [
                     const Spacer(),
@@ -99,7 +102,9 @@ class _StoryView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final content = SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(28, 8, 20, 40),
+      padding:
+          AppSpacing.of(context).horizontal +
+          const EdgeInsets.only(top: 8, bottom: 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -156,7 +161,7 @@ class _ErrorView extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 36),
+        padding: AppSpacing.of(context).horizontal,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

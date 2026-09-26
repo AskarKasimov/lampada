@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../../domain/bible_chapter_statuses.dart';
 import '../../domain/entities/bible_book.dart';
@@ -39,7 +40,6 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
       slivers: [
         SliverAppBar(
           pinned: true,
-          titleSpacing: 20,
           backgroundColor: colors.background,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
@@ -102,15 +102,12 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
           onToggle: () => _toggleTestament(title),
         ),
       ),
-    SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      sliver: _TestamentBooks(
-        books: books,
-        expanded: expanded,
-        selectedBook: _selectedBook,
-        statuses: statuses,
-        onSelect: _selectBook,
-      ),
+    _TestamentBooks(
+      books: books,
+      expanded: expanded,
+      selectedBook: _selectedBook,
+      statuses: statuses,
+      onSelect: _selectBook,
     ),
   ];
 
@@ -231,7 +228,7 @@ class _TestamentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: AppSpacing.of(context).horizontal,
       title: Text(
         title,
         style: TextStyle(
@@ -303,14 +300,7 @@ class _TestamentHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: colors.background,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: _TestamentTile(
-        title: title,
-        expanded: expanded,
-        onToggle: onToggle,
-      ),
-    ),
+    child: _TestamentTile(title: title, expanded: expanded, onToggle: onToggle),
   );
 }
 
@@ -334,7 +324,7 @@ class _BibleBookTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ListTile(
-          contentPadding: EdgeInsets.zero,
+          contentPadding: AppSpacing.of(context).horizontal,
           title: Text(
             book.title,
             style: TextStyle(fontSize: 17, color: colors.ink),
@@ -347,90 +337,94 @@ class _BibleBookTile extends StatelessWidget {
         ),
         _AccordionSize(
           child: selected
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 2),
-                    Text(
-                      'Глава',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colors.textSecondary,
+              ? Padding(
+                  padding: AppSpacing.of(context).horizontal,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 2),
+                      Text(
+                        'Глава',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colors.textSecondary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final columns = (constraints.maxWidth / 62)
-                            .floor()
-                            .clamp(4, 6);
-                        return GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: book.chapterCount,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columns,
-                                mainAxisSpacing: 6,
-                                crossAxisSpacing: 6,
-                                childAspectRatio: 1.3,
-                              ),
-                          itemBuilder: (context, chapterIndex) {
-                            final chapter = chapterIndex + 1;
-                            final id = (book.code, chapter);
-                            final isRead = statuses?.read.contains(id) ?? false;
-                            final isCached =
-                                statuses?.cached.contains(id) ?? false;
-                            return Material(
-                              key: ValueKey(
-                                'bible-chapter-${book.code}-$chapter',
-                              ),
-                              color: isRead
-                                  ? colors.accent
-                                  : isCached
-                                  ? colors.background
-                                  : colors.ink.withValues(alpha: 0.08),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(11),
-                                side: isCached && !isRead
-                                    ? BorderSide(
-                                        color: colors.accent,
-                                        width: 1.5,
-                                      )
-                                    : BorderSide.none,
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(11),
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    fullscreenDialog: true,
-                                    builder: (_) => BibleReaderScreen(
-                                      book: book,
-                                      chapter: chapter,
+                      const SizedBox(height: 10),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final columns = (constraints.maxWidth / 62)
+                              .floor()
+                              .clamp(4, 6);
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: book.chapterCount,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  mainAxisSpacing: 6,
+                                  crossAxisSpacing: 6,
+                                  childAspectRatio: 1.3,
+                                ),
+                            itemBuilder: (context, chapterIndex) {
+                              final chapter = chapterIndex + 1;
+                              final id = (book.code, chapter);
+                              final isRead =
+                                  statuses?.read.contains(id) ?? false;
+                              final isCached =
+                                  statuses?.cached.contains(id) ?? false;
+                              return Material(
+                                key: ValueKey(
+                                  'bible-chapter-${book.code}-$chapter',
+                                ),
+                                color: isRead
+                                    ? colors.accent
+                                    : isCached
+                                    ? colors.background
+                                    : colors.ink.withValues(alpha: 0.08),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(11),
+                                  side: isCached && !isRead
+                                      ? BorderSide(
+                                          color: colors.accent,
+                                          width: 1.5,
+                                        )
+                                      : BorderSide.none,
+                                ),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(11),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      fullscreenDialog: true,
+                                      builder: (_) => BibleReaderScreen(
+                                        book: book,
+                                        chapter: chapter,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '$chapter',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: isRead
+                                            ? colors.background
+                                            : isCached
+                                            ? colors.accent
+                                            : colors.ink,
+                                      ),
                                     ),
                                   ),
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    '$chapter',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      color: isRead
-                                          ? colors.background
-                                          : isCached
-                                          ? colors.accent
-                                          : colors.ink,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ],
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 )
               : const SizedBox(width: double.infinity),
         ),

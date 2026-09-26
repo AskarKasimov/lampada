@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 
 /// Руководство по личным курсам и сохранению текущей темы.
 class PlansInfoScreen extends StatelessWidget {
@@ -25,7 +26,9 @@ class PlansInfoScreen extends StatelessWidget {
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+          padding:
+              AppSpacing.of(context).horizontal +
+              const EdgeInsets.only(top: 24, bottom: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

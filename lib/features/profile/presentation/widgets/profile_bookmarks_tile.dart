@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 
 /// Вход в личную копилку над настройками профиля.
 class ProfileBookmarksTile extends StatelessWidget {
@@ -16,9 +17,10 @@ class ProfileBookmarksTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding:
+              AppSpacing.of(context).horizontal +
+              const EdgeInsets.symmetric(vertical: 12),
           child: Row(
             children: [
               Container(

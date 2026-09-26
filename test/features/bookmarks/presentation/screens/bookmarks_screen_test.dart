@@ -8,6 +8,7 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/bookmarks/domain/entities/bookmark.dart';
 import 'package:lampada/features/bookmarks/domain/repositories/bookmarks_repository.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart';
+import 'package:lampada/features/bookmarks/presentation/screens/bookmark_detail_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmark_button.dart';
 import 'package:lampada/features/bookmarks/presentation/widgets/bookmarks_empty_view.dart';
@@ -72,6 +73,35 @@ void main() {
       home: Scaffold(body: child),
     ),
   );
+
+  for (final modal in [false, true]) {
+    testWidgets('ink записи на всю ширину, модальная копилка: $modal', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrap(BookmarksScreen(onClose: modal ? () {} : null)),
+      );
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(BookmarksScreen)),
+      );
+      await container
+          .read(bookmarksProvider.notifier)
+          .toggle(_bookmark('quote-1'));
+      await tester.pumpAndSettle();
+
+      final ink = find.ancestor(
+        of: find.text('Сохранённая мысль'),
+        matching: find.byType(InkWell),
+      );
+      expect(tester.getRect(ink).left, 0);
+      expect(tester.getRect(ink).right, 800);
+      expect(tester.getTopLeft(find.text('Сохранённая мысль')).dx, 16);
+      await tester.tapAt(Offset(1, tester.getCenter(ink).dy));
+      await tester.pumpAndSettle();
+      expect(find.byType(BookmarkDetailScreen), findsOneWidget);
+    });
+  }
 
   testWidgets('стрелка назад слева возвращает из закладок', (tester) async {
     var backCalls = 0;
@@ -179,6 +209,8 @@ void main() {
     await tester.pumpAndSettle();
     final divider = find.byType(Divider);
     expect(divider, findsOneWidget);
+    expect(tester.getRect(divider).left, 16);
+    expect(tester.getRect(divider).right, 784);
     expect(
       tester.getTopLeft(divider).dy,
       greaterThanOrEqualTo(

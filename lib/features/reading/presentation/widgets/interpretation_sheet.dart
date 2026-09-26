@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/selectable_share_area.dart';
@@ -66,7 +67,9 @@ class InterpretationSheet extends StatelessWidget {
           maxHeight: MediaQuery.sizeOf(context).height * 0.78,
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 12, 16),
+          padding:
+              AppSpacing.of(context).horizontal +
+              const EdgeInsets.only(bottom: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +102,6 @@ class InterpretationSheet extends StatelessWidget {
               Flexible(
                 child: SelectableShareArea(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(right: 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

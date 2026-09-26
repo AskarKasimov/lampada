@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
 import '../../../reading/presentation/providers/providers.dart';
@@ -267,7 +268,9 @@ class _Header extends ConsumerWidget {
     final week = ref.watch(dayCardsProvider(dateKey(selected))).value?.week;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+      padding:
+          AppSpacing.of(context).horizontal +
+          const EdgeInsets.only(top: 6, bottom: 4),
       child: Column(
         children: [
           if ((week ?? '').isNotEmpty) ...[
@@ -466,7 +469,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     final brightness = Theme.of(context).brightness;
     final blocks = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(20, 4, 20, kFloatingNavInset + 32),
+      padding: EdgeInsets.only(bottom: kFloatingNavInset + 32),
       children: [
         if (day.hasName) ...[
           DayNameHeader(
@@ -483,6 +486,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             text: card.body.replaceAll('\n', ' '),
             isUnread: !_isRead(card),
             labelColor: card.type.styleFor(brightness).accent,
+            topSpacing: card == rest.first ? (day.hasName ? 14 : 4) : 0,
+            bottomSpacing: reading != null && card == rest.last ? 14 : 0,
             onTap: () => _open(context, ref, card),
           ),
         if (reading != null) ...[
@@ -494,6 +499,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             labelColor: CardType.reading.styleFor(brightness).accent,
             textSize: 27,
             maxLines: 1,
+            topSpacing: rest.isNotEmpty || day.hasName ? 14 : 4,
             onTap: () => _openReader(context, ref, reading),
           ),
         ],

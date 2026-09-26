@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 
 /// Строка-переход в Профиле: подпись слева, стрелка вовне справа.
 ///
@@ -21,9 +22,10 @@ class ProfileLinkTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 11),
+          padding:
+              AppSpacing.of(context).horizontal +
+              const EdgeInsets.symmetric(vertical: 11),
           child: Row(
             children: [
               Expanded(
