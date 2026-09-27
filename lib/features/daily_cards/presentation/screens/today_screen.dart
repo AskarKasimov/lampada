@@ -326,11 +326,9 @@ class _Header extends ConsumerWidget {
           const EdgeInsets.only(top: 6, bottom: 4),
       child: Column(
         children: [
-          // Строка остаётся на месте при загрузке, ошибке и дне без седмицы.
+          // Пустая строка сохраняет место; длинное название показываем целиком.
           Text(
             (week ?? '').toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 10,
