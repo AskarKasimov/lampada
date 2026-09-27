@@ -194,3 +194,7 @@ debug-сборке.
 [CONTRIBUTING.md](CONTRIBUTING.md). Push тега `vX.Y.Z` запускает отправку
 релиза в RuStore; workflow берёт заметки из соответствующего раздела
 `CHANGELOG.md`.
+
+Загрузка в TestFlight выключена до явного включения переменной репозитория
+`APP_STORE_CD_ENABLED=true`: без неё macOS runner не запускается даже при
+ручном выборе App Store. Настройка описана в [CONTRIBUTING.md](CONTRIBUTING.md).

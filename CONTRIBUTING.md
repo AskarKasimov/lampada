@@ -88,3 +88,13 @@ bun run capture -- --locale ru --format rustore --output-dir <пустой-ка�
 Секреты и подписи хранятся только в GitHub Environments, а не в репозитории.
 Создайте `rustore-production` с текущими Android/RuStore секретами и
 `appstore-production` с iOS/AppStore.
+
+TestFlight CD по умолчанию выключен: macOS job пропускается до выделения
+runner, в том числе при ручном запуске с target `appstore` или `all`.
+После настройки и проверки всех iOS/AppStore секретов создайте **переменную
+репозитория** `APP_STORE_CD_ENABLED` со значением `true` в Settings → Secrets
+and variables → Actions → Variables. Переменная environment для этого
+выключателя не подходит: решение о запуске принимается до входа в environment.
+Для повторного отключения удалите переменную или задайте `false`.
+Обычный push/PR в `master` запускает только CI на Ubuntu; релизная проверка
+на Ubuntu и RuStore CD продолжают работать независимо от выключателя.

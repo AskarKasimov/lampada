@@ -17,6 +17,8 @@ concurrency:
 jobs:
   upload-testflight:
     name: Собрать IPA и загрузить в TestFlight
+    # Проверяем до выделения дорогого macOS runner; отсутствие переменной отключает CD.
+    if: ${{ vars.APP_STORE_CD_ENABLED == 'true' }}
     runs-on: macos-15
     environment: appstore-production
     env:
