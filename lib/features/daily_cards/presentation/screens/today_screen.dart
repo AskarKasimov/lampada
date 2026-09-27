@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 
 import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/widgets/brand_loading_view.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
 import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/screens/reading_screen.dart';
@@ -51,7 +53,7 @@ class CalendarPageMapper {
     required int targetPage,
   }) => (currentPage - targetPage).abs() <= 1
       ? CalendarPageTransition.animate
-      : CalendarPageTransition.jump;
+      : CalendarPageTransition.fade;
 
   static int dayOffset(DateTime from, DateTime to) =>
       _dayNumber(to) - _dayNumber(from);
@@ -61,11 +63,14 @@ class CalendarPageMapper {
       Duration.millisecondsPerDay;
 }
 
-enum CalendarPageTransition { animate, jump }
+enum CalendarPageTransition { animate, fade }
 
-class _TodayScreenState extends ConsumerState<TodayScreen> {
+class _TodayScreenState extends ConsumerState<TodayScreen>
+    with SingleTickerProviderStateMixin {
   late final CalendarPageMapper _pageMapper;
   late final PageController _pageController;
+  Object? _pageAnimation;
+  late final AnimationController _fadeController;
 
   // Автооткрытие относится к экрану, а не к странице календаря.
   bool _hasAutoOpened = false;
@@ -75,33 +80,76 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     super.initState();
     _pageMapper = CalendarPageMapper(ref.read(selectedDateProvider));
     _pageController = PageController(initialPage: _pageMapper.initialPage);
+    _fadeController = AnimationController(
+      vsync: this,
+      value: 1,
+      duration: const Duration(milliseconds: 125),
+    );
   }
 
   @override
   void dispose() {
+    _fadeController.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
-  void _syncPage(DateTime date) {
+  Future<void> _syncPage(DateTime date) async {
     if (!_pageController.hasClients) return;
     final target = _pageMapper.pageForDate(date);
-    final current = _pageController.page?.round();
-    if (current == target) return;
-    if (current == null ||
-        CalendarPageMapper.transitionFor(
-              currentPage: current,
-              targetPage: target,
-            ) ==
-            CalendarPageTransition.jump) {
-      _pageController.jumpToPage(target);
-      return;
+    final page = _pageController.page;
+    final current = page?.round();
+    if (_pageAnimation == null && current == target) return;
+    final animation = Object();
+    _pageAnimation = animation;
+    try {
+      if (current != null &&
+          CalendarPageMapper.transitionFor(
+                currentPage: current,
+                targetPage: target,
+              ) ==
+              CalendarPageTransition.fade) {
+        await _fadeController.reverse().orCancel;
+        // Новое нажатие отменяет прежнюю цель, даже пока экран гаснет.
+        if (!mounted || !identical(_pageAnimation, animation)) return;
+        _pageController.jumpToPage(target);
+        // Показываем из пустоты только готовый материал или ошибку загрузки.
+        await Future.wait([
+          _waitForResult(dayCardsProvider(dateKey(date))),
+          _waitForResult(dayProgressProvider),
+        ]);
+        if (!mounted || !identical(_pageAnimation, animation)) return;
+        await _fadeController.forward().orCancel;
+      } else {
+        _fadeController.forward();
+        await _pageController.animateToPage(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    } on TickerCanceled {
+      // Смена даты или закрытие экрана прерывает фэйд.
+    } finally {
+      if (identical(_pageAnimation, animation)) _pageAnimation = null;
     }
-    _pageController.animateToPage(
-      target,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-    );
+  }
+
+  Future<void> _waitForResult<T>(
+    ProviderListenable<AsyncValue<T>> provider,
+  ) async {
+    final ready = Completer<void>();
+    final subscription = ref.listenManual(provider, (_, value) {
+      // Ошибка уже доступна UI, даже если Riverpod планирует повтор запроса.
+      if ((value.hasValue || value.hasError) && !ready.isCompleted) {
+        ready.complete();
+      }
+    }, fireImmediately: true);
+    try {
+      await ready.future;
+    } finally {
+      subscription.close();
+    }
   }
 
   void _markAutoOpened() {
@@ -128,15 +176,22 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
       children: [
         _Header(selected: selected, progress: progress),
         Expanded(
-          child: PageView.builder(
-            controller: _pageController,
-            onPageChanged: (page) => ref
-                .read(selectedDateProvider.notifier)
-                .select(_pageMapper.dateForPage(page)),
-            itemBuilder: (context, page) => _TodayDayPage(
-              date: _pageMapper.dateForPage(page),
-              hasAutoOpened: _hasAutoOpened,
-              onAutoOpened: _markAutoOpened,
+          child: FadeTransition(
+            opacity: _fadeController,
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (page) {
+                // При выборе даты промежуточные страницы не меняют календарь.
+                if (_pageAnimation != null) return;
+                ref
+                    .read(selectedDateProvider.notifier)
+                    .select(_pageMapper.dateForPage(page));
+              },
+              itemBuilder: (context, page) => _TodayDayPage(
+                date: _pageMapper.dateForPage(page),
+                hasAutoOpened: _hasAutoOpened,
+                onAutoOpened: _markAutoOpened,
+              ),
             ),
           ),
         ),
@@ -160,15 +215,13 @@ class _TodayDayPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedDateProvider);
     final isSelected = dateKey(selected) == dateKey(date);
-    final isNeighbour = CalendarPageMapper.dayOffset(selected, date).abs() == 1;
-    return isSelected || isNeighbour
-        ? _SelectedDayContent(
-            date: date,
-            isSelected: isSelected,
-            hasAutoOpened: hasAutoOpened,
-            onAutoOpened: onAutoOpened,
-          )
-        : const BrandLoadingView();
+    // Исходящий день остаётся видимым до полного исчезновения при фэйде.
+    return _SelectedDayContent(
+      date: date,
+      isSelected: isSelected,
+      hasAutoOpened: hasAutoOpened,
+      onAutoOpened: onAutoOpened,
+    );
   }
 }
 
@@ -241,7 +294,7 @@ class _SelectedDayContent extends ConsumerWidget {
       );
     }
 
-    return const BrandLoadingView();
+    return const SizedBox.shrink();
   }
 
   // Личный курс подменяет календарный placeholder только на сегодняшнем дне.
@@ -273,18 +326,19 @@ class _Header extends ConsumerWidget {
           const EdgeInsets.only(top: 6, bottom: 4),
       child: Column(
         children: [
-          if ((week ?? '').isNotEmpty) ...[
-            Text(
-              week!.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 1.1,
-                color: colors.textTertiary,
-              ),
+          // Строка остаётся на месте при загрузке, ошибке и дне без седмицы.
+          Text(
+            (week ?? '').toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10,
+              letterSpacing: 1.1,
+              color: colors.textTertiary,
             ),
-            const SizedBox(height: 8),
-          ],
+          ),
+          const SizedBox(height: 8),
           WeekStrip(
             selected: selected,
             today: DateTime.now(),

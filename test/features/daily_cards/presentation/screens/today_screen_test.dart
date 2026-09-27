@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/core/widgets/app_pill_badge.dart';
+import 'package:lampada/core/widgets/brand_loading_view.dart';
 import 'package:lampada/features/daily_cards/domain/course_calendar.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
@@ -22,6 +25,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/course_progres
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_name_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/today_offline_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
@@ -117,6 +121,7 @@ class _FakeCardsRepository implements DayCardsRepository {
     this.cards = _cards,
     this.refreshedCards,
     this.failedDates = const {},
+    this.pendingDates = const {},
     this.week,
     this.title,
     this.isFast = false,
@@ -127,6 +132,7 @@ class _FakeCardsRepository implements DayCardsRepository {
   final List<DayCard> cards;
   final Map<String, List<DayCard>>? refreshedCards;
   final Set<String> failedDates;
+  final Map<String, Future<Result<TodayCards>>> pendingDates;
   final String? week;
   final String? title;
   final bool isFast;
@@ -141,6 +147,7 @@ class _FakeCardsRepository implements DayCardsRepository {
   }) async {
     final key = dateKey(date);
     requested.add(key);
+    if (pendingDates[key] case final pending?) return pending;
     if (forceRefresh) forceRefreshDates.add(key);
     if (failedDates.contains(key)) {
       return const Failure(
@@ -465,6 +472,61 @@ void main() {
 
       expect(find.byType(CourseProgressHeader), findsNothing);
     });
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('место седмицы постоянно при масштабе $scale', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(800, 1200);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final today = DateTime.now();
+        final start = DateTime(today.year, today.month, today.day + 10);
+        final withoutWeek = DateTime(start.year, start.month, start.day + 2);
+        final failed = DateTime(start.year, start.month, start.day + 3);
+        final pending = Completer<Result<TodayCards>>();
+        await tester.pumpWidget(
+          buildApp(
+            selectedDate: start,
+            cardsRepository: _FakeCardsRepository(
+              pendingDates: {dateKey(start): pending.future},
+              failedDates: {dateKey(failed)},
+            ),
+          ),
+        );
+        await tester.pump();
+        final stripBefore = tester.getRect(find.byType(WeekStrip));
+        final contentBefore = tester.getRect(find.byType(PageView).last);
+
+        pending.complete(
+          const Success(
+            TodayCards(cards: _cards, week: 'Неделя 16-я по Пятидесятнице'),
+          ),
+        );
+        await settle(tester);
+        expect(find.text('НЕДЕЛЯ 16-Я ПО ПЯТИДЕСЯТНИЦЕ'), findsOneWidget);
+        expect(tester.getRect(find.byType(WeekStrip)), stripBefore);
+        expect(tester.getRect(find.byType(PageView).last), contentBefore);
+
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(TodayScreen)),
+        );
+        container.read(selectedDateProvider.notifier).select(withoutWeek);
+        await settle(tester);
+        expect(find.text('НЕДЕЛЯ 16-Я ПО ПЯТИДЕСЯТНИЦЕ'), findsNothing);
+        expect(tester.getRect(find.byType(WeekStrip)), stripBefore);
+        expect(tester.getRect(find.byType(PageView).last), contentBefore);
+
+        container.read(selectedDateProvider.notifier).select(failed);
+        await settle(tester);
+        expect(find.byType(TodayOfflineView), findsOneWidget);
+        expect(tester.getRect(find.byType(WeekStrip)), stripBefore);
+        expect(tester.getRect(find.byType(PageView).last), contentBefore);
+      });
+    }
 
     testWidgets('седмица стоит над полоской дат, а не над памятью дня', (
       tester,
@@ -1031,16 +1093,185 @@ void main() {
       expect(pages.pageForDate(DateTime(2026, 3, 9)), 1);
     });
 
-    test('соседний день листается, а далёкий открывается сразу', () {
-      expect(
-        CalendarPageMapper.transitionFor(currentPage: 10, targetPage: 11),
-        CalendarPageTransition.animate,
-      );
-      expect(
-        CalendarPageMapper.transitionFor(currentPage: 10, targetPage: 13),
-        CalendarPageTransition.jump,
-      );
+    test('соседи листаются, остальные даты открываются через фэйд', () {
+      for (final offset in [-1, 1]) {
+        expect(
+          CalendarPageMapper.transitionFor(
+            currentPage: 100,
+            targetPage: 100 + offset,
+          ),
+          CalendarPageTransition.animate,
+        );
+      }
+      for (final offset in [-30, -2, 2, 30]) {
+        expect(
+          CalendarPageMapper.transitionFor(
+            currentPage: 100,
+            targetPage: 100 + offset,
+          ),
+          CalendarPageTransition.fade,
+        );
+      }
     });
+
+    for (final offset in [-30, -2, 2, 30]) {
+      testWidgets('выбор даты на $offset дней использует фэйд без сдвига', (
+        tester,
+      ) async {
+        final start = DateTime(2026, 9, 23);
+        final target = DateTime(2026, 9, 23 + offset);
+        await tester.pumpWidget(buildApp(selectedDate: start));
+        await settle(tester);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(TodayScreen)),
+        );
+        final changes = <DateTime>[];
+        final subscription = container.listen(
+          selectedDateProvider,
+          (_, next) => changes.add(next),
+        );
+        addTearDown(subscription.close);
+        final controller = tester
+            .widget<PageView>(find.byType(PageView).last)
+            .controller!;
+        final initialPage = controller.page!;
+        final fade = find.byWidgetPredicate(
+          (widget) => widget is FadeTransition && widget.child is PageView,
+        );
+
+        container.read(selectedDateProvider.notifier).select(target);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(controller.page, initialPage);
+        expect(find.byType(DayEntryRow), findsWidgets);
+        expect(
+          tester.widget<FadeTransition>(fade).opacity.value,
+          inExclusiveRange(0, 1),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump();
+        expect(controller.page, initialPage + offset);
+        await settle(tester);
+
+        expect(tester.widget<FadeTransition>(fade).opacity.value, 1);
+        expect(changes.map(dateKey), [dateKey(target)]);
+        expect(dateKey(container.read(selectedDateProvider)), dateKey(target));
+      });
+    }
+
+    for (final offset in [-1, 1]) {
+      testWidgets('выбор соседнего дня $offset сохраняет сдвиг', (
+        tester,
+      ) async {
+        final start = DateTime(2026, 9, 23);
+        await tester.pumpWidget(buildApp(selectedDate: start));
+        await settle(tester);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(TodayScreen)),
+        );
+        final controller = tester
+            .widget<PageView>(find.byType(PageView).last)
+            .controller!;
+        final initialPage = controller.page!;
+        container
+            .read(selectedDateProvider.notifier)
+            .select(DateTime(2026, 9, 23 + offset));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect((controller.page! - initialPage).abs(), inExclusiveRange(0, 1));
+        final fade = find.byWidgetPredicate(
+          (widget) => widget is FadeTransition && widget.child is PageView,
+        );
+        expect(tester.widget<FadeTransition>(fade).opacity.value, 1);
+        await settle(tester);
+        expect(controller.page, initialPage + offset);
+      });
+    }
+
+    testWidgets('повторный выбор во время фэйда открывает последнюю дату', (
+      tester,
+    ) async {
+      final start = DateTime(2026, 9, 23);
+      await tester.pumpWidget(buildApp(selectedDate: start));
+      await settle(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TodayScreen)),
+      );
+      final controller = tester
+          .widget<PageView>(find.byType(PageView).last)
+          .controller!;
+      final initialPage = controller.page!;
+      final changes = <DateTime>[];
+      final subscription = container.listen(
+        selectedDateProvider,
+        (_, next) => changes.add(next),
+      );
+      addTearDown(subscription.close);
+      final first = DateTime(2026, 9, 25);
+      final last = DateTime(2026, 10, 23);
+      container.read(selectedDateProvider.notifier).select(first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      container.read(selectedDateProvider.notifier).select(last);
+      await settle(tester);
+
+      expect(controller.page, initialPage + 30);
+      expect(changes.map(dateKey), [dateKey(first), dateKey(last)]);
+      final fade = find.byWidgetPredicate(
+        (widget) => widget is FadeTransition && widget.child is PageView,
+      );
+      expect(tester.widget<FadeTransition>(fade).opacity.value, 1);
+    });
+
+    for (final fails in [false, true]) {
+      testWidgets('фэйд ждёт загрузку в пустоте: ошибка=$fails', (
+        tester,
+      ) async {
+        final start = DateTime(2026, 9, 23);
+        final target = DateTime(2026, 9, 25);
+        final pending = Completer<Result<TodayCards>>();
+        await tester.pumpWidget(
+          buildApp(
+            selectedDate: start,
+            cardsRepository: _FakeCardsRepository(
+              pendingDates: {dateKey(target): pending.future},
+            ),
+          ),
+        );
+        await settle(tester);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(TodayScreen)),
+        );
+        final fade = find.byWidgetPredicate(
+          (widget) => widget is FadeTransition && widget.child is PageView,
+        );
+        container.read(selectedDateProvider.notifier).select(target);
+        await settle(tester);
+        expect(find.byType(BrandLoadingView), findsNothing);
+        expect(tester.widget<FadeTransition>(fade).opacity.value, 0);
+
+        pending.complete(
+          fails
+              ? const Failure(AppFailure('Нет сети', kind: FailureKind.network))
+              : const Success(TodayCards(cards: _cards)),
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(
+          tester.widget<FadeTransition>(fade).opacity.value,
+          inExclusiveRange(0, 1),
+        );
+        expect(find.byType(BrandLoadingView), findsNothing);
+        expect(
+          find.byType(TodayOfflineView),
+          fails ? findsOneWidget : findsNothing,
+        );
+        if (!fails) expect(find.byType(DayEntryRow), findsWidgets);
+        await settle(tester);
+        expect(tester.widget<FadeTransition>(fade).opacity.value, 1);
+      });
+    }
 
     testWidgets('свайп влево открывает следующий день', (tester) async {
       final progress = _FakeProgressRepository()
