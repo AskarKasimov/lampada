@@ -11,7 +11,7 @@ import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/screens/full_card_text_screen.dart';
 import '../../../daily_cards/presentation/widgets/card_content.dart';
-import '../../../daily_cards/presentation/widgets/progress_dots.dart';
+import '../../../daily_cards/presentation/widgets/reader_progress_rail.dart';
 import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
@@ -87,7 +87,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         _loadingInitial = false;
       });
       ref.read(bibleChapterStatusesProvider.notifier).refresh();
-      _markChapterReadIfFinished(_page);
+      _saveReadingPosition(_page);
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
@@ -129,7 +129,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         _loadingNext = false;
       });
       ref.read(bibleChapterStatusesProvider.notifier).refresh();
-      _markChapterReadIfFinished(_page);
+      _saveReadingPosition(_page);
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
@@ -141,11 +141,34 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
 
   void _onPageChanged(int page) {
     setState(() => _page = page);
-    _markChapterReadIfFinished(page);
+    _saveReadingPosition(page);
     // Скачиваем следующую главу только после явного свайпа за последний стих.
     if (page == _verses.length && !_loadingNext && _nextError == null) {
       _loadNext();
     }
+  }
+
+  void _saveReadingPosition(int page) {
+    if (page < 0 || page >= _verses.length) return;
+    final position = _verses[page];
+    var first = page;
+    while (first > 0 && _sameChapter(_verses[first - 1], position)) {
+      first--;
+    }
+    var last = page;
+    while (last + 1 < _verses.length &&
+        _sameChapter(_verses[last + 1], position)) {
+      last++;
+    }
+    ref.read(bibleChapterStatusesProvider.notifier).saveProgress(
+      position.book.code,
+      position.chapter,
+      (
+        verse: position.verse.number,
+        fraction: (page - first + 1) / (last - first + 1),
+      ),
+    );
+    _markChapterReadIfFinished(page);
   }
 
   void _markChapterReadIfFinished(int page) {
@@ -288,7 +311,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     }
     final count = last - first + 1;
     final current = page - first;
-    return _ChapterProgressRail(
+    return ReaderProgressRail(
       key: ValueKey('${position.book.code}-${position.chapter}'),
       count: count,
       currentIndex: current,
@@ -298,78 +321,4 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
 
   bool _sameChapter(_ReadingVerse a, _ReadingVerse b) =>
       a.book.code == b.book.code && a.chapter == b.chapter;
-}
-
-/// Показывает все точки главы; длинная колонка прокручивается к текущей.
-class _ChapterProgressRail extends StatefulWidget {
-  const _ChapterProgressRail({
-    required this.count,
-    required this.currentIndex,
-    required this.accent,
-    super.key,
-  });
-
-  final int count;
-  final int currentIndex;
-  final Color accent;
-
-  @override
-  State<_ChapterProgressRail> createState() => _ChapterProgressRailState();
-}
-
-class _ChapterProgressRailState extends State<_ChapterProgressRail> {
-  final _controller = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _centerCurrent());
-  }
-
-  @override
-  void didUpdateWidget(covariant _ChapterProgressRail oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentIndex != widget.currentIndex) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _centerCurrent());
-    }
-  }
-
-  void _centerCurrent() {
-    if (!mounted || !_controller.hasClients) return;
-    const dotStep = 14.0;
-    final position = _controller.position;
-    final offset =
-        (widget.currentIndex * dotStep -
-                position.viewportDimension / 2 +
-                dotStep / 2)
-            .clamp(0.0, position.maxScrollExtent);
-    _controller.animateTo(
-      offset,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => SizedBox(
-      width: 8,
-      height: math.min(widget.count * 14.0, constraints.maxHeight),
-      child: SingleChildScrollView(
-        controller: _controller,
-        child: ProgressDots(
-          count: widget.count,
-          currentIndex: widget.currentIndex,
-          axis: Axis.vertical,
-          accentColors: List.filled(widget.count, widget.accent),
-        ),
-      ),
-    ),
-  );
 }

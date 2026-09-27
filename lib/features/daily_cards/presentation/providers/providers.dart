@@ -17,8 +17,12 @@ import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
+import '../../domain/usecases/complete_course_topic.dart';
+import '../../domain/usecases/get_completed_course_topics.dart';
+import '../../domain/usecases/get_course_page.dart';
 import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
+import '../../domain/usecases/has_started_course.dart';
 import '../../domain/usecases/load_day_progress.dart';
 import '../../domain/usecases/record_card_read.dart';
 import '../../domain/usecases/save_course_topic.dart';
@@ -89,6 +93,18 @@ final courseProgressRepositoryProvider = Provider<CourseProgressRepository>(
   (ref) => PrefsCourseProgressRepository(ref.watch(sharedPreferencesProvider)),
 );
 
+final hasStartedCourseUseCaseProvider = Provider<HasStartedCourse>(
+  (ref) => HasStartedCourse(ref.watch(courseProgressRepositoryProvider)),
+);
+
+final hasStartedCourseProvider = FutureProvider<bool>((ref) async {
+  final result = await ref.watch(hasStartedCourseUseCaseProvider)();
+  return switch (result) {
+    Success(value: final started) => started,
+    Failure(failure: final failure) => throw failure,
+  };
+});
+
 final getCourseTopicProvider = Provider<GetCourseTopic>(
   (ref) => GetCourseTopic(
     ref.watch(courseProgressRepositoryProvider),
@@ -96,9 +112,41 @@ final getCourseTopicProvider = Provider<GetCourseTopic>(
   ),
 );
 
+final getCoursePageProvider = Provider<GetCoursePage>(
+  (ref) => GetCoursePage(ref.watch(courseProgressRepositoryProvider)),
+);
+
+final coursePageProvider = FutureProvider.family<int, int>((ref, topic) async {
+  final result = await ref.watch(getCoursePageProvider)(topic);
+  return switch (result) {
+    Success(value: final page) => page ?? 0,
+    Failure(failure: final failure) => throw failure,
+  };
+});
+
 final saveCourseTopicProvider = Provider<SaveCourseTopic>(
   (ref) => SaveCourseTopic(ref.watch(courseProgressRepositoryProvider)),
 );
+
+final getCompletedCourseTopicsProvider = Provider<GetCompletedCourseTopics>(
+  (ref) =>
+      GetCompletedCourseTopics(ref.watch(courseProgressRepositoryProvider)),
+);
+
+final completeCourseTopicProvider = Provider<CompleteCourseTopic>(
+  (ref) => CompleteCourseTopic(
+    ref.watch(courseProgressRepositoryProvider),
+    ref.watch(dayProgressRepositoryProvider),
+  ),
+);
+
+final completedCourseTopicsProvider = FutureProvider<Set<int>>((ref) async {
+  final result = await ref.watch(getCompletedCourseTopicsProvider)();
+  return switch (result) {
+    Success(value: final topics) => topics,
+    Failure(failure: final failure) => throw failure,
+  };
+});
 
 /// Карточка «Основы» для текущей темы курса.
 ///

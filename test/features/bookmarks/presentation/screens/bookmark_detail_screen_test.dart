@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/core/widgets/app_pill_badge.dart';
+import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
@@ -157,15 +158,30 @@ void main() {
     expect(find.byTooltip('Открыть главу'), findsNothing);
   });
 
-  testWidgets('стрелка назад слева, кнопка закладки справа', (tester) async {
+  testWidgets('крестик сверху справа, закладка и отправка снизу справа', (
+    tester,
+  ) async {
     await pump(tester);
-    final back = find.byType(BackButton);
+    expect(find.byType(BackButton), findsNothing);
+    final close = find.byIcon(CupertinoIcons.xmark);
     final bookmark = find.byType(BookmarkButton);
-    expect(back, findsOneWidget);
-    expect(find.byIcon(CupertinoIcons.xmark), findsNothing);
-    final width = tester.getSize(find.byType(BookmarkDetailScreen)).width;
-    expect(tester.getCenter(back).dx, lessThan(width / 2));
-    expect(tester.getCenter(bookmark).dx, greaterThan(width / 2));
+    final share = find.byType(AppShareButton);
+    final size = tester.getSize(find.byType(BookmarkDetailScreen));
+    expect(tester.getCenter(close).dx, greaterThan(size.width / 2));
+    expect(tester.getCenter(close).dy, lessThan(size.height / 2));
+    expect(tester.getCenter(bookmark).dx, greaterThan(size.width / 2));
+    expect(tester.getCenter(bookmark).dy, greaterThan(size.height / 2));
+    expect(tester.getCenter(share).dx, tester.getCenter(bookmark).dx);
+    expect(
+      tester.getCenter(share).dy,
+      greaterThan(tester.getCenter(bookmark).dy),
+    );
+    expect(tester.getSize(bookmark), const Size(56, 56));
+    expect(tester.getSize(share), const Size(56, 56));
+    expect(
+      tester.widget<AppShareButton>(share).text,
+      '${_bookmark.text}\n\n— ${_bookmark.source}',
+    );
   });
 
   testWidgets('показывает весь текст, источник, подпись и дату', (
@@ -218,7 +234,7 @@ void main() {
     expect(container.read(bookmarksProvider).value, isEmpty);
   });
 
-  testWidgets('стрелка назад закрывает экран', (tester) async {
+  testWidgets('крестик закрывает экран', (tester) async {
     await tester.pumpWidget(
       wrap(
         Builder(
@@ -242,19 +258,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BookmarkDetailScreen), findsOneWidget);
 
-    await tester.tap(find.byType(BackButton));
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
     await tester.pumpAndSettle();
 
     expect(find.byType(BookmarkDetailScreen), findsNothing);
   });
 
-  testWidgets('быстрый свайп вниз закрывает экран', (tester) async {
-    await tester.pumpWidget(
-      wrap(
-        Builder(
-          builder: (context) => Scaffold(
-            body: Center(
-              child: TextButton(
+  for (final dx in [-180.0, 180.0, 80.0, 0.0]) {
+    testWidgets(
+      'жест ($dx) закрывает только после длинного горизонтального свайпа',
+      (tester) async {
+        await tester.pumpWidget(
+          wrap(
+            Builder(
+              builder: (context) => TextButton(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => BookmarkDetailScreen(bookmark: _bookmark),
@@ -264,20 +281,37 @@ void main() {
               ),
             ),
           ),
-        ),
-      ),
+        );
+        await tester.tap(find.text('Открыть'));
+        await tester.pumpAndSettle();
+        await tester.drag(
+          find.byType(BookmarkDetailScreen),
+          Offset(dx, dx == 0 ? 180 : 0),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byType(BookmarkDetailScreen),
+          dx.abs() >= 112 ? findsNothing : findsOneWidget,
+        );
+      },
     );
+  }
 
-    await tester.tap(find.text('Открыть'));
-    await tester.pumpAndSettle();
-
-    await tester.fling(
-      find.byType(BookmarkDetailScreen),
-      const Offset(0, 300),
-      1000,
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byType(BookmarkDetailScreen), findsNothing);
-  });
+  testWidgets(
+    'экран движется по фиксированной дуге независимо от вертикали жеста',
+    (tester) async {
+      await pump(tester);
+      final origin = tester.getTopLeft(find.byType(Scaffold));
+      final gesture = await tester.startGesture(const Offset(400, 300));
+      await gesture.moveBy(const Offset(80, 30));
+      await tester.pump();
+      final transforms = tester.widgetList<Transform>(find.byType(Transform));
+      final translation = transforms.first.transform.getTranslation();
+      expect(translation.x, 80);
+      expect(translation.y, 2); // 80² / (800 × 4), как у fullscreen.
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byType(Scaffold)), origin);
+    },
+  );
 }

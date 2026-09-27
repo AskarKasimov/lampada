@@ -26,6 +26,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = AppColorsExtension.of(context);
+    final navInset = FloatingNavInset.of(context);
     final actions = ref.read(profileActionsServiceProvider);
 
     Future<void> requestReview() async {
@@ -50,7 +51,7 @@ class ProfileScreen extends ConsumerWidget {
           title: Text('Профиль', style: TextStyle(color: colors.ink)),
         ),
         SliverPadding(
-          padding: const EdgeInsets.only(top: 20, bottom: kFloatingNavInset),
+          padding: EdgeInsets.only(top: 20, bottom: navInset),
           sliver: SliverList.list(
             children: [
               ProfileBookmarksTile(

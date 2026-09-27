@@ -23,7 +23,37 @@ class GetCourseTopic {
       case Failure(failure: final f):
         return Failure(f);
       case Success(value: final topic):
-        return forTopic(topic, forceRefresh: forceRefresh);
+        final pageResult = await _progress.currentPage(topic);
+        switch (pageResult) {
+          case Failure(failure: final failure):
+            return Failure(failure);
+          case Success(value: final page):
+            // Точная сохранённая страница важнее выбора следующей темы,
+            // включая карточку завершения уже прочитанной темы.
+            if (page != null) {
+              return forTopic(topic, forceRefresh: forceRefresh);
+            }
+        }
+        final completedResult = await _progress.completedTopics();
+        switch (completedResult) {
+          case Failure(failure: final failure):
+            return Failure(failure);
+          case Success(value: final completed):
+            // Сохраняем непрочитанную позицию, в том числе из старой схемы.
+            // После прочитанной темы продолжаем вперёд, затем закрываем пробелы.
+            for (var next = topic; next <= courseTopicCount; next++) {
+              if (!completed.contains(next)) {
+                return forTopic(next, forceRefresh: forceRefresh);
+              }
+            }
+            for (var next = 1; next < topic; next++) {
+              if (!completed.contains(next)) {
+                return forTopic(next, forceRefresh: forceRefresh);
+              }
+            }
+            // Завершённый курс остаётся доступным для повторного чтения.
+            return forTopic(topic, forceRefresh: forceRefresh);
+        }
     }
   }
 

@@ -27,13 +27,25 @@ class _FreshCardsRepository implements DayCardsRepository {
 }
 
 class _CourseProgressRepository implements CourseProgressRepository {
+  @override
+  Future<Result<bool>> hasStarted() async => const Success(false);
+
+  @override
+  Future<Result<int?>> currentPage(int topic) async => const Success(null);
+
+  @override
+  Future<Result<Set<int>>> completedTopics() async => const Success({});
+
+  @override
+  Future<Result<void>> completeTopic(int topic) => saveCurrentTopic(topic);
+
   final savedTopics = <int>[];
 
   @override
   Future<Result<int>> currentTopic() async => const Success(1);
 
   @override
-  Future<Result<void>> saveCurrentTopic(int topic) async {
+  Future<Result<void>> saveCurrentTopic(int topic, {int page = 0}) async {
     savedTopics.add(topic);
     return const Success(null);
   }

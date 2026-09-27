@@ -11,7 +11,7 @@ import '../providers/providers.dart';
 import 'bible_info_screen.dart';
 import 'bible_reader_screen.dart';
 
-/// Книга раскрывает главы; выбранная глава открывается с первого стиха.
+/// Книга раскрывает главы; выбранная глава открывается с сохранённого стиха.
 class BibleScreen extends ConsumerStatefulWidget {
   const BibleScreen({super.key});
 
@@ -33,6 +33,7 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
+    final navInset = FloatingNavInset.of(context);
     final statuses = ref.watch(bibleChapterStatusesProvider).value;
     final newTestamentExpanded = _selectedTestament == 'Новый Завет';
     final oldTestamentExpanded = _selectedTestament == 'Ветхий Завет';
@@ -71,7 +72,7 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
           statuses: statuses,
           colors: colors,
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: kFloatingNavInset)),
+        SliverToBoxAdapter(child: SizedBox(height: navInset)),
       ],
     );
   }
@@ -372,10 +373,12 @@ class _BibleBookTile extends StatelessWidget {
                                   statuses?.read.contains(id) ?? false;
                               final isCached =
                                   statuses?.cached.contains(id) ?? false;
+                              final progress = statuses?.progress[id];
                               return Material(
                                 key: ValueKey(
                                   'bible-chapter-${book.code}-$chapter',
                                 ),
+                                clipBehavior: Clip.antiAlias,
                                 color: isRead
                                     ? colors.accent
                                     : isCached
@@ -398,22 +401,47 @@ class _BibleBookTile extends StatelessWidget {
                                       builder: (_) => BibleReaderScreen(
                                         book: book,
                                         chapter: chapter,
+                                        initialVerse: progress?.verse ?? 1,
                                       ),
                                     ),
                                   ),
-                                  child: Center(
-                                    child: Text(
-                                      '$chapter',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: isRead
-                                            ? colors.background
-                                            : isCached
-                                            ? colors.accent
-                                            : colors.ink,
+                                  child: Stack(
+                                    children: [
+                                      if (!isRead && progress != null)
+                                        Positioned.fill(
+                                          child: Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: FractionallySizedBox(
+                                              widthFactor: progress.fraction,
+                                              heightFactor: 1,
+                                              child: Ink(
+                                                key: ValueKey(
+                                                  'bible-progress-${book.code}-$chapter',
+                                                ),
+                                                color: colors.accent.withValues(
+                                                  alpha: 0.22,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      Center(
+                                        child: Text(
+                                          '$chapter',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                            color: isRead
+                                                ? colors.background
+                                                : progress != null
+                                                ? colors.ink
+                                                : isCached
+                                                ? colors.accent
+                                                : colors.ink,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               );

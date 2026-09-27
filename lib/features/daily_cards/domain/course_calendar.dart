@@ -24,10 +24,5 @@ const courseTopicCount = 365;
 DateTime dateForCourseTopic(int number) =>
     DateTime(_referenceYear, 1, normalizeCourseTopic(number));
 
-/// Приводит номер темы в диапазон курса. Курс годовой и замкнутый: дойдя до
-/// конца, юзер начинает сначала — это лучше, чем упереться в тупик.
-int normalizeCourseTopic(int number) {
-  if (number <= 0) return 1;
-  final wrapped = number % courseTopicCount;
-  return wrapped == 0 ? courseTopicCount : wrapped;
-}
+/// Курс конечный: некорректный номер не должен начинать его заново.
+int normalizeCourseTopic(int number) => number.clamp(1, courseTopicCount);

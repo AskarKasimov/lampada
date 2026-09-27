@@ -19,7 +19,9 @@ class AzbykaBibleRepository implements BibleRepository {
   final BibleRemoteDatasource _source;
   final SharedPreferences _prefs;
   static const _cachePrefix = 'bible_chapter_v1:';
+  static const _progressPrefix = 'bible_progress_v1:';
   static const _readKey = 'bible_read_chapters_v1';
+  Future<void> _pendingProgressWrite = Future.value();
   Future<void> _pendingReadWrite = Future.value();
 
   @override
@@ -71,7 +73,35 @@ class AzbykaBibleRepository implements BibleRepository {
         if (chapter == null || _readCache(parts[0], chapter) == null) continue;
         cached.add((parts[0], chapter));
       }
-      return Success((cached: cached, read: _readChapters()));
+      final progress = <BibleChapterId, BibleChapterProgress>{};
+      for (final key in _prefs.getKeys()) {
+        if (!key.startsWith(_progressPrefix)) continue;
+        final parts = key.substring(_progressPrefix.length).split('.');
+        if (parts.length != 2) continue;
+        final chapter = int.tryParse(parts[1]);
+        if (chapter == null || chapter < 1) continue;
+        try {
+          final json =
+              jsonDecode(_prefs.getString(key)!) as Map<String, dynamic>;
+          final verse = json['verse'] as int;
+          final fraction = (json['fraction'] as num).toDouble();
+          if (verse < 1 ||
+              !fraction.isFinite ||
+              fraction <= 0 ||
+              fraction > 1) {
+            continue;
+          }
+          progress[(parts[0], chapter)] = (verse: verse, fraction: fraction);
+        } on Object catch (error) {
+          // Повреждённая позиция одной главы не скрывает остальные статусы.
+          netLog('прогресс главы ${parts.join(".")} повреждён: $error');
+        }
+      }
+      return Success((
+        cached: cached,
+        read: _readChapters(),
+        progress: progress,
+      ));
     } on Object catch (error) {
       return Failure(
         AppFailure(
@@ -105,6 +135,39 @@ class AzbykaBibleRepository implements BibleRepository {
       }
     });
     _pendingReadWrite = operation.then((_) {});
+    return operation;
+  }
+
+  @override
+  Future<Result<void>> saveChapterProgress(
+    String book,
+    int chapter,
+    BibleChapterProgress progress,
+  ) {
+    // Последовательные записи сохраняют последний свайп даже при быстром листании.
+    final operation = _pendingProgressWrite.then((_) async {
+      try {
+        await requirePreferenceWrite(
+          _prefs.setString(
+            '$_progressPrefix$book.$chapter',
+            jsonEncode({
+              'verse': progress.verse,
+              'fraction': progress.fraction,
+            }),
+          ),
+        );
+        return const Success<void>(null);
+      } on Object catch (error) {
+        return Failure<void>(
+          AppFailure(
+            'Не удалось сохранить место чтения',
+            kind: FailureKind.unknown,
+            cause: error,
+          ),
+        );
+      }
+    });
+    _pendingProgressWrite = operation.then((_) {});
     return operation;
   }
 
