@@ -37,7 +37,19 @@ class _FakeRepository implements BibleRepository {
 
   @override
   Future<Result<BibleChapterStatuses>> getChapterStatuses() async =>
-      Success((cached: {...cached}, read: {...read}));
+      Success((cached: {...cached}, read: {...read}, progress: {...progress}));
+
+  final progress = <BibleChapterId, BibleChapterProgress>{};
+
+  @override
+  Future<Result<void>> saveChapterProgress(
+    String book,
+    int chapter,
+    BibleChapterProgress value,
+  ) async {
+    progress[(book, chapter)] = value;
+    return const Success(null);
+  }
 
   @override
   Future<Result<void>> markChapterRead(String book, int chapter) async {
@@ -74,6 +86,63 @@ class _LongChapterRepository extends _FakeRepository {
 }
 
 void main() {
+  for (final colors in [AppColorsExtension.light, AppColorsExtension.dark]) {
+    testWidgets(
+      'плитка показывает прогресс и продолжает чтение: ${colors.background}',
+      (tester) async {
+        final repository = _LongChapterRepository();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
+            child: MaterialApp(
+              theme: ThemeData(extensions: [colors]),
+              home: const Scaffold(body: BibleScreen()),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Новый Завет'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Иакова'));
+        await tester.pumpAndSettle();
+        final tile = find.byKey(const ValueKey('bible-chapter-Jac-1'));
+        await tester.tap(tile);
+        await tester.pumpAndSettle();
+        tester
+            .widget<VerticalCardReader>(find.byType(VerticalCardReader))
+            .controller
+            .jumpToPage(30);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+        await tester.pumpAndSettle();
+        final fill = find.byKey(const ValueKey('bible-progress-Jac-1'));
+        expect(fill, findsOneWidget);
+        expect(
+          tester.getSize(fill).width / tester.getSize(tile).width,
+          closeTo(31 / 176, 0.001),
+        );
+        final fillColor =
+            (tester.widget<Ink>(fill).decoration! as BoxDecoration).color!;
+        expect(fillColor.a, lessThan(0.3));
+        final text = tester.widget<Text>(
+          find.descendant(of: tile, matching: find.text('1')),
+        );
+        final background = Color.alphaBlend(fillColor, colors.background);
+        final a = text.style!.color!.computeLuminance();
+        final b = background.computeLuminance();
+        expect(
+          (a > b ? (a + 0.05) / (b + 0.05) : (b + 0.05) / (a + 0.05)),
+          greaterThanOrEqualTo(4.5),
+        );
+        await tester.tap(tile);
+        await tester.pumpAndSettle();
+        expect(find.text('1:31'), findsOneWidget);
+        await tester.drag(find.byType(PageView), const Offset(0, 500));
+        await tester.pumpAndSettle();
+        expect(find.text('1:30'), findsOneWidget);
+      },
+    );
+  }
+
   testWidgets('ink заветов и книг занимает всю ширину экрана', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -372,7 +441,7 @@ void main() {
           .widget<Text>(find.descendant(of: tile, matching: find.text('3')))
           .style!
           .color,
-      colors.accent,
+      colors.ink,
     );
 
     await tester.tap(tile);

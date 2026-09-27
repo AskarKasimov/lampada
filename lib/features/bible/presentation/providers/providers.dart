@@ -10,6 +10,7 @@ import '../../domain/repositories/bible_repository.dart';
 import '../../domain/usecases/get_bible_chapter.dart';
 import '../../domain/usecases/load_bible_chapter_statuses.dart';
 import '../../domain/usecases/mark_bible_chapter_read.dart';
+import '../../domain/usecases/save_bible_chapter_progress.dart';
 
 final bibleRepositoryProvider = Provider<BibleRepository>(
   (ref) => AzbykaBibleRepository(
@@ -28,6 +29,10 @@ final loadBibleChapterStatusesProvider = Provider<LoadBibleChapterStatuses>(
 
 final markBibleChapterReadProvider = Provider<MarkBibleChapterRead>(
   (ref) => MarkBibleChapterRead(ref.watch(bibleRepositoryProvider)),
+);
+
+final saveBibleChapterProgressProvider = Provider<SaveBibleChapterProgress>(
+  (ref) => SaveBibleChapterProgress(ref.watch(bibleRepositoryProvider)),
 );
 
 final bibleChapterStatusesProvider =
@@ -54,6 +59,20 @@ class BibleChapterStatusesNotifier extends AsyncNotifier<BibleChapterStatuses> {
       if (revision != _revision) return;
       state = AsyncData(statuses);
     }
+  }
+
+  Future<void> saveProgress(
+    String book,
+    int chapter,
+    BibleChapterProgress progress,
+  ) async {
+    _revision++;
+    final result = await ref.read(saveBibleChapterProgressProvider)(
+      book,
+      chapter,
+      progress,
+    );
+    if (result is Success) await refresh();
   }
 
   Future<void> markRead(String book, int chapter) async {

@@ -36,7 +36,9 @@ class BibleInfoScreen extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 'Здесь собрана вся Библия в русском Синодальном переводе. '
-                'Выберите книгу и главу, чтобы начать чтение.',
+                'Выберите книгу и главу, чтобы начать чтение. '
+                'Частичная заливка показывает место чтения: '
+                'глава откроется на стихе, где вы остановились.',
                 style: TextStyle(fontSize: 17, height: 1.5, color: colors.ink),
               ),
               const SizedBox(height: 40),

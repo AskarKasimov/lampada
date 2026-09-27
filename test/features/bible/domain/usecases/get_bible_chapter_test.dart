@@ -23,8 +23,23 @@ class _FakeRepository implements BibleRepository {
   }
 
   @override
-  Future<Result<BibleChapterStatuses>> getChapterStatuses() async =>
-      Success((cached: <BibleChapterId>{}, read: <BibleChapterId>{}));
+  Future<Result<BibleChapterStatuses>> getChapterStatuses() async => Success((
+    cached: <BibleChapterId>{},
+    read: <BibleChapterId>{},
+    progress: {},
+  ));
+
+  final progress = <BibleChapterId, BibleChapterProgress>{};
+
+  @override
+  Future<Result<void>> saveChapterProgress(
+    String book,
+    int chapter,
+    BibleChapterProgress value,
+  ) async {
+    progress[(book, chapter)] = value;
+    return const Success(null);
+  }
 
   @override
   Future<Result<void>> markChapterRead(String book, int chapter) async =>

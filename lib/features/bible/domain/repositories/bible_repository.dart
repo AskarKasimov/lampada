@@ -6,4 +6,9 @@ abstract interface class BibleRepository {
   Future<Result<BibleChapter>> getChapter(String book, int chapter);
   Future<Result<BibleChapterStatuses>> getChapterStatuses();
   Future<Result<void>> markChapterRead(String book, int chapter);
+  Future<Result<void>> saveChapterProgress(
+    String book,
+    int chapter,
+    BibleChapterProgress progress,
+  );
 }
