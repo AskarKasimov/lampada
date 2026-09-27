@@ -388,7 +388,10 @@ void main() {
       for (final row in tester.widgetList<DayEntryRow>(
         find.byType(DayEntryRow),
       )) {
-        expect(tester.getTopLeft(find.text(row.label)).dx, 20);
+        expect(
+          tester.getTopLeft(find.text(row.label)).dx,
+          row.showReadStatus ? 46 : 20,
+        );
         final text = tester.getRect(find.text(row.text));
         expect(text.left, 20);
         expect(text.right, 780);
@@ -1040,7 +1043,7 @@ void main() {
       );
     });
 
-    testWidgets('на будущем дне показывает точки непрочитанного', (
+    testWidgets('на будущем дне показывает непрочитанный статус', (
       tester,
     ) async {
       final progress = _FakeProgressRepository()
@@ -1079,7 +1082,7 @@ void main() {
       expect(progress.marked, isNot(contains(CardType.reading)));
     });
 
-    testWidgets('на прошлом дне скрывает точки у прочитанного', (tester) async {
+    testWidgets('на прошлом дне показывает прочитанный статус', (tester) async {
       final progress = _FakeProgressRepository()
         ..seedRead(_cards.map((card) => card.type).toSet())
         ..seedReadOn(

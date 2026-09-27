@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -7,23 +8,9 @@ import '../../../../core/theme/app_theme.dart';
 /// Название курса «Основы» — одно на все входы в него.
 const basicsCourseTitle = 'Основы веры';
 
-/// Диаметр метки непрочитанного.
-const _dotSize = 5.0;
-
-/// Метка сдвигает только заголовок непрочитанной записи, а основной текст
-/// всегда начинается на одной линии.
-const _dotGutter = AppSpacing.unreadGutter;
-
 /// Одна запись дня на «Сегодня»: подпись разрядкой и текст антиквой.
-///
-/// Без рамки. Пять обведённых прямоугольников подряд читались таблицей
-/// настроек, а материал приложения — бумага и антиква: группы разделяет
-/// воздух и волосяная линия, иерархию задаёт кегль.
-///
-/// Метка ставится у НЕПРОЧИТАННОГО, а не у прочитанного. Гасить прочитанное
-/// серым — читать задом наперёд: в приложении про копилку смыслов взятое
-/// не становится менее важным. К вечеру метки гаснут, и страница остаётся
-/// без единого элемента интерфейса.
+/// Две галочки сохраняют место в заголовке: прочтение меняет только их цвет,
+/// поэтому подпись и основной текст не прыгают после возврата из читалки.
 class DayEntryRow extends StatelessWidget {
   const DayEntryRow({
     required this.label,
@@ -76,18 +63,29 @@ class DayEntryRow extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (showReadStatus && isUnread)
-                    SizedBox(
-                      width: _dotGutter,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        heightFactor: 1,
-                        child: Container(
-                          width: _dotSize,
-                          height: _dotSize,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colors.accent,
+                  if (showReadStatus)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ExcludeSemantics(
+                        child: SizedBox(
+                          width: 20,
+                          height: 14,
+                          child: Stack(
+                            children: [
+                              for (final left in [0.0, 5.0])
+                                Positioned(
+                                  left: left,
+                                  child: Icon(
+                                    CupertinoIcons.checkmark_alt,
+                                    size: 14,
+                                    color: isUnread
+                                        ? colors.textTertiary.withValues(
+                                            alpha: 0.4,
+                                          )
+                                        : colors.accent,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
