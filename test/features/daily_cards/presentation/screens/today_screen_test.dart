@@ -20,6 +20,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/today_screen.d
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/day_name_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
@@ -455,7 +456,11 @@ void main() {
       );
       await settle(tester);
 
-      await tester.fling(find.byType(PageView), const Offset(-500, 0), 1000);
+      await tester.fling(
+        find.byType(PageView).last,
+        const Offset(-500, 0),
+        1000,
+      );
       await settle(tester);
 
       expect(find.byType(CourseProgressHeader), findsNothing);
@@ -512,7 +517,10 @@ void main() {
       await settle(tester);
 
       final dayInk = find.ancestor(
-        of: find.byIcon(CupertinoIcons.chevron_right),
+        of: find.descendant(
+          of: find.byType(DayNameHeader),
+          matching: find.byIcon(CupertinoIcons.chevron_right),
+        ),
         matching: find.byType(InkWell),
       );
       expect(tester.getRect(dayInk).left, 0);
@@ -523,7 +531,10 @@ void main() {
       );
       expect(tester.getRect(dayInk).bottom, tester.getTopLeft(dividerLine).dy);
       final title = find.ancestor(
-        of: find.byIcon(CupertinoIcons.chevron_right),
+        of: find.descendant(
+          of: find.byType(DayNameHeader),
+          matching: find.byIcon(CupertinoIcons.chevron_right),
+        ),
         matching: find.byType(Text),
       );
       expect(tester.getTopLeft(title).dx, 16);
@@ -550,7 +561,13 @@ void main() {
         );
         await settle(tester);
 
-        expect(find.byIcon(CupertinoIcons.chevron_right), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byType(DayNameHeader),
+            matching: find.byIcon(CupertinoIcons.chevron_right),
+          ),
+          findsNothing,
+        );
       },
     );
 
@@ -1031,7 +1048,11 @@ void main() {
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+      await tester.fling(
+        find.byType(PageView).last,
+        const Offset(-400, 0),
+        1000,
+      );
       await settle(tester);
 
       final container = ProviderScope.containerOf(
@@ -1051,7 +1072,11 @@ void main() {
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+      await tester.fling(
+        find.byType(PageView).last,
+        const Offset(-400, 0),
+        1000,
+      );
       await settle(tester);
 
       final futureEntries = tester.widgetList<DayEntryRow>(
@@ -1092,7 +1117,11 @@ void main() {
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
+      await tester.fling(
+        find.byType(PageView).last,
+        const Offset(400, 0),
+        1000,
+      );
       await settle(tester);
 
       final entries = tester.widgetList<DayEntryRow>(find.byType(DayEntryRow));
@@ -1109,7 +1138,11 @@ void main() {
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
+      await tester.fling(
+        find.byType(PageView).last,
+        const Offset(400, 0),
+        1000,
+      );
       await settle(tester);
       await tester.tap(entry('ЦИТАТА'));
       await settle(tester);
@@ -1136,7 +1169,11 @@ void main() {
       );
       await settle(tester);
 
-      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+      await tester.fling(
+        find.byType(PageView).last,
+        const Offset(-400, 0),
+        1000,
+      );
       await settle(tester);
 
       // Календарные «Основы» чужого дня не должны притворяться темой курса:
@@ -1162,7 +1199,11 @@ void main() {
       );
       await settle(tester);
 
-      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+      await tester.fling(
+        find.byType(PageView).last,
+        const Offset(-400, 0),
+        1000,
+      );
       await settle(tester);
 
       expect(find.byType(CourseProgressHeader), findsNothing);
@@ -1186,7 +1227,11 @@ void main() {
       );
       await settle(tester);
 
-      await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
+      await tester.fling(
+        find.byType(PageView).last,
+        const Offset(-400, 0),
+        1000,
+      );
       await settle(tester);
       expect(find.byType(CourseProgressHeader), findsNothing);
     });
@@ -1233,10 +1278,14 @@ void main() {
       await settle(tester);
 
       expect(repo.requested, contains(dateKey(other)));
-      expect(
-        find.text(dateKey(other) == dateKey(today) ? 'Сегодня' : 'Сегодня'),
-        findsNothing,
+      expect(find.text('Вернуться'), findsOneWidget);
+      await tester.tap(find.text('Вернуться'));
+      await settle(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TodayScreen)),
       );
+      expect(dateKey(container.read(selectedDateProvider)), dateKey(today));
+      expect(find.text('Вернуться'), findsNothing);
     });
 
     testWidgets('чужая дата не меняет прогресс сегодняшней сессии', (
