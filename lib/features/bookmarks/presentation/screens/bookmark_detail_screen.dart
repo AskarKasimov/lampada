@@ -6,6 +6,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
+import '../../../../core/widgets/app_share_button.dart';
+import '../../../../core/widgets/fullscreen_swipe_dismiss.dart';
 import '../../../bible/presentation/screens/bible_reader_screen.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/theme/card_type_style.dart';
@@ -13,15 +15,11 @@ import '../../domain/entities/bookmark.dart';
 import '../../domain/usecases/resolve_bookmark_chapter.dart';
 import '../widgets/bookmark_button.dart';
 
-/// Скорость свайпа вниз (лог.px/с), после которой экран закрывается —
-/// то же значение, что у просмотрщика карточек дня.
-const _dismissVelocity = 700.0;
-
 /// Полный текст сохранённой записи.
 ///
 /// Список копилки показывает только начало (см. [BookmarkTile]) — весь текст
 /// живёт здесь, тем же полноэкранным приёмом, что карточки дня: одна мысль
-/// на экран, возвращается к списку стрелкой назад или свайпом вниз.
+/// на экран, возвращается к списку крестиком или горизонтальным свайпом.
 class BookmarkDetailScreen extends StatelessWidget {
   const BookmarkDetailScreen({required this.bookmark, super.key});
 
@@ -33,12 +31,6 @@ class BookmarkDetailScreen extends StatelessWidget {
     if (length <= 220) return 24;
     if (length <= 500) return 21;
     return 18;
-  }
-
-  void _handleVerticalDrag(BuildContext context, DragEndDetails details) {
-    if ((details.primaryVelocity ?? 0) >= _dismissVelocity) {
-      Navigator.of(context).pop();
-    }
   }
 
   @override
@@ -56,45 +48,47 @@ class BookmarkDetailScreen extends StatelessWidget {
     };
     final style = type.styleFor(brightness);
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.background,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        title: AppPillBadge(
-          label: bookmark.label,
-          background: style.tagBackground,
-          foreground: style.tagForeground,
-          letterSpacing: 0.2,
-        ),
-        leading: BackButton(
-          onPressed: () => Navigator.of(context).pop(),
-          color: colors.homeSubtitle,
-        ),
-        actions: [
-          if (chapter != null)
-            IconButton(
-              tooltip: 'Открыть главу',
-              icon: Icon(CupertinoIcons.book, color: colors.homeSubtitle),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => BibleReaderScreen(
-                    book: chapter.book,
-                    chapter: chapter.chapter,
-                    initialVerse: chapter.verse,
+    return FullscreenSwipeDismiss(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: colors.background,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          automaticallyImplyLeading: false,
+          centerTitle: true,
+          title: AppPillBadge(
+            label: bookmark.label,
+            background: style.tagBackground,
+            foreground: style.tagForeground,
+            letterSpacing: 0.2,
+          ),
+          actions: [
+            if (chapter != null)
+              IconButton(
+                tooltip: 'Открыть главу',
+                icon: Icon(CupertinoIcons.book, color: colors.homeSubtitle),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => BibleReaderScreen(
+                      book: chapter.book,
+                      chapter: chapter.chapter,
+                      initialVerse: chapter.verse,
+                    ),
                   ),
                 ),
               ),
+            IconButton(
+              tooltip: 'Закрыть закладку',
+              onPressed: () => Navigator.of(context).pop(),
+              icon: Icon(
+                CupertinoIcons.xmark,
+                size: 22,
+                color: colors.homeSubtitle,
+              ),
             ),
-          BookmarkButton(bookmark: bookmark),
-        ],
-      ),
-      body: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onVerticalDragEnd: (details) => _handleVerticalDrag(context, details),
-        child: SafeArea(
+          ],
+        ),
+        body: SafeArea(
           child: Stack(
             children: [
               Padding(
@@ -138,7 +132,26 @@ class BookmarkDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 144),
+                  ],
+                ),
+              ),
+              Positioned(
+                right: 12,
+                bottom: 28,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    BookmarkButton(
+                      bookmark: bookmark,
+                      iconSize: 28,
+                      buttonSize: 56,
+                    ),
+                    AppShareButton(
+                      text: '${bookmark.text}\n\n— ${bookmark.source}',
+                      iconSize: 28,
+                      buttonSize: 56,
+                    ),
                   ],
                 ),
               ),

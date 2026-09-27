@@ -11,6 +11,8 @@ import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/core/widgets/app_pill_badge.dart';
 import 'package:lampada/core/widgets/app_share_button.dart';
+import 'package:lampada/features/bookmarks/data/repositories/prefs_bookmarks_repository.dart';
+import 'package:lampada/features/bookmarks/domain/entities/bookmark.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
@@ -225,6 +227,44 @@ void main() {
     await tester.pump();
     await tester.pump();
   }
+
+  testWidgets('закладки страниц одной темы сохраняются независимо', (
+    tester,
+  ) async {
+    await pumpReader(
+      tester,
+      currentTopic: _currentTopic.copyWith(body: 'Первая мысль. Вторая мысль.'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Сохранить в копилку'));
+    await tester.pumpAndSettle();
+
+    final repository = PrefsBookmarksRepository(prefs);
+    var saved = (await repository.load() as Success<List<Bookmark>>).value;
+    expect(saved, hasLength(1));
+    expect(saved.single.text, 'Первая мысль.');
+    expect(saved.single.source, 'Азбука веры');
+
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Сохранить в копилку'), findsOneWidget);
+    await tester.tap(find.byTooltip('Сохранить в копилку'));
+    await tester.pumpAndSettle();
+    saved = (await repository.load() as Success<List<Bookmark>>).value;
+    expect(
+      saved.map((bookmark) => bookmark.text),
+      unorderedEquals(['Первая мысль.', 'Вторая мысль.']),
+    );
+    expect(saved.map((bookmark) => bookmark.id).toSet(), hasLength(2));
+
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Убрать из копилки'));
+    await tester.pumpAndSettle();
+    saved = (await repository.load() as Success<List<Bookmark>>).value;
+    expect(saved, hasLength(1));
+    expect(saved.single.text, 'Вторая мысль.');
+  });
 
   testWidgets('ошибка предыдущей темы не блокирует загрузку следующей', (
     tester,

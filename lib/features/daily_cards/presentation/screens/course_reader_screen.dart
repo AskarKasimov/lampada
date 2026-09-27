@@ -339,9 +339,9 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                       ),
                     BookmarkButton(
                       bookmark: Bookmark(
-                        id: card.id,
+                        id: '${card.id}-page-${visible.index}',
                         kind: BookmarkKind.card,
-                        text: card.body,
+                        text: visible.text!.trim(),
                         source: card.source,
                         label: style.label,
                         savedAt: DateTime.fromMillisecondsSinceEpoch(0),

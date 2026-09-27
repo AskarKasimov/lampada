@@ -45,9 +45,26 @@ class BookmarkTile extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              fullscreenDialog: true,
-              builder: (_) => BookmarkDetailScreen(bookmark: bookmark),
+            PageRouteBuilder<void>(
+              opaque: false,
+              transitionDuration: const Duration(milliseconds: 280),
+              reverseTransitionDuration: const Duration(milliseconds: 220),
+              pageBuilder: (_, animation, secondaryAnimation) =>
+                  BookmarkDetailScreen(bookmark: bookmark),
+              transitionsBuilder: (_, animation, secondaryAnimation, child) {
+                final curve = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                  reverseCurve: Curves.easeInCubic,
+                );
+                return FadeTransition(
+                  opacity: curve,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.88, end: 1).animate(curve),
+                    child: child,
+                  ),
+                );
+              },
             ),
           ),
           child: Padding(

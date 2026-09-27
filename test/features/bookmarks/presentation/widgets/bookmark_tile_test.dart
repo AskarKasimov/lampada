@@ -75,8 +75,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(BookmarkDetailScreen), findsOneWidget);
+    expect(
+      ModalRoute.of(tester.element(find.byType(BookmarkDetailScreen)))!.opaque,
+      isFalse,
+    );
     // На полном экране текст не обрезан.
-    final full = tester.widget<Text>(find.text(_longText));
+    final full = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(BookmarkDetailScreen),
+        matching: find.text(_longText),
+      ),
+    );
     expect(full.maxLines, isNull);
   });
 
