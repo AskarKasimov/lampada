@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/format/date_key.dart';
@@ -474,6 +475,41 @@ void main() {
     });
 
     for (final scale in [1.0, 2.0]) {
+      testWidgets('длинная седмица видна целиком при масштабе $scale', (
+        tester,
+      ) async {
+        tester.view.physicalSize = Size(scale == 1.0 ? 320 : 800, 1200);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        const week = 'Седмица 33-я по Пятидесятнице, по Богоявлении. Глас 8';
+        final progress = _FakeProgressRepository()
+          ..seedRead(_cards.map((card) => card.type).toSet());
+        await tester.pumpWidget(
+          buildApp(
+            cardsRepository: _FakeCardsRepository(week: week),
+            progressRepository: progress,
+          ),
+        );
+        await settle(tester);
+
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.text(week.toUpperCase()),
+        );
+        expect(paragraph.didExceedMaxLines, isFalse);
+        final boxes = paragraph.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: week.length),
+        );
+        expect(boxes.map((box) => box.top).toSet().length, greaterThan(1));
+        expect(
+          tester.getBottomLeft(find.text(week.toUpperCase())).dy,
+          lessThan(tester.getTopLeft(find.byType(WeekStrip)).dy),
+        );
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('место седмицы постоянно при масштабе $scale', (
         tester,
       ) async {

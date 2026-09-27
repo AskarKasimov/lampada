@@ -71,6 +71,8 @@ class AzbykaDayStoryRepository implements DayStoryRepository {
 
       try {
         final dto = await _remote.fetch(url, timeout: left);
+        // Пустоту не кэшируем: описание может появиться на источнике позже.
+        if (dto.paragraphs.isEmpty) return Success(dto.toEntity());
         try {
           await _writeCache(url, dto);
         } on Object catch (e) {

@@ -102,6 +102,30 @@ void main() {
 
     expect(find.text('Рассказ сейчас недоступен'), findsOneWidget);
     expect(find.text('Повторить'), findsOneWidget);
+    expect(find.text('Закрыть'), findsNothing);
+    final closeButton = find.byIcon(CupertinoIcons.xmark);
+    expect(closeButton, findsOneWidget);
+    expect(tester.getCenter(closeButton).dy, lessThan(80));
+    expect(
+      tester.getCenter(closeButton).dx,
+      greaterThan(tester.getSize(find.byType(Scaffold)).width / 2),
+    );
+  });
+
+  testWidgets('без описания показывает спокойное состояние без повтора', (
+    tester,
+  ) async {
+    final repo = _FakeRepository(const Success(DayStory(paragraphs: [])));
+
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Нет описания сегодня'), findsOneWidget);
+    expect(find.text('Рассказ сейчас недоступен'), findsNothing);
+    expect(find.text('Повторить'), findsNothing);
+    expect(find.byType(AppShareButton), findsNothing);
+    expect(find.byIcon(CupertinoIcons.bookmark), findsNothing);
+    expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
   });
 
   testWidgets('сетевой сбой показывает соответствующее сообщение', (
@@ -140,7 +164,7 @@ void main() {
     expect(saved.source, _title);
   });
 
-  testWidgets('«Закрыть» закрывает экран', (tester) async {
+  testWidgets('крестик закрывает экран без текстовой кнопки', (tester) async {
     final repo = _FakeRepository(
       const Success(DayStory(paragraphs: ['Абзац первый.'])),
     );
@@ -176,7 +200,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(DayStoryScreen), findsOneWidget);
 
-    await tester.tap(find.text('Закрыть'));
+    expect(find.text('Закрыть'), findsNothing);
+    expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
     await tester.pumpAndSettle();
 
     expect(find.byType(DayStoryScreen), findsNothing);

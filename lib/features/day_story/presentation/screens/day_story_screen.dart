@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -53,7 +54,7 @@ class DayStoryScreen extends ConsumerWidget {
       body: SafeArea(
         child: async.when(
           loading: () => const BrandLoadingView(),
-          error: (e, _) => _ErrorView(
+          error: (e, _) => _StoryStatusView(
             kind: switch (e) {
               AppFailure(kind: final k) => k,
               _ => FailureKind.unknown,
@@ -61,31 +62,36 @@ class DayStoryScreen extends ConsumerWidget {
             onRetry: () => ref.invalidate(dayStoryProvider(storyUrl)),
             onClose: () => Navigator.of(context).pop(),
           ),
-          data: (story) => Column(
-            children: [
-              Padding(
-                padding:
-                    AppSpacing.of(context).horizontal +
-                    const EdgeInsets.only(top: 8),
-                child: Row(
+          data: (story) => story.paragraphs.isEmpty
+              ? _StoryStatusView(onClose: () => Navigator.of(context).pop())
+              : Column(
                   children: [
-                    const Spacer(),
-                    BookmarkButton(bookmark: _bookmarkFor(story)),
-                    AppShareButton(text: _shareTextFor(story)),
-                    AppLinkButton(
-                      label: 'Закрыть',
-                      color: colors.homeSubtitle,
-                      fontSize: 12,
-                      onPressed: () => Navigator.of(context).pop(),
+                    Padding(
+                      padding:
+                          AppSpacing.of(context).horizontal +
+                          const EdgeInsets.only(top: 8),
+                      child: Row(
+                        children: [
+                          const Spacer(),
+                          BookmarkButton(bookmark: _bookmarkFor(story)),
+                          AppShareButton(text: _shareTextFor(story)),
+                          IconButton(
+                            tooltip: 'Закрыть рассказ',
+                            icon: Icon(
+                              CupertinoIcons.xmark,
+                              size: 22,
+                              color: colors.homeSubtitle,
+                            ),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: _StoryView(title: title, story: story),
                     ),
                   ],
                 ),
-              ),
-              Expanded(
-                child: _StoryView(title: title, story: story),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -138,60 +144,70 @@ class _StoryView extends StatelessWidget {
   }
 }
 
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({
-    required this.kind,
-    required this.onRetry,
-    required this.onClose,
-  });
+class _StoryStatusView extends StatelessWidget {
+  const _StoryStatusView({required this.onClose, this.kind, this.onRetry});
 
-  final FailureKind kind;
-  final VoidCallback onRetry;
+  final FailureKind? kind;
+  final VoidCallback? onRetry;
   final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    // unknown здесь покрывает и «страница другого шаблона»: у некоторых
-    // праздников ссылка ведёт не на карточку дня, а на отдельную статью
-    // без рассказа (см. Пасху) — такое чинится не повтором запроса.
-    final title = kind == FailureKind.network
-        ? 'Нет подключения к интернету'
-        : 'Рассказ сейчас недоступен';
+    final title = switch (kind) {
+      null => 'Нет описания сегодня',
+      FailureKind.network => 'Нет подключения к интернету',
+      _ => 'Рассказ сейчас недоступен',
+    };
 
-    return Center(
-      child: Padding(
-        padding: AppSpacing.of(context).horizontal,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: colors.ink),
+    return Stack(
+      children: [
+        Center(
+          child: Padding(
+            padding: AppSpacing.of(context).horizontal,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: colors.ink),
+                ),
+                if (kind != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Карточки дня остаются с вами',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: colors.homeSubtitle),
+                  ),
+                ],
+                if (onRetry case final retry?) ...[
+                  const SizedBox(height: 12),
+                  AppLinkButton(
+                    label: 'Повторить',
+                    color: colors.link,
+                    fontSize: 12,
+                    onPressed: retry,
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Карточки дня остаются с вами',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: colors.homeSubtitle),
-            ),
-            const SizedBox(height: 12),
-            AppLinkButton(
-              label: 'Повторить',
-              color: colors.link,
-              fontSize: 12,
-              onPressed: onRetry,
-            ),
-            AppLinkButton(
-              label: 'Закрыть',
-              color: colors.homeSubtitle,
-              fontSize: 12,
-              onPressed: onClose,
-            ),
-          ],
+          ),
         ),
-      ),
+        Positioned(
+          top: 8,
+          right: AppSpacing.of(context).horizontal.right,
+          child: IconButton(
+            tooltip: 'Закрыть рассказ',
+            onPressed: onClose,
+            icon: Icon(
+              CupertinoIcons.xmark,
+              size: 22,
+              color: colors.homeSubtitle,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

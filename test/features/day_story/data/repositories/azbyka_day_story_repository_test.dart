@@ -61,6 +61,21 @@ void main() {
     expect(valueOf(second).paragraphs, ['СВЕЖИЙ РАССКАЗ']);
   });
 
+  test('отсутствие описания — успех без сохранения пустого кэша', () async {
+    final prefs = await prefsWith({});
+    var calls = 0;
+    final remote = _RecoveringDatasource(() {
+      calls++;
+      return const DayStoryDto(paragraphs: []);
+    });
+    final repo = AzbykaDayStoryRepository(remote, prefs);
+
+    expect(valueOf(await repo.fetch(_url)).paragraphs, isEmpty);
+    expect(prefs.getString('day_story_cache_v2:$_url'), isNull);
+    await repo.fetch(_url);
+    expect(calls, 2, reason: 'описание может появиться на источнике позже');
+  });
+
   test('битый кэш не роняет рассказ — молча идём в сеть', () async {
     final prefs = await prefsWith({'day_story_cache_v2:$_url': 'не json'});
     final remote = _FakeDatasource();
