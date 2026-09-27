@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
+import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../widgets/course_progress_header.dart';
 import 'course_detail_screen.dart';
@@ -46,6 +47,12 @@ class PlansScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: CourseProgressHeader(
               topic: currentTopic,
+              isUnread:
+                  !(ref
+                          .watch(dayProgressProvider)
+                          .value
+                          ?.isReadOn(DateTime.now(), CardType.basics) ??
+                      false),
               completedTopicCount: ref
                   .watch(completedCourseTopicsProvider)
                   .value

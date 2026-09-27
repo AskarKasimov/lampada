@@ -8,6 +8,7 @@ import '../../domain/entities/day_card.dart';
 import '../../domain/split_course_text.dart';
 import '../theme/card_type_style.dart';
 import 'day_entry_row.dart';
+import 'read_status_checks.dart';
 
 /// Вход в личный курс с текущей темой и прогрессом во вкладке «Планы».
 class CourseProgressHeader extends StatelessWidget {
@@ -16,6 +17,7 @@ class CourseProgressHeader extends StatelessWidget {
     required this.onTap,
     required this.completedTopicCount,
     this.compact = false,
+    this.isUnread = true,
     this.currentPage,
     super.key,
   });
@@ -23,6 +25,7 @@ class CourseProgressHeader extends StatelessWidget {
   final DayCard topic;
   final VoidCallback onTap;
   final bool compact;
+  final bool isUnread;
   final int? currentPage;
   final int? completedTopicCount;
 
@@ -75,6 +78,7 @@ class CourseProgressHeader extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    if (!compact) ReadStatusChecks(isUnread: isUnread),
                     Expanded(
                       child: Text(
                         compact

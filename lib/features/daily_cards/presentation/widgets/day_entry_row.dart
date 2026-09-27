@@ -1,9 +1,9 @@
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'read_status_checks.dart';
 
 /// Название курса «Основы» — одно на все входы в него.
 const basicsCourseTitle = 'Основы веры';
@@ -63,33 +63,7 @@ class DayEntryRow extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (showReadStatus)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ExcludeSemantics(
-                        child: SizedBox(
-                          width: 20,
-                          height: 14,
-                          child: Stack(
-                            children: [
-                              for (final left in [0.0, 5.0])
-                                Positioned(
-                                  left: left,
-                                  child: Icon(
-                                    CupertinoIcons.checkmark_alt,
-                                    size: 14,
-                                    color: isUnread
-                                        ? colors.textTertiary.withValues(
-                                            alpha: 0.4,
-                                          )
-                                        : colors.accent,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  if (showReadStatus) ReadStatusChecks(isUnread: isUnread),
                   Expanded(
                     child: Text(
                       label,
