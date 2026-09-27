@@ -22,7 +22,8 @@ class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
   final http.Client _client;
 
   static const _selector =
-      '.holiday-description .brif, .saint-description .brif';
+      '.holiday-description .brif, .saint-description .brif, '
+      '.saints-group-description .brif';
 
   @override
   Future<DayStoryDto> fetch(String url, {required Duration timeout}) async {
@@ -56,20 +57,14 @@ class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
     final doc = html_parser.parse(response.body);
     final container = doc.querySelector(_selector);
     if (container == null) {
-      netLog('нет .brif на странице рассказа → unknown');
-      throw RemoteFetchException(
-        FailureKind.unknown,
-        const FormatException('на странице нет описания праздника/святого'),
-      );
+      // Не у каждой календарной страницы есть описание в этом формате.
+      netLog('на странице рассказа нет описания');
+      return const DayStoryDto(paragraphs: []);
     }
 
     final paragraphs = _paragraphsFrom(container);
     if (paragraphs.isEmpty) {
-      netLog('описание праздника/святого пустое → unknown');
-      throw RemoteFetchException(
-        FailureKind.unknown,
-        const FormatException('описание праздника/святого пустое'),
-      );
+      netLog('описание праздника/святого пустое');
     }
     netLog('${paragraphs.length} абзацев за ${elapsed.elapsedMilliseconds}мс');
     return DayStoryDto(paragraphs: paragraphs);

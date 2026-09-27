@@ -73,6 +73,31 @@ void main() {
     });
   });
 
+  test('житие группы святых извлекается без соседних разделов', () async {
+    // Структура страницы Анфима и других Никомидийских мучеников.
+    final datasource = _servingHtml(
+      '<html><body>'
+      '<div class="block remembrance-day"><h2>День памяти</h2>'
+      '<div class="brif memorial-day"><p>16 сентября</p></div></div>'
+      '<div class="block saints-group-description"><h2>Жития</h2>'
+      '<div class="brif expandable"><h3>Жития мучеников</h3>'
+      '<p>Первый абзац жития.</p><p>Второй абзац жития.</p>'
+      '</div></div>'
+      '<div class="block"><h2>Жития и книги в библиотеке</h2>'
+      '<div class="brif"><ul><li>Ссылка на книгу</li></ul></div></div>'
+      '<div class="block"><h2>Тропари и молитвы</h2>'
+      '<div class="brif expandable"><p>Текст молитвы</p></div></div>'
+      '</body></html>',
+    );
+
+    final dto = await datasource.fetch(
+      'https://azbyka.ru/days/svv-anfim-feofil-dorofej-mardonij-migdonij-nikomidijskie',
+      timeout: const Duration(seconds: 5),
+    );
+
+    expect(dto.paragraphs, ['Первый абзац жития.', 'Второй абзац жития.']);
+  });
+
   test('заголовки секции вырезаются, а не попадают абзацем', () async {
     final datasource = _servingHtml(
       '<html><body><div class="block saint-description"><div class="brif">'
@@ -138,46 +163,30 @@ void main() {
     },
   );
 
-  test('страница другого шаблона без .brif → unknown, не сбой сети', () async {
+  test('страница без блока описания возвращает пустой рассказ', () async {
     final datasource = _servingHtml(
       '<html><body><article>Пасха в 2027 году: какого числа …</article>'
       '</body></html>',
     );
 
-    expect(
-      () => datasource.fetch(
-        'https://azbyka.ru/days/prazdnik-pasha',
-        timeout: const Duration(seconds: 5),
-      ),
-      throwsA(
-        isA<RemoteFetchException>().having(
-          (e) => e.kind,
-          'kind',
-          FailureKind.unknown,
-        ),
-      ),
+    final dto = await datasource.fetch(
+      'https://azbyka.ru/days/prazdnik-pasha',
+      timeout: const Duration(seconds: 5),
     );
+    expect(dto.paragraphs, isEmpty);
   });
 
-  test('.brif есть, но внутри пусто → unknown', () async {
+  test('пустой блок описания возвращает пустой рассказ', () async {
     final datasource = _servingHtml(
       '<html><body><div class="block saint-description">'
       '<div class="brif"></div></div></body></html>',
     );
 
-    expect(
-      () => datasource.fetch(
-        'https://azbyka.ru/days/x',
-        timeout: const Duration(seconds: 5),
-      ),
-      throwsA(
-        isA<RemoteFetchException>().having(
-          (e) => e.kind,
-          'kind',
-          FailureKind.unknown,
-        ),
-      ),
+    final dto = await datasource.fetch(
+      'https://azbyka.ru/days/x',
+      timeout: const Duration(seconds: 5),
     );
+    expect(dto.paragraphs, isEmpty);
   });
 
   test('сервер вернул не 200 → server', () async {
