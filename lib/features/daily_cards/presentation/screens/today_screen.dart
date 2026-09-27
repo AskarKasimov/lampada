@@ -469,7 +469,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     final brightness = Theme.of(context).brightness;
     final blocks = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(bottom: kFloatingNavInset + 32),
+      padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
       children: [
         if (day.hasName) ...[
           DayNameHeader(

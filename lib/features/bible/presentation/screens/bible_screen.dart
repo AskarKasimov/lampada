@@ -33,6 +33,7 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
+    final navInset = FloatingNavInset.of(context);
     final statuses = ref.watch(bibleChapterStatusesProvider).value;
     final newTestamentExpanded = _selectedTestament == 'Новый Завет';
     final oldTestamentExpanded = _selectedTestament == 'Ветхий Завет';
@@ -71,7 +72,7 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
           statuses: statuses,
           colors: colors,
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: kFloatingNavInset)),
+        SliverToBoxAdapter(child: SizedBox(height: navInset)),
       ],
     );
   }

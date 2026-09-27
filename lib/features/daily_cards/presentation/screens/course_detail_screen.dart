@@ -3,13 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../reminders/presentation/providers/providers.dart';
-import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
 import '../../domain/course_calendar.dart';
-import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../widgets/day_entry_row.dart';
-import 'course_reader_screen.dart';
+import 'course_reader_route.dart';
 
 /// Описание личного курса перед началом или продолжением чтения.
 class CourseDetailScreen extends ConsumerWidget {
@@ -83,7 +80,7 @@ class CourseDetailScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               if (currentTopic != null)
                 Text(
-                  '${isFinished ? 'Для повторного чтения' : 'Следующая тема'}: '
+                  '${isFinished ? 'Для повторного чтения' : 'Текущее чтение'}: '
                   '${currentTopic.title ?? basicsCourseTitle}',
                   style: bodyStyle,
                 )
@@ -100,7 +97,7 @@ class CourseDetailScreen extends ConsumerWidget {
                 child: FilledButton(
                   onPressed: currentTopic == null || count == null
                       ? null
-                      : () => _openReader(context, ref, currentTopic),
+                      : () => openCourseReader(context, ref),
                   child: Text(
                     isFinished
                         ? 'Перечитать'
@@ -114,37 +111,13 @@ class CourseDetailScreen extends ConsumerWidget {
               Text(
                 'Листайте текст темы короткими фрагментами. После них появится '
                 'карточка «Тема прочитана» — она сохранит прогресс. '
-                'Можно продолжить завтра или следующим свайпом открыть новую тему.',
+                'Можно продолжить завтра или следующим свайпом открыть новую тему. '
+                'При возвращении откроется последняя просмотренная карточка.',
                 style: bodyStyle,
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Future<void> _openReader(
-    BuildContext context,
-    WidgetRef ref,
-    DayCard topic,
-  ) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => CourseReaderScreen(currentTopic: topic),
-      ),
-    );
-    if (!context.mounted) return;
-
-    final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
-    if (read.isEmpty) return;
-    final settings = await ref.read(reminderSettingsProvider.future);
-    if (settings.asked || !context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => const ReminderPermissionScreen(),
       ),
     );
   }

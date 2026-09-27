@@ -21,6 +21,7 @@ void main() {
 
   Widget buildApp(Future<DayCard?> Function() load) => ProviderScope(
     overrides: [
+      hasStartedCourseProvider.overrideWith((ref) async => false),
       courseTopicProvider.overrideWith((ref) => load()),
       completedCourseTopicsProvider.overrideWith((ref) async => {1, 3}),
     ],

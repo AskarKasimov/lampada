@@ -18,6 +18,7 @@ class PlansScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = AppColorsExtension.of(context);
+    final navInset = FloatingNavInset.of(context);
     final topic = ref.watch(courseTopicProvider);
 
     return CustomScrollView(
@@ -64,7 +65,7 @@ class PlansScreen extends ConsumerWidget {
             child: Padding(
               padding:
                   AppSpacing.of(context).horizontal +
-                  const EdgeInsets.only(top: 20, bottom: kFloatingNavInset),
+                  EdgeInsets.only(top: 20, bottom: navInset),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -78,7 +79,7 @@ class PlansScreen extends ConsumerWidget {
               ),
             ),
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: kFloatingNavInset)),
+        SliverToBoxAdapter(child: SizedBox(height: navInset)),
       ],
     );
   }

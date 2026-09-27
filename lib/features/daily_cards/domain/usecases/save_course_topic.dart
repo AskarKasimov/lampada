@@ -6,5 +6,6 @@ class SaveCourseTopic {
 
   final CourseProgressRepository _repository;
 
-  Future<Result<void>> call(int topic) => _repository.saveCurrentTopic(topic);
+  Future<Result<void>> call(int topic, {int page = 0}) =>
+      _repository.saveCurrentTopic(topic, page: page);
 }

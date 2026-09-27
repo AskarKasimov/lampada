@@ -23,6 +23,67 @@ void main() {
   PrefsCourseProgressRepository repo(SharedPreferences prefs) =>
       PrefsCourseProgressRepository(prefs);
 
+  test(
+    'страница хранится вместе с темой и переживает пересоздание репозитория',
+    () async {
+      final prefs = await prefsWith();
+      await repo(prefs).saveCurrentTopic(3, page: 2);
+      await repo(prefs).completeTopic(3);
+      expect((await repo(prefs).currentPage(3) as Success<int?>).value, 2);
+      expect((await repo(prefs).currentPage(4) as Success<int?>).value, isNull);
+      await repo(prefs).saveCurrentTopic(4);
+      expect((await repo(prefs).currentPage(4) as Success<int?>).value, 0);
+    },
+  );
+
+  test(
+    'старое место без страницы сохраняется как устаревшее, а не страница ноль',
+    () async {
+      final r = repo(
+        await prefsWith({'flutter.course_progress_v4': '{"topic":209}'}),
+      );
+      expect((await r.currentPage(209) as Success<int?>).value, isNull);
+    },
+  );
+
+  test('чистая установка не начинает курс', () async {
+    final prefs = await prefsWith();
+    final r = repo(prefs);
+    expect((await r.hasStarted() as Success<bool>).value, isFalse);
+    await r.currentTopic();
+    await r.completedTopics();
+    expect((await r.hasStarted() as Success<bool>).value, isFalse);
+    expect(prefs.getString('course_progress_v4'), isNull);
+  });
+
+  test(
+    'явное начало сохраняет первую страницу и делает курс активным',
+    () async {
+      final r = repo(await prefsWith());
+      await r.saveCurrentTopic(1);
+      expect((await r.hasStarted() as Success<bool>).value, isTrue);
+    },
+  );
+
+  test('старое сохранённое место сохраняет активный курс', () async {
+    final r = repo(
+      await prefsWith({'flutter.course_progress_v4': '{"topic":209}'}),
+    );
+    expect((await r.hasStarted() as Success<bool>).value, isTrue);
+  });
+
+  test(
+    'завершённые темы старой записи также сохраняют активный курс',
+    () async {
+      final r = repo(
+        await prefsWith({
+          'flutter.course_progress_v4': '{"completedTopics":[1]}',
+        }),
+      );
+      expect((await r.hasStarted() as Success<bool>).value, isTrue);
+    },
+  );
+
   test('новый юзер начинает с первой темы', () async {
     // Раньше «Основы» брались по сегодняшней дате, и юзер, поставивший
     // приложение в июле, входил в курс с Темы 209 — то есть с середины.

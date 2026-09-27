@@ -41,7 +41,7 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp(12, {1, 3}));
     await tester.pumpAndSettle();
-    expect(find.text('Следующая тема: Тема 12'), findsOneWidget);
+    expect(find.text('Текущее чтение: Тема 12'), findsOneWidget);
     expect(find.text('Прочитано 2 из 365'), findsOneWidget);
     expect(find.text('Продолжить'), findsOneWidget);
     expect(

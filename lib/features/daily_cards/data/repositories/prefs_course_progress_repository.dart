@@ -46,11 +46,38 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
   }
 
   @override
+  Future<Result<bool>> hasStarted() async {
+    await _writing;
+    // Старое сохранённое место — уже начатый курс. Новый курс не создаёт
+    // запись, пока пользователь сам не нажмёт «Начать».
+    return _guard(() async {
+      final json = await _read();
+      return json.containsKey('topic') || _completedFrom(json).isNotEmpty;
+    });
+  }
+
+  @override
   Future<Result<int>> currentTopic() async {
     await _writing;
     return _guard(
       () async => normalizeCourseTopic((await _read())['topic'] as int? ?? 1),
     );
+  }
+
+  @override
+  Future<Result<int?>> currentPage(int topic) async {
+    await _writing;
+    return _guard(() async {
+      final json = await _read();
+      if (normalizeCourseTopic(json['topic'] as int? ?? 1) != topic) {
+        return null;
+      }
+      final page = json['page'] as int?;
+      if (page != null && page < 0) {
+        throw const FormatException('Некорректная страница курса');
+      }
+      return page;
+    });
   }
 
   @override
@@ -64,12 +91,16 @@ class PrefsCourseProgressRepository implements CourseProgressRepository {
   Future<Result<void>> _writing = Future.value(const Success(null));
 
   @override
-  Future<Result<void>> saveCurrentTopic(int topic) => _writing = _writing.then(
-    (_) => _guard(
-      () async =>
-          _write({...await _read(), 'topic': normalizeCourseTopic(topic)}),
-    ),
-  );
+  Future<Result<void>> saveCurrentTopic(int topic, {int page = 0}) =>
+      _writing = _writing.then(
+        (_) => _guard(
+          () async => _write({
+            ...await _read(),
+            'topic': normalizeCourseTopic(topic),
+            'page': page,
+          }),
+        ),
+      );
 
   @override
   Future<Result<void>> completeTopic(int topic) => _writing = _writing.then(

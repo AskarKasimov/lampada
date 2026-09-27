@@ -12,13 +12,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _CourseProgressRepository implements CourseProgressRepository {
   @override
+  Future<Result<bool>> hasStarted() async => const Success(false);
+
+  @override
+  Future<Result<int?>> currentPage(int topic) async => const Success(null);
+
+  @override
   Future<Result<Set<int>>> completedTopics() async => const Success({});
 
   @override
   Future<Result<void>> completeTopic(int topic) => saveCurrentTopic(topic);
 
   @override
-  Future<Result<void>> saveCurrentTopic(int topic) async => const Success(null);
+  Future<Result<void>> saveCurrentTopic(int topic, {int page = 0}) async =>
+      const Success(null);
 
   @override
   Future<Result<int>> currentTopic() async => const Success(1);
@@ -91,6 +98,22 @@ void main() {
       },
     );
   }
+
+  test(
+    'сохранённая страница завершённой темы имеет приоритет над следующей темой',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'flutter.course_progress_v4':
+            '{"topic":3,"page":1,"completedTopics":[1,2,3]}',
+      });
+      final progress = PrefsCourseProgressRepository(
+        await SharedPreferences.getInstance(),
+      );
+      final cards = _FreshDayCardsRepository();
+      final result = await GetCourseTopic(progress, cards)();
+      expect((result as Success<DayCard>).value.id, 'basics-topic-3');
+    },
+  );
 
   test('загружает запрошенную тему с её номером в id', () async {
     final cards = _FreshDayCardsRepository();

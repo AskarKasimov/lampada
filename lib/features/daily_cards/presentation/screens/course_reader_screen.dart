@@ -25,9 +25,14 @@ typedef _TopicPage = ({DayCard topic, String? text, int index, int count});
 /// Тема читается по чанкам, затем отдельная страница завершает её.
 /// Следующая тема загружается только после свайпа за страницу завершения.
 class CourseReaderScreen extends ConsumerStatefulWidget {
-  const CourseReaderScreen({required this.currentTopic, super.key});
+  const CourseReaderScreen({
+    required this.currentTopic,
+    this.initialPage = 0,
+    super.key,
+  });
 
   final DayCard currentTopic;
+  final int initialPage;
 
   @override
   ConsumerState<CourseReaderScreen> createState() => _CourseReaderScreenState();
@@ -35,10 +40,16 @@ class CourseReaderScreen extends ConsumerStatefulWidget {
 
 class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   late final _pages = _pagesFor(widget.currentTopic);
-  late final _controller = PageController(initialPage: _leading);
-  late int _index = _leading;
-  late int _savedTopic = _topicNumber(widget.currentTopic.id);
-  late int _confirmedTopic = _topicNumber(widget.currentTopic.id);
+  late final _controller = PageController(initialPage: _initialIndex);
+  late int _index = _initialIndex;
+  late var _savedPosition = (
+    topic: _topicNumber(widget.currentTopic.id),
+    page: _initialIndex - _leading,
+  );
+  late var _confirmedPosition = (
+    topic: _topicNumber(widget.currentTopic.id),
+    page: _initialIndex - _leading,
+  );
   Future<void> _pendingSave = Future.value();
   Future<void> _pendingCompletion = Future.value();
   final _completing = <int>{};
@@ -49,6 +60,8 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   bool _isDismissing = false;
   bool _canPop = false;
 
+  int get _initialIndex =>
+      _leading + widget.initialPage.clamp(0, _pages.length - 1);
   int get _leading => _topicNumber(_pages.first.topic.id) > 1 ? 1 : 0;
   bool get _hasNext => _topicNumber(_pages.last.topic.id) < courseTopicCount;
   bool get _isBoundary =>
@@ -61,6 +74,22 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     super.initState();
     final topic = _topicNumber(widget.currentTopic.id);
     if (topic > 1) ref.read(courseTopicByNumberProvider(topic - 1));
+    if (_visible.text == null) {
+      // Сохранение позиции могло успеть до записи завершения при закрытии ОС.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_resumeCompletion(topic));
+      });
+    }
+  }
+
+  Future<void> _resumeCompletion(int topic) async {
+    try {
+      final completed = await ref.read(completedCourseTopicsProvider.future);
+      // Подтверждённый финал восстанавливаем без новой отметки активности дня.
+      if (mounted && !completed.contains(topic)) _queueCompletion(topic);
+    } on Object {
+      if (mounted) setState(() => _completionErrors.add(topic));
+    }
   }
 
   @override
@@ -97,25 +126,30 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     }
     final visible = _visible;
     final topic = _topicNumber(visible.topic.id);
-    if (_savedTopic != topic) {
-      _savedTopic = topic;
-      _pendingSave = _pendingSave.then((_) => _saveTopic(topic));
+    final position = (topic: topic, page: visible.index);
+    if (_savedPosition != position) {
+      _savedPosition = position;
+      _pendingSave = _pendingSave.then((_) => _savePosition(position));
       unawaited(_pendingSave);
     }
     if (visible.text == null) _queueCompletion(topic);
   }
 
-  Future<void> _saveTopic(int topic) async {
-    final result = await ref.read(saveCourseTopicProvider)(topic);
+  Future<void> _savePosition(({int topic, int page}) position) async {
+    final result = await ref.read(saveCourseTopicProvider)(
+      position.topic,
+      page: position.page,
+    );
     if (!mounted) return;
     if (result is Success<void>) {
-      _confirmedTopic = topic;
+      _confirmedPosition = position;
+      ref.invalidate(coursePageProvider(position.topic));
       ref.invalidate(courseTopicProvider);
     } else {
       // Отказ не подтверждает позицию: следующий чанк повторит запись.
-      if (_savedTopic == topic) _savedTopic = _confirmedTopic;
+      if (_savedPosition == position) _savedPosition = _confirmedPosition;
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        const SnackBar(content: Text('Не удалось сохранить прогресс')),
+        const SnackBar(content: Text('Не удалось сохранить место чтения')),
       );
     }
   }

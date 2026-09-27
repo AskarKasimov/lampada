@@ -5,6 +5,12 @@ import 'package:lampada/features/daily_cards/domain/usecases/save_course_topic.d
 
 class _CourseProgressRepository implements CourseProgressRepository {
   @override
+  Future<Result<bool>> hasStarted() async => const Success(false);
+
+  @override
+  Future<Result<int?>> currentPage(int topic) async => const Success(null);
+
+  @override
   Future<Result<Set<int>>> completedTopics() async => const Success({});
 
   @override
@@ -19,7 +25,7 @@ class _CourseProgressRepository implements CourseProgressRepository {
   Future<Result<int>> currentTopic() async => const Success(1);
 
   @override
-  Future<Result<void>> saveCurrentTopic(int topic) async {
+  Future<Result<void>> saveCurrentTopic(int topic, {int page = 0}) async {
     savedTopics.add(topic);
     return result;
   }

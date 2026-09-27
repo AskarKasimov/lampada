@@ -18,6 +18,29 @@ const _bottomMargin = 10.0;
 ///
 const kFloatingNavInset = _barHeight + _bottomMargin + 12;
 
+/// Запас для общей капсулы с прогрессом активного курса.
+const kFloatingNavWithHeaderInset = kFloatingNavInset + 90;
+
+/// Нижний запас задаёт shell по фактической высоте своей капсулы.
+/// Отдельно открытый экран без shell использует обычную высоту navbar.
+class FloatingNavInset extends InheritedWidget {
+  const FloatingNavInset({
+    required this.inset,
+    required super.child,
+    super.key,
+  });
+
+  final double inset;
+
+  static double of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<FloatingNavInset>()?.inset ??
+      kFloatingNavInset;
+
+  @override
+  bool updateShouldNotify(FloatingNavInset oldWidget) =>
+      inset != oldWidget.inset;
+}
+
 /// Плавающая навигация капсулой поверх контента.
 ///
 /// Обычный [NavigationBar] отрезал у экрана глухую полосу снизу, и на экране,
@@ -31,11 +54,13 @@ class FloatingNavBar extends StatefulWidget {
   const FloatingNavBar({
     required this.current,
     required this.onSelect,
+    this.header,
     super.key,
   });
 
   final ShellTab current;
   final void Function(ShellTab tab) onSelect;
+  final Widget? header;
 
   static const _items = [
     (
@@ -112,6 +137,7 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  ?widget.header,
                   SizedBox(
                     height: _barHeight,
                     child: LayoutBuilder(

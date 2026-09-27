@@ -81,6 +81,12 @@ class _ProgressRepository implements DayProgressRepository {
 
 class _FailingCourseProgressRepository implements CourseProgressRepository {
   @override
+  Future<Result<bool>> hasStarted() async => const Success(false);
+
+  @override
+  Future<Result<int?>> currentPage(int topic) async => const Success(null);
+
+  @override
   Future<Result<Set<int>>> completedTopics() async => const Success({});
 
   @override
@@ -90,12 +96,22 @@ class _FailingCourseProgressRepository implements CourseProgressRepository {
   Future<Result<int>> currentTopic() async => const Success(3);
 
   @override
-  Future<Result<void>> saveCurrentTopic(int topic) async => const Failure(
-    AppFailure('Не удалось сохранить тему курса', kind: FailureKind.unknown),
-  );
+  Future<Result<void>> saveCurrentTopic(int topic, {int page = 0}) async =>
+      const Failure(
+        AppFailure(
+          'Не удалось сохранить тему курса',
+          kind: FailureKind.unknown,
+        ),
+      );
 }
 
 class _DelayedCourseProgressRepository implements CourseProgressRepository {
+  @override
+  Future<Result<bool>> hasStarted() async => const Success(false);
+
+  @override
+  Future<Result<int?>> currentPage(int topic) async => const Success(null);
+
   @override
   Future<Result<Set<int>>> completedTopics() async => const Success({});
 
@@ -108,7 +124,8 @@ class _DelayedCourseProgressRepository implements CourseProgressRepository {
   Future<Result<int>> currentTopic() async => const Success(3);
 
   @override
-  Future<Result<void>> saveCurrentTopic(int topic) => saved.future;
+  Future<Result<void>> saveCurrentTopic(int topic, {int page = 0}) =>
+      saved.future;
 }
 
 class _DelayedNextCards extends _CourseCardsRepository {
@@ -131,14 +148,14 @@ class _FailOncePosition extends PrefsCourseProgressRepository {
   var failed = false;
 
   @override
-  Future<Result<void>> saveCurrentTopic(int topic) async {
+  Future<Result<void>> saveCurrentTopic(int topic, {int page = 0}) async {
     if (!failed) {
       failed = true;
       return const Failure(
         AppFailure('Запись отклонена', kind: FailureKind.unknown),
       );
     }
-    return super.saveCurrentTopic(topic);
+    return super.saveCurrentTopic(topic, page: page);
   }
 }
 
@@ -304,7 +321,7 @@ void main() {
       await tester.drag(find.byType(PageView), const Offset(0, -500));
       await tester.pumpAndSettle();
     }
-    expect(find.text('Не удалось сохранить прогресс'), findsOneWidget);
+    expect(find.text('Не удалось сохранить место чтения'), findsOneWidget);
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
     final saved = await PrefsCourseProgressRepository(prefs).currentTopic();
@@ -438,7 +455,7 @@ void main() {
     await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
 
-    expect(find.text('Не удалось сохранить прогресс'), findsOneWidget);
+    expect(find.text('Не удалось сохранить место чтения'), findsOneWidget);
   });
 
   testWidgets('keeps the course title visible in the reader header', (

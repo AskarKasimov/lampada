@@ -23,6 +23,17 @@ class GetCourseTopic {
       case Failure(failure: final f):
         return Failure(f);
       case Success(value: final topic):
+        final pageResult = await _progress.currentPage(topic);
+        switch (pageResult) {
+          case Failure(failure: final failure):
+            return Failure(failure);
+          case Success(value: final page):
+            // Точная сохранённая страница важнее выбора следующей темы,
+            // включая карточку завершения уже прочитанной темы.
+            if (page != null) {
+              return forTopic(topic, forceRefresh: forceRefresh);
+            }
+        }
         final completedResult = await _progress.completedTopics();
         switch (completedResult) {
           case Failure(failure: final failure):
