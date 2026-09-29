@@ -18,6 +18,7 @@ import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
 import '../widgets/reader_progress_rail.dart';
 import '../widgets/vertical_card_reader.dart';
+import 'course_detail_screen.dart';
 import 'full_card_text_screen.dart';
 
 typedef _TopicPage = ({DayCard topic, String? text, int index, int count});
@@ -358,6 +359,19 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                 ),
           onClose: () => unawaited(_dismiss()),
           closeColor: colors.homeSubtitle,
+          topRightAction: IconButton(
+            tooltip: 'О курсе',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const CourseDetailScreen(),
+              ),
+            ),
+            icon: Icon(
+              CupertinoIcons.info,
+              size: 22,
+              color: colors.homeSubtitle,
+            ),
+          ),
         ),
       ),
     );

@@ -9,7 +9,7 @@ import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import '../widgets/course_progress_header.dart';
-import 'course_detail_screen.dart';
+import 'course_reader_route.dart';
 import 'plans_info_screen.dart';
 
 /// Личные курсы не зависят от выбранной даты на «Домой».
@@ -57,11 +57,7 @@ class PlansScreen extends ConsumerWidget {
                   .watch(completedCourseTopicsProvider)
                   .value
                   ?.length,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const CourseDetailScreen(),
-                ),
-              ),
+              onTap: () => openCourseReader(context, ref),
             ),
           )
         else if (topic.isLoading)

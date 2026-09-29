@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -104,18 +102,11 @@ void main() {
 
   /// IndexedStack строит все четыре вкладки сразу, поэтому Профиль читает
   /// настройку темы уже на старте — prefs нужны даже тесту про «Домой».
-  Widget buildApp({
-    DayCard? topic,
-    DayProgressRepository? progress,
-    Future<DayCard?> Function()? loadTopic,
-  }) => ProviderScope(
+  Widget buildApp() => ProviderScope(
     overrides: [
-      if (loadTopic != null)
-        courseTopicProvider.overrideWith((ref) => loadTopic()),
-      if (topic != null) courseTopicProvider.overrideWith((ref) async => topic),
       dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
       dayProgressRepositoryProvider.overrideWithValue(
-        progress ?? _FakeProgressRepository(),
+        _FakeProgressRepository(),
       ),
       sharedPreferencesProvider.overrideWithValue(prefs),
     ],
@@ -247,7 +238,7 @@ void main() {
     }
   });
 
-  testWidgets('вход из списка планов открывает страницу курса', (tester) async {
+  testWidgets('вход из списка планов сразу открывает читалку', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
@@ -258,221 +249,26 @@ void main() {
       ),
     );
     await settle(tester);
-    final plan = find.byWidgetPredicate(
-      (widget) => widget is CourseProgressHeader && !widget.compact,
-    );
+    final plan = find.byType(CourseProgressHeader);
     expect(plan, findsOneWidget);
     await tester.tap(plan);
     await settle(tester);
-    expect(find.byType(CourseReaderScreen), findsNothing);
-    expect(find.text('О курсе'), findsOneWidget);
-    await tester.tap(find.text('Начать'));
-    await settle(tester);
     expect(find.byType(CourseReaderScreen), findsOneWidget);
+    expect(find.text('О курсе'), findsNothing);
     await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
-    await settle(tester);
-    expect(find.text('О курсе'), findsOneWidget);
-    await tester.tap(find.byType(BackButton));
     await settle(tester);
     expect(plan, findsOneWidget);
   });
 
-  testWidgets(
-    'обёртка курса видна на каждой вкладке и открывает читалку напрямую',
-    (tester) async {
-      await prefs.setString('course_progress_v4', '{"topic":1,"page":0}');
-      await tester.pumpWidget(buildApp());
-      await settle(tester);
-      await dismissAutoOpened(tester);
-      final header = find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.byType(CourseProgressHeader),
-      );
-      for (final label in ['Домой', 'Библия', 'Планы', 'Профиль']) {
-        await tester.tap(
-          find.descendant(
-            of: find.byType(FloatingNavBar),
-            matching: find.text(label),
-          ),
-        );
-        await settle(tester);
-        expect(header, findsOneWidget);
-        expect(
-          find.descendant(
-            of: header,
-            matching: find.text('ОСНОВЫ ВЕРЫ №1/365'),
-          ),
-          findsOneWidget,
-        );
-        await tester.tap(header);
-        await settle(tester);
-        expect(find.byType(CourseReaderScreen), findsOneWidget);
-        expect(find.text('О курсе'), findsNothing);
-        await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
-        await settle(tester);
-        expect(header, findsOneWidget);
-      }
-    },
-  );
-
-  testWidgets(
-    'обёртка показывает прогресс темы и скрывается после завершения',
-    (tester) async {
-      await prefs.setString(
-        'course_progress_v4',
-        '{"topic":3,"completedTopics":[1,2]}',
-      );
-      await tester.pumpWidget(buildApp());
-      await settle(tester);
-      await dismissAutoOpened(tester);
-      final header = find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.byType(CourseProgressHeader),
-      );
-      expect(
-        find.descendant(of: header, matching: find.text('ОСНОВЫ ВЕРЫ №3/365')),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<LinearProgressIndicator>(
-              find.descendant(
-                of: header,
-                matching: find.byType(LinearProgressIndicator),
-              ),
-            )
-            .value,
-        closeTo(1 / 2, 0.000001),
-      );
-      await tester.tap(header);
-      await settle(tester);
-      expect(find.text('Основы веры · Тема №3'), findsOneWidget);
-      await tester.drag(find.byType(PageView), const Offset(0, -500));
-      await settle(tester);
-      expect(find.text('Тема прочитана'), findsOneWidget);
-      await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
-      await settle(tester);
-      expect(header, findsNothing);
-      expect(find.byType(FloatingNavBar), findsOneWidget);
-      expect(
-        tester.widget<FloatingNavInset>(find.byType(FloatingNavInset)).inset,
-        kFloatingNavInset,
-      );
-    },
-  );
-
-  testWidgets('быстрый вход восстанавливает страницу и сохраняет новое место', (
+  testWidgets('начатый курс не увеличивает navbar и нижний отступ', (
     tester,
   ) async {
-    await prefs.setString('course_progress_v4', '{"topic":3,"page":1}');
-    const topic = DayCard(
-      id: 'basics-topic-3',
-      type: CardType.basics,
-      body: 'Первое. Второе. Третье.',
-      source: 'Источник',
-    );
-    await tester.pumpWidget(buildApp(topic: topic));
+    await prefs.setString('course_progress_v4', '{"topic":1,"page":0}');
+    await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
-    final header = find.descendant(
-      of: find.byType(FloatingNavBar),
-      matching: find.byType(CourseProgressHeader),
-    );
-    expect(
-      find.descendant(of: header, matching: find.text('ОСНОВЫ ВЕРЫ №3/365')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: header, matching: find.text('Прочитано 2/4')),
-      findsOneWidget,
-    );
-    expect(
-      tester
-          .widget<LinearProgressIndicator>(
-            find.descendant(
-              of: header,
-              matching: find.byType(LinearProgressIndicator),
-            ),
-          )
-          .value,
-      closeTo(2 / 4, 0.000001),
-    );
-    await tester.tap(header);
-    await settle(tester);
-    expect(find.text('Прочитано 0 из 365'), findsNothing);
-    expect(find.text('Второе.'), findsOneWidget);
-    expect(find.text('Первое.'), findsNothing);
-    await tester.drag(find.byType(PageView), const Offset(0, -500));
-    await settle(tester);
-    expect(find.text('Третье.'), findsOneWidget);
-    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
-    await settle(tester);
-    expect(
-      find.descendant(of: header, matching: find.text('Прочитано 3/4')),
-      findsOneWidget,
-    );
-    expect(
-      tester
-          .widget<LinearProgressIndicator>(
-            find.descendant(
-              of: header,
-              matching: find.byType(LinearProgressIndicator),
-            ),
-          )
-          .value,
-      closeTo(3 / 4, 0.000001),
-    );
-    await tester.tap(header);
-    await settle(tester);
-    expect(find.text('Третье.'), findsOneWidget);
-    expect(find.text('Второе.'), findsNothing);
-  });
 
-  testWidgets(
-    'возврат на финальную страницу завершает прерванную запись прохождения',
-    (tester) async {
-      await prefs.setString('course_progress_v4', '{"topic":3,"page":1}');
-      await tester.pumpWidget(buildApp());
-      await settle(tester);
-      await dismissAutoOpened(tester);
-      final header = find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.byType(CourseProgressHeader),
-      );
-      await tester.tap(header);
-      await settle(tester);
-      expect(find.text('Тема прочитана'), findsOneWidget);
-      await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
-      await settle(tester);
-      expect(header, findsNothing);
-    },
-  );
-
-  testWidgets('обёртка скрыта только после темы за сегодняшний день', (
-    tester,
-  ) async {
-    await prefs.setString('course_progress_v4', '{"topic":3,"page":0}');
-    final progress = _FakeProgressRepository();
-    await progress.markRead(
-      CardType.basics,
-      date: DateTime.now().subtract(const Duration(days: 1)),
-    );
-    await tester.pumpWidget(buildApp(progress: progress));
-    await settle(tester);
-    await dismissAutoOpened(tester);
-    final header = find.descendant(
-      of: find.byType(FloatingNavBar),
-      matching: find.byType(CourseProgressHeader),
-    );
-    expect(header, findsOneWidget);
-    await progress.markRead(CardType.basics);
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(AppShell)),
-    );
-    container.invalidate(dayProgressProvider);
-    await settle(tester);
-    expect(header, findsNothing);
-    for (final label in ['Библия', 'Планы', 'Профиль']) {
+    for (final label in ['Домой', 'Библия', 'Планы', 'Профиль']) {
       await tester.tap(
         find.descendant(
           of: find.byType(FloatingNavBar),
@@ -480,86 +276,51 @@ void main() {
         ),
       );
       await settle(tester);
-      expect(header, findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(FloatingNavBar),
+          matching: find.byType(CourseProgressHeader),
+        ),
+        findsNothing,
+      );
+      expect(
+        tester.widget<FloatingNavInset>(find.byType(FloatingNavInset)).inset,
+        kFloatingNavInset,
+      );
     }
   });
 
-  testWidgets('готовая финальная карточка не отмечает новый день повторно', (
-    tester,
-  ) async {
-    await prefs.setString(
-      'course_progress_v4',
-      '{"topic":3,"page":1,"completedTopics":[3]}',
-    );
-    final progress = _FakeProgressRepository();
-    await tester.pumpWidget(buildApp(progress: progress));
+  testWidgets('начатый курс продолжается через Планы', (tester) async {
+    await prefs.setString('course_progress_v4', '{"topic":3,"page":1}');
+    await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
-    final header = find.descendant(
-      of: find.byType(FloatingNavBar),
-      matching: find.byType(CourseProgressHeader),
+    await tester.tap(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.text('Планы'),
+      ),
     );
-    await tester.tap(header);
+    await settle(tester);
+    await tester.tap(find.byType(CourseProgressHeader));
     await settle(tester);
     expect(find.text('Тема прочитана'), findsOneWidget);
-    expect(
-      (await progress.loadToday() as Success<DayProgress>).value.readTypes,
-      isNot(contains(CardType.basics)),
-    );
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    await settle(tester);
+    expect(find.byType(CourseProgressHeader), findsOneWidget);
   });
 
-  testWidgets('повторный вход ждёт актуальную тему вместо старой карточки', (
-    tester,
-  ) async {
-    const third = DayCard(
-      id: 'basics-topic-3',
-      type: CardType.basics,
-      body: 'Третья тема.',
-      source: 'Источник',
-    );
-    const fourth = DayCard(
-      id: 'basics-topic-4',
-      type: CardType.basics,
-      body: 'Четвёртая тема.',
-      source: 'Источник',
-    );
-    Future<DayCard?> response = Future.value(third);
-    await prefs.setString('course_progress_v4', '{"topic":3,"page":0}');
-    await tester.pumpWidget(buildApp(loadTopic: () => response));
-    await settle(tester);
-    await dismissAutoOpened(tester);
-    final pending = Completer<DayCard?>();
-    response = pending.future;
-    await prefs.setString('course_progress_v4', '{"topic":4,"page":1}');
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(AppShell)),
-    );
-    container.invalidate(courseTopicProvider);
-    await tester.pump();
-    final header = find.descendant(
-      of: find.byType(FloatingNavBar),
-      matching: find.byType(CourseProgressHeader),
-    );
-    await tester.tap(header);
-    await tester.pump();
-    expect(find.byType(CourseReaderScreen), findsNothing);
-    pending.complete(fourth);
-    await settle(tester);
-    expect(find.text('Основы веры · Тема №4'), findsOneWidget);
-    expect(find.text('Тема прочитана'), findsOneWidget);
-  });
-
-  testWidgets('чистая установка не активирует план до нажатия Начать', (
+  testWidgets('чистая установка активирует курс только при входе в читалку', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await dismissAutoOpened(tester);
-    final header = find.descendant(
+    final navbarCourse = find.descendant(
       of: find.byType(FloatingNavBar),
       matching: find.byType(CourseProgressHeader),
     );
-    expect(header, findsNothing);
+    expect(navbarCourse, findsNothing);
     expect(prefs.getString('course_progress_v4'), isNull);
     await tester.tap(
       find.descendant(
@@ -568,25 +329,16 @@ void main() {
       ),
     );
     await settle(tester);
-    final plan = find.byWidgetPredicate(
-      (widget) => widget is CourseProgressHeader && !widget.compact,
-    );
+    final plan = find.byType(CourseProgressHeader);
+    expect(prefs.getString('course_progress_v4'), isNull);
     await tester.tap(plan);
     await settle(tester);
-    expect(find.text('О курсе'), findsOneWidget);
-    expect(prefs.getString('course_progress_v4'), isNull);
-    await tester.tap(find.text('Начать'));
-    await settle(tester);
     expect(find.byType(CourseReaderScreen), findsOneWidget);
+    expect(prefs.getString('course_progress_v4'), isNotNull);
     await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
     await settle(tester);
-    await tester.tap(find.byType(BackButton));
-    await settle(tester);
-    expect(header, findsOneWidget);
-    expect(
-      find.descendant(of: header, matching: find.text('ОСНОВЫ ВЕРЫ №1/365')),
-      findsOneWidget,
-    );
+    expect(navbarCourse, findsNothing);
+    expect(plan, findsOneWidget);
   });
 
   testWidgets('подписи видны у всех вкладок, не только у активной', (

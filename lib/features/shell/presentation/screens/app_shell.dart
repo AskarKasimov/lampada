@@ -4,12 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bible/presentation/screens/bible_screen.dart';
-import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
-import '../../../daily_cards/presentation/screens/course_reader_route.dart';
 import '../../../daily_cards/presentation/screens/plans_screen.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
-import '../../../daily_cards/presentation/widgets/course_progress_header.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_scheduler.dart';
 import '../providers/shell_providers.dart';
@@ -24,7 +21,7 @@ import '../widgets/floating_nav_bar.dart';
 ///
 /// Навигация лежит в [Stack] поверх контента, а не в `bottomNavigationBar`:
 /// глухая полоса снизу отрезала у экрана заметный кусок. Контент уходит под
-/// капсулу, поэтому скроллящиеся вкладки оставляют снизу [kFloatingNavWithHeaderInset].
+/// капсулу, поэтому скроллящиеся вкладки оставляют снизу [kFloatingNavInset].
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -73,23 +70,6 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   Widget build(BuildContext context) {
     final tab = ref.watch(selectedTabProvider);
-    final hasStarted = ref.watch(hasStartedCourseProvider).value ?? false;
-    final courseTopic = ref.watch(courseTopicProvider).value;
-    final topicNumber =
-        int.tryParse(courseTopic?.id.split('-').last ?? '') ?? 1;
-    final currentPage = hasStarted && courseTopic != null
-        ? ref.watch(coursePageProvider(topicNumber)).value
-        : null;
-    final dayProgress = ref.watch(dayProgressProvider).value;
-    final showCourseHeader =
-        hasStarted &&
-        courseTopic != null &&
-        dayProgress != null &&
-        !dayProgress.isReadOn(DateTime.now(), CardType.basics);
-    final completedCount = ref
-        .watch(completedCourseTopicsProvider)
-        .value
-        ?.length;
     return ReminderScheduler(
       child: Scaffold(
         body: Stack(
@@ -97,9 +77,7 @@ class _AppShellState extends ConsumerState<AppShell>
             SafeArea(
               bottom: false,
               child: FloatingNavInset(
-                inset: showCourseHeader
-                    ? kFloatingNavWithHeaderInset
-                    : kFloatingNavInset,
+                inset: kFloatingNavInset,
                 child: IndexedStack(
                   index: tab.index,
                   children: const [
@@ -117,15 +95,6 @@ class _AppShellState extends ConsumerState<AppShell>
               bottom: 0,
               child: FloatingNavBar(
                 current: tab,
-                header: !showCourseHeader
-                    ? null
-                    : CourseProgressHeader(
-                        topic: courseTopic,
-                        completedTopicCount: completedCount,
-                        compact: true,
-                        currentPage: currentPage,
-                        onTap: () => openCourseReader(context, ref),
-                      ),
                 onSelect: (selected) =>
                     ref.read(selectedTabProvider.notifier).select(selected),
               ),

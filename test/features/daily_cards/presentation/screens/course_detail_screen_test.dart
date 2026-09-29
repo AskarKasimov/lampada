@@ -23,16 +23,14 @@ void main() {
     child: MaterialApp(theme: AppTheme.light, home: const CourseDetailScreen()),
   );
 
-  testWidgets('новый курс показывает описание, источник и начало чтения', (
-    tester,
-  ) async {
+  testWidgets('показывает описание и источник курса', (tester) async {
     await tester.pumpWidget(buildApp(1, {}));
     await tester.pumpAndSettle();
     expect(find.text('О курсе'), findsOneWidget);
     expect(find.textContaining('365 тем об основах'), findsOneWidget);
     expect(find.text('Источник: «Азбука веры»'), findsOneWidget);
     expect(find.text('Прочитано 0 из 365'), findsOneWidget);
-    expect(find.text('Начать'), findsOneWidget);
+    expect(find.byType(FilledButton), findsNothing);
     expect(find.textContaining('карточка «Тема прочитана»'), findsOneWidget);
   });
 
@@ -43,7 +41,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Текущее чтение: Тема 12'), findsOneWidget);
     expect(find.text('Прочитано 2 из 365'), findsOneWidget);
-    expect(find.text('Продолжить'), findsOneWidget);
     expect(
       tester
           .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
@@ -52,28 +49,25 @@ void main() {
     );
   });
 
-  testWidgets('старое место чтения без отметок предлагает продолжить', (
+  testWidgets('старое место чтения без отметок показывает прогресс', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp(209, {}));
     await tester.pumpAndSettle();
     expect(find.text('Прочитано 0 из 365'), findsOneWidget);
-    expect(find.text('Продолжить'), findsOneWidget);
+    expect(find.text('Текущее чтение: Тема 209'), findsOneWidget);
   });
 
-  testWidgets('завершённый курс предлагает перечитать', (tester) async {
+  testWidgets('завершённый курс показывает итог', (tester) async {
     await tester.pumpWidget(
       buildApp(365, Set<int>.from(List.generate(365, (i) => i + 1))),
     );
     await tester.pumpAndSettle();
     expect(find.text('Курс пройден'), findsOneWidget);
-    expect(find.text('Перечитать'), findsOneWidget);
     expect(find.text('Для повторного чтения: Тема 365'), findsOneWidget);
   });
 
-  testWidgets('ошибка прогресса блокирует чтение до успешного повтора', (
-    tester,
-  ) async {
+  testWidgets('ошибка прогресса предлагает повторную загрузку', (tester) async {
     var attempts = 0;
     await tester.pumpWidget(
       ProviderScope(
@@ -98,16 +92,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNull,
-    );
+    expect(find.text('Повторить загрузку прогресса'), findsOneWidget);
     await tester.tap(find.text('Повторить загрузку прогресса'));
     await tester.pumpAndSettle();
-    expect(find.text('Начать'), findsOneWidget);
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNotNull,
-    );
+    expect(find.text('Прочитано 0 из 365'), findsOneWidget);
   });
 }

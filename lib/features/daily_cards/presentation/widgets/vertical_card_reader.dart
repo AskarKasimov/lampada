@@ -18,6 +18,7 @@ class VerticalCardReader extends StatelessWidget {
     required this.actions,
     required this.onClose,
     required this.closeColor,
+    this.topRightAction,
     this.reverse = false,
     super.key,
   });
@@ -31,6 +32,7 @@ class VerticalCardReader extends StatelessWidget {
   final Widget actions;
   final VoidCallback onClose;
   final Color closeColor;
+  final Widget? topRightAction;
   final bool reverse;
 
   @override
@@ -73,6 +75,8 @@ class VerticalCardReader extends StatelessWidget {
             tooltip: 'Назад',
           ),
         ),
+        if (topRightAction != null)
+          Positioned(top: 0, right: 0, child: topRightAction!),
       ],
     ),
   );
