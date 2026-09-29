@@ -129,32 +129,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
   }
 
-  /// «Домой» сама открывает первую непрочитанную карточку на весь экран,
-  /// и она перекрывает таб-бар — тестам про навигацию её надо закрыть.
-  Future<void> dismissAutoOpened(WidgetTester tester) async {
-    if (find.byIcon(CupertinoIcons.arrow_left).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
-    await settle(tester);
-  }
-
-  testWidgets('стартует на «Домой» — карточка, а не экран-прослойка', (
-    tester,
-  ) async {
+  testWidgets('стартует на «Домой» с кнопкой Мудрость дня', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     // Вариант А: дашборда между запуском и контентом нет вовсе.
     expect(find.byType(TodayScreen), findsOneWidget);
-    expect(find.text('Мысль дня'), findsOneWidget);
+    expect(find.text('Мудрость дня'), findsOneWidget);
   });
 
-  testWidgets('в навигации четыре вкладки: Домой, Библия, Планы, Профиль', (
-    tester,
-  ) async {
+  testWidgets('в навигации Домой, Библия и Профиль', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(tabIcon(CupertinoIcons.sunset_fill), findsOneWidget);
@@ -169,12 +155,26 @@ void main() {
     expect(tabIcon(CupertinoIcons.person), findsOneWidget);
   });
 
+  testWidgets('в нижней навигации три вкладки без Планов', (tester) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
+
+    final labels = find.descendant(
+      of: find.byType(FloatingNavBar),
+      matching: find.byType(Text),
+    );
+    expect(
+      tester.widgetList<Text>(labels).map((widget) => widget.data).toList(),
+      ['Домой', 'Библия', 'Профиль'],
+    );
+    expect(ShellTab.values, hasLength(3));
+  });
+
   testWidgets('стеклянная рамка плавно переезжает к выбранной вкладке', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     final selectionFinder = find.descendant(
       of: find.byType(FloatingNavBar),
@@ -205,7 +205,6 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     final selectionFinder = find.descendant(
       of: find.byType(FloatingNavBar),
@@ -238,16 +237,8 @@ void main() {
     }
   });
 
-  testWidgets('вход из списка планов сразу открывает читалку', (tester) async {
+  testWidgets('вход в курс с главной сразу открывает читалку', (tester) async {
     await tester.pumpWidget(buildApp());
-    await settle(tester);
-    await dismissAutoOpened(tester);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.text('Планы'),
-      ),
-    );
     await settle(tester);
     final plan = find.byType(CourseProgressHeader);
     expect(plan, findsOneWidget);
@@ -266,9 +257,8 @@ void main() {
     await prefs.setString('course_progress_v4', '{"topic":1,"page":0}');
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
-    for (final label in ['Домой', 'Библия', 'Планы', 'Профиль']) {
+    for (final label in ['Домой', 'Библия', 'Профиль']) {
       await tester.tap(
         find.descendant(
           of: find.byType(FloatingNavBar),
@@ -290,17 +280,9 @@ void main() {
     }
   });
 
-  testWidgets('начатый курс продолжается через Планы', (tester) async {
+  testWidgets('начатый курс продолжается с главной', (tester) async {
     await prefs.setString('course_progress_v4', '{"topic":3,"page":1}');
     await tester.pumpWidget(buildApp());
-    await settle(tester);
-    await dismissAutoOpened(tester);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.text('Планы'),
-      ),
-    );
     await settle(tester);
     await tester.tap(find.byType(CourseProgressHeader));
     await settle(tester);
@@ -315,20 +297,12 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
     final navbarCourse = find.descendant(
       of: find.byType(FloatingNavBar),
       matching: find.byType(CourseProgressHeader),
     );
     expect(navbarCourse, findsNothing);
     expect(prefs.getString('course_progress_v4'), isNull);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.text('Планы'),
-      ),
-    );
-    await settle(tester);
     final plan = find.byType(CourseProgressHeader);
     expect(prefs.getString('course_progress_v4'), isNull);
     await tester.tap(plan);
@@ -348,9 +322,8 @@ void main() {
     // акцентный цвет и насыщенность, а не наличие подписи.
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
-    for (final label in ['Домой', 'Библия', 'Планы', 'Профиль']) {
+    for (final label in ['Домой', 'Библия', 'Профиль']) {
       expect(
         find.descendant(
           of: find.byType(FloatingNavBar),
@@ -367,7 +340,6 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     // Глухая полоса снизу отрезала у экрана заметный кусок; теперь капсула
     // лежит в Stack над контентом и не сдвигает его вверх.
@@ -403,11 +375,9 @@ void main() {
   testWidgets('переключение вкладки открывает профиль', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
-    await dismissAutoOpened(tester);
     // Тумблер «Тёмная тема» заменён выбором из трёх: система / светлая / тёмная.
     expect(find.text('Тема'), findsOneWidget);
     expect(find.text('Система'), findsOneWidget);
@@ -418,7 +388,6 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
     expect(find.text('Закладки').hitTestable(), findsNothing);
     await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
@@ -463,18 +432,15 @@ void main() {
       ),
     );
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     final other = DateTime.now().subtract(const Duration(days: 3));
     container.read(selectedDateProvider.notifier).select(other);
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
     await tester.tap(tabIcon(CupertinoIcons.sunset));
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     expect(dateKey(container.read(selectedDateProvider)), dateKey(other));
   });
@@ -502,16 +468,13 @@ void main() {
       ),
     );
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     container.read(selectedTabProvider.notifier).select(ShellTab.profile);
     await settle(tester);
-    await dismissAutoOpened(tester);
     expect(find.byType(ProfileScreen), findsOneWidget);
 
     container.read(selectedTabProvider.notifier).select(ShellTab.today);
     await settle(tester);
-    await dismissAutoOpened(tester);
-    expect(find.text('Мысль дня'), findsOneWidget);
+    expect(find.text('Мудрость дня'), findsOneWidget);
   });
 }

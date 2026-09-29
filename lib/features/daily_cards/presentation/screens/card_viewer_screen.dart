@@ -30,13 +30,14 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     required this.date,
     required this.recordProgress,
     required this.recordRead,
+    this.canMarkRead,
     this.pageBuilder,
     this.actionsBuilder,
     super.key,
   });
 
-  /// Карточки-страницы. Евангелие и курс идут отдельными треками и сюда не
-  /// входят.
+  /// Карточки-страницы. Евангелие может идти после цитаты, совета и притчи;
+  /// курс открывается отдельно.
   final List<DayCard> cards;
   final int startIndex;
   final DateTime date;
@@ -47,6 +48,9 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// Записывать ли прочтение карточек. Для будущих дат выключено: их точки
   /// непрочитанного должны оставаться видимыми после предварительного чтения.
   final bool recordRead;
+
+  /// Заглушка загрузки не считается прочитанным Евангелием.
+  final bool Function(int index)? canMarkRead;
 
   /// Дополнительное содержимое страницы. Рамка, жесты, шапка и действия
   /// остаются общими для всех карточек; меняется только центральный материал.
@@ -65,7 +69,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     initialPage: widget.startIndex,
   );
   late int _index = widget.startIndex;
-  int? _markedIndex;
+  String? _markedCardId;
   var _swipeNudgeHasStarted = false;
 
   int get _pageCount => widget.cards.length;
@@ -82,19 +86,34 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant CardViewerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_index < widget.cards.length &&
+        (_index >= oldWidget.cards.length ||
+            oldWidget.cards[_index].id != widget.cards[_index].id)) {
+      _markCurrentAsRead(_index);
+    }
+  }
+
   /// Засчитывает карточку прочитанной сразу при показе, не дожидаясь
   /// «Дальше» — иначе, закрыв просмотрщик раньше конца, юзер оставил бы
   /// просмотренную карточку непрочитанной.
   void _markCurrentAsRead(int index) {
     if (!widget.recordRead) return;
-    if (index >= widget.cards.length || _markedIndex == index) return;
-    _markedIndex = index;
+    if (index >= widget.cards.length ||
+        !(widget.canMarkRead?.call(index) ?? true)) {
+      return;
+    }
+    final card = widget.cards[index];
+    if (_markedCardId == card.id) return;
+    _markedCardId = card.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref
           .read(dayProgressProvider.notifier)
           .markRead(
-            widget.cards[index].type,
+            card.type,
             date: widget.date,
             markVisited: widget.recordProgress,
           );

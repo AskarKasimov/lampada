@@ -5,16 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bible/presentation/screens/bible_screen.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
-import '../../../daily_cards/presentation/screens/plans_screen.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_scheduler.dart';
 import '../providers/shell_providers.dart';
 import '../widgets/floating_nav_bar.dart';
 
-/// Дом приложения: четыре вкладки. Экрана-прослойки между запуском и контентом
-/// нет — корень «Домой» это сам день, чтобы первая мысль встречала юзера
-/// сразу, а не после тапа по дашборду.
+/// Дом приложения: три вкладки. Экрана-прослойки между запуском и контентом
+/// нет — корень «Домой» это день с входом в «Мудрость дня» и личный курс.
 ///
 /// [IndexedStack], а не пересборка: уход на другую вкладку и обратно не должен
 /// сбрасывать состояние экрана.
@@ -83,7 +81,6 @@ class _AppShellState extends ConsumerState<AppShell>
                   children: const [
                     TodayScreen(),
                     BibleScreen(),
-                    PlansScreen(),
                     ProfileScreen(),
                   ],
                 ),

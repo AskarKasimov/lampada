@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
@@ -10,7 +11,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
 import '../../../reading/presentation/providers/providers.dart';
-import '../../../reading/presentation/screens/reading_screen.dart';
 import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
@@ -18,12 +18,14 @@ import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
 import '../providers/providers.dart';
-import '../theme/card_type_style.dart';
+import '../widgets/course_progress_header.dart';
 import '../widgets/day_entry_row.dart';
 import '../widgets/day_name_header.dart';
 import '../widgets/today_offline_view.dart';
 import '../widgets/week_strip.dart';
-import 'card_viewer_screen.dart';
+import 'course_reader_route.dart';
+import 'day_wisdom_screen.dart';
+import 'plans_info_screen.dart';
 
 /// Дневная сессия и навигация по календарным дням.
 class TodayScreen extends ConsumerStatefulWidget {
@@ -71,9 +73,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   late final PageController _pageController;
   Object? _pageAnimation;
   late final AnimationController _fadeController;
-
-  // Автооткрытие относится к экрану, а не к странице календаря.
-  bool _hasAutoOpened = false;
 
   @override
   void initState() {
@@ -152,11 +151,6 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     }
   }
 
-  void _markAutoOpened() {
-    if (_hasAutoOpened) return;
-    setState(() => _hasAutoOpened = true);
-  }
-
   @override
   Widget build(BuildContext context) {
     final selected = ref.watch(selectedDateProvider);
@@ -187,11 +181,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
                     .read(selectedDateProvider.notifier)
                     .select(_pageMapper.dateForPage(page));
               },
-              itemBuilder: (context, page) => _TodayDayPage(
-                date: _pageMapper.dateForPage(page),
-                hasAutoOpened: _hasAutoOpened,
-                onAutoOpened: _markAutoOpened,
-              ),
+              itemBuilder: (context, page) =>
+                  _TodayDayPage(date: _pageMapper.dateForPage(page)),
             ),
           ),
         ),
@@ -201,42 +192,21 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
 }
 
 class _TodayDayPage extends ConsumerWidget {
-  const _TodayDayPage({
-    required this.date,
-    required this.hasAutoOpened,
-    required this.onAutoOpened,
-  });
+  const _TodayDayPage({required this.date});
 
   final DateTime date;
-  final bool hasAutoOpened;
-  final VoidCallback onAutoOpened;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(selectedDateProvider);
-    final isSelected = dateKey(selected) == dateKey(date);
     // Исходящий день остаётся видимым до полного исчезновения при фэйде.
-    return _SelectedDayContent(
-      date: date,
-      isSelected: isSelected,
-      hasAutoOpened: hasAutoOpened,
-      onAutoOpened: onAutoOpened,
-    );
+    return _SelectedDayContent(date: date);
   }
 }
 
 class _SelectedDayContent extends ConsumerWidget {
-  const _SelectedDayContent({
-    required this.date,
-    required this.isSelected,
-    required this.hasAutoOpened,
-    required this.onAutoOpened,
-  });
+  const _SelectedDayContent({required this.date});
 
   final DateTime date;
-  final bool isSelected;
-  final bool hasAutoOpened;
-  final VoidCallback onAutoOpened;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -244,17 +214,7 @@ class _SelectedDayContent extends ConsumerWidget {
     final cardsAsync = ref.watch(dayCardsProvider(key));
     final day = cardsAsync.value;
     final progress = ref.watch(dayProgressProvider).value;
-    final courseTopic = ref.watch(courseTopicProvider).value;
-    return _body(
-      context,
-      ref,
-      date,
-      key,
-      cardsAsync,
-      day,
-      progress,
-      courseTopic,
-    );
+    return _body(context, ref, date, key, cardsAsync, day, progress);
   }
 
   Widget _body(
@@ -265,18 +225,10 @@ class _SelectedDayContent extends ConsumerWidget {
     AsyncValue<TodayCards> cardsAsync,
     TodayCards? day,
     DayProgress? progress,
-    DayCard? courseTopic,
   ) {
     // Готовый день остаётся полезнее последней ошибки обновления.
     if (day != null && progress != null) {
-      return _DayBlocks(
-        date: selected,
-        day: _withCourseTopic(selected, day, courseTopic),
-        progress: progress,
-        isSelected: isSelected,
-        hasAutoOpened: hasAutoOpened,
-        onAutoOpened: onAutoOpened,
-      );
+      return _DayBlocks(date: selected, day: day, progress: progress);
     }
 
     if (cardsAsync.hasError || progress == null && !cardsAsync.isLoading) {
@@ -284,27 +236,29 @@ class _SelectedDayContent extends ConsumerWidget {
         AppFailure(kind: final k) => k,
         _ => FailureKind.unknown,
       };
-      return TodayOfflineView(
-        date: selected,
-        kind: kind,
-        onRetry: () {
-          ref.invalidate(dayCardsProvider(key));
-          ref.invalidate(dayProgressProvider);
-        },
+      return ListView(
+        padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: TodayOfflineView(
+              date: selected,
+              kind: kind,
+              onRetry: () {
+                ref.invalidate(dayCardsProvider(key));
+                ref.invalidate(dayProgressProvider);
+              },
+            ),
+          ),
+          const _CourseHomeSection(),
+        ],
       );
     }
 
-    return const SizedBox.shrink();
-  }
-
-  // Личный курс подменяет календарный placeholder только на сегодняшнем дне.
-  TodayCards _withCourseTopic(DateTime date, TodayCards day, DayCard? topic) {
-    if (dateKey(date) != dateKey(DateTime.now())) return day;
-    if (topic == null) return day;
-
-    final index = day.cards.indexWhere((c) => c.type == CardType.basics);
-    if (index < 0) return day;
-    return day.copyWith(cards: [...day.cards]..[index] = topic);
+    return ListView(
+      padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
+      children: const [_CourseHomeSection()],
+    );
   }
 }
 
@@ -355,17 +309,11 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.date,
     required this.day,
     required this.progress,
-    required this.isSelected,
-    required this.hasAutoOpened,
-    required this.onAutoOpened,
   });
 
   final DateTime date;
   final TodayCards day;
   final DayProgress progress;
-  final bool isSelected;
-  final bool hasAutoOpened;
-  final VoidCallback onAutoOpened;
 
   @override
   ConsumerState<_DayBlocks> createState() => _DayBlocksState();
@@ -385,29 +333,19 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   // Будущий контент можно открыть заранее, но это не должно менять прогресс.
   bool get _recordRead => !_isFuture;
 
-  DayCard? get _reading =>
-      day.cards.where((c) => c.type == CardType.reading).firstOrNull;
+  List<DayCard> get _pages =>
+      day.cards.where((c) => c.type != CardType.basics).toList()
+        ..sort((a, b) => a.type.index.compareTo(b.type.index));
 
-  List<DayCard> get _pages => day.cards
-      .where((c) => c.type != CardType.reading && c.type != CardType.basics)
-      .toList();
-
-  // Личный курс открывается только из «Планов», по выбору пользователя.
-  Iterable<DayCard> get _autoOpenCards =>
-      day.cards.where((card) => card.type != CardType.basics);
-
-  Future<void> _open(BuildContext context, WidgetRef ref, DayCard card) async {
-    if (card.type == CardType.reading) {
-      await _openReader(context, ref, card);
-      return;
-    }
-    final pages = card.type == CardType.basics ? [card] : _pages;
+  Future<void> _openWisdom() async {
+    final pages = _pages;
+    final firstUnread = pages.indexWhere((card) => !_isRead(card));
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (_) => CardViewerScreen(
+        builder: (_) => DayWisdomScreen(
           cards: pages,
-          startIndex: pages.indexOf(card),
+          startIndex: firstUnread < 0 ? 0 : firstUnread,
           date: date,
           recordProgress: _recordProgress,
           recordRead: _recordRead,
@@ -423,25 +361,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     await _maybeAskForReminders(context, ref);
   }
 
-  Future<void> _openReader(
-    BuildContext context,
-    WidgetRef ref,
-    DayCard card,
-  ) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => ReadingScreen(
-          reference: card.reference!,
-          date: date,
-          recordProgress: _recordProgress,
-          recordRead: _recordRead,
-        ),
-      ),
-    );
-    if (mounted) await _maybeAskReminders();
-  }
-
   Future<void> _openStory(
     BuildContext context,
     String title,
@@ -453,9 +372,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     ),
   );
 
-  bool _isRead(DayCard card) => _isToday
-      ? progress.isRead(card.type)
-      : progress.isReadOn(date, card.type);
+  bool _isRead(DayCard card) => progress.isReadOn(date, card.type);
 
   /// Обновляет кэш, не скрывая прежний контент при ошибке.
   Future<void> _refresh() async {
@@ -485,40 +402,10 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     }
   }
 
-  /// Открывает один первый непрочитанный раздел за вход в порядке [CardType].
-  void _maybeAutoOpen() {
-    if (widget.hasAutoOpened) return;
-    if (!widget.isSelected) return;
-    if (!_recordProgress) return;
-
-    final unread = progress.firstUnreadOf(_autoOpenCards.map((c) => c.type));
-    if (unread == null) return;
-
-    final card = day.cards.firstWhere((c) => c.type == unread);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      widget.onAutoOpened();
-      _open(context, ref, card);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    _maybeAutoOpen();
-    final rest = _pages;
-    final reading = _reading;
-
-    if (reading == null && rest.isEmpty) {
-      return Center(
-        child: Text(
-          'За этот день карточек нет',
-          style: TextStyle(fontSize: 14, color: colors.homeSubtitle),
-        ),
-      );
-    }
-
-    final brightness = Theme.of(context).brightness;
+    final pages = _pages;
     final blocks = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
@@ -532,32 +419,94 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           ),
           const DayEntryDivider(),
         ],
-        for (final card in rest)
+        if (pages.isNotEmpty)
           DayEntryRow(
-            label: card.type.styleFor(brightness).shortLabel.toUpperCase(),
-            text: card.body.replaceAll('\n', ' '),
-            isUnread: !_isRead(card),
-            labelColor: card.type.styleFor(brightness).accent,
-            topSpacing: card == rest.first ? (day.hasName ? 14 : 4) : 0,
-            bottomSpacing: reading != null && card == rest.last ? 14 : 0,
-            onTap: () => _open(context, ref, card),
+            label: 'ДЕНЬ',
+            text: 'Мудрость дня',
+            isUnread: pages.any((card) => !_isRead(card)),
+            topSpacing: day.hasName ? 14 : 4,
+            onTap: _openWisdom,
           ),
-        if (reading != null) ...[
-          if (rest.isNotEmpty) const DayEntryDivider(),
-          DayEntryRow(
-            label: 'ЕВАНГЕЛИЕ ДНЯ',
-            text: reading.body,
-            isUnread: !_isRead(reading),
-            labelColor: CardType.reading.styleFor(brightness).accent,
-            textSize: 27,
-            maxLines: 1,
-            topSpacing: rest.isNotEmpty || day.hasName ? 14 : 4,
-            onTap: () => _openReader(context, ref, reading),
+        if (pages.isEmpty)
+          Padding(
+            padding:
+                AppSpacing.of(context).horizontal +
+                const EdgeInsets.symmetric(vertical: 20),
+            child: Text(
+              'За этот день карточек нет',
+              style: TextStyle(fontSize: 14, color: colors.homeSubtitle),
+            ),
           ),
-        ],
+        const DayEntryDivider(),
+        const _CourseHomeSection(),
       ],
     );
     return RefreshIndicator(onRefresh: _refresh, child: blocks);
+  }
+}
+
+/// Курс не зависит от выбранного дня и остаётся доступным при ошибке дня.
+class _CourseHomeSection extends ConsumerWidget {
+  const _CourseHomeSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final topic = ref.watch(courseTopicProvider);
+    final colors = AppColorsExtension.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: AppSpacing.of(context).horizontal,
+            child: IconButton(
+              tooltip: 'О курсе',
+              color: colors.textSecondary,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const PlansInfoScreen(),
+                ),
+              ),
+              icon: const Icon(CupertinoIcons.info),
+            ),
+          ),
+        ),
+        if (topic.value case final currentTopic?)
+          CourseProgressHeader(
+            topic: currentTopic,
+            isUnread:
+                !(ref
+                        .watch(dayProgressProvider)
+                        .value
+                        ?.isReadOn(DateTime.now(), CardType.basics) ??
+                    false),
+            completedTopicCount: ref
+                .watch(completedCourseTopicsProvider)
+                .value
+                ?.length,
+            onTap: () => openCourseReader(context, ref),
+          )
+        else
+          Padding(
+            padding: AppSpacing.of(context).horizontal,
+            child: topic.isLoading
+                ? Text(
+                    'Загружаем «Основы веры»',
+                    style: TextStyle(color: colors.homeSubtitle),
+                  )
+                : Column(
+                    children: [
+                      const Text('Не удалось загрузить «Основы веры»'),
+                      TextButton(
+                        onPressed: () => ref.invalidate(courseTopicProvider),
+                        child: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
+          ),
+      ],
+    );
   }
 }
 
