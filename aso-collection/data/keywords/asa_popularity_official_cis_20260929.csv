@@ -1,0 +1,5 @@
+month,countryOrRegion,genre,searchTerm,rankInGenre,searchPopularityInGenre,searchPopularity1to100,searchPopularity1to5
+2026-08,AM,NEW_PUBLICATION,библия,11,79,53,3
+2026-08,UA,NEW_PUBLICATION,библия,44,68,59,3
+2026-08,KZ,NEW_PUBLICATION,библия,67,66,53,3
+2026-08,UA,NEW_PUBLICATION,православный календарь,101,58,51,3
