@@ -5,7 +5,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/entities/day_card.dart';
-import '../../domain/split_course_text.dart';
 import '../theme/card_type_style.dart';
 import 'day_entry_row.dart';
 import 'read_status_checks.dart';
@@ -16,17 +15,13 @@ class CourseProgressHeader extends StatelessWidget {
     required this.topic,
     required this.onTap,
     required this.completedTopicCount,
-    this.compact = false,
     this.isUnread = true,
-    this.currentPage,
     super.key,
   });
 
   final DayCard topic;
   final VoidCallback onTap;
-  final bool compact;
   final bool isUnread;
-  final int? currentPage;
   final int? completedTopicCount;
 
   int get _topicNumber {
@@ -43,13 +38,6 @@ class CourseProgressHeader extends StatelessWidget {
     final progressLabel = count == null
         ? 'Тема $topicNumber из $courseTopicCount'
         : 'Прочитано $count из $courseTopicCount';
-    final textPageCount = splitCourseText(
-      topic.body,
-    ).where((chunk) => chunk.trim().isNotEmpty).length;
-    final pageCount = (textPageCount == 0 ? 1 : textPageCount) + 1;
-    final topicProgressLabel = currentPage == null
-        ? 'Прочитано …/$pageCount'
-        : 'Прочитано ${(currentPage! + 1).clamp(1, pageCount)}/$pageCount';
     final title = count == courseTopicCount
         ? 'Курс пройден'
         : topic.title ?? 'Тема $topicNumber';
@@ -59,31 +47,25 @@ class CourseProgressHeader extends StatelessWidget {
       button: true,
       label:
           '$basicsCourseTitle. Тема $topicNumber из $courseTopicCount. '
-          '$progressLabel. ${compact ? topicProgressLabel : ''}. $title',
+          '$progressLabel. $title',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           child: Container(
-            margin: compact
-                ? AppSpacing.of(context).horizontal +
-                      const EdgeInsets.only(top: 10, bottom: 6)
-                : AppSpacing.of(context).horizontal +
-                      const EdgeInsets.only(bottom: 4),
-            padding: compact
-                ? EdgeInsets.zero
-                : const EdgeInsets.symmetric(vertical: 10),
+            margin:
+                AppSpacing.of(context).horizontal +
+                const EdgeInsets.only(bottom: 4),
+            padding: const EdgeInsets.symmetric(vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    if (!compact) ReadStatusChecks(isUnread: isUnread),
+                    ReadStatusChecks(isUnread: isUnread),
                     Expanded(
                       child: Text(
-                        compact
-                            ? '${basicsCourseTitle.toUpperCase()} №$topicNumber/$courseTopicCount'
-                            : basicsCourseTitle.toUpperCase(),
+                        basicsCourseTitle.toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           height: 1.4,
@@ -93,7 +75,7 @@ class CourseProgressHeader extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      compact ? topicProgressLabel : progressLabel,
+                      progressLabel,
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.textSecondary,
@@ -124,17 +106,12 @@ class CourseProgressHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (compact || count != null) ...[
+                if (count != null) ...[
                   const SizedBox(height: 8),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(1),
                     child: LinearProgressIndicator(
-                      value: compact
-                          ? currentPage == null
-                                ? null
-                                : (currentPage! + 1).clamp(1, pageCount) /
-                                      pageCount
-                          : count! / courseTopicCount,
+                      value: count / courseTopicCount,
                       minHeight: 2,
                       color: courseAccent,
                       backgroundColor: colors.chipUnreadBorder,

@@ -6,9 +6,8 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../domain/course_calendar.dart';
 import '../providers/providers.dart';
 import '../widgets/day_entry_row.dart';
-import 'course_reader_route.dart';
 
-/// Описание личного курса перед началом или продолжением чтения.
+/// Описание личного курса, доступное из читалки.
 class CourseDetailScreen extends ConsumerWidget {
   const CourseDetailScreen({super.key});
 
@@ -20,7 +19,6 @@ class CourseDetailScreen extends ConsumerWidget {
     final count = completed.value?.length;
     final currentTopic = topic.value;
     final isFinished = count == courseTopicCount;
-    final isNew = count == 0 && currentTopic?.id == 'basics-topic-1';
     final bodyStyle = TextStyle(fontSize: 17, height: 1.5, color: colors.ink);
 
     return Scaffold(
@@ -91,22 +89,6 @@ class CourseDetailScreen extends ConsumerWidget {
                   onPressed: () => ref.invalidate(courseTopicProvider),
                   child: const Text('Повторить загрузку темы'),
                 ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: currentTopic == null || count == null
-                      ? null
-                      : () => openCourseReader(context, ref),
-                  child: Text(
-                    isFinished
-                        ? 'Перечитать'
-                        : isNew
-                        ? 'Начать'
-                        : 'Продолжить',
-                  ),
-                ),
-              ),
               const SizedBox(height: 32),
               Text(
                 'Листайте текст темы короткими фрагментами. После них появится '

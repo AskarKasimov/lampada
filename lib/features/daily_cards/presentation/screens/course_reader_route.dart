@@ -9,7 +9,7 @@ import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import 'course_reader_screen.dart';
 
-/// Общий вход в читалку со страницы курса и из капсулы навигации.
+/// Вход в читалку из списка планов.
 Future<void> openCourseReader(BuildContext context, WidgetRef ref) async {
   DayCard? currentTopic;
   try {

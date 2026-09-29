@@ -228,6 +228,33 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets(
+    'info на карточках курса открывает описание и возвращает к чтению',
+    (tester) async {
+      await pumpReader(tester);
+      final info = find.byTooltip('О курсе');
+      expect(info, findsOneWidget);
+      expect(
+        tester.getTopRight(info).dx,
+        greaterThan(tester.getSize(find.byType(CourseReaderScreen)).width - 80),
+      );
+      await tester.drag(find.byType(PageView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      expect(find.text('Тема прочитана'), findsOneWidget);
+      expect(info, findsOneWidget);
+
+      await tester.tap(info);
+      await tester.pumpAndSettle();
+      expect(find.text('О курсе'), findsOneWidget);
+      expect(find.text('Источник: «Азбука веры»'), findsOneWidget);
+      expect(find.text('Продолжить'), findsNothing);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Тема прочитана'), findsOneWidget);
+    },
+  );
+
   testWidgets('закладки страниц одной темы сохраняются независимо', (
     tester,
   ) async {
