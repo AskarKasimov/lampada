@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/reading_action_space.dart';
 
 /// Общая TikTok-подобная рамка читалок карточек и курса.
 ///
@@ -18,10 +19,18 @@ class VerticalCardReader extends StatelessWidget {
     required this.actions,
     required this.onClose,
     required this.closeColor,
+    this.topLeftAction,
     this.topRightAction,
     this.reverse = false,
     super.key,
   });
+
+  // Полный материал примеряем с двумя действиями. Только превью резервирует
+  // третью кнопку: это исключает зависимость решения от текущей панели.
+  static const _actionsHeight = 2 * 56.0 + 4.0;
+  static const _fullTextActionHeight = 56.0 + 4.0;
+  static const _actionsBottom = 28.0;
+  static const _textActionsGap = 16.0;
 
   final PageController controller;
   final int itemCount;
@@ -32,6 +41,7 @@ class VerticalCardReader extends StatelessWidget {
   final Widget actions;
   final VoidCallback onClose;
   final Color closeColor;
+  final Widget? topLeftAction;
   final Widget? topRightAction;
   final bool reverse;
 
@@ -50,7 +60,16 @@ class VerticalCardReader extends StatelessWidget {
             reverse: reverse,
             itemCount: itemCount,
             onPageChanged: onPageChanged,
-            itemBuilder: itemBuilder,
+            itemBuilder: (context, index) => ReadingActionSpace(
+              previewExtraInset: _fullTextActionHeight,
+              bottomInset:
+                  (_actionsBottom +
+                          _actionsHeight +
+                          _textActionsGap -
+                          AppSpacing.of(context).readerPadding.bottom)
+                      .clamp(0.0, double.infinity),
+              child: itemBuilder(context, index),
+            ),
           ),
         ),
         Positioned(
@@ -65,15 +84,21 @@ class VerticalCardReader extends StatelessWidget {
           left: 12,
           child: Center(child: leftRail),
         ),
-        Positioned(right: 12, bottom: 28, child: actions),
+        Positioned(right: 12, bottom: _actionsBottom, child: actions),
         Positioned(
           top: 0,
           left: 0,
-          child: IconButton(
-            onPressed: onClose,
-            icon: Icon(CupertinoIcons.arrow_left, size: 22, color: closeColor),
-            tooltip: 'Назад',
-          ),
+          child:
+              topLeftAction ??
+              IconButton(
+                onPressed: onClose,
+                icon: Icon(
+                  CupertinoIcons.arrow_left,
+                  size: 22,
+                  color: closeColor,
+                ),
+                tooltip: 'Назад',
+              ),
         ),
         if (topRightAction != null)
           Positioned(top: 0, right: 0, child: topRightAction!),

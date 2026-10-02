@@ -71,12 +71,6 @@ class FloatingNavBar extends StatefulWidget {
       label: 'Библия',
     ),
     (
-      tab: ShellTab.plans,
-      icon: CupertinoIcons.list_bullet,
-      activeIcon: CupertinoIcons.list_bullet,
-      label: 'Планы',
-    ),
-    (
       tab: ShellTab.profile,
       icon: CupertinoIcons.person,
       activeIcon: CupertinoIcons.person_fill,

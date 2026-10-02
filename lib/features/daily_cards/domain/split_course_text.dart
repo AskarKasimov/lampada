@@ -1,4 +1,5 @@
-/// Одно предложение — одна карточка. Длинное предложение остаётся целым:
+/// Предложения объединяются, пока карточка не станет длиннее 10 символов.
+/// Длинное предложение остаётся целым:
 /// читалка покажет превью и предложит открыть его полностью.
 List<String> splitCourseText(String text) {
   if (text.isEmpty) return [''];
@@ -14,10 +15,20 @@ List<String> splitCourseText(String text) {
       // В церковных текстах сокращения встречаются перед именами и ссылками.
       if (_abbreviations.contains(word)) continue;
     }
-    chunks.add(text.substring(start, match.end));
+    final chunk = text.substring(start, match.end);
+    if (chunk.trim().runes.length <= 10) continue;
+    chunks.add(chunk);
     start = match.end;
   }
-  if (start < text.length) chunks.add(text.substring(start));
+  if (start < text.length) {
+    final remainder = text.substring(start);
+    // Короткий хвост не должен становиться отдельной карточкой.
+    if (chunks.isNotEmpty && remainder.trim().runes.length <= 10) {
+      chunks[chunks.length - 1] += remainder;
+    } else {
+      chunks.add(remainder);
+    }
+  }
   return chunks;
 }
 

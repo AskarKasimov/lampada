@@ -7,6 +7,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/bible/presentation/screens/bible_tab_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
@@ -102,7 +103,7 @@ void main() {
 
   /// IndexedStack строит все четыре вкладки сразу, поэтому Профиль читает
   /// настройку темы уже на старте — prefs нужны даже тесту про «Домой».
-  Widget buildApp() => ProviderScope(
+  Widget buildApp({TargetPlatform? platform}) => ProviderScope(
     overrides: [
       dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
       dayProgressRepositoryProvider.overrideWithValue(
@@ -110,7 +111,10 @@ void main() {
       ),
       sharedPreferencesProvider.overrideWithValue(prefs),
     ],
-    child: MaterialApp(theme: AppTheme.light, home: const AppShell()),
+    child: MaterialApp(
+      theme: AppTheme.light.copyWith(platform: platform),
+      home: const AppShell(),
+    ),
   );
 
   /// Иконка закладки живёт и в навигации, и кнопкой сохранения на карточке —
@@ -125,36 +129,125 @@ void main() {
   // а недокачанный переход держит AbsorbPointer и тапы не доходят.
   Future<void> settle(WidgetTester tester) async {
     await tester.pump();
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 600));
   }
 
-  /// «Домой» сама открывает первую непрочитанную карточку на весь экран,
-  /// и она перекрывает таб-бар — тестам про навигацию её надо закрыть.
-  Future<void> dismissAutoOpened(WidgetTester tester) async {
-    if (find.byIcon(CupertinoIcons.arrow_left).evaluate().isEmpty) return;
-    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
-    await settle(tester);
-  }
-
-  testWidgets('стартует на «Домой» — карточка, а не экран-прослойка', (
+  testWidgets('Библия открывается снизу вверх модальным экраном на iOS', (
     tester,
   ) async {
+    await prefs.setString(
+      'bible_chapter_v1:Mt.1',
+      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"}]}',
+    );
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    await tester.tap(tabIcon(CupertinoIcons.book));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    final reader = find.byType(BibleTabScreen);
+    expect(ModalRoute.of(tester.element(reader))!.fullscreenDialog, isTrue);
+    expect(tester.getTopLeft(reader).dx, closeTo(0, 1));
+    expect(tester.getTopLeft(reader).dy, greaterThan(0));
+    await settle(tester);
+    expect(tester.getTopLeft(reader).dy, closeTo(0, 1));
+    await tester.tap(find.byTooltip('Закрыть'));
+    await settle(tester);
+    expect(reader, findsNothing);
+    expect(find.byType(FloatingNavBar), findsOneWidget);
+  });
+
+  testWidgets('Библия из Профиля сохраняет фон и возвращается в Профиль', (
+    tester,
+  ) async {
+    await prefs.setString(
+      'bible_chapter_v1:Mt.1',
+      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"}]}',
+    );
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    await tester.tap(tabIcon(CupertinoIcons.person));
+    await settle(tester);
+    await tester.tap(tabIcon(CupertinoIcons.book));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    expect(find.byType(TodayScreen), findsNothing);
+    await settle(tester);
+    await tester.tap(find.byTooltip('Закрыть'));
+    await settle(tester);
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    expect(tabIcon(CupertinoIcons.person_fill), findsOneWidget);
+    expect(find.byType(TodayScreen), findsNothing);
+  });
+
+  testWidgets('Библия впервые открывает Матфея и возвращает последний стих', (
+    tester,
+  ) async {
+    await prefs.setString(
+      'bible_chapter_v1:Mt.1',
+      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"},{"number":2,"text":"Второй стих Матфея"}]}',
+    );
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
+    await tester.tap(tabIcon(CupertinoIcons.book));
+    await settle(tester);
+    expect(find.text('Первый стих Матфея'), findsOneWidget);
+    expect(find.byType(FloatingNavBar), findsNothing);
+    expect(
+      tester.widget<FloatingNavInset>(find.byType(FloatingNavInset)).inset,
+      0,
+    );
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await settle(tester);
+    expect(find.text('Второй стих Матфея'), findsOneWidget);
+    await tester.tap(find.byTooltip('Закрыть'));
+    await settle(tester);
+    expect(find.byType(FloatingNavBar), findsOneWidget);
+    await tester.tap(tabIcon(CupertinoIcons.book));
+    await settle(tester);
+    expect(find.text('Второй стих Матфея'), findsOneWidget);
+  });
+
+  testWidgets(
+    'после перезапуска Библия открывает сохранённую книгу, главу и стих',
+    (tester) async {
+      await prefs.setString(
+        'bible_chapter_v1:Jn.3',
+        '{"book":"Jn","number":3,"verses":[{"number":1,"text":"Первый стих Иоанна"},{"number":2,"text":"Сохранённый стих Иоанна"}]}',
+      );
+      await prefs.setString(
+        'bible_progress_v1:Jn.3',
+        '{"verse":2,"fraction":1}',
+      );
+      await prefs.setString('bible_last_chapter_v1', 'Jn.3');
+      await tester.pumpWidget(buildApp());
+      await settle(tester);
+      await tester.tap(tabIcon(CupertinoIcons.book));
+      await settle(tester);
+      expect(find.text('Сохранённый стих Иоанна'), findsOneWidget);
+      expect(find.text('3:2'), findsOneWidget);
+      await tester.tap(find.byTooltip('Закрыть'));
+      await settle(tester);
+      expect(find.byType(TodayScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets('стартует на «Домой» с кнопкой Мудрость дня', (tester) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
 
     // Вариант А: дашборда между запуском и контентом нет вовсе.
     expect(find.byType(TodayScreen), findsOneWidget);
-    expect(find.text('Мысль дня'), findsOneWidget);
+    expect(find.text('Мудрость дня'), findsOneWidget);
   });
 
-  testWidgets('в навигации четыре вкладки: Домой, Библия, Планы, Профиль', (
-    tester,
-  ) async {
+  testWidgets('в навигации Домой, Библия и Профиль', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(tabIcon(CupertinoIcons.sunset_fill), findsOneWidget);
@@ -169,12 +262,26 @@ void main() {
     expect(tabIcon(CupertinoIcons.person), findsOneWidget);
   });
 
+  testWidgets('в нижней навигации три вкладки без Планов', (tester) async {
+    await tester.pumpWidget(buildApp());
+    await settle(tester);
+
+    final labels = find.descendant(
+      of: find.byType(FloatingNavBar),
+      matching: find.byType(Text),
+    );
+    expect(
+      tester.widgetList<Text>(labels).map((widget) => widget.data).toList(),
+      ['Домой', 'Библия', 'Профиль'],
+    );
+    expect(ShellTab.values, hasLength(3));
+  });
+
   testWidgets('стеклянная рамка плавно переезжает к выбранной вкладке', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     final selectionFinder = find.descendant(
       of: find.byType(FloatingNavBar),
@@ -205,7 +312,6 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     final selectionFinder = find.descendant(
       of: find.byType(FloatingNavBar),
@@ -238,16 +344,8 @@ void main() {
     }
   });
 
-  testWidgets('вход из списка планов сразу открывает читалку', (tester) async {
+  testWidgets('вход в курс с главной сразу открывает читалку', (tester) async {
     await tester.pumpWidget(buildApp());
-    await settle(tester);
-    await dismissAutoOpened(tester);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.text('Планы'),
-      ),
-    );
     await settle(tester);
     final plan = find.byType(CourseProgressHeader);
     expect(plan, findsOneWidget);
@@ -266,9 +364,8 @@ void main() {
     await prefs.setString('course_progress_v4', '{"topic":1,"page":0}');
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
-    for (final label in ['Домой', 'Библия', 'Планы', 'Профиль']) {
+    for (final label in ['Домой', 'Библия', 'Профиль']) {
       await tester.tap(
         find.descendant(
           of: find.byType(FloatingNavBar),
@@ -285,22 +382,19 @@ void main() {
       );
       expect(
         tester.widget<FloatingNavInset>(find.byType(FloatingNavInset)).inset,
-        kFloatingNavInset,
+        label == 'Библия' ? 0 : kFloatingNavInset,
       );
+      if (label == 'Библия') {
+        expect(find.byType(FloatingNavBar), findsNothing);
+        await tester.tap(find.byTooltip('Закрыть'));
+        await settle(tester);
+      }
     }
   });
 
-  testWidgets('начатый курс продолжается через Планы', (tester) async {
+  testWidgets('начатый курс продолжается с главной', (tester) async {
     await prefs.setString('course_progress_v4', '{"topic":3,"page":1}');
     await tester.pumpWidget(buildApp());
-    await settle(tester);
-    await dismissAutoOpened(tester);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.text('Планы'),
-      ),
-    );
     await settle(tester);
     await tester.tap(find.byType(CourseProgressHeader));
     await settle(tester);
@@ -315,20 +409,12 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
     final navbarCourse = find.descendant(
       of: find.byType(FloatingNavBar),
       matching: find.byType(CourseProgressHeader),
     );
     expect(navbarCourse, findsNothing);
     expect(prefs.getString('course_progress_v4'), isNull);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(FloatingNavBar),
-        matching: find.text('Планы'),
-      ),
-    );
-    await settle(tester);
     final plan = find.byType(CourseProgressHeader);
     expect(prefs.getString('course_progress_v4'), isNull);
     await tester.tap(plan);
@@ -348,9 +434,8 @@ void main() {
     // акцентный цвет и насыщенность, а не наличие подписи.
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
-    for (final label in ['Домой', 'Библия', 'Планы', 'Профиль']) {
+    for (final label in ['Домой', 'Библия', 'Профиль']) {
       expect(
         find.descendant(
           of: find.byType(FloatingNavBar),
@@ -367,7 +452,6 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     // Глухая полоса снизу отрезала у экрана заметный кусок; теперь капсула
     // лежит в Stack над контентом и не сдвигает его вверх.
@@ -403,11 +487,9 @@ void main() {
   testWidgets('переключение вкладки открывает профиль', (tester) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
-    await dismissAutoOpened(tester);
     // Тумблер «Тёмная тема» заменён выбором из трёх: система / светлая / тёмная.
     expect(find.text('Тема'), findsOneWidget);
     expect(find.text('Система'), findsOneWidget);
@@ -418,7 +500,6 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp());
     await settle(tester);
-    await dismissAutoOpened(tester);
     expect(find.text('Закладки').hitTestable(), findsNothing);
     await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
@@ -463,18 +544,15 @@ void main() {
       ),
     );
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     final other = DateTime.now().subtract(const Duration(days: 3));
     container.read(selectedDateProvider.notifier).select(other);
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
     await tester.tap(tabIcon(CupertinoIcons.sunset));
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     expect(dateKey(container.read(selectedDateProvider)), dateKey(other));
   });
@@ -484,6 +562,10 @@ void main() {
   ) async {
     // На этом держится FR-015: тап по пушу обязан открыть «Домой»,
     // где бы юзер ни был в прошлый раз.
+    await prefs.setString(
+      'bible_chapter_v1:Mt.1',
+      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"}]}',
+    );
     final container = ProviderContainer(
       overrides: [
         dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
@@ -502,16 +584,24 @@ void main() {
       ),
     );
     await settle(tester);
-    await dismissAutoOpened(tester);
 
     container.read(selectedTabProvider.notifier).select(ShellTab.profile);
     await settle(tester);
-    await dismissAutoOpened(tester);
     expect(find.byType(ProfileScreen), findsOneWidget);
 
     container.read(selectedTabProvider.notifier).select(ShellTab.today);
     await settle(tester);
-    await dismissAutoOpened(tester);
-    expect(find.text('Мысль дня'), findsOneWidget);
+    expect(find.text('Мудрость дня'), findsOneWidget);
+
+    container.read(selectedTabProvider.notifier).select(ShellTab.bible);
+    await settle(tester);
+    expect(find.byType(BibleTabScreen), findsOneWidget);
+    await tester.tap(find.byTooltip('Книги и главы'));
+    await settle(tester);
+    container.read(selectedTabProvider.notifier).select(ShellTab.today);
+    await settle(tester);
+    expect(find.byType(BibleTabScreen), findsNothing);
+    expect(find.text('Новый Завет'), findsNothing);
+    expect(find.text('Мудрость дня'), findsOneWidget);
   });
 }

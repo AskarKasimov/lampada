@@ -9,7 +9,7 @@ import '../theme/card_type_style.dart';
 import 'day_entry_row.dart';
 import 'read_status_checks.dart';
 
-/// Вход в личный курс с текущей темой и прогрессом во вкладке «Планы».
+/// Вход в личный курс с текущей темой и прогрессом на «Домой».
 class CourseProgressHeader extends StatelessWidget {
   const CourseProgressHeader({
     required this.topic,

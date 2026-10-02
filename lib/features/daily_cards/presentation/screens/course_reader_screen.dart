@@ -8,6 +8,7 @@ import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
+import '../../../../core/widgets/reading_overflow_listener.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/course_calendar.dart';
@@ -40,6 +41,8 @@ class CourseReaderScreen extends ConsumerStatefulWidget {
 }
 
 class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
+  final _fullTextNeeded = <String, bool>{};
+
   late final _pages = _pagesFor(widget.currentTopic);
   late final _controller = PageController(initialPage: _initialIndex);
   late int _index = _initialIndex;
@@ -298,12 +301,19 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
             if (item.text == null) {
               return _completionPage(item, colors, completed);
             }
-            return CardContent(
-              key: ValueKey('${item.topic.id}-${item.index}'),
-              card: item.topic.copyWith(body: item.text!.trim(), title: null),
-              showBadge: false,
-              showSource: false,
-              scrollable: false,
+            final pageId = '${item.topic.id}-${item.index}';
+            return ReadingOverflowListener(
+              key: ValueKey(pageId),
+              onChanged: (needed) {
+                if (_fullTextNeeded[pageId] == needed) return;
+                setState(() => _fullTextNeeded[pageId] = needed);
+              },
+              child: CardContent(
+                card: item.topic.copyWith(body: item.text!.trim(), title: null),
+                showBadge: false,
+                showSource: false,
+                scrollable: false,
+              ),
             );
           },
           header: AppPillBadge(
@@ -323,7 +333,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (visible.text!.length > CardContent.previewLength)
+                    if (_fullTextNeeded['${card.id}-${visible.index}'] ?? false)
                       ReaderActionButton(
                         tooltip: 'Открыть полный текст',
                         onPressed: () => Navigator.of(context).push(

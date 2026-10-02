@@ -24,6 +24,28 @@ class _Source implements BibleRemoteDatasource {
 
 void main() {
   test(
+    'чтение позиции ждёт последнего ещё не завершённого сохранения',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final repository = AzbykaBibleRepository(
+        _Source(),
+        await SharedPreferences.getInstance(),
+      );
+      final saving = repository.saveChapterProgress('Mk', 2, (
+        verse: 4,
+        fraction: 0.5,
+      ));
+      final statuses =
+          (await repository.getChapterStatuses()
+                  as Success<BibleChapterStatuses>)
+              .value;
+      await saving;
+      expect(statuses.lastChapter, ('Mk', 2));
+      expect(statuses.progress[('Mk', 2)]?.verse, 4);
+    },
+  );
+
+  test(
     'повреждённая позиция не скрывает остальные главы и старые отметки',
     () async {
       SharedPreferences.setMockInitialValues({
@@ -64,6 +86,8 @@ void main() {
       expect(statuses.progress[('Jn', 3)], (verse: 4, fraction: 0.15));
       expect(statuses.progress[('Jn', 4)], (verse: 2, fraction: 0.1));
       expect(statuses.read, isEmpty);
+      expect(prefs.getString('bible_last_chapter_v1'), 'Jn.3');
+      expect(statuses.lastChapter, ('Jn', 3));
       await reopened.markChapterRead('Jn', 3);
       await reopened.saveChapterProgress('Jn', 3, (verse: 1, fraction: 0.05));
       final read =

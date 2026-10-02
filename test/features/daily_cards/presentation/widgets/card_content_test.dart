@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/core/widgets/reading_overflow_listener.dart';
 import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
@@ -32,37 +34,195 @@ double? _fontSizeOf(WidgetTester tester, String body) =>
     tester.widget<Text>(find.text(body)).style?.fontSize;
 
 void main() {
-  testWidgets(
-    'короткая карточка (≤200 символов): шрифт 24px, без намёка на скролл',
-    (tester) async {
-      final card = _card(_filler(50));
-      await tester.pumpWidget(_buildApp(card));
-      await tester.pump();
+  testWidgets('превью сокращается по высоте при системном увеличении', (
+    tester,
+  ) async {
+    final card = _card(_filler(3000));
+    bool? needsFullText;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Scaffold(
+            body: SizedBox(
+              width: 160,
+              height: 180,
+              child: ReadingOverflowListener(
+                onChanged: (value) => needsFullText = value,
+                child: CardContent(
+                  card: card,
+                  showBadge: false,
+                  showSource: false,
+                  scrollable: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final text = tester.widget<Text>(find.byType(Text));
+    expect(text.style?.fontSize, 20);
+    expect(text.data, endsWith('…'));
+    expect(text.data!.length, lessThan(150));
+    expect(tester.getSize(find.byType(Text)).height, lessThanOrEqualTo(180));
+    expect(needsFullText, isTrue);
+    expect(tester.takeException(), isNull);
+  });
 
-      expect(_fontSizeOf(tester, card.body), 24);
-      expect(find.byIcon(CupertinoIcons.chevron_down), findsNothing);
-    },
-  );
+  for (final type in CardType.values) {
+    testWidgets('карточка $type вмещает весь текст длиннее 150 символов', (
+      tester,
+    ) async {
+      final body = List.filled(10, 'Один два три да').join('\n');
+      final card = _card('$body\nПоследняя строка', type: type);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: SizedBox(
+              width: 500,
+              height: 400,
+              child: CardContent(
+                card: card,
+                showBadge: false,
+                showSource: false,
+                scrollable: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text(card.body), findsOneWidget);
+      expect(
+        _fontSizeOf(tester, card.body),
+        type == CardType.reading ? 24 : 22,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 
-  testWidgets('карточка 300 символов сохраняет крупный шрифт', (tester) async {
+  for (final entry in {
+    180.0: 27.0,
+    165.0: 24.0,
+    145.0: 22.0,
+    130.0: 20.0,
+  }.entries) {
+    testWidgets(
+      'карточка выбирает ступень ${entry.value} при высоте ${entry.key}',
+      (tester) async {
+        final card = _card('Один\nДва\nТри\nЧетыре');
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: Scaffold(
+              body: SizedBox(
+                width: 320,
+                height: entry.key,
+                child: CardContent(
+                  card: card,
+                  showBadge: false,
+                  showSource: false,
+                  scrollable: false,
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(_fontSizeOf(tester, card.body), entry.value);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets('подпись источника оставляет место за счёт меньшей ступени', (
+    tester,
+  ) async {
+    final card = _card('Один\nДва\nТри\nЧетыре');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            height: 180,
+            child: CardContent(card: card, showBadge: false, scrollable: false),
+          ),
+        ),
+      ),
+    );
+    expect(_fontSizeOf(tester, card.body), 22);
+    expect(
+      tester.getRect(find.text('— Тестовый источник')).bottom,
+      lessThanOrEqualTo(180),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('системное увеличение не компенсируется меньшей ступенью', (
+    tester,
+  ) async {
+    final card = _card('Один\nДва\nТри\nЧетыре');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Scaffold(
+            body: SizedBox(
+              width: 320,
+              height: 180,
+              child: CardContent(
+                card: card,
+                showBadge: false,
+                showSource: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(_fontSizeOf(tester, card.body), 27);
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.text(card.body),
+    );
+    expect(paragraph.textScaler.scale(27), 54);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('короткая карточка: шрифт 27px, без намёка на скролл', (
+    tester,
+  ) async {
+    final card = _card(_filler(20));
+    await tester.pumpWidget(_buildApp(card));
+    await tester.pump();
+
+    expect(_fontSizeOf(tester, card.body), 27);
+    expect(find.byIcon(CupertinoIcons.chevron_down), findsNothing);
+  });
+
+  testWidgets('карточка 300 символов уменьшается до нижней ступени', (
+    tester,
+  ) async {
     final card = _card(_filler(300));
     await tester.pumpWidget(_buildApp(card));
     await tester.pump();
 
-    expect(_fontSizeOf(tester, card.body), 24);
+    expect(_fontSizeOf(tester, card.body), 20);
   });
 
-  testWidgets(
-    'длинная карточка (>500 символов): крупный шрифт, намёк на скролл виден',
-    (tester) async {
-      final card = _card(_filler(600));
-      await tester.pumpWidget(_buildApp(card));
-      await tester.pump();
+  testWidgets('длинная карточка: минимум 20, намёк на скролл виден', (
+    tester,
+  ) async {
+    final card = _card(_filler(600));
+    await tester.pumpWidget(_buildApp(card));
+    await tester.pump();
 
-      expect(_fontSizeOf(tester, card.body), 24);
-      expect(find.byIcon(CupertinoIcons.chevron_down), findsOneWidget);
-    },
-  );
+    expect(_fontSizeOf(tester, card.body), 20);
+    expect(find.byIcon(CupertinoIcons.chevron_down), findsOneWidget);
+  });
 
   testWidgets('после скролла длинной карточки до конца намёк исчезает', (
     tester,
@@ -103,7 +263,7 @@ void main() {
 
     final preview = '${card.body.substring(0, 150)}…';
     final text = tester.widget<Text>(find.text(preview));
-    expect(text.style?.fontSize, 24);
+    expect(text.style?.fontSize, 20);
     expect(find.text(card.body), findsNothing);
     expect(find.byTooltip('Открыть полный текст'), findsNothing);
   });
@@ -122,7 +282,7 @@ void main() {
     expect(find.text(card.body), findsOneWidget);
   });
 
-  testWidgets('в Основах лимит превью учитывает исходные переносы', (
+  testWidgets('вмещающийся текст Основ сохраняет исходные переносы', (
     tester,
   ) async {
     final preview = '${'а' * 149}\n';
@@ -143,8 +303,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('$preview…'), findsOneWidget);
-    expect(find.text(card.body), findsNothing);
+    expect(find.text(card.body), findsOneWidget);
   });
 
   testWidgets('под текстом всегда подпись источника', (tester) async {
