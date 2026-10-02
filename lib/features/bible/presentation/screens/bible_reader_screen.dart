@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_share_button.dart';
+import '../../../../core/widgets/reading_overflow_listener.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
@@ -41,6 +42,8 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
 typedef _ReadingVerse = ({BibleBook book, int chapter, BibleVerse verse});
 
 class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
+  final _fullTextNeeded = <String, bool>{};
+
   late BibleBook _book = widget.book;
   late int _chapter = widget.chapter;
   late int _initialVerse = widget.initialVerse;
@@ -307,12 +310,18 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             );
           }
           final itemCard = _cardFor(_verses[index]);
-          return CardContent(
+          return ReadingOverflowListener(
             key: ValueKey(itemCard.id),
-            card: itemCard,
-            showBadge: false,
-            showSourceDash: false,
-            scrollable: false,
+            onChanged: (needed) {
+              if (_fullTextNeeded[itemCard.id] == needed) return;
+              setState(() => _fullTextNeeded[itemCard.id] = needed);
+            },
+            child: CardContent(
+              card: itemCard,
+              showBadge: false,
+              showSourceDash: false,
+              scrollable: false,
+            ),
           );
         },
         header: Text(
@@ -325,7 +334,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         actions: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (CardContent.needsFullText(card))
+            if (_fullTextNeeded[card.id] ?? false)
               ReaderActionButton(
                 tooltip: 'Открыть полный текст',
                 onPressed: () => Navigator.of(

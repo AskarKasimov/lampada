@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
+import '../../../../core/widgets/reading_overflow_listener.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/entities/day_card.dart';
@@ -65,6 +66,8 @@ class CardViewerScreen extends ConsumerStatefulWidget {
 }
 
 class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
+  final _fullTextNeeded = <String, bool>{};
+
   late final PageController _controller = PageController(
     initialPage: widget.startIndex,
   );
@@ -167,19 +170,27 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
           showBadge: false,
           scrollable: false,
         );
+    final observedContent = ReadingOverflowListener(
+      key: ValueKey(widget.cards[index].id),
+      onChanged: (needed) {
+        if (_fullTextNeeded[widget.cards[index].id] == needed) return;
+        setState(() => _fullTextNeeded[widget.cards[index].id] = needed);
+      },
+      child: content,
+    );
     return index == widget.startIndex && !_swipeNudgeHasStarted
         ? CardSwipeNudge(
             onConsumed: () => _swipeNudgeHasStarted = true,
-            child: content,
+            child: observedContent,
           )
-        : content;
+        : observedContent;
   }
 
   Widget _actionsFor(DayCard card, Brightness brightness, Color actionColor) =>
       Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (CardContent.needsFullText(card)) ...[
+          if (_fullTextNeeded[card.id] ?? false) ...[
             ReaderActionButton(
               tooltip: 'Открыть полный текст',
               onPressed: () => _openFullText(card),

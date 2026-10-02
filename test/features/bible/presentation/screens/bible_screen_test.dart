@@ -88,13 +88,15 @@ class _DelayedRepository extends _FakeRepository {
 }
 
 class _LongVerseRepository extends _FakeRepository {
+  _LongVerseRepository({this.repeats = 200});
+  final int repeats;
   @override
   Future<Result<BibleChapter>> getChapter(String book, int chapter) async =>
       Success(
         BibleChapter(
           book: book,
           number: chapter,
-          verses: [BibleVerse(number: 1, text: 'Длинный стих ' * 20)],
+          verses: [BibleVerse(number: 1, text: 'Длинный стих ' * repeats)],
         ),
       );
 }
@@ -617,6 +619,31 @@ void main() {
     );
   });
 
+  testWidgets('Библия показывает вмещающийся длинный стих без раскрытия', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(
+            _LongVerseRepository(repeats: 20),
+          ),
+        ],
+        child: const MaterialApp(
+          home: BibleReaderScreen(
+            book: BibleBook('Apok', 'Откровение', 1),
+            chapter: 1,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Длинный стих ' * 20), findsOneWidget);
+    expect(find.byTooltip('Открыть полный текст'), findsNothing);
+  });
+
   testWidgets('длинный стих открывается целиком из карточки', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -639,7 +666,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(FullCardTextScreen), findsOneWidget);
-    expect(find.text('Длинный стих ' * 20), findsOneWidget);
+    expect(find.text('Длинный стих ' * 200), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(FullCardTextScreen),

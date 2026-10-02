@@ -1,10 +1,13 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
-import '../../../../core/format/content_preview.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/reading_font_size.dart';
+import '../../../../core/theme/reading_text_layout.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
+import '../../../../core/widgets/reading_action_space.dart';
+import '../../../../core/widgets/reading_overflow_listener.dart';
 import '../../../../core/widgets/selectable_share_area.dart';
 import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
@@ -34,9 +37,6 @@ class CardContent extends StatefulWidget {
   /// Внешний контроллер нужен полноэкранному тексту, чтобы различать его
   /// прокрутку и жест закрытия на границах материала.
   final ScrollController? scrollController;
-  static const previewLength = contentPreviewLength;
-
-  static bool needsFullText(DayCard card) => needsContentPreview(card.body);
 
   @override
   State<CardContent> createState() => _CardContentState();
@@ -79,8 +79,6 @@ class _CardContentState extends State<CardContent> {
     final card = widget.card;
     final style = card.type.styleFor(Theme.of(context).brightness);
     final colors = AppColorsExtension.of(context);
-    final isPreview = !widget.scrollable && CardContent.needsFullText(card);
-    final body = isPreview ? contentPreview(card.body) : card.body;
 
     return Column(
       mainAxisSize: MainAxisSize.max,
@@ -96,9 +94,78 @@ class _CardContentState extends State<CardContent> {
         ],
         Expanded(
           child: LayoutBuilder(
-            builder: (context, constraints) => widget.scrollable
-                ? _scrollableContent(context, card, body, colors, constraints)
-                : _previewContent(context, card, body, colors),
+            builder: (context, constraints) {
+              final availableHeight =
+                  constraints.maxHeight -
+                  (widget.scrollable ? 0 : ReadingActionSpace.of(context));
+              final baseStyle = _bodyStyle(context, card);
+              final sourceHeight = widget.showSource
+                  ? 16 +
+                        readingTextHeight(
+                          context: context,
+                          text:
+                              '${widget.showSourceDash ? '— ' : ''}${card.source}',
+                          style: _sourceStyle(colors),
+                          maxWidth: constraints.maxWidth,
+                        )
+                  : 0.0;
+              final scaledSourceHeight = widget.showSource
+                  ? 16 +
+                        readingTextHeight(
+                          context: context,
+                          text:
+                              '${widget.showSourceDash ? '— ' : ''}${card.source}',
+                          style: _sourceStyle(colors),
+                          maxWidth: constraints.maxWidth,
+                          textScaler: MediaQuery.textScalerOf(context),
+                        )
+                  : 0.0;
+              final layout = widget.scrollable
+                  ? null
+                  : readingTextLayout(
+                      context: context,
+                      text: card.body,
+                      style: baseStyle,
+                      maxWidth: constraints.maxWidth,
+                      maxHeight: availableHeight - sourceHeight,
+                      scaledMaxHeight: availableHeight - scaledSourceHeight,
+                      previewExtraHeight: ReadingActionSpace.extraForPreview(
+                        context,
+                      ),
+                    );
+              final body = layout?.text ?? card.body;
+              final bodyStyle = baseStyle.copyWith(
+                fontSize:
+                    layout?.fontSize ??
+                    readingFontSize(
+                      context: context,
+                      text: body,
+                      style: baseStyle,
+                      maxWidth: constraints.maxWidth,
+                      maxHeight: availableHeight - sourceHeight,
+                    ),
+              );
+              if (layout != null) {
+                ReadingOverflowListener.report(context, layout.needsFullText);
+              }
+              return widget.scrollable
+                  ? _scrollableContent(
+                      context,
+                      card,
+                      body,
+                      colors,
+                      constraints,
+                      bodyStyle,
+                    )
+                  : _previewContent(
+                      context,
+                      card,
+                      body,
+                      colors,
+                      bodyStyle,
+                      layout!.needsFullText,
+                    );
+            },
           ),
         ),
       ],
@@ -111,6 +178,7 @@ class _CardContentState extends State<CardContent> {
     String body,
     AppColorsExtension colors,
     BoxConstraints constraints,
+    TextStyle bodyStyle,
   ) => Stack(
     children: [
       SelectableShareArea(
@@ -122,11 +190,7 @@ class _CardContentState extends State<CardContent> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    body,
-                    style: _bodyStyle(context, card),
-                    textAlign: TextAlign.center,
-                  ),
+                  Text(body, style: bodyStyle, textAlign: TextAlign.center),
                   if (widget.showSource) ...[
                     const SizedBox(height: 16),
                     _sourceText(card, colors),
@@ -172,16 +236,15 @@ class _CardContentState extends State<CardContent> {
     DayCard card,
     String body,
     AppColorsExtension colors,
-  ) => Center(
+    TextStyle bodyStyle,
+    bool needsFullText,
+  ) => ReadingContentPosition(
+    needsFullText: needsFullText,
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SelectableShareArea(
-          child: Text(
-            body,
-            style: _bodyStyle(context, card),
-            textAlign: TextAlign.center,
-          ),
+          child: Text(body, style: bodyStyle, textAlign: TextAlign.center),
         ),
         if (widget.showSource) ...[
           const SizedBox(height: 16),

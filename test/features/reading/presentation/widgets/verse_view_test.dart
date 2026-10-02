@@ -14,6 +14,24 @@ Widget _app(Widget child) => MaterialApp(
 );
 
 void main() {
+  testWidgets('ступени учитывают номер стиха и кнопку толкования', (
+    tester,
+  ) async {
+    const verse = Verse(number: 1, chapter: 10, text: 'Один\nДва\nТри\nЧетыре');
+    await tester.pumpWidget(
+      _app(
+        SizedBox(
+          width: 320,
+          height: 250,
+          child: VerseView(verse: verse, onOpenInterpretation: () {}),
+        ),
+      ),
+    );
+    expect(tester.widget<Text>(find.text(verse.text)).style?.fontSize, 24);
+    expect(tester.getSize(find.byType(SingleChildScrollView)).height, 250);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('у стиха с толкованием есть кнопка перехода', (tester) async {
     await tester.pumpWidget(
       _app(VerseView(verse: _verse, onOpenInterpretation: () {})),
@@ -71,17 +89,18 @@ void main() {
       find.text('${longVerse.text.substring(0, 150)}…'),
     );
 
-    expect(text.style?.fontSize, 27);
+    expect(text.style?.fontSize, 20);
   });
 
-  testWidgets('длинный стих показывает превью из 150 символов', (tester) async {
+  testWidgets('вмещающийся стих длиннее 150 символов показывается полностью', (
+    tester,
+  ) async {
     final longText = List.filled(30, 'Длинный стих').join(' ');
     final verse = Verse(number: 1, chapter: 10, text: longText);
 
     await tester.pumpWidget(_app(VerseView(verse: verse)));
 
-    expect(find.text('${longText.substring(0, 150)}…'), findsOneWidget);
-    expect(find.text(longText), findsNothing);
+    expect(find.text(longText), findsOneWidget);
   });
 
   testWidgets('кнопка зовёт колбэк', (tester) async {

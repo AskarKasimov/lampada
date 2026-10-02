@@ -446,10 +446,19 @@ void main() {
     },
   );
 
-  testWidgets('длинное предложение открывается полностью и не разбивается', (
+  testWidgets('вмещающееся предложение длиннее 150 не требует полного экрана', (
     tester,
   ) async {
     final body = '${List.filled(40, 'Слово').join(' ')}.';
+    await pumpReader(tester, currentTopic: _currentTopic.copyWith(body: body));
+    expect(find.text(body), findsOneWidget);
+    expect(find.byTooltip('Открыть полный текст'), findsNothing);
+  });
+
+  testWidgets('длинное предложение открывается полностью и не разбивается', (
+    tester,
+  ) async {
+    final body = '${List.filled(400, 'Слово').join(' ')}.';
     await pumpReader(tester, currentTopic: _currentTopic.copyWith(body: body));
     expect(find.text(body), findsNothing);
     expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);

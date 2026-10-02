@@ -1074,10 +1074,10 @@ void main() {
   });
 
   group('Евангелие как карточка дня', () {
-    testWidgets('длинный стих предлагает раскрыть полную версию', (
+    testWidgets('вмещающийся длинный стих не требует полного экрана', (
       tester,
     ) async {
-      final verseText = List.filled(30, 'Длинный стих').join(' ');
+      final verseText = List.filled(15, 'Длинный стих').join(' ');
       final reading = DailyReading(
         label: 'Мк.12:1',
         verses: [Verse(number: 1, chapter: 12, text: verseText)],
@@ -1094,9 +1094,8 @@ void main() {
       await tester.tap(entry('Мудрость дня'));
       await settle(tester);
 
-      expect(find.text('${verseText.substring(0, 150)}…'), findsOneWidget);
-      expect(find.text(verseText), findsNothing);
-      expect(find.byTooltip('Открыть полный текст'), findsOneWidget);
+      expect(find.text(verseText), findsOneWidget);
+      expect(find.byTooltip('Открыть полный текст'), findsNothing);
     });
 
     testWidgets('тап по блоку открывает общий просмотрщик', (tester) async {
