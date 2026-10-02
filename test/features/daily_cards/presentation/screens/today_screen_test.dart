@@ -76,7 +76,7 @@ const _basics = DayCard(
 /// Чтение загружается отдельно от карточек дня, но в UI должно стать
 /// страницами их общего просмотрщика.
 class _FakeReadingRepository implements ReadingRepository {
-  _FakeReadingRepository({DailyReading? reading})
+  _FakeReadingRepository({DailyReading? reading, this.pending})
     : reading =
           reading ??
           const DailyReading(
@@ -94,6 +94,8 @@ class _FakeReadingRepository implements ReadingRepository {
           );
 
   final forceRefreshReferences = <String>[];
+  final requestedReferences = <String>[];
+  final Future<Result<DailyReading>>? pending;
   final DailyReading reading;
 
   @override
@@ -101,8 +103,9 @@ class _FakeReadingRepository implements ReadingRepository {
     String reference, {
     bool forceRefresh = false,
   }) async {
+    requestedReferences.add(reference);
     if (forceRefresh) forceRefreshReferences.add(reference);
-    return Success(reading);
+    return pending == null ? Success(reading) : await pending!;
   }
 }
 
@@ -332,6 +335,60 @@ void main() {
     expect(find.text('Первая карточка'), findsOneWidget);
   });
 
+  testWidgets(
+    'день загружает Евангелие до открытия и сразу показывает все точки',
+    (tester) async {
+      final pending = Completer<Result<DailyReading>>();
+      final reading = _FakeReadingRepository(pending: pending.future);
+      await tester.pumpWidget(
+        buildApp(readingRepository: reading, courseTopic: _basics),
+      );
+      await settle(tester);
+
+      expect(reading.requestedReferences, ['Jn.10:1-9']);
+      await tester.tap(find.text('Мудрость дня'));
+      await settle(tester);
+      expect(find.byType(CardViewerScreen), findsNothing);
+
+      pending.complete(Success(reading.reading));
+      await settle(tester);
+      await tester.tap(find.text('Мудрость дня'));
+      await settle(tester);
+      expect(find.text('Первая карточка'), findsOneWidget);
+      expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 5);
+      await settle(tester);
+      expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 5);
+      expect(reading.requestedReferences, ['Jn.10:1-9']);
+    },
+  );
+
+  testWidgets(
+    'ошибка предварительной загрузки не блокирует остальные материалы',
+    (tester) async {
+      final reading = _FakeReadingRepository(
+        pending: Future.value(
+          const Failure(AppFailure('Нет сети', kind: FailureKind.network)),
+        ),
+      );
+      await tester.pumpWidget(
+        buildApp(readingRepository: reading, courseTopic: _basics),
+      );
+      await settle(tester);
+      await tester.pump(const Duration(seconds: 30));
+      expect(reading.requestedReferences, ['Jn.10:1-9']);
+
+      await tester.tap(find.text('Мудрость дня'));
+      await settle(tester);
+      expect(find.text('Первая карточка'), findsOneWidget);
+      await tester.drag(find.byType(PageView).last, const Offset(0, -600));
+      await settle(tester);
+      await tester.drag(find.byType(PageView).last, const Offset(0, -600));
+      await settle(tester);
+      expect(find.text('Евангелие дня сейчас недоступно'), findsOneWidget);
+      expect(find.text('Повторить'), findsOneWidget);
+    },
+  );
+
   testWidgets('Мудрость дня начинает с первого непрочитанного материала', (
     tester,
   ) async {
@@ -538,13 +595,17 @@ void main() {
         matching: find.byIcon(CupertinoIcons.checkmark_alt),
       );
       expect(checks, findsNWidgets(2));
-      final labelLeft = tester.getTopLeft(find.text('Мудрость дня')).dx;
+      final label = tester.getRect(find.text('Мудрость дня'));
+      final subtitle = tester.getRect(
+        find.text('Цитата, совет, притча и Евангелие'),
+      );
       for (final check in checks.evaluate()) {
         final bounds = tester.getRect(find.byWidget(check.widget));
         expect(bounds.left, greaterThan(tester.getRect(calendar).right));
-        expect(bounds.right, lessThan(labelLeft));
+        expect(bounds.left, greaterThan(label.right));
+        expect(bounds.bottom, lessThan(subtitle.top));
       }
-      expect(labelLeft, 114);
+      expect(label.left, 88);
     });
 
     testWidgets('ink кнопок дня занимает всю ширину экрана', (tester) async {

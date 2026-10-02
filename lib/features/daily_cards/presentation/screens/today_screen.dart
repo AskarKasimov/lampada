@@ -215,7 +215,25 @@ class _SelectedDayContent extends ConsumerWidget {
     final cardsAsync = ref.watch(dayCardsProvider(key));
     final day = cardsAsync.value;
     final progress = ref.watch(dayProgressProvider).value;
-    return _body(context, ref, date, key, cardsAsync, day, progress);
+    final reference = day?.cards
+        .where((card) => card.type == CardType.reading)
+        .firstOrNull
+        ?.reference;
+    // Запускаем загрузку стихов вместе с днём, до входа в читалку:
+    // временная карточка не должна превращаться в несколько точек на глазах.
+    final readingIsLoading =
+        reference != null &&
+        ref.watch(dailyReadingProvider(reference)).isLoading;
+    return _body(
+      context,
+      ref,
+      date,
+      key,
+      cardsAsync,
+      day,
+      progress,
+      readingIsLoading,
+    );
   }
 
   Widget _body(
@@ -226,10 +244,16 @@ class _SelectedDayContent extends ConsumerWidget {
     AsyncValue<TodayCards> cardsAsync,
     TodayCards? day,
     DayProgress? progress,
+    bool readingIsLoading,
   ) {
     // Готовый день остаётся полезнее последней ошибки обновления.
     if (day != null && progress != null) {
-      return _DayBlocks(date: selected, day: day, progress: progress);
+      return _DayBlocks(
+        date: selected,
+        day: day,
+        progress: progress,
+        readingIsLoading: readingIsLoading,
+      );
     }
 
     if (cardsAsync.hasError || progress == null && !cardsAsync.isLoading) {
@@ -310,11 +334,13 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.date,
     required this.day,
     required this.progress,
+    required this.readingIsLoading,
   });
 
   final DateTime date;
   final TodayCards day;
   final DayProgress progress;
+  final bool readingIsLoading;
 
   @override
   ConsumerState<_DayBlocks> createState() => _DayBlocksState();
@@ -339,6 +365,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ..sort((a, b) => a.type.index.compareTo(b.type.index));
 
   Future<void> _openWisdom() async {
+    if (widget.readingIsLoading) return;
     final pages = _pages;
     final firstUnread = pages.indexWhere((card) => !_isRead(card));
     await Navigator.of(context).push(
@@ -422,6 +449,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ],
         if (pages.isNotEmpty)
           DayWisdomTile(
+            isLoading: widget.readingIsLoading,
             isUnread: pages.any((card) => !_isRead(card)),
             onTap: _openWisdom,
           ),

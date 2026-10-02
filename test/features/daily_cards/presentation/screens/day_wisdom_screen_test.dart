@@ -7,7 +7,9 @@ import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/day_wisdom_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
 import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
@@ -116,6 +118,8 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Загружаем Евангелие дня'), findsOneWidget);
+    expect(find.byType(CardViewerScreen), findsNothing);
+    expect(find.byType(ProgressDots), findsNothing);
     final container = ProviderScope.containerOf(
       tester.element(find.byType(DayWisdomScreen)),
     );

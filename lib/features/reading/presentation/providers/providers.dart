@@ -23,7 +23,8 @@ final getDailyReadingProvider = Provider<GetDailyReading>(
 );
 
 /// Чтение по ссылке отрывка. Family, а не единичный провайдер: календарь
-/// открывает чужие дни, и отрывок там свой.
+/// открывает чужие дни, и отрывок там свой. Повторы сети ограничены бюджетом
+/// репозитория; после ошибки пользователь может повторить загрузку сам.
 final dailyReadingProvider = FutureProvider.family<DailyReading, String>((
   ref,
   reference,
@@ -33,4 +34,4 @@ final dailyReadingProvider = FutureProvider.family<DailyReading, String>((
     Success(value: final reading) => reading,
     Failure(failure: final f) => throw f,
   };
-});
+}, retry: (_, _) => null);

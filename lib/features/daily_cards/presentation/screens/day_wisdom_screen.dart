@@ -42,6 +42,14 @@ class DayWisdomScreen extends ConsumerWidget {
     final AsyncValue<DailyReading>? readingAsync = reference == null
         ? null
         : ref.watch(dailyReadingProvider(reference));
+    // Даже при повторе загрузки сначала собираем весь набор страниц,
+    // затем показываем точки с окончательным количеством карточек.
+    if (readingAsync?.isLoading ?? false) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const _ReadingStatus(isLoading: true, onRetry: null),
+      );
+    }
     final reading = readingAsync?.value;
     final readingPages = reading != null && reading.verses.isNotEmpty
         ? ReadingCardPages(reference: reference!, reading: reading)
