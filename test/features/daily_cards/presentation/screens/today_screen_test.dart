@@ -26,6 +26,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/card_content.d
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_name_header.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/today_offline_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
@@ -281,7 +282,7 @@ void main() {
   /// На главной одна кликабельная запись дневного материала.
   Finder entry(String label) => find.ancestor(
     of: find.textContaining(label),
-    matching: find.byType(DayEntryRow),
+    matching: find.byType(DayWisdomTile),
   );
 
   testWidgets('Домой показывает одну кнопку дня и курс без автооткрытия', (
@@ -291,9 +292,44 @@ void main() {
     await settle(tester);
 
     expect(find.byType(CardViewerScreen), findsNothing);
-    expect(find.byType(DayEntryRow), findsOneWidget);
+    expect(find.byType(DayWisdomTile), findsOneWidget);
     expect(find.text('Мудрость дня'), findsOneWidget);
     expect(find.byType(CourseProgressHeader), findsOneWidget);
+  });
+
+  testWidgets('крупная кнопка дня открывает чтение по нажатию на календарь', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildApp(
+        cardsRepository: _FakeCardsRepository(title: 'Название дня'),
+        courseTopic: _basics,
+      ),
+    );
+    await settle(tester);
+
+    final button = find.ancestor(
+      of: find.text('Мудрость дня'),
+      matching: find.byType(InkWell),
+    );
+    final calendar = find.descendant(
+      of: button,
+      matching: find.byIcon(CupertinoIcons.calendar),
+    );
+    expect(calendar, findsOneWidget);
+    expect(tester.getSize(button).height, greaterThanOrEqualTo(80));
+    expect(tester.getRect(button).left, 0);
+    expect(tester.getRect(button).right, 800);
+    // Остаётся только разделитель после названия дня, над кнопкой.
+    expect(find.byType(DayEntryDivider), findsOneWidget);
+    expect(
+      tester.getBottomLeft(find.byType(DayEntryDivider)).dy,
+      lessThanOrEqualTo(tester.getTopLeft(button).dy),
+    );
+
+    await tester.tap(calendar);
+    await settle(tester);
+    expect(find.text('Первая карточка'), findsOneWidget);
   });
 
   testWidgets('Мудрость дня начинает с первого непрочитанного материала', (
@@ -329,7 +365,7 @@ void main() {
     );
     await settle(tester);
 
-    expect(find.byType(DayEntryRow), findsOneWidget);
+    expect(find.byType(DayWisdomTile), findsOneWidget);
     await tester.tap(find.text('Мудрость дня'));
     await settle(tester);
     expect(find.text('Первый стих'), findsOneWidget);
@@ -393,7 +429,14 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp(courseTopic: _basics));
     await settle(tester);
-    await tester.tap(find.byTooltip('О курсе'));
+    final heading = find.text('Планы');
+    final info = find.byTooltip('О курсе');
+    expect(heading, findsOneWidget);
+    expect(tester.getTopLeft(heading).dx, 16);
+    expect(tester.getRect(heading).right, lessThan(tester.getRect(info).left));
+    expect(tester.getCenter(heading).dy, tester.getCenter(info).dy);
+
+    await tester.tap(info);
     await settle(tester);
 
     expect(find.text('Как проходить планы'), findsOneWidget);
@@ -456,7 +499,7 @@ void main() {
   }
 
   group('вкладка «Сегодня»', () {
-    testWidgets('материалы дня используют собственные поля в 20 px', (
+    testWidgets('кнопка дня использует поля и размеры кнопки профиля', (
       tester,
     ) async {
       const parable = DayCard(
@@ -485,17 +528,23 @@ void main() {
 
       final titleLeft = tester.getTopLeft(find.text('Название дня')).dx;
       expect(titleLeft, 16);
-      for (final row in tester.widgetList<DayEntryRow>(
-        find.byType(DayEntryRow),
-      )) {
-        expect(
-          tester.getTopLeft(find.text(row.label)).dx,
-          row.showReadStatus ? 46 : 20,
-        );
-        final text = tester.getRect(find.text(row.text));
-        expect(text.left, 20);
-        expect(text.right, 780);
+      final calendar = find.descendant(
+        of: find.byType(DayWisdomTile),
+        matching: find.byIcon(CupertinoIcons.calendar),
+      );
+      expect(tester.getCenter(calendar).dx, 44);
+      final checks = find.descendant(
+        of: find.byType(DayWisdomTile),
+        matching: find.byIcon(CupertinoIcons.checkmark_alt),
+      );
+      expect(checks, findsNWidgets(2));
+      final labelLeft = tester.getTopLeft(find.text('Мудрость дня')).dx;
+      for (final check in checks.evaluate()) {
+        final bounds = tester.getRect(find.byWidget(check.widget));
+        expect(bounds.left, greaterThan(tester.getRect(calendar).right));
+        expect(bounds.right, lessThan(labelLeft));
       }
+      expect(labelLeft, 114);
     });
 
     testWidgets('ink кнопок дня занимает всю ширину экрана', (tester) async {
@@ -505,7 +554,7 @@ void main() {
       await settle(tester);
 
       final screen = tester.getRect(find.byType(TodayScreen));
-      for (final row in find.byType(DayEntryRow).evaluate()) {
+      for (final row in find.byType(DayWisdomTile).evaluate()) {
         final ink = find.descendant(
           of: find.byWidget(row.widget),
           matching: find.byType(InkWell),
@@ -716,7 +765,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(WeekStrip), findsOneWidget);
-      expect(find.byType(DayEntryRow), findsOneWidget);
+      expect(find.byType(DayWisdomTile), findsOneWidget);
       expect(entry('Мудрость дня'), findsOneWidget);
       expect(entry('ЗАКЛАДКИ'), findsNothing);
       expect(find.text('Копилка смыслов'), findsNothing);
@@ -735,7 +784,7 @@ void main() {
       expect(find.text('Сегодня'), findsNothing);
 
       final stripBottom = tester.getBottomLeft(find.byType(WeekStrip)).dy;
-      final firstTop = tester.getTopLeft(find.byType(DayEntryRow).first).dy;
+      final firstTop = tester.getTopLeft(find.byType(DayWisdomTile).first).dy;
       expect(firstTop - stripBottom, greaterThanOrEqualTo(4));
 
       final list = tester.widget<ListView>(find.byType(ListView));
@@ -797,7 +846,7 @@ void main() {
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      expect(find.byType(DayEntryRow), findsOneWidget);
+      expect(find.byType(DayWisdomTile), findsOneWidget);
       expect(entry('Мудрость дня'), findsOneWidget);
       expect(find.text('Пройти снова'), findsNothing);
     });
@@ -945,7 +994,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
-      expect(find.byType(DayEntryRow), findsOneWidget);
+      expect(find.byType(DayWisdomTile), findsOneWidget);
     });
 
     testWidgets('открытая карточка сразу засчитывается прочитанной', (
@@ -1107,7 +1156,7 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
         expect(controller.page, initialPage);
-        expect(find.byType(DayEntryRow), findsWidgets);
+        expect(find.byType(DayWisdomTile), findsWidgets);
         expect(
           tester.widget<FadeTransition>(fade).opacity.value,
           inExclusiveRange(0, 1),
@@ -1231,7 +1280,7 @@ void main() {
           find.byType(TodayOfflineView),
           fails ? findsOneWidget : findsNothing,
         );
-        if (!fails) expect(find.byType(DayEntryRow), findsWidgets);
+        if (!fails) expect(find.byType(DayWisdomTile), findsWidgets);
         await settle(tester);
         expect(tester.widget<FadeTransition>(fade).opacity.value, 1);
       });
@@ -1274,18 +1323,11 @@ void main() {
       );
       await settle(tester);
 
-      final futureEntries = tester.widgetList<DayEntryRow>(
-        find.byType(DayEntryRow),
+      final futureEntries = tester.widgetList<DayWisdomTile>(
+        find.byType(DayWisdomTile),
       );
       expect(futureEntries, isNotEmpty);
-      final futureContentEntries = futureEntries.where(
-        (entry) => entry.label != 'ЗАКЛАДКИ',
-      );
-      expect(futureContentEntries.every((entry) => entry.isUnread), isTrue);
-      expect(
-        futureContentEntries.every((entry) => entry.showReadStatus),
-        isTrue,
-      );
+      expect(futureEntries.every((entry) => entry.isUnread), isTrue);
 
       final future = DateTime.now().add(const Duration(days: 1));
       await tester.tap(entry('Мудрость дня'));
@@ -1319,7 +1361,9 @@ void main() {
       );
       await settle(tester);
 
-      final entries = tester.widgetList<DayEntryRow>(find.byType(DayEntryRow));
+      final entries = tester.widgetList<DayWisdomTile>(
+        find.byType(DayWisdomTile),
+      );
       expect(entries, isNotEmpty);
       expect(entries.every((entry) => !entry.isUnread), isTrue);
     });
@@ -1522,7 +1566,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);
-      expect(find.byType(DayEntryRow), findsWidgets);
+      expect(find.byType(DayWisdomTile), findsWidgets);
     });
   });
 

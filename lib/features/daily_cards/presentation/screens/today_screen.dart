@@ -21,6 +21,7 @@ import '../providers/providers.dart';
 import '../widgets/course_progress_header.dart';
 import '../widgets/day_entry_row.dart';
 import '../widgets/day_name_header.dart';
+import '../widgets/day_wisdom_tile.dart';
 import '../widgets/today_offline_view.dart';
 import '../widgets/week_strip.dart';
 import 'course_reader_route.dart';
@@ -420,11 +421,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           const DayEntryDivider(),
         ],
         if (pages.isNotEmpty)
-          DayEntryRow(
-            label: 'ДЕНЬ',
-            text: 'Мудрость дня',
+          DayWisdomTile(
             isUnread: pages.any((card) => !_isRead(card)),
-            topSpacing: day.hasName ? 14 : 4,
             onTap: _openWisdom,
           ),
         if (pages.isEmpty)
@@ -437,7 +435,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
               style: TextStyle(fontSize: 14, color: colors.homeSubtitle),
             ),
           ),
-        const DayEntryDivider(),
         const _CourseHomeSection(),
       ],
     );
@@ -456,20 +453,34 @@ class _CourseHomeSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: Padding(
-            padding: AppSpacing.of(context).horizontal,
-            child: IconButton(
-              tooltip: 'О курсе',
-              color: colors.textSecondary,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const PlansInfoScreen(),
+        Padding(
+          padding: AppSpacing.of(context).horizontal,
+          child: Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    'Планы',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colors.ink,
+                    ),
+                  ),
                 ),
               ),
-              icon: const Icon(CupertinoIcons.info),
-            ),
+              IconButton(
+                tooltip: 'О курсе',
+                color: colors.textSecondary,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PlansInfoScreen(),
+                  ),
+                ),
+                icon: const Icon(CupertinoIcons.info),
+              ),
+            ],
           ),
         ),
         if (topic.value case final currentTopic?)
