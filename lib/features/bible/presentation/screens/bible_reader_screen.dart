@@ -16,17 +16,20 @@ import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
 import '../providers/providers.dart';
+import 'bible_screen.dart';
 
 class BibleReaderScreen extends ConsumerStatefulWidget {
   const BibleReaderScreen({
     required this.book,
     required this.chapter,
     this.initialVerse = 1,
+    this.onClose,
     super.key,
   });
 
   final BibleBook book;
   final int chapter;
+  final VoidCallback? onClose;
 
   /// Сохранённый стих открывается в контексте всей главы, без обрезки начала.
   final int initialVerse;
@@ -38,6 +41,9 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
 typedef _ReadingVerse = ({BibleBook book, int chapter, BibleVerse verse});
 
 class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
+  late BibleBook _book = widget.book;
+  late int _chapter = widget.chapter;
+  late int _initialVerse = widget.initialVerse;
   PageController? _controller;
   final _verses = <_ReadingVerse>[];
   int _page = 0;
@@ -45,6 +51,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   int? _lastChapter;
   Object? _initialError;
   Object? _nextError;
+  int _loadRevision = 0;
   bool _loadingInitial = true;
   bool _loadingNext = false;
 
@@ -61,17 +68,19 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   }
 
   Future<void> _loadInitial() async {
+    // Поздний ответ предыдущей главы не должен менять новый выбор.
+    final revision = ++_loadRevision;
     setState(() {
       _loadingInitial = true;
       _initialError = null;
     });
     try {
       final chapter = await ref.read(
-        bibleChapterProvider((widget.book.code, widget.chapter)).future,
+        bibleChapterProvider((_book.code, _chapter)).future,
       );
-      if (!mounted) return;
+      if (!mounted || revision != _loadRevision) return;
       final startIndex = chapter.verses.indexWhere(
-        (verse) => verse.number == widget.initialVerse,
+        (verse) => verse.number == _initialVerse,
       );
       _controller?.dispose();
       setState(() {
@@ -80,16 +89,16 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         _controller = PageController(initialPage: _page);
         _verses.addAll([
           for (final verse in chapter.verses)
-            (book: widget.book, chapter: widget.chapter, verse: verse),
+            (book: _book, chapter: _chapter, verse: verse),
         ]);
-        _lastBook = widget.book;
-        _lastChapter = widget.chapter;
+        _lastBook = _book;
+        _lastChapter = _chapter;
         _loadingInitial = false;
       });
       ref.read(bibleChapterStatusesProvider.notifier).refresh();
       _saveReadingPosition(_page);
     } on Object catch (error) {
-      if (!mounted) return;
+      if (!mounted || revision != _loadRevision) return;
       setState(() {
         _loadingInitial = false;
         _initialError = error;
@@ -110,6 +119,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   Future<void> _loadNext() async {
     final target = _nextTarget;
     if (target == null || _loadingNext) return;
+    final revision = _loadRevision;
     setState(() {
       _loadingNext = true;
       _nextError = null;
@@ -118,7 +128,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       final chapter = await ref.read(
         bibleChapterProvider((target.$1.code, target.$2)).future,
       );
-      if (!mounted) return;
+      if (!mounted || revision != _loadRevision) return;
       setState(() {
         _verses.addAll([
           for (final verse in chapter.verses)
@@ -131,7 +141,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       ref.read(bibleChapterStatusesProvider.notifier).refresh();
       _saveReadingPosition(_page);
     } on Object catch (error) {
-      if (!mounted) return;
+      if (!mounted || revision != _loadRevision) return;
       setState(() {
         _loadingNext = false;
         _nextError = error;
@@ -189,22 +199,69 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         .markRead(verse.book.code, verse.chapter);
   }
 
+  Future<void> _selectChapter() async {
+    final target = await Navigator.of(context).push<(BibleBook, int, int)>(
+      MaterialPageRoute(
+        builder: (_) => const Scaffold(body: BibleScreen(selectChapter: true)),
+      ),
+    );
+    if (!mounted || target == null) return;
+    _book = target.$1;
+    _chapter = target.$2;
+    _initialVerse = target.$3;
+    _verses.clear();
+    _lastBook = null;
+    _lastChapter = null;
+    _nextError = null;
+    _loadingNext = false;
+    await _loadInitial();
+  }
+
+  Widget _closeAction(AppColorsExtension colors) => IconButton(
+    tooltip: 'Закрыть',
+    onPressed: widget.onClose ?? () => Navigator.of(context).pop(),
+    icon: Icon(CupertinoIcons.xmark, color: colors.homeSubtitle, size: 22),
+  );
+
+  Widget _catalogAction(AppColorsExtension colors) => IconButton(
+    tooltip: 'Книги и главы',
+    onPressed: _selectChapter,
+    icon: Icon(
+      CupertinoIcons.list_bullet,
+      color: colors.homeSubtitle,
+      size: 22,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     if (_loadingInitial) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(
+          leading: _catalogAction(colors),
+          actions: [_closeAction(colors)],
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     if (_initialError != null) {
       return Scaffold(
-        appBar: AppBar(title: Text(widget.book.title)),
+        appBar: AppBar(
+          leading: _catalogAction(colors),
+          title: Text(_book.title),
+          actions: [_closeAction(colors)],
+        ),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Не удалось открыть чтение'),
               TextButton(
-                onPressed: _loadInitial,
+                onPressed: () {
+                  ref.invalidate(bibleChapterProvider((_book.code, _chapter)));
+                  _loadInitial();
+                },
                 child: const Text('Повторить'),
               ),
             ],
@@ -285,7 +342,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             ),
           ],
         ),
-        onClose: () => Navigator.of(context).pop(),
+        onClose: widget.onClose ?? () => Navigator.of(context).pop(),
+        topLeftAction: _catalogAction(colors),
+        topRightAction: _closeAction(colors),
         closeColor: colors.homeSubtitle,
       ),
     );

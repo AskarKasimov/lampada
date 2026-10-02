@@ -146,7 +146,7 @@ void main() {
       find.text('Последний стих полной главы').hitTestable(),
       findsOneWidget,
     );
-    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    await tester.tap(find.byTooltip('Закрыть'));
     await tester.pumpAndSettle();
     expect(find.text(verse.text), findsOneWidget);
   });

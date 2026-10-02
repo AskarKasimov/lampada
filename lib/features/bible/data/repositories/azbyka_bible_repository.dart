@@ -7,6 +7,7 @@ import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/storage/preference_write.dart';
 import '../../domain/bible_chapter_statuses.dart';
+import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
 import '../../domain/repositories/bible_repository.dart';
 import '../datasources/bible_remote_datasource.dart';
@@ -20,6 +21,7 @@ class AzbykaBibleRepository implements BibleRepository {
   final SharedPreferences _prefs;
   static const _cachePrefix = 'bible_chapter_v1:';
   static const _progressPrefix = 'bible_progress_v1:';
+  static const _lastChapterKey = 'bible_last_chapter_v1';
   static const _readKey = 'bible_read_chapters_v1';
   Future<void> _pendingProgressWrite = Future.value();
   Future<void> _pendingReadWrite = Future.value();
@@ -64,6 +66,9 @@ class AzbykaBibleRepository implements BibleRepository {
   @override
   Future<Result<BibleChapterStatuses>> getChapterStatuses() async {
     try {
+      // Повторный вход может опередить запись последнего свайпа.
+      await _pendingProgressWrite;
+      await _pendingReadWrite;
       final cached = <BibleChapterId>{};
       for (final key in _prefs.getKeys()) {
         if (!key.startsWith(_cachePrefix)) continue;
@@ -98,6 +103,7 @@ class AzbykaBibleRepository implements BibleRepository {
         }
       }
       return Success((
+        lastChapter: _lastChapter(progress),
         cached: cached,
         read: _readChapters(),
         progress: progress,
@@ -156,6 +162,9 @@ class AzbykaBibleRepository implements BibleRepository {
             }),
           ),
         );
+        await requirePreferenceWrite(
+          _prefs.setString(_lastChapterKey, '$book.$chapter'),
+        );
         return const Success<void>(null);
       } on Object catch (error) {
         return Failure<void>(
@@ -169,6 +178,24 @@ class AzbykaBibleRepository implements BibleRepository {
     });
     _pendingProgressWrite = operation.then((_) {});
     return operation;
+  }
+
+  BibleChapterId? _lastChapter(
+    Map<BibleChapterId, BibleChapterProgress> progress,
+  ) {
+    final parts = _prefs.getString(_lastChapterKey)?.split('.');
+    if (parts == null || parts.length != 2) return null;
+    final chapter = int.tryParse(parts[1]);
+    if (chapter == null || !progress.containsKey((parts[0], chapter))) {
+      return null;
+    }
+    if (!bibleBooks.any(
+      (book) =>
+          book.code == parts[0] && chapter >= 1 && chapter <= book.chapterCount,
+    )) {
+      return null;
+    }
+    return (parts[0], chapter);
   }
 
   BibleChapterDto? _readCache(String book, int chapter) {

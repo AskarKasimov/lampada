@@ -24,6 +24,7 @@ class _FakeRepository implements BibleRepository {
 
   @override
   Future<Result<BibleChapterStatuses>> getChapterStatuses() async => Success((
+    lastChapter: null,
     cached: <BibleChapterId>{},
     read: <BibleChapterId>{},
     progress: {},

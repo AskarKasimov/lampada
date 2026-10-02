@@ -13,7 +13,9 @@ import 'bible_reader_screen.dart';
 
 /// Книга раскрывает главы; выбранная глава открывается с сохранённого стиха.
 class BibleScreen extends ConsumerStatefulWidget {
-  const BibleScreen({super.key});
+  const BibleScreen({this.selectChapter = false, super.key});
+
+  final bool selectChapter;
 
   @override
   ConsumerState<BibleScreen> createState() => _BibleScreenState();
@@ -24,19 +26,23 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
   static final _oldTestamentBooks = [
     ...bibleBooks.takeWhile((book) => book.code != 'Mt'),
   ]..sort((a, b) => a.title.compareTo(b.title));
-  static final _newTestamentBooks = [
-    ...bibleBooks.skipWhile((book) => book.code != 'Mt'),
-  ]..sort((a, b) => a.title.compareTo(b.title));
+  static final _newTestamentBooks =
+      [...bibleBooks.skipWhile((book) => book.code != 'Mt')]..sort((a, b) {
+        const gospels = ['Mt', 'Mk', 'Lk', 'Jn'];
+        final ai = gospels.indexOf(a.code);
+        final bi = gospels.indexOf(b.code);
+        if (ai >= 0 || bi >= 0) {
+          return (ai < 0 ? 4 : ai).compareTo(bi < 0 ? 4 : bi);
+        }
+        return a.title.compareTo(b.title);
+      });
   String? _selectedBook;
-  String? _selectedTestament;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final navInset = FloatingNavInset.of(context);
     final statuses = ref.watch(bibleChapterStatusesProvider).value;
-    final newTestamentExpanded = _selectedTestament == 'Новый Завет';
-    final oldTestamentExpanded = _selectedTestament == 'Ветхий Завет';
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -61,14 +67,12 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
         ..._testamentSlivers(
           title: 'Новый Завет',
           books: _newTestamentBooks,
-          expanded: newTestamentExpanded,
           statuses: statuses,
           colors: colors,
         ),
         ..._testamentSlivers(
           title: 'Ветхий Завет',
           books: _oldTestamentBooks,
-          expanded: oldTestamentExpanded,
           statuses: statuses,
           colors: colors,
         ),
@@ -80,53 +84,77 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
   List<Widget> _testamentSlivers({
     required String title,
     required List<BibleBook> books,
-    required bool expanded,
     required BibleChapterStatuses? statuses,
     required AppColorsExtension colors,
   }) => [
-    if (expanded)
-      SliverPersistentHeader(
-        pinned: true,
-        delegate: _TestamentHeaderDelegate(
-          title: title,
-          expanded: expanded,
-          colors: colors,
-          onToggle: () => _toggleTestament(title),
+    SliverMainAxisGroup(
+      slivers: [
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _TestamentHeaderDelegate(title: title, colors: colors),
         ),
-      )
-    else
-      SliverToBoxAdapter(
-        child: _TestamentHeader(
-          title: title,
-          expanded: false,
-          colors: colors,
-          onToggle: () => _toggleTestament(title),
+        SliverList.builder(
+          itemCount: books.length,
+          itemBuilder: (context, index) => _BibleBookTile(
+            book: books[index],
+            selected: _selectedBook == books[index].code,
+            statuses: statuses,
+            selectChapter: widget.selectChapter,
+            onTap: () => _selectBook(books[index]),
+          ),
         ),
-      ),
-    _TestamentBooks(
-      books: books,
-      expanded: expanded,
-      selectedBook: _selectedBook,
-      statuses: statuses,
-      onSelect: _selectBook,
+      ],
     ),
   ];
-
-  void _toggleTestament(String testament) => setState(() {
-    _selectedTestament = _selectedTestament == testament ? null : testament;
-  });
 
   void _selectBook(BibleBook book) => setState(() {
     _selectedBook = _selectedBook == book.code ? null : book.code;
   });
 }
 
-const _accordionDuration = Duration(milliseconds: 400);
+/// Группа ограничивает закрепление своим заветом: следующий заголовок
+/// вытесняет предыдущий, не создавая второй закреплённой строки.
+class _TestamentHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _TestamentHeaderDelegate({required this.title, required this.colors});
 
-Duration _motionDuration(BuildContext context) =>
-    MediaQuery.disableAnimationsOf(context)
-    ? Duration.zero
-    : _accordionDuration;
+  final String title;
+  final AppColorsExtension colors;
+
+  @override
+  double get minExtent => 56;
+
+  @override
+  double get maxExtent => 56;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => Material(
+    color: colors.background,
+    child: Padding(
+      padding: AppSpacing.of(context).horizontal,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: colors.ink,
+          ),
+        ),
+      ),
+    ),
+  );
+
+  @override
+  bool shouldRebuild(_TestamentHeaderDelegate oldDelegate) =>
+      title != oldDelegate.title || colors != oldDelegate.colors;
+}
+
+const _accordionDuration = Duration(milliseconds: 400);
 
 class _AccordionSize extends StatelessWidget {
   const _AccordionSize({required this.child});
@@ -146,175 +174,20 @@ class _AccordionSize extends StatelessWidget {
   }
 }
 
-/// SliverAnimatedList сохраняет ленивую отрисовку длинного каталога и
-/// удерживает удаляемые строки до завершения сворачивания.
-class _TestamentBooks extends StatefulWidget {
-  const _TestamentBooks({
-    required this.books,
-    required this.expanded,
-    required this.selectedBook,
-    required this.statuses,
-    required this.onSelect,
-  });
-
-  final List<BibleBook> books;
-  final bool expanded;
-  final String? selectedBook;
-  final BibleChapterStatuses? statuses;
-  final ValueChanged<BibleBook> onSelect;
-
-  @override
-  State<_TestamentBooks> createState() => _TestamentBooksState();
-}
-
-class _TestamentBooksState extends State<_TestamentBooks> {
-  final _listKey = GlobalKey<SliverAnimatedListState>();
-
-  @override
-  void didUpdateWidget(_TestamentBooks oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.expanded == oldWidget.expanded) return;
-    final duration = _motionDuration(context);
-    if (widget.expanded) {
-      _listKey.currentState!.insertAllItems(
-        0,
-        widget.books.length,
-        duration: duration,
-      );
-    } else {
-      for (var index = widget.books.length - 1; index >= 0; index--) {
-        final book = widget.books[index];
-        _listKey.currentState!.removeItem(
-          index,
-          (context, animation) => _tile(book, animation),
-          duration: duration,
-        );
-      }
-    }
-  }
-
-  Widget _tile(BibleBook book, Animation<double> animation) => SizeTransition(
-    sizeFactor: animation.drive(CurveTween(curve: Curves.easeInOutCubic)),
-    child: _BibleBookTile(
-      book: book,
-      selected: widget.selectedBook == book.code,
-      statuses: widget.statuses,
-      onTap: () => widget.onSelect(book),
-    ),
-  );
-
-  @override
-  Widget build(BuildContext context) => SliverAnimatedList(
-    key: _listKey,
-    initialItemCount: widget.expanded ? widget.books.length : 0,
-    itemBuilder: (context, index, animation) =>
-        _tile(widget.books[index], animation),
-  );
-}
-
-class _TestamentTile extends StatelessWidget {
-  const _TestamentTile({
-    required this.title,
-    required this.expanded,
-    required this.onToggle,
-  });
-
-  final String title;
-  final bool expanded;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
-    return ListTile(
-      contentPadding: AppSpacing.of(context).horizontal,
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: colors.ink,
-        ),
-      ),
-      trailing: Icon(
-        expanded ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
-        color: colors.textSecondary,
-      ),
-      onTap: onToggle,
-    );
-  }
-}
-
-class _TestamentHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _TestamentHeaderDelegate({
-    required this.title,
-    required this.expanded,
-    required this.colors,
-    required this.onToggle,
-  });
-
-  final String title;
-  final bool expanded;
-  final AppColorsExtension colors;
-  final VoidCallback onToggle;
-
-  @override
-  double get minExtent => 56;
-
-  @override
-  double get maxExtent => 56;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) => _TestamentHeader(
-    title: title,
-    expanded: expanded,
-    colors: colors,
-    onToggle: onToggle,
-  );
-
-  @override
-  bool shouldRebuild(_TestamentHeaderDelegate oldDelegate) =>
-      title != oldDelegate.title ||
-      expanded != oldDelegate.expanded ||
-      colors != oldDelegate.colors;
-}
-
-class _TestamentHeader extends StatelessWidget {
-  const _TestamentHeader({
-    required this.title,
-    required this.expanded,
-    required this.colors,
-    required this.onToggle,
-  });
-
-  final String title;
-  final bool expanded;
-  final AppColorsExtension colors;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: colors.background,
-    child: _TestamentTile(title: title, expanded: expanded, onToggle: onToggle),
-  );
-}
-
 class _BibleBookTile extends StatelessWidget {
   const _BibleBookTile({
     required this.book,
     required this.selected,
     required this.statuses,
     required this.onTap,
+    required this.selectChapter,
   });
 
   final BibleBook book;
   final bool selected;
   final BibleChapterStatuses? statuses;
   final VoidCallback onTap;
+  final bool selectChapter;
 
   @override
   Widget build(BuildContext context) {
@@ -395,16 +268,26 @@ class _BibleBookTile extends StatelessWidget {
                                 ),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(11),
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      fullscreenDialog: true,
-                                      builder: (_) => BibleReaderScreen(
-                                        book: book,
-                                        chapter: chapter,
-                                        initialVerse: progress?.verse ?? 1,
+                                  onTap: () {
+                                    if (selectChapter) {
+                                      Navigator.of(context).pop((
+                                        book,
+                                        chapter,
+                                        progress?.verse ?? 1,
+                                      ));
+                                      return;
+                                    }
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        fullscreenDialog: true,
+                                        builder: (_) => BibleReaderScreen(
+                                          book: book,
+                                          chapter: chapter,
+                                          initialVerse: progress?.verse ?? 1,
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+                                  },
                                   child: Stack(
                                     children: [
                                       if (!isRead && progress != null)

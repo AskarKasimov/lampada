@@ -18,6 +18,7 @@ class VerticalCardReader extends StatelessWidget {
     required this.actions,
     required this.onClose,
     required this.closeColor,
+    this.topLeftAction,
     this.topRightAction,
     this.reverse = false,
     super.key,
@@ -32,6 +33,7 @@ class VerticalCardReader extends StatelessWidget {
   final Widget actions;
   final VoidCallback onClose;
   final Color closeColor;
+  final Widget? topLeftAction;
   final Widget? topRightAction;
   final bool reverse;
 
@@ -69,11 +71,17 @@ class VerticalCardReader extends StatelessWidget {
         Positioned(
           top: 0,
           left: 0,
-          child: IconButton(
-            onPressed: onClose,
-            icon: Icon(CupertinoIcons.arrow_left, size: 22, color: closeColor),
-            tooltip: 'Назад',
-          ),
+          child:
+              topLeftAction ??
+              IconButton(
+                onPressed: onClose,
+                icon: Icon(
+                  CupertinoIcons.arrow_left,
+                  size: 22,
+                  color: closeColor,
+                ),
+                tooltip: 'Назад',
+              ),
         ),
         if (topRightAction != null)
           Positioned(top: 0, right: 0, child: topRightAction!),
