@@ -21,8 +21,11 @@ import '../widgets/floating_nav_bar.dart';
 /// глухая полоса снизу отрезала у экрана заметный кусок. Контент уходит под
 /// капсулу, поэтому скроллящиеся вкладки оставляют снизу [kFloatingNavInset].
 ///
-/// Библия — обычная вкладка со своим [Navigator]: каталог и справка
-/// открываются внутри неё, и навбар остаётся виден.
+/// «Главная» и «Библия» — вкладки со своим [Navigator]: «Мудрость дня»,
+/// «Основы веры», каталог и справка открываются внутри вкладки сдвигом
+/// вправо, и навбар остаётся виден. Полноэкранными поверх шелла остаются
+/// только системные по смыслу экраны (разрешение на напоминания, рассказ
+/// о дне) и шторки — они уходят в корневой навигатор.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -33,6 +36,7 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell>
     with WidgetsBindingObserver {
   Timer? _dayTimer;
+  final _homeNavigatorKey = GlobalKey<NavigatorState>();
   final _bibleNavigatorKey = GlobalKey<NavigatorState>();
 
   /// Читалка Библии грузит главу при построении, поэтому вкладку строим
@@ -73,31 +77,51 @@ class _AppShellState extends ConsumerState<AppShell>
     super.dispose();
   }
 
-  Widget _bibleTab(bool active) => NavigatorPopHandler(
-    // Системный «назад» на Android закрывает каталог внутри вкладки,
+  Widget _tabNavigator({
+    required GlobalKey<NavigatorState> navigatorKey,
+    required bool active,
+    required Widget root,
+  }) => NavigatorPopHandler(
+    // Системный «назад» на Android закрывает экран внутри вкладки,
     // а не всё приложение.
     enabled: active,
-    onPopWithResult: (_) => _bibleNavigatorKey.currentState?.maybePop(),
+    onPopWithResult: (_) => navigatorKey.currentState?.maybePop(),
     child: Builder(
       builder: (context) {
         final media = MediaQuery.of(context);
         final bottom = floatingNavBarExtent(context);
-        // Читалка ставит кнопки от нижнего safe area, а капсула навбара
+        // Читалки ставят кнопки от нижнего safe area, а капсула навбара
         // перекрыла бы их: для вкладки низ экрана заканчивается над ней.
+        // Списки с явным padding от FloatingNavInset это не затрагивает.
         return MediaQuery(
           data: media.copyWith(
             padding: media.padding.copyWith(bottom: bottom),
             viewPadding: media.viewPadding.copyWith(bottom: bottom),
           ),
           child: Navigator(
-            key: _bibleNavigatorKey,
+            key: navigatorKey,
             onGenerateRoute: (_) =>
-                MaterialPageRoute<void>(builder: (_) => const BibleTabScreen()),
+                MaterialPageRoute<void>(builder: (_) => root),
           ),
         );
       },
     ),
   );
+
+  void _select(ShellTab current, ShellTab selected) {
+    // Повторный тап по активной вкладке возвращает к её началу, как
+    // в системном таббаре iOS.
+    if (selected == current) {
+      final navigator = switch (selected) {
+        ShellTab.today => _homeNavigatorKey.currentState,
+        ShellTab.bible => _bibleNavigatorKey.currentState,
+        ShellTab.profile => null,
+      };
+      navigator?.popUntil((route) => route.isFirst);
+      return;
+    }
+    ref.read(selectedTabProvider.notifier).select(selected);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,9 +138,17 @@ class _AppShellState extends ConsumerState<AppShell>
                 child: IndexedStack(
                   index: tab.index,
                   children: [
-                    const TodayScreen(),
+                    _tabNavigator(
+                      navigatorKey: _homeNavigatorKey,
+                      active: tab == ShellTab.today,
+                      root: const TodayScreen(),
+                    ),
                     if (_bibleVisited)
-                      _bibleTab(tab == ShellTab.bible)
+                      _tabNavigator(
+                        navigatorKey: _bibleNavigatorKey,
+                        active: tab == ShellTab.bible,
+                        root: const BibleTabScreen(),
+                      )
                     else
                       const SizedBox.shrink(),
                     const ProfileScreen(),
@@ -130,8 +162,7 @@ class _AppShellState extends ConsumerState<AppShell>
               bottom: 0,
               child: FloatingNavBar(
                 current: tab,
-                onSelect: (selected) =>
-                    ref.read(selectedTabProvider.notifier).select(selected),
+                onSelect: (selected) => _select(tab, selected),
               ),
             ),
           ],

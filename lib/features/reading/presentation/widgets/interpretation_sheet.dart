@@ -35,6 +35,9 @@ class InterpretationSheet extends StatelessWidget {
     required String? author,
   }) => showModalBottomSheet<void>(
     context: context,
+    // Шторка открывается из вкладки со своим навигатором; без корневого
+    // навигатора её низ ушёл бы под капсулу навбара.
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     backgroundColor: AppColorsExtension.of(context).background,

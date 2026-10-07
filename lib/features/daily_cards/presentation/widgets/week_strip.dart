@@ -89,6 +89,9 @@ class _WeekStripState extends State<WeekStrip> {
   Future<void> _openMonth() async {
     final day = await showModalBottomSheet<DateTime>(
       context: context,
+      // Шторка открывается из вкладки со своим навигатором; без корневого
+      // навигатора её низ ушёл бы под капсулу навбара.
+      useRootNavigator: true,
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: AppColorsExtension.of(context).background,

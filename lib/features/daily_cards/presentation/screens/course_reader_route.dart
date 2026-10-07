@@ -45,9 +45,9 @@ Future<void> openCourseReader(BuildContext context, WidgetRef ref) async {
     return;
   }
   ref.invalidate(hasStartedCourseProvider);
+  // Открывается внутри вкладки, а не модально: навбар остаётся виден.
   await Navigator.of(context).push(
     MaterialPageRoute<void>(
-      fullscreenDialog: true,
       builder: (_) =>
           CourseReaderScreen(currentTopic: currentTopic!, initialPage: page),
     ),
@@ -58,7 +58,7 @@ Future<void> openCourseReader(BuildContext context, WidgetRef ref) async {
   if (read.isEmpty) return;
   final settings = await ref.read(reminderSettingsProvider.future);
   if (settings.asked || !context.mounted) return;
-  await Navigator.of(context).push(
+  await Navigator.of(context, rootNavigator: true).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
       builder: (_) => const ReminderPermissionScreen(),

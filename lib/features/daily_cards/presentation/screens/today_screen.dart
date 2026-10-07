@@ -356,9 +356,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     if (widget.readingIsLoading) return;
     final pages = _pages;
     final firstUnread = pages.indexWhere((card) => !_isRead(card));
+    // Открывается внутри вкладки, а не модально: навбар остаётся виден.
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        fullscreenDialog: true,
         builder: (_) => DayWisdomScreen(
           cards: pages,
           startIndex: firstUnread < 0 ? 0 : firstUnread,
@@ -381,7 +381,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     BuildContext context,
     String title,
     String storyUrl,
-  ) => Navigator.of(context).push(
+  ) => Navigator.of(context, rootNavigator: true).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
       builder: (_) => DayStoryScreen(title: title, storyUrl: storyUrl),
@@ -524,7 +524,8 @@ Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
   final settings = await ref.read(reminderSettingsProvider.future);
   if (settings.asked || !context.mounted) return;
 
-  await Navigator.of(context).push(
+  // Вопрос о разрешении накрывает весь шелл, вместе с навбаром.
+  await Navigator.of(context, rootNavigator: true).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
       builder: (_) => const ReminderPermissionScreen(),

@@ -16,9 +16,13 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repos
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/day_wisdom_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
 import 'package:lampada/features/profile/presentation/screens/profile_screen.dart';
+import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
+import 'package:lampada/features/reading/domain/repositories/reading_repository.dart';
+import 'package:lampada/features/reading/presentation/providers/providers.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
@@ -88,6 +92,21 @@ class _FakeProgressRepository implements DayProgressRepository {
   }
 }
 
+/// Евангелие дня не должно ходить в сеть: иначе плитка «Мудрость дня»
+/// остаётся в загрузке и не открывается.
+class _FakeReadingRepository implements ReadingRepository {
+  @override
+  Future<Result<DailyReading>> getReading(
+    String reference, {
+    bool forceRefresh = false,
+  }) async => const Success(
+    DailyReading(
+      label: 'Ин.10:1–9',
+      verses: [Verse(number: 1, chapter: 10, text: 'Первый стих')],
+    ),
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -109,6 +128,7 @@ void main() {
       dayProgressRepositoryProvider.overrideWithValue(
         _FakeProgressRepository(),
       ),
+      readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
       sharedPreferencesProvider.overrideWithValue(prefs),
     ],
     child: MaterialApp(
@@ -359,6 +379,81 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  testWidgets('Мудрость дня открывается внутри Главной под навбаром', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    await tester.tap(find.text('Мудрость дня'));
+    await settle(tester);
+    final wisdom = find.byType(DayWisdomScreen);
+    expect(wisdom, findsOneWidget);
+    expect(ModalRoute.of(tester.element(wisdom))!.fullscreenDialog, isFalse);
+    expect(find.byType(FloatingNavBar), findsOneWidget);
+    expect(tabIcon(CupertinoIcons.sunset_fill), findsOneWidget);
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    await settle(tester);
+    expect(find.byType(DayWisdomScreen), findsNothing);
+    expect(find.text('Мудрость дня'), findsOneWidget);
+  });
+
+  testWidgets('кнопки Мудрости дня не уходят под навбар', (tester) async {
+    tester.view.padding = const FakeViewPadding(bottom: 34 * 3);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    await tester.tap(find.text('Мудрость дня'));
+    await settle(tester);
+    final navTop = tester.getTopLeft(find.byType(FloatingNavBar)).dy;
+    final share = find.ancestor(
+      of: find.byIcon(CupertinoIcons.share),
+      matching: find.byType(IconButton),
+    );
+    expect(share, findsOneWidget);
+    expect(tester.getBottomLeft(share).dy, lessThanOrEqualTo(navTop));
+  });
+
+  testWidgets('Основы веры открываются внутри Главной под навбаром', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    await tester.tap(find.byType(CourseProgressHeader));
+    await settle(tester);
+    final reader = find.byType(CourseReaderScreen);
+    expect(reader, findsOneWidget);
+    expect(ModalRoute.of(tester.element(reader))!.fullscreenDialog, isFalse);
+    expect(find.byType(FloatingNavBar), findsOneWidget);
+  });
+
+  testWidgets('уход на другую вкладку сохраняет открытую Мудрость дня', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    await tester.tap(find.text('Мудрость дня'));
+    await settle(tester);
+    await tester.tap(tabIcon(CupertinoIcons.person));
+    await settle(tester);
+    expect(find.byType(ProfileScreen), findsOneWidget);
+    await tester.tap(tabIcon(CupertinoIcons.sunset));
+    await settle(tester);
+    expect(find.byType(DayWisdomScreen), findsOneWidget);
+  });
+
+  testWidgets('повторный тап по Главной возвращает к началу вкладки', (
+    tester,
+  ) async {
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    await tester.tap(find.text('Мудрость дня'));
+    await settle(tester);
+    await tester.tap(tabIcon(CupertinoIcons.sunset_fill));
+    await settle(tester);
+    expect(find.byType(DayWisdomScreen), findsNothing);
+    expect(find.text('Мудрость дня'), findsOneWidget);
   });
 
   testWidgets('вход в курс с главной сразу открывает читалку', (tester) async {
