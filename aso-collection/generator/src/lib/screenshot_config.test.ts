@@ -42,6 +42,23 @@ test("принимает полный общий и локальный мани�
   expect(selectLocale(root, "en")).toBe("ru");
 });
 
+test("разрешает нулевой и отрицательный сдвиг телефона для полного показа экрана", () => {
+  expect(parseRootConfig(rootYaml.replace("phone_translate_y: 5", "phone_translate_y: 0"))
+    .formats[0]?.phoneTranslateY).toBe(0);
+  expect(parseRootConfig(rootYaml.replace("phone_translate_y: 5", "phone_translate_y: -3"))
+    .formats[0]?.phoneTranslateY).toBe(-3);
+  expect(() => parseRootConfig(rootYaml.replace("phone_translate_y: 5", "phone_translate_y: .inf")))
+    .toThrow("phone_translate_y");
+});
+
+test("читает цвет маски статусной строки и отклоняет некорректный цвет", () => {
+  expect(parseLocaleConfig(`${localeYaml}    status_bar_background: '#736e68'\n`, "ru")
+    .slides[0]?.statusBarBackground).toBe("#736e68");
+  expect(parseLocaleConfig(localeYaml, "ru").slides[0]?.statusBarBackground).toBe("#FAF0E3");
+  expect(() => parseLocaleConfig(`${localeYaml}    status_bar_background: 'wrong'\n`, "ru"))
+    .toThrow("status_bar_background");
+});
+
 test("отклоняет неизвестную тему, повтор id и небезопасный путь", () => {
   expect(() => parseLocaleConfig(localeYaml.replace("light", "blue"), "ru")).toThrow(
     "theme",

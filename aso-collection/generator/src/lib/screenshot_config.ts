@@ -24,6 +24,7 @@ export type LocaleSlide = {
   subtitle: string[];
   theme: ScreenshotTheme;
   screenshot: string;
+  statusBarBackground: string;
 };
 
 export type LocaleConfig = {
@@ -65,6 +66,21 @@ function numberValue(value: unknown, name: string): number {
     throw new ScreenshotConfigError(`${name}: expected positive number`);
   }
   return value;
+}
+
+function offsetValue(value: unknown, name: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new ScreenshotConfigError(`${name}: expected finite number`);
+  }
+  return value;
+}
+
+function colorValue(value: unknown, name: string): string {
+  const color = stringValue(value, name);
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
+    throw new ScreenshotConfigError(`${name}: expected #RRGGBB`);
+  }
+  return color;
 }
 
 function stringArray(value: unknown, name: string): string[] {
@@ -123,7 +139,7 @@ export function parseRootConfig(source: string): RootConfig {
       format.phone_width_ratio,
       `formats[${index}].phone_width_ratio`,
     ),
-    phoneTranslateY: numberValue(
+    phoneTranslateY: offsetValue(
       format.phone_translate_y,
       `formats[${index}].phone_translate_y`,
     ),
@@ -151,6 +167,10 @@ export function parseLocaleConfig(source: string, expectedLocale: string): Local
       subtitle: stringArray(slide.subtitle, `slides[${index}].subtitle`),
       theme,
       screenshot,
+      statusBarBackground: colorValue(
+        slide.status_bar_background ?? "#FAF0E3",
+        `slides[${index}].status_bar_background`,
+      ),
     };
   });
   unique(slides.map((slide) => slide.id), "slides");

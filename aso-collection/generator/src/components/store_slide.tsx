@@ -39,7 +39,7 @@ function Lines({ lines }: { lines: string[] }) {
   );
 }
 
-function StatusBar({ screenW }: { screenW: number }) {
+function StatusBar({ screenW, background }: { screenW: number; background: string }) {
   const fs = screenW * 0.045;
   const icon = fs * 0.95;
   return (
@@ -51,7 +51,7 @@ function StatusBar({ screenW }: { screenW: number }) {
           top: 0,
           width: "100%",
           height: `${screenshotCleanupMaskHeight}%`,
-          background: CREAM,
+          background,
           zIndex: 5,
         }}
       />
@@ -133,7 +133,12 @@ function StatusBar({ screenW }: { screenW: number }) {
   );
 }
 
-function Phone({ src, alt, width }: { src: string; alt: string; width: number }) {
+function Phone({ src, alt, width, statusBarBackground }: {
+  src: string;
+  alt: string;
+  width: number;
+  statusBarBackground: string;
+}) {
   const screenW = width * (SC_W / 100);
   return (
     <div style={{ position: "relative", aspectRatio: `${MK_W}/${MK_H}`, width }}>
@@ -167,7 +172,7 @@ function Phone({ src, alt, width }: { src: string; alt: string; width: number })
           }}
           draggable={false}
         />
-        <StatusBar screenW={screenW} />
+        <StatusBar screenW={screenW} background={statusBarBackground} />
       </div>
     </div>
   );
@@ -248,6 +253,7 @@ export function StoreSlide({
             src={screenshotUrl(locale, slide.screenshot)}
             alt={slide.label}
             width={format.width * format.phoneWidthRatio}
+            statusBarBackground={slide.statusBarBackground}
           />
         </div>
       </div>
