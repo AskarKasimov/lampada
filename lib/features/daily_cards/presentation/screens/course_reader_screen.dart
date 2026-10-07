@@ -22,10 +22,11 @@ import '../widgets/vertical_card_reader.dart';
 import 'course_detail_screen.dart';
 import 'full_card_text_screen.dart';
 
-typedef _TopicPage = ({DayCard topic, String? text, int index, int count});
+typedef _TopicPage = ({DayCard topic, String text, int index, int count});
 
-/// Тема читается по чанкам, затем отдельная страница завершает её.
-/// Следующая тема загружается только после свайпа за страницу завершения.
+/// Тема читается по чанкам. Отдельной страницы завершения нет: тему
+/// засчитывает свайп с её последнего чанка к следующей теме. Одно открытие
+/// короткой темы прочтением не считается.
 class CourseReaderScreen extends ConsumerStatefulWidget {
   const CourseReaderScreen({
     required this.currentTopic,
@@ -78,13 +79,21 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     super.initState();
     final topic = _topicNumber(widget.currentTopic.id);
     if (topic > 1) ref.read(courseTopicByNumberProvider(topic - 1));
-    if (_visible.text == null) {
-      // Сохранение позиции могло успеть до записи завершения при закрытии ОС.
+    // Старые версии сохраняли позицию на странице завершения, а ОС могла
+    // закрыть приложение раньше записи самого завершения.
+    final pastLastChunk = widget.initialPage >= _pages.length;
+    if (pastLastChunk || _isFinalChunk(_visible)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_resumeCompletion(topic));
       });
     }
   }
+
+  /// После последней темы листать некуда, поэтому её засчитывает показ
+  /// последнего чанка.
+  bool _isFinalChunk(_TopicPage page) =>
+      _topicNumber(page.topic.id) == courseTopicCount &&
+      page.index == page.count - 1;
 
   Future<void> _resumeCompletion(int topic) async {
     try {
@@ -109,18 +118,23 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     if (chunks.isEmpty) chunks.add('');
     return [
       for (var index = 0; index < chunks.length; index++)
-        (
-          topic: card,
-          text: chunks[index],
-          index: index,
-          count: chunks.length + 1,
-        ),
-      (topic: card, text: null, index: chunks.length, count: chunks.length + 1),
+        (topic: card, text: chunks[index], index: index, count: chunks.length),
     ];
   }
 
   void _onPageChanged(int page) {
+    final previousIndex = _index - _leading;
     setState(() => _index = page);
+    // Свайп вперёд с последнего чанка темы завершает её, даже если следующая
+    // тема ещё грузится.
+    if (page - _leading == previousIndex + 1 &&
+        previousIndex >= 0 &&
+        previousIndex < _pages.length) {
+      final left = _pages[previousIndex];
+      if (left.index == left.count - 1) {
+        _queueCompletion(_topicNumber(left.topic.id));
+      }
+    }
     if (_isBoundary) {
       final previous = page < _leading;
       if (!_loading && !_loadErrors.contains(previous)) {
@@ -136,7 +150,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       _pendingSave = _pendingSave.then((_) => _savePosition(position));
       unawaited(_pendingSave);
     }
-    if (visible.text == null) _queueCompletion(topic);
+    if (_isFinalChunk(visible)) _queueCompletion(topic);
   }
 
   Future<void> _savePosition(({int topic, int page}) position) async {
@@ -177,10 +191,9 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       setState(() {
         if (previous) {
           _pages.insertAll(0, added);
-          // При движении назад открываем последний текстовый чанк,
-          // а не страницу завершения: один свайп не засчитывает чужую тему.
+          // При движении назад открываем последний чанк предыдущей темы.
           _index = oldIndex == 0
-              ? _leading + added.length - 2
+              ? _leading + added.length - 1
               : oldIndex + added.length + _leading - oldLeading;
         } else {
           _pages.addAll(added);
@@ -234,6 +247,17 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         _completionErrors.add(topic);
       }
     });
+    if (result is! Success) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: const Text('Не удалось сохранить прогресс'),
+          action: SnackBarAction(
+            label: 'Повторить сохранение',
+            onPressed: () => _queueCompletion(topic),
+          ),
+        ),
+      );
+    }
     // Тема могла сохраниться даже при неудачной записи активности дня.
     ref.invalidate(completedCourseTopicsProvider);
     ref.invalidate(courseTopicProvider);
@@ -259,7 +283,6 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     final visible = _visible;
     final card = visible.topic;
     final topic = _topicNumber(card.id);
-    final completed = ref.watch(completedCourseTopicsProvider).value;
     return PopScope<void>(
       canPop: _canPop,
       onPopInvokedWithResult: (didPop, _) {
@@ -298,9 +321,6 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
               );
             }
             final item = _pages[index];
-            if (item.text == null) {
-              return _completionPage(item, colors, completed);
-            }
             final pageId = '${item.topic.id}-${item.index}';
             return ReadingOverflowListener(
               key: ValueKey(pageId),
@@ -309,7 +329,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                 setState(() => _fullTextNeeded[pageId] = needed);
               },
               child: CardContent(
-                card: item.topic.copyWith(body: item.text!.trim(), title: null),
+                card: item.topic.copyWith(body: item.text.trim(), title: null),
                 showBadge: false,
                 showSource: false,
                 scrollable: false,
@@ -328,7 +348,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
             currentIndex: visible.index,
             accent: style.accent,
           ),
-          actions: _isBoundary || visible.text == null
+          actions: _isBoundary
               ? const SizedBox.shrink()
               : Column(
                   mainAxisSize: MainAxisSize.min,
@@ -339,7 +359,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                         onPressed: () => Navigator.of(context).push(
                           FullCardTextRoute(
                             card: card.copyWith(
-                              body: visible.text!.trim(),
+                              body: visible.text.trim(),
                               title: null,
                             ),
                             showSource: false,
@@ -352,7 +372,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                       bookmark: Bookmark(
                         id: '${card.id}-page-${visible.index}',
                         kind: BookmarkKind.card,
-                        text: visible.text!.trim(),
+                        text: visible.text.trim(),
                         source: card.source,
                         label: style.label,
                         savedAt: DateTime.fromMillisecondsSinceEpoch(0),
@@ -382,53 +402,6 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
               color: colors.homeSubtitle,
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _completionPage(
-    _TopicPage page,
-    AppColorsExtension colors,
-    Set<int>? completed,
-  ) {
-    final topic = _topicNumber(page.topic.id);
-    final failed = _completionErrors.contains(topic);
-    final saving = _completing.contains(topic);
-    final finished = completed?.length == courseTopicCount;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 70),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              failed
-                  ? 'Не удалось сохранить прогресс'
-                  : saving
-                  ? 'Сохраняем прогресс…'
-                  : finished
-                  ? 'Курс пройден'
-                  : 'Тема прочитана',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, color: colors.ink),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              topic == courseTopicCount
-                  ? 'Это последняя тема курса. Вы можете вернуться к предыдущим темам.'
-                  : 'Авторы рекомендуют читать по одной теме в день. '
-                        'Можно продолжить завтра или, если хочется читать дальше, '
-                        'свайпнуть вверх к следующей теме.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 17, height: 1.5, color: colors.ink),
-            ),
-            if (failed)
-              TextButton(
-                onPressed: _isDismissing ? null : () => _queueCompletion(topic),
-                child: const Text('Повторить сохранение'),
-              ),
-          ],
         ),
       ),
     );

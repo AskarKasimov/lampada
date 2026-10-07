@@ -31,7 +31,8 @@ void main() {
     expect(find.text('Источник: «Азбука веры»'), findsOneWidget);
     expect(find.text('Прочитано 0 из 365'), findsOneWidget);
     expect(find.byType(FilledButton), findsNothing);
-    expect(find.textContaining('карточка «Тема прочитана»'), findsOneWidget);
+    expect(find.textContaining('Тема прочитана'), findsNothing);
+    expect(find.textContaining('свайпните дальше'), findsOneWidget);
   });
 
   testWidgets('возвращение показывает следующую тему и отдельный прогресс', (
