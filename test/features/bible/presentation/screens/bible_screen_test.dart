@@ -206,6 +206,42 @@ void main() {
     expect(find.byType(BibleScreen), findsNothing);
   });
 
+  testWidgets('во вкладке выбор книги справа сверху с названием и главой', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const MaterialApp(
+          home: BibleReaderScreen(
+            book: BibleBook('Mt', 'От Матфея', 28),
+            chapter: 1,
+            showClose: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final list = find.byTooltip('Книги и главы');
+    expect(list, findsOneWidget);
+    expect(tester.getCenter(list).dx, greaterThan(600));
+    expect(tester.getCenter(list).dy, lessThan(60));
+    expect(
+      find.descendant(of: list, matching: find.text('От Матфея')),
+      findsOneWidget,
+    );
+    // Название книги уже в капсуле: отдельной подписи по центру нет.
+    expect(find.text('От Матфея'), findsOneWidget);
+    expect(find.descendant(of: list, matching: find.text('1')), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.list_bullet), findsNothing);
+    expect(find.byIcon(CupertinoIcons.arrow_left), findsNothing);
+    await tester.tap(list);
+    await tester.pumpAndSettle();
+    expect(find.byType(BibleScreen), findsOneWidget);
+  });
+
   testWidgets('выбор главы во время загрузки отменяет устаревший результат', (
     tester,
   ) async {

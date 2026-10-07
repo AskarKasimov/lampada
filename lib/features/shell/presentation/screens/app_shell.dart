@@ -12,7 +12,7 @@ import '../providers/shell_providers.dart';
 import '../widgets/floating_nav_bar.dart';
 
 /// Дом приложения: три вкладки. Экрана-прослойки между запуском и контентом
-/// нет — корень «Домой» это день с входом в «Мудрость дня» и личный курс.
+/// нет — корень вкладки «Главная» это день с входом в «Мудрость дня» и личный курс.
 ///
 /// [IndexedStack], а не пересборка: уход на другую вкладку и обратно не должен
 /// сбрасывать состояние экрана.
@@ -20,6 +20,9 @@ import '../widgets/floating_nav_bar.dart';
 /// Навигация лежит в [Stack] поверх контента, а не в `bottomNavigationBar`:
 /// глухая полоса снизу отрезала у экрана заметный кусок. Контент уходит под
 /// капсулу, поэтому скроллящиеся вкладки оставляют снизу [kFloatingNavInset].
+///
+/// Библия — обычная вкладка со своим [Navigator]: каталог и справка
+/// открываются внутри неё, и навбар остаётся виден.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -30,9 +33,11 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell>
     with WidgetsBindingObserver {
   Timer? _dayTimer;
-  bool _bibleOpen = false;
-  Route<void>? _bibleRoute;
-  ShellTab _backgroundTab = ShellTab.today;
+  final _bibleNavigatorKey = GlobalKey<NavigatorState>();
+
+  /// Читалка Библии грузит главу при построении, поэтому вкладку строим
+  /// только после первого входа, а не на старте приложения.
+  bool _bibleVisited = false;
 
   @override
   void initState() {
@@ -68,61 +73,36 @@ class _AppShellState extends ConsumerState<AppShell>
     super.dispose();
   }
 
-  Future<void> _openBible() async {
-    if (!mounted || ref.read(selectedTabProvider) != ShellTab.bible) {
-      _bibleOpen = false;
-      return;
-    }
-    final returnTab = _backgroundTab;
-    final route = MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (routeContext) => FloatingNavInset(
-        inset: 0,
-        child: Scaffold(
-          body: BibleTabScreen(onClose: () => Navigator.of(routeContext).pop()),
-        ),
-      ),
-    );
-    _bibleRoute = route;
-    await Navigator.of(context).push<void>(route);
-    _bibleRoute = null;
-    _bibleOpen = false;
-    if (mounted && ref.read(selectedTabProvider) == ShellTab.bible) {
-      ref.read(selectedTabProvider.notifier).select(returnTab);
-    }
-  }
-
-  void _closeBibleForTabChange() {
-    final route = _bibleRoute;
-    if (!mounted ||
-        route == null ||
-        !route.isActive ||
-        ref.read(selectedTabProvider) == ShellTab.bible) {
-      return;
-    }
-    final navigator = Navigator.of(context);
-    // Переход по уведомлению закрывает также каталог поверх читалки.
-    navigator.popUntil((current) => identical(current, route));
-    navigator.pop();
-  }
+  Widget _bibleTab(bool active) => NavigatorPopHandler(
+    // Системный «назад» на Android закрывает каталог внутри вкладки,
+    // а не всё приложение.
+    enabled: active,
+    onPopWithResult: (_) => _bibleNavigatorKey.currentState?.maybePop(),
+    child: Builder(
+      builder: (context) {
+        final media = MediaQuery.of(context);
+        final bottom = floatingNavBarExtent(context);
+        // Читалка ставит кнопки от нижнего safe area, а капсула навбара
+        // перекрыла бы их: для вкладки низ экрана заканчивается над ней.
+        return MediaQuery(
+          data: media.copyWith(
+            padding: media.padding.copyWith(bottom: bottom),
+            viewPadding: media.viewPadding.copyWith(bottom: bottom),
+          ),
+          child: Navigator(
+            key: _bibleNavigatorKey,
+            onGenerateRoute: (_) =>
+                MaterialPageRoute<void>(builder: (_) => const BibleTabScreen()),
+          ),
+        );
+      },
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(selectedTabProvider, (previous, next) {
-      if (previous == ShellTab.bible && next != ShellTab.bible) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _closeBibleForTabChange(),
-        );
-      }
-    });
     final tab = ref.watch(selectedTabProvider);
-    // Читалка накрывает прежнюю вкладку, сохраняя её и при закрытии.
-    if (tab != ShellTab.bible) _backgroundTab = tab;
-    if (tab == ShellTab.bible && !_bibleOpen) {
-      _bibleOpen = true;
-      // Маршрут открывается после кадра, чтобы не менять Navigator в build.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _openBible());
-    }
+    if (tab == ShellTab.bible) _bibleVisited = true;
     return ReminderScheduler(
       child: Scaffold(
         body: Stack(
@@ -132,28 +112,28 @@ class _AppShellState extends ConsumerState<AppShell>
               child: FloatingNavInset(
                 inset: kFloatingNavInset,
                 child: IndexedStack(
-                  index: tab == ShellTab.bible
-                      ? _backgroundTab.index
-                      : tab.index,
-                  children: const [
-                    TodayScreen(),
-                    SizedBox.shrink(),
-                    ProfileScreen(),
+                  index: tab.index,
+                  children: [
+                    const TodayScreen(),
+                    if (_bibleVisited)
+                      _bibleTab(tab == ShellTab.bible)
+                    else
+                      const SizedBox.shrink(),
+                    const ProfileScreen(),
                   ],
                 ),
               ),
             ),
-            if (tab != ShellTab.bible)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: FloatingNavBar(
-                  current: tab,
-                  onSelect: (selected) =>
-                      ref.read(selectedTabProvider.notifier).select(selected),
-                ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: FloatingNavBar(
+                current: tab,
+                onSelect: (selected) =>
+                    ref.read(selectedTabProvider.notifier).select(selected),
               ),
+            ),
           ],
         ),
       ),

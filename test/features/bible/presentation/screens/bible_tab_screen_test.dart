@@ -35,7 +35,7 @@ class _PendingStatusesRepository implements BibleRepository {
 void main() {
   for (final fail in [false, true]) {
     testWidgets(
-      'Библию можно закрыть при ${fail ? "ошибке" : "загрузке"} позиции',
+      'вкладка Библии без кнопки закрытия при ${fail ? "ошибке" : "загрузке"} позиции',
       (tester) async {
         final repository = _PendingStatusesRepository();
         if (fail) {
@@ -48,37 +48,16 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
-            child: MaterialApp(
-              home: Builder(
-                builder: (context) => TextButton(
-                  onPressed: () => Navigator.of(context).push<void>(
-                    MaterialPageRoute(
-                      fullscreenDialog: true,
-                      builder: (routeContext) => BibleTabScreen(
-                        onClose: () => Navigator.of(routeContext).pop(),
-                      ),
-                    ),
-                  ),
-                  child: const Text('Открыть Библию'),
-                ),
-              ),
-            ),
+            child: const MaterialApp(home: BibleTabScreen()),
           ),
         );
-        await tester.tap(find.text('Открыть Библию'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 400));
         await tester.pump();
         if (fail) {
           expect(find.text('Повторить загрузку места чтения'), findsOneWidget);
+        } else {
+          expect(find.byType(CircularProgressIndicator), findsOneWidget);
         }
-        final close = find.byTooltip('Закрыть');
-        expect(close, findsOneWidget);
-        expect(tester.getCenter(close).dx, greaterThan(400));
-        await tester.tap(close);
-        await tester.pumpAndSettle();
-        expect(find.byType(BibleTabScreen), findsNothing);
-        expect(find.text('Открыть Библию'), findsOneWidget);
+        expect(find.byTooltip('Закрыть'), findsNothing);
       },
     );
   }
