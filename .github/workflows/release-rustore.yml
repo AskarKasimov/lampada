@@ -117,7 +117,7 @@ jobs:
         run: |
           set -euo pipefail
           output_file="$RUNNER_TEMP/rustore-submit-output.txt"
-          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\\+[0-9]+[[:space:]]*$/\\1/p' pubspec.yaml)"
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)[+][0-9]+[[:space:]]*$/\1/p' pubspec.yaml)"
           whats_new="$(bash tool/extract_release_notes.sh \
             --version "$pubspec_version" \
             --file CHANGELOG.md)"
