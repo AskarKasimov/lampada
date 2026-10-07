@@ -116,16 +116,19 @@ class HomeTile extends StatelessWidget {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                SizedBox(
-                                  width: 120,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: LinearProgressIndicator(
-                                      value: progress,
-                                      minHeight: 6,
-                                      color: style.accent,
-                                      backgroundColor: style.accent.withValues(
-                                        alpha: 0.2,
+                                // При крупном системном тексте счётчик
+                                // получает место за счёт ширины полосы.
+                                Flexible(
+                                  child: SizedBox(
+                                    width: 120,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(3),
+                                      child: LinearProgressIndicator(
+                                        value: progress,
+                                        minHeight: 6,
+                                        color: style.accent,
+                                        backgroundColor: style.accent
+                                            .withValues(alpha: 0.2),
                                       ),
                                     ),
                                   ),

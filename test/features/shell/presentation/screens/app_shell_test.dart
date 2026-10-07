@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,9 +11,11 @@ import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_tab_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
+import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
+import 'package:lampada/features/daily_cards/domain/repositories/course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
@@ -107,6 +111,25 @@ class _FakeReadingRepository implements ReadingRepository {
   );
 }
 
+class _DelayedCourseProgress extends PrefsCourseProgressRepository {
+  _DelayedCourseProgress(super.prefs);
+
+  Completer<void>? saving;
+  Completer<void>? completing;
+
+  @override
+  Future<Result<void>> saveCurrentTopic(int topic, {int page = 0}) async {
+    if (saving case final pending?) await pending.future;
+    return super.saveCurrentTopic(topic, page: page);
+  }
+
+  @override
+  Future<Result<void>> completeTopic(int topic) async {
+    if (completing case final pending?) await pending.future;
+    return super.completeTopic(topic);
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -122,8 +145,13 @@ void main() {
 
   /// IndexedStack строит все четыре вкладки сразу, поэтому Профиль читает
   /// настройку темы уже на старте — prefs нужны даже тесту про «Главную».
-  Widget buildApp({TargetPlatform? platform}) => ProviderScope(
+  Widget buildApp({
+    TargetPlatform? platform,
+    CourseProgressRepository? courseProgress,
+  }) => ProviderScope(
     overrides: [
+      if (courseProgress != null)
+        courseProgressRepositoryProvider.overrideWithValue(courseProgress),
       dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
       dayProgressRepositoryProvider.overrideWithValue(
         _FakeProgressRepository(),
@@ -455,6 +483,48 @@ void main() {
     expect(find.byType(DayWisdomScreen), findsNothing);
     expect(find.text('Мудрость дня'), findsOneWidget);
   });
+
+  for (final waitForCompletion in [false, true]) {
+    testWidgets(
+      'повторный тап Главная ожидает ${waitForCompletion ? "завершения темы" : "сохранения позиции"}',
+      (tester) async {
+        final course = _DelayedCourseProgress(prefs);
+        await tester.pumpWidget(buildApp(courseProgress: course));
+        await settle(tester);
+        await tester.tap(find.byType(CourseProgressHeader));
+        await settle(tester);
+        final pending = Completer<void>();
+        if (waitForCompletion) {
+          course.completing = pending;
+        } else {
+          course.saving = pending;
+        }
+        await tester.drag(find.byType(PageView), const Offset(0, -500));
+        await settle(tester);
+        // Справка над ридером тоже должна закрыться при возврате к корню.
+        await tester.tap(find.byTooltip('О курсе'));
+        await settle(tester);
+        await tester.tap(tabIcon(CupertinoIcons.sunset_fill));
+        await settle(tester);
+        await tester.tap(tabIcon(CupertinoIcons.sunset_fill));
+        await settle(tester);
+        expect(find.byType(CourseReaderScreen), findsOneWidget);
+        // Пока выход ждёт запись, новый экран не должен перехватить pop.
+        await tester.tap(find.byTooltip('О курсе'), warnIfMissed: false);
+        await settle(tester);
+        expect(find.byType(CourseReaderScreen), findsOneWidget);
+        pending.complete();
+        await settle(tester);
+        expect(find.byType(CourseReaderScreen), findsNothing);
+        expect(find.text('Мудрость дня'), findsOneWidget);
+        expect((await course.currentTopic() as Success<int>).value, 2);
+        expect((await course.completedTopics() as Success<Set<int>>).value, {
+          1,
+        });
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('вход в курс с главной сразу открывает читалку', (tester) async {
     await tester.pumpWidget(buildApp());

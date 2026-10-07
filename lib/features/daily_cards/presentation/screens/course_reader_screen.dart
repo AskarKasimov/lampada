@@ -289,117 +289,126 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         if (!didPop) unawaited(_dismiss());
       },
       child: Scaffold(
-        body: VerticalCardReader(
-          controller: _controller,
-          itemCount: _leading + _pages.length + (_hasNext ? 1 : 0),
-          onPageChanged: _onPageChanged,
-          itemBuilder: (_, page) {
-            final index = page - _leading;
-            if (index < 0 || index >= _pages.length) {
-              return Center(
-                child: !_loadErrors.contains(index < 0)
-                    ? const CircularProgressIndicator()
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Тема недоступна'),
-                          TextButton(
-                            onPressed: () {
-                              final previous = index < 0;
-                              final number = previous
-                                  ? _topicNumber(_pages.first.topic.id) - 1
-                                  : _topicNumber(_pages.last.topic.id) + 1;
-                              ref.invalidate(
-                                courseTopicByNumberProvider(number),
-                              );
-                              unawaited(_loadTopic(previous));
-                            },
-                            child: const Text('Повторить'),
-                          ),
-                        ],
-                      ),
-              );
-            }
-            final item = _pages[index];
-            final pageId = '${item.topic.id}-${item.index}';
-            return ReadingOverflowListener(
-              key: ValueKey(pageId),
-              onChanged: (needed) {
-                if (_fullTextNeeded[pageId] == needed) return;
-                setState(() => _fullTextNeeded[pageId] = needed);
-              },
-              child: CardContent(
-                card: item.topic.copyWith(body: item.text.trim(), title: null),
-                showBadge: false,
-                showSource: false,
-                scrollable: false,
-              ),
-            );
-          },
-          header: AppPillBadge(
-            label: 'Основы веры · Тема №$topic',
-            background: style.tagBackground,
-            foreground: style.tagForeground,
-            letterSpacing: 0.2,
-          ),
-          leftRail: ReaderProgressRail(
-            key: ValueKey(card.id),
-            count: visible.count,
-            currentIndex: visible.index,
-            accent: style.accent,
-          ),
-          actions: _isBoundary
-              ? const SizedBox.shrink()
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_fullTextNeeded['${card.id}-${visible.index}'] ?? false)
-                      ReaderActionButton(
-                        tooltip: 'Открыть полный текст',
-                        onPressed: () => Navigator.of(context).push(
-                          FullCardTextRoute(
-                            card: card.copyWith(
-                              body: visible.text.trim(),
-                              title: null,
+        // Новые свайпы и маршруты не должны менять очередь записей
+        // или верхний экран, пока выход ожидает сохранения.
+        body: AbsorbPointer(
+          absorbing: _isDismissing,
+          child: VerticalCardReader(
+            controller: _controller,
+            itemCount: _leading + _pages.length + (_hasNext ? 1 : 0),
+            onPageChanged: _onPageChanged,
+            itemBuilder: (_, page) {
+              final index = page - _leading;
+              if (index < 0 || index >= _pages.length) {
+                return Center(
+                  child: !_loadErrors.contains(index < 0)
+                      ? const CircularProgressIndicator()
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('Тема недоступна'),
+                            TextButton(
+                              onPressed: () {
+                                final previous = index < 0;
+                                final number = previous
+                                    ? _topicNumber(_pages.first.topic.id) - 1
+                                    : _topicNumber(_pages.last.topic.id) + 1;
+                                ref.invalidate(
+                                  courseTopicByNumberProvider(number),
+                                );
+                                unawaited(_loadTopic(previous));
+                              },
+                              child: const Text('Повторить'),
                             ),
-                            showSource: false,
-                          ),
+                          ],
                         ),
-                        icon: CupertinoIcons.fullscreen,
-                        color: colors.homeSubtitle,
-                      ),
-                    BookmarkButton(
-                      bookmark: Bookmark(
-                        id: '${card.id}-page-${visible.index}',
-                        kind: BookmarkKind.card,
-                        text: visible.text.trim(),
-                        source: card.source,
-                        label: style.label,
-                        savedAt: DateTime.fromMillisecondsSinceEpoch(0),
-                      ),
-                      iconSize: 28,
-                      buttonSize: 56,
-                    ),
-                    AppShareButton(
-                      text: '${card.body}\n\n— ${card.source}',
-                      iconSize: 28,
-                      buttonSize: 56,
-                    ),
-                  ],
+                );
+              }
+              final item = _pages[index];
+              final pageId = '${item.topic.id}-${item.index}';
+              return ReadingOverflowListener(
+                key: ValueKey(pageId),
+                onChanged: (needed) {
+                  if (_fullTextNeeded[pageId] == needed) return;
+                  setState(() => _fullTextNeeded[pageId] = needed);
+                },
+                child: CardContent(
+                  card: item.topic.copyWith(
+                    body: item.text.trim(),
+                    title: null,
+                  ),
+                  showBadge: false,
+                  showSource: false,
+                  scrollable: false,
                 ),
-          onClose: () => unawaited(_dismiss()),
-          closeColor: colors.homeSubtitle,
-          topRightAction: IconButton(
-            tooltip: 'О курсе',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const CourseDetailScreen(),
-              ),
+              );
+            },
+            header: AppPillBadge(
+              label: 'Основы веры · Тема №$topic',
+              background: style.tagBackground,
+              foreground: style.tagForeground,
+              letterSpacing: 0.2,
             ),
-            icon: Icon(
-              CupertinoIcons.info,
-              size: 22,
-              color: colors.homeSubtitle,
+            leftRail: ReaderProgressRail(
+              key: ValueKey(card.id),
+              count: visible.count,
+              currentIndex: visible.index,
+              accent: style.accent,
+            ),
+            actions: _isBoundary
+                ? const SizedBox.shrink()
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_fullTextNeeded['${card.id}-${visible.index}'] ??
+                          false)
+                        ReaderActionButton(
+                          tooltip: 'Открыть полный текст',
+                          onPressed: () => Navigator.of(context).push(
+                            FullCardTextRoute(
+                              card: card.copyWith(
+                                body: visible.text.trim(),
+                                title: null,
+                              ),
+                              showSource: false,
+                            ),
+                          ),
+                          icon: CupertinoIcons.fullscreen,
+                          color: colors.homeSubtitle,
+                        ),
+                      BookmarkButton(
+                        bookmark: Bookmark(
+                          id: '${card.id}-page-${visible.index}',
+                          kind: BookmarkKind.card,
+                          text: visible.text.trim(),
+                          source: card.source,
+                          label: style.label,
+                          savedAt: DateTime.fromMillisecondsSinceEpoch(0),
+                        ),
+                        iconSize: 28,
+                        buttonSize: 56,
+                      ),
+                      AppShareButton(
+                        text: '${card.body}\n\n— ${card.source}',
+                        iconSize: 28,
+                        buttonSize: 56,
+                      ),
+                    ],
+                  ),
+            onClose: () => unawaited(_dismiss()),
+            closeColor: colors.homeSubtitle,
+            topRightAction: IconButton(
+              tooltip: 'О курсе',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const CourseDetailScreen(),
+                ),
+              ),
+              icon: Icon(
+                CupertinoIcons.info,
+                size: 22,
+                color: colors.homeSubtitle,
+              ),
             ),
           ),
         ),

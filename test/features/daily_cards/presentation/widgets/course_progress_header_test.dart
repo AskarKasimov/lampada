@@ -50,6 +50,36 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('крупный счётчик помещается на узком экране', (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: CourseProgressHeader(
+            topic: _topic,
+            completedTopicCount: 365,
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    final counter = tester.getRect(find.text('365/365'));
+    final bar = tester.getRect(find.byType(LinearProgressIndicator));
+    expect(counter.right, lessThanOrEqualTo(304));
+    expect(bar.width, greaterThan(0));
+    expect(bar.right, lessThan(counter.left));
+  });
+
   testWidgets('без счётчика прочитанного полосы прогресса нет', (tester) async {
     await tester.pumpWidget(
       _app(

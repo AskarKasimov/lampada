@@ -42,6 +42,7 @@ class _AppShellState extends ConsumerState<AppShell>
   /// Читалка Библии грузит главу при построении, поэтому вкладку строим
   /// только после первого входа, а не на старте приложения.
   bool _bibleVisited = false;
+  final _returningToRoot = <NavigatorState>{};
 
   @override
   void initState() {
@@ -108,6 +109,31 @@ class _AppShellState extends ConsumerState<AppShell>
     ),
   );
 
+  Future<void> _returnToRoot(NavigatorState navigator) async {
+    if (!_returningToRoot.add(navigator)) return;
+    try {
+      while (mounted && navigator.mounted) {
+        Route<dynamic>? waiting;
+        navigator.popUntil((route) {
+          if (route.isFirst) return true;
+          // Прямой pop обходит PopScope: ридер должен сначала сохранить
+          // позицию и завершение темы, а затем сам закрыть свой маршрут.
+          if (route.popDisposition == RoutePopDisposition.doNotPop) {
+            waiting = route;
+            return true;
+          }
+          return false;
+        });
+        final route = waiting;
+        if (route == null) return;
+        if (!await navigator.maybePop()) return;
+        await route.popped;
+      }
+    } finally {
+      _returningToRoot.remove(navigator);
+    }
+  }
+
   void _select(ShellTab current, ShellTab selected) {
     // Повторный тап по активной вкладке возвращает к её началу, как
     // в системном таббаре iOS.
@@ -117,7 +143,7 @@ class _AppShellState extends ConsumerState<AppShell>
         ShellTab.bible => _bibleNavigatorKey.currentState,
         ShellTab.profile => null,
       };
-      navigator?.popUntil((route) => route.isFirst);
+      if (navigator != null) unawaited(_returnToRoot(navigator));
       return;
     }
     ref.read(selectedTabProvider.notifier).select(selected);
