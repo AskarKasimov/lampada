@@ -67,7 +67,7 @@ jobs:
             exit 1
           }
 
-          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)\\+[0-9]+[[:space:]]*$/\\1/p' pubspec.yaml)"
+          pubspec_version="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+)[+][0-9]+[[:space:]]*$/\1/p' pubspec.yaml)"
           [[ -n "$pubspec_version" && "$TAG" == "v$pubspec_version" ]] || {
             printf 'Tag %s must match pubspec version v%s.\n' "$TAG" "$pubspec_version" >&2
             exit 1
