@@ -7,7 +7,9 @@ void main() {
   const source = 'assets/icon/icon_foreground.png';
   const target = 'assets/icon/icon_ios.png';
 
-  final background = img.ColorRgb8(0x5C, 0x48, 0x38);
+  // Тот же кремовый, что adaptive_icon_background в pubspec.yaml: на нём
+  // тёплое свечение зелёной лампады читается мягко.
+  final background = img.ColorRgb8(0xF7, 0xEF, 0xE2);
 
   final decoded = img.decodePng(File(source).readAsBytesSync());
   if (decoded == null) {
