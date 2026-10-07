@@ -2,7 +2,7 @@ name: lampada
 description: "Короткая ежедневная православная сессия."
 publish_to: 'none'
 
-version: 1.1.3+5
+version: 1.2.0+8
 
 environment:
   sdk: ^3.11.0
@@ -47,6 +47,8 @@ flutter:
   assets:
     # Марка приложения: та же лампада, что на иконке, но с прозрачным фоном.
     - assets/brand/lampada.png
+    # Лампада серии дней: зажжённая и погасшая.
+    - assets/illustrations/
 
   fonts:
     - family: Lora

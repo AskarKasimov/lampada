@@ -25,12 +25,16 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
     required this.chapter,
     this.initialVerse = 1,
     this.onClose,
+    this.showClose = true,
     super.key,
   });
 
   final BibleBook book;
   final int chapter;
   final VoidCallback? onClose;
+
+  /// Во вкладке Библии читалка корневая: закрывать её некуда.
+  final bool showClose;
 
   /// Сохранённый стих открывается в контексте всей главы, без обрезки начала.
   final int initialVerse;
@@ -236,14 +240,75 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     ),
   );
 
+  /// Во вкладке выбор книги стоит справа сверху и сразу показывает,
+  /// какая книга и глава открыты.
+  Widget _bookPicker(
+    AppColorsExtension colors,
+    BibleBook book,
+    int chapter, {
+    double top = 4,
+  }) => Padding(
+    padding: EdgeInsets.only(top: top, right: 12),
+    child: Tooltip(
+      message: 'Книги и главы',
+      child: Material(
+        color: colors.ink.withValues(alpha: 0.06),
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _selectChapter,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  // Капсула не должна растягиваться на всю ширину экрана.
+                  constraints: const BoxConstraints(maxWidth: 200),
+                  child: Text(
+                    book.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: colors.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '$chapter',
+                  style: TextStyle(fontSize: 15, color: colors.textSecondary),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  CupertinoIcons.chevron_down,
+                  size: 14,
+                  color: colors.homeSubtitle,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     if (_loadingInitial) {
       return Scaffold(
         appBar: AppBar(
-          leading: _catalogAction(colors),
-          actions: [_closeAction(colors)],
+          automaticallyImplyLeading: false,
+          leading: widget.showClose ? _catalogAction(colors) : null,
+          actions: [
+            if (widget.showClose)
+              _closeAction(colors)
+            else
+              _bookPicker(colors, _book, _chapter, top: 0),
+          ],
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -251,9 +316,15 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     if (_initialError != null) {
       return Scaffold(
         appBar: AppBar(
-          leading: _catalogAction(colors),
+          automaticallyImplyLeading: false,
+          leading: widget.showClose ? _catalogAction(colors) : null,
           title: Text(_book.title),
-          actions: [_closeAction(colors)],
+          actions: [
+            if (widget.showClose)
+              _closeAction(colors)
+            else
+              _bookPicker(colors, _book, _chapter, top: 0),
+          ],
         ),
         body: Center(
           child: Column(
@@ -324,12 +395,15 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             ),
           );
         },
-        header: Text(
-          position.book.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 12, color: colors.textSecondary),
-        ),
+        // Во вкладке название книги показывает капсула выбора справа.
+        header: widget.showClose
+            ? Text(
+                position.book.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              )
+            : const SizedBox.shrink(),
         leftRail: _chapterProgress(position, colors),
         actions: Column(
           mainAxisSize: MainAxisSize.min,
@@ -352,8 +426,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
           ],
         ),
         onClose: widget.onClose ?? () => Navigator.of(context).pop(),
-        topLeftAction: _catalogAction(colors),
-        topRightAction: _closeAction(colors),
+        topLeftAction: widget.showClose
+            ? _catalogAction(colors)
+            : const SizedBox.shrink(),
+        topRightAction: widget.showClose
+            ? _closeAction(colors)
+            : _bookPicker(colors, position.book, position.chapter),
         closeColor: colors.homeSubtitle,
       ),
     );

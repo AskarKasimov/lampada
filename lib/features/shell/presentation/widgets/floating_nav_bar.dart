@@ -13,10 +13,32 @@ const _barHeight = 58.0;
 /// Отступ капсулы от краёв и от низа экрана.
 const _bottomMargin = 10.0;
 
+/// Зазор от низа экрана на iOS с home indicator. Полоска индикатора занимает
+/// нижние ~13pt, поэтому капсула садится в safe area прямо над ней, как
+/// системный таббар iOS 26, а не над всей зоной.
+const _homeIndicatorGap = 16.0;
+
 /// Сколько места снизу должен оставить скроллящийся контент, чтобы последний
 /// элемент не оказался под капсулой. Прибавляется к нижнему padding списков.
 ///
 const kFloatingNavInset = _barHeight + _bottomMargin + 12;
+
+/// Сколько капсула занимает от низа экрана вместе с зазором до края.
+/// Вкладка, контент которой не должен уходить под капсулу, получает это
+/// значение нижним padding своего [MediaQuery].
+double floatingNavBarExtent(BuildContext context) =>
+    _floatingNavBarGap(context) + _barHeight;
+
+/// На Android нижний inset может занимать трёхкнопочная навигация, поэтому
+/// там капсула остаётся над ним целиком.
+double _floatingNavBarGap(BuildContext context) {
+  final inset = MediaQuery.viewPaddingOf(context).bottom;
+  if (inset == 0) return _bottomMargin;
+  if (Theme.of(context).platform == TargetPlatform.iOS) {
+    return _homeIndicatorGap;
+  }
+  return inset + _bottomMargin;
+}
 
 /// Нижний запас задаёт shell по высоте своей капсулы.
 /// Отдельно открытый экран без shell использует обычную высоту navbar.
@@ -62,7 +84,7 @@ class FloatingNavBar extends StatefulWidget {
       tab: ShellTab.today,
       icon: CupertinoIcons.sunset,
       activeIcon: CupertinoIcons.sunset_fill,
-      label: 'Домой',
+      label: 'Главная',
     ),
     (
       tab: ShellTab.bible,
@@ -94,11 +116,11 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
-      minimum: const EdgeInsets.only(bottom: _bottomMargin),
+      bottom: false,
       child: Padding(
         padding:
             AppSpacing.of(context).horizontal +
-            const EdgeInsets.only(bottom: _bottomMargin),
+            EdgeInsets.only(bottom: _floatingNavBarGap(context)),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(_barHeight / 2),
           child: BackdropFilter(

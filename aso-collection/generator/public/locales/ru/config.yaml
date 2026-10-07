@@ -11,13 +11,13 @@ slides:
     theme: light
     screenshot: 01-today.png
   - id: session
-    label: Сессия дня
+    label: Мудрость дня
     title:
-      - "Цитата, совет"
-      - "и притча."
+      - "Мудрость дня"
+      - "в одной листалке."
     subtitle:
-      - "Три коротких текста,"
-      - "новые каждый день."
+      - "Цитата, совет, притча"
+      - "и Евангелие каждый день."
     theme: dark
     screenshot: 02-card.png
   - id: gospel
@@ -30,14 +30,26 @@ slides:
       - "с объяснением святых отцов."
     theme: light
     screenshot: 03-gospel.png
+    # Панель толкования затемняет весь фон, включая системную строку.
+    status_bar_background: "#736e68"
+  - id: bible
+    label: Библия
+    title:
+      - "Вся Библия —"
+      - "стих за стихом."
+    subtitle:
+      - "Место чтения сохраняется."
+      - "Скачанные главы — без сети."
+    theme: light
+    screenshot: 06-bible.png
   - id: course
     label: Курс
     title:
       - "Курс «Основы веры»"
       - "из 365 тем."
     subtitle:
-      - "По одной теме за раз —"
-      - "или сколько захотите."
+      - "Продолжайте с того места,"
+      - "где остановились."
     theme: dark
     screenshot: 04-course.png
   - id: story

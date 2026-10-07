@@ -1,19 +1,18 @@
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/result/result.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../domain/bible_chapter_statuses.dart';
 import '../../domain/entities/bible_book.dart';
 import '../providers/providers.dart';
 import 'bible_reader_screen.dart';
 
 /// Вход во вкладку восстанавливает последнее место, в том числе после перезапуска.
+///
+/// Это корень вкладки, а не модальный экран: кнопки «Закрыть» нет,
+/// уходят отсюда через навбар.
 class BibleTabScreen extends ConsumerStatefulWidget {
-  const BibleTabScreen({required this.onClose, super.key});
-
-  final VoidCallback onClose;
+  const BibleTabScreen({super.key});
 
   @override
   ConsumerState<BibleTabScreen> createState() => _BibleTabScreenState();
@@ -30,23 +29,7 @@ class _BibleTabScreenState extends ConsumerState<BibleTabScreen> {
     };
   }
 
-  Widget _statusScreen(Widget body) => Scaffold(
-    appBar: AppBar(
-      automaticallyImplyLeading: false,
-      actions: [
-        IconButton(
-          tooltip: 'Закрыть',
-          onPressed: widget.onClose,
-          icon: Icon(
-            CupertinoIcons.xmark,
-            size: 22,
-            color: AppColorsExtension.of(context).homeSubtitle,
-          ),
-        ),
-      ],
-    ),
-    body: Center(child: body),
-  );
+  Widget _statusScreen(Widget body) => Scaffold(body: Center(child: body));
 
   @override
   Widget build(BuildContext context) => FutureBuilder<BibleChapterStatuses>(
@@ -73,7 +56,7 @@ class _BibleTabScreenState extends ConsumerState<BibleTabScreen> {
         book: book,
         chapter: id?.$2 ?? 1,
         initialVerse: statuses.progress[id]?.verse ?? 1,
-        onClose: widget.onClose,
+        showClose: false,
       );
     },
   );

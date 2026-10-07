@@ -82,6 +82,8 @@ class _ProgressRepository implements DayProgressRepository {
 }
 
 class _FailingCourseProgressRepository implements CourseProgressRepository {
+  int completeCalls = 0;
+
   @override
   Future<Result<bool>> hasStarted() async => const Success(false);
 
@@ -92,7 +94,10 @@ class _FailingCourseProgressRepository implements CourseProgressRepository {
   Future<Result<Set<int>>> completedTopics() async => const Success({});
 
   @override
-  Future<Result<void>> completeTopic(int topic) => saveCurrentTopic(topic);
+  Future<Result<void>> completeTopic(int topic) {
+    completeCalls++;
+    return saveCurrentTopic(topic);
+  }
 
   @override
   Future<Result<int>> currentTopic() async => const Success(3);
@@ -240,7 +245,7 @@ void main() {
       );
       await tester.drag(find.byType(PageView), const Offset(0, -500));
       await tester.pumpAndSettle();
-      expect(find.text('Тема прочитана'), findsOneWidget);
+      expect(find.text('Тема 4'), findsOneWidget);
       expect(info, findsOneWidget);
 
       await tester.tap(info);
@@ -251,7 +256,7 @@ void main() {
 
       await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
-      expect(find.text('Тема прочитана'), findsOneWidget);
+      expect(find.text('Тема 4'), findsOneWidget);
     },
   );
 
@@ -301,41 +306,41 @@ void main() {
     await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
     expect(find.text('Тема недоступна'), findsOneWidget);
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 2; i++) {
       await tester.drag(find.byType(PageView), const Offset(0, -500));
       await tester.pumpAndSettle();
     }
     expect(find.text('Тема 4'), findsOneWidget);
   });
 
-  testWidgets('повторный просмотр завершения не отмечает день второй раз', (
-    tester,
-  ) async {
-    await pumpReader(tester);
-    await tester.drag(find.byType(PageView), const Offset(0, -500));
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(PageView), const Offset(0, 500));
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(PageView), const Offset(0, -500));
-    await tester.pumpAndSettle();
-    expect(progress.markReadCalls, [CardType.basics]);
-  });
+  testWidgets(
+    'повторный переход к следующей теме не отмечает день второй раз',
+    (tester) async {
+      await pumpReader(tester);
+      await tester.drag(find.byType(PageView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(PageView), const Offset(0, 500));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(PageView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      expect(progress.markReadCalls, [CardType.basics]);
+    },
+  );
 
   testWidgets('завершение с ошибкой предлагает повторить сохранение', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      buildApp(courseProgressRepository: _FailingCourseProgressRepository()),
-    );
+    final failing = _FailingCourseProgressRepository();
+    await tester.pumpWidget(buildApp(courseProgressRepository: failing));
     await tester.pumpAndSettle();
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Не удалось сохранить прогресс'), findsOneWidget);
-    expect(find.text('Повторить сохранение'), findsOneWidget);
+    expect(failing.completeCalls, 1);
     expect(progress.markReadCalls, isEmpty);
     await tester.tap(find.text('Повторить сохранение'));
     await tester.pumpAndSettle();
-    expect(find.text('Повторить сохранение'), findsOneWidget);
+    expect(failing.completeCalls, 2);
   });
 
   testWidgets('следующая тема повторяет загрузку без пропуска завершения', (
@@ -343,8 +348,6 @@ void main() {
   ) async {
     cards = _CourseCardsRepository(failuresRemaining: {4: 1});
     await pumpReader(tester);
-    await tester.drag(find.byType(PageView), const Offset(0, -500));
-    await tester.pumpAndSettle();
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Тема недоступна'), findsOneWidget);
@@ -361,8 +364,6 @@ void main() {
     final delayed = _DelayedNextCards();
     cards = delayed;
     await pumpReader(tester);
-    await tester.drag(find.byType(PageView), const Offset(0, -500));
-    await tester.pumpAndSettle();
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pump(const Duration(milliseconds: 500));
     for (var i = 0; i < 3; i++) {
@@ -381,13 +382,16 @@ void main() {
   ) async {
     await prefs.setString('course_progress_v4', '{"topic":3}');
     await tester.pumpWidget(
-      buildApp(courseProgressRepository: _FailOncePosition(prefs)),
+      buildApp(
+        currentTopic: _currentTopic.copyWith(
+          body: 'Первая мысль.\n\nВторая мысль.',
+        ),
+        courseProgressRepository: _FailOncePosition(prefs),
+      ),
     );
     await tester.pumpAndSettle();
-    for (var i = 0; i < 2; i++) {
-      await tester.drag(find.byType(PageView), const Offset(0, -500));
-      await tester.pumpAndSettle();
-    }
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
     expect(find.text('Не удалось сохранить место чтения'), findsOneWidget);
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
@@ -395,7 +399,7 @@ void main() {
     expect((saved as Success<int>).value, 4);
   });
 
-  testWidgets('короткие абзацы листаются отдельно, финал имеет свою точку', (
+  testWidgets('короткие абзацы листаются отдельно, без страницы завершения', (
     tester,
   ) async {
     await pumpReader(
@@ -405,17 +409,19 @@ void main() {
       ),
     );
     expect(find.text('Первый абзац.'), findsOneWidget);
-    expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 3);
+    expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('Второй абзац.'), findsOneWidget);
     expect(progress.readTypes, isEmpty);
+    final dots = tester.widget<ProgressDots>(find.byType(ProgressDots));
+    expect(dots.count, 2);
+    expect(dots.currentIndex, 1);
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
-    expect(find.text('Тема прочитана'), findsOneWidget);
-    final dots = tester.widget<ProgressDots>(find.byType(ProgressDots));
-    expect(dots.count, 3);
-    expect(dots.currentIndex, 2);
+    expect(find.text('Тема прочитана'), findsNothing);
+    expect(find.text('Тема 4'), findsOneWidget);
+    expect(progress.readTypes, {CardType.basics});
   });
 
   testWidgets('shows the supplied current topic', (tester) async {
@@ -425,26 +431,22 @@ void main() {
     expect(cards.requestedTopics, contains(2));
   });
 
-  testWidgets(
-    'открытие не засчитывает тему, завершающая карточка засчитывает',
-    (tester) async {
-      await pumpReader(tester);
-      expect(progress.readTypes, isEmpty);
-      expect(find.text('Прочитано'), findsNothing);
-      await tester.drag(find.byType(PageView), const Offset(0, -500));
-      await tester.pumpAndSettle();
-      expect(find.text('Тема прочитана'), findsOneWidget);
-      expect(progress.readTypes, {CardType.basics});
-      final stored =
-          jsonDecode(prefs.getString('course_progress_v4')!)
-              as Map<String, dynamic>;
-      expect(stored['completedTopics'], [3]);
-      expect(cards.requestedTopics, isNot(contains(4)));
-      await tester.drag(find.byType(PageView), const Offset(0, -500));
-      await tester.pumpAndSettle();
-      expect(find.text('Тема 4'), findsOneWidget);
-    },
-  );
+  testWidgets('открытие не засчитывает тему, переход к следующей засчитывает', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+    expect(progress.readTypes, isEmpty);
+    expect(find.text('Прочитано'), findsNothing);
+    expect(cards.requestedTopics, isNot(contains(4)));
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Тема 4'), findsOneWidget);
+    expect(progress.readTypes, {CardType.basics});
+    final stored =
+        jsonDecode(prefs.getString('course_progress_v4')!)
+            as Map<String, dynamic>;
+    expect(stored['completedTopics'], [3]);
+  });
 
   testWidgets('вмещающееся предложение длиннее 150 не требует полного экрана', (
     tester,
@@ -461,7 +463,7 @@ void main() {
     final body = '${List.filled(400, 'Слово').join(' ')}.';
     await pumpReader(tester, currentTopic: _currentTopic.copyWith(body: body));
     expect(find.text(body), findsNothing);
-    expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);
+    expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 1);
     expect(find.byTooltip('Открыть полный текст'), findsOneWidget);
     await tester.tap(find.byTooltip('Открыть полный текст'));
     await tester.pumpAndSettle();
@@ -472,7 +474,7 @@ void main() {
     expect(progress.readTypes, isEmpty);
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
-    expect(find.text('Тема прочитана'), findsOneWidget);
+    expect(find.text('Тема 4'), findsOneWidget);
   });
 
   testWidgets(
@@ -508,16 +510,19 @@ void main() {
         body: 'Последняя тема',
       ),
     );
-    await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
-    expect(find.text('Курс пройден'), findsOneWidget);
+    // Листать после последней темы некуда: её засчитывает показ финала.
+    final stored =
+        jsonDecode(prefs.getString('course_progress_v4')!)
+            as Map<String, dynamic>;
+    expect(stored['completedTopics'], contains(365));
+    expect(progress.readTypes, {CardType.basics});
     final dots = tester.widget<ProgressDots>(find.byType(ProgressDots));
-    expect(dots.count, 2);
-    expect(dots.currentIndex, dots.count - 1);
+    expect(dots.count, 1);
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(cards.requestedTopics, isNot(contains(366)));
-    expect(find.text('Курс пройден'), findsOneWidget);
+    expect(find.text('Последняя тема'), findsOneWidget);
   });
 
   testWidgets('показывает ошибку, если тема курса не сохранилась', (
@@ -583,15 +588,18 @@ void main() {
 
     final badge = tester.widget<AppPillBadge>(find.byType(AppPillBadge));
     expect(badge.label, 'Основы веры · Тема №3');
-    expect(badge.background, const Color(0xFFD1E8FA));
-    expect(badge.foreground, const Color(0xFF00476D));
+    expect(badge.background, const Color(0xFFD0E8DE));
+    expect(badge.foreground, const Color(0xFF0D4635));
     expect(find.text('Основы'), findsNothing);
   });
 
-  testWidgets('точки слева показывают чанки и завершение текущей темы', (
-    tester,
-  ) async {
-    await pumpReader(tester);
+  testWidgets('точки слева показывают чанки текущей темы', (tester) async {
+    await pumpReader(
+      tester,
+      currentTopic: _currentTopic.copyWith(
+        body: 'Первый абзац.\n\nВторой абзац.',
+      ),
+    );
     final dots = tester.widget<ProgressDots>(find.byType(ProgressDots));
     expect(dots.count, 2);
     expect(dots.currentIndex, 0);
