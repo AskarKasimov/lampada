@@ -10,17 +10,18 @@ class WeekStrip extends StatefulWidget {
   const WeekStrip({
     required this.selected,
     required this.today,
-    required this.litDays,
     required this.onSelect,
+    this.litDays = const {},
     super.key,
   });
 
   final DateTime selected;
   final DateTime today;
-
-  /// Ключи `yyyy-MM-dd` дней с активностью.
-  final Set<String> litDays;
   final void Function(DateTime day) onSelect;
+
+  /// Ключи `yyyy-MM-dd` дней с активностью. Отмечаются только в месячном
+  /// календаре: в полосе недели серию показывает карточка под плитками.
+  final Set<String> litDays;
 
   @override
   State<WeekStrip> createState() => _WeekStripState();
@@ -149,16 +150,13 @@ class _WeekStripState extends State<WeekStrip> {
             if (awayFromToday)
               TextButton(
                 onPressed: () => _select(widget.today),
-                child: Text(
-                  'Вернуться',
-                  style: TextStyle(color: colors.accent),
-                ),
+                child: Text('Сегодня', style: TextStyle(color: colors.accent)),
               ),
           ],
         ),
         SizedBox(
           // PageView требует ограниченной высоты; подпись учитывает масштаб текста.
-          height: 61 + MediaQuery.textScalerOf(context).scale(11) * 1.5,
+          height: 49 + MediaQuery.textScalerOf(context).scale(11) * 1.5,
           child: PageView.builder(
             controller: _controller,
             onPageChanged: (page) =>
@@ -186,7 +184,6 @@ class _WeekStripState extends State<WeekStrip> {
     day: day,
     isSelected: dateKey(day) == dateKey(widget.selected),
     isToday: dateKey(day) == dateKey(widget.today),
-    isLit: widget.litDays.contains(dateKey(day)),
     isFuture: dateKey(day).compareTo(dateKey(widget.today)) > 0,
     onTap: () => _select(day),
   );
@@ -360,9 +357,10 @@ class _MonthCalendarState extends State<_MonthCalendar> {
       day: day,
       isSelected: dateKey(day) == dateKey(widget.selected),
       isToday: dateKey(day) == dateKey(widget.today),
-      isLit: widget.litDays.contains(dateKey(day)),
       isFuture: dateKey(day).compareTo(dateKey(widget.today)) > 0,
+      isLit: widget.litDays.contains(dateKey(day)),
       showWeekday: false,
+      showLit: true,
       onTap: () => Navigator.of(context).pop(day),
     );
   }
@@ -373,19 +371,23 @@ class _DayCell extends StatelessWidget {
     required this.day,
     required this.isSelected,
     required this.isToday,
-    required this.isLit,
     required this.isFuture,
     required this.onTap,
+    this.isLit = false,
     this.showWeekday = true,
+    this.showLit = false,
   });
 
   final DateTime day;
   final bool isSelected;
   final bool isToday;
-  final bool isLit;
   final bool isFuture;
   final VoidCallback onTap;
   final bool showWeekday;
+  final bool isLit;
+
+  /// Место под огонёк есть только в месячном календаре.
+  final bool showLit;
 
   static const _weekdays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 
@@ -398,7 +400,7 @@ class _DayCell extends StatelessWidget {
       label:
           '${day.day} ${_months[day.month - 1]} ${day.year}, ${_weekdays[day.weekday - 1]}'
           '${isToday ? ', сегодня' : ''}'
-          '${isLit ? ', лампадка затеплена' : ''}',
+          '${showLit && isLit ? ', лампадка затеплена' : ''}',
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
@@ -439,13 +441,15 @@ class _DayCell extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
-              // Место под огонёк держим всегда — иначе полоска прыгает
-              // по высоте в зависимости от того, в какие дни юзер заходил.
-              SizedBox(
-                height: 8,
-                child: isLit ? const StreakFlame(size: 6) : null,
-              ),
+              if (showLit) ...[
+                const SizedBox(height: 4),
+                // Место под огонёк держим всегда, иначе строки месяца
+                // прыгают по высоте в зависимости от заходов.
+                SizedBox(
+                  height: 8,
+                  child: isLit ? const StreakFlame(size: 6) : null,
+                ),
+              ],
             ],
           ),
         ),

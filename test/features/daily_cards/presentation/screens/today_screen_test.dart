@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/format/date_key.dart';
@@ -28,6 +27,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.
 import 'package:lampada/features/daily_cards/presentation/widgets/day_name_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/streak_card.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/today_offline_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
@@ -288,7 +288,7 @@ void main() {
     matching: find.byType(DayWisdomTile),
   );
 
-  testWidgets('Домой показывает одну кнопку дня и курс без автооткрытия', (
+  testWidgets('Главная показывает одну кнопку дня и курс без автооткрытия', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp(courseTopic: _basics));
@@ -300,9 +300,48 @@ void main() {
     expect(find.byType(CourseProgressHeader), findsOneWidget);
   });
 
-  testWidgets('крупная кнопка дня открывает чтение по нажатию на календарь', (
+  testWidgets('карточка серии стоит под «Основами веры»', (tester) async {
+    await tester.pumpWidget(buildApp(courseTopic: _basics));
+    await settle(tester);
+
+    final streak = find.byType(StreakCard);
+    expect(streak, findsOneWidget);
+    expect(
+      tester.getTopLeft(streak).dy,
+      greaterThanOrEqualTo(
+        tester.getBottomLeft(find.byType(CourseProgressHeader)).dy,
+      ),
+    );
+  });
+
+  testWidgets('разделитель стоит посередине между названием дня и плиткой', (
     tester,
   ) async {
+    await tester.pumpWidget(
+      buildApp(
+        cardsRepository: _FakeCardsRepository(title: 'Название дня'),
+        courseTopic: _basics,
+      ),
+    );
+    await settle(tester);
+
+    final title = tester.getRect(find.text('Название дня'));
+    final divider = tester.getRect(find.byType(DayEntryDivider));
+    final tile = tester.getRect(
+      find
+          .descendant(
+            of: find.byType(DayWisdomTile),
+            matching: find.byType(InkWell),
+          )
+          .first,
+    );
+    final above = divider.top - title.bottom;
+    final below = tile.top - divider.bottom;
+    expect(above, greaterThanOrEqualTo(12));
+    expect(below, closeTo(above, 1));
+  });
+
+  testWidgets('крупная плитка дня открывает чтение по нажатию', (tester) async {
     await tester.pumpWidget(
       buildApp(
         cardsRepository: _FakeCardsRepository(title: 'Название дня'),
@@ -317,12 +356,12 @@ void main() {
     );
     final calendar = find.descendant(
       of: button,
-      matching: find.byIcon(CupertinoIcons.calendar),
+      matching: find.text('Мудрость дня'),
     );
     expect(calendar, findsOneWidget);
     expect(tester.getSize(button).height, greaterThanOrEqualTo(80));
-    expect(tester.getRect(button).left, 0);
-    expect(tester.getRect(button).right, 800);
+    expect(tester.getRect(button).left, 16);
+    expect(tester.getRect(button).right, 800 - 16);
     // Остаётся только разделитель после названия дня, над кнопкой.
     expect(find.byType(DayEntryDivider), findsOneWidget);
     expect(
@@ -486,12 +525,13 @@ void main() {
   ) async {
     await tester.pumpWidget(buildApp(courseTopic: _basics));
     await settle(tester);
-    final heading = find.text('Планы');
-    final info = find.byTooltip('О курсе');
-    expect(heading, findsOneWidget);
-    expect(tester.getTopLeft(heading).dx, 16);
-    expect(tester.getRect(heading).right, lessThan(tester.getRect(info).left));
-    expect(tester.getCenter(heading).dy, tester.getCenter(info).dy);
+    // Отдельного заголовка «Планы» нет: справка живёт на самой плитке.
+    expect(find.text('Планы'), findsNothing);
+    final info = find.descendant(
+      of: find.byType(CourseProgressHeader),
+      matching: find.byTooltip('О курсе'),
+    );
+    expect(info, findsOneWidget);
 
     await tester.tap(info);
     await settle(tester);
@@ -556,113 +596,36 @@ void main() {
   }
 
   group('вкладка «Сегодня»', () {
-    testWidgets('кнопка дня использует поля и размеры кнопки профиля', (
+    testWidgets('плитки дня и курса одинаковые по ширине и полям', (
       tester,
     ) async {
-      const parable = DayCard(
-        id: 'parable',
-        type: CardType.parable,
-        body: 'Притча дня',
-        source: 'Источник',
-      );
-      final progress = _FakeProgressRepository()
-        ..seedRead({
-          CardType.quote,
-          CardType.advice,
-          CardType.parable,
-          CardType.reading,
-        });
-      await tester.pumpWidget(
-        buildApp(
-          cardsRepository: _FakeCardsRepository(
-            title: 'Название дня',
-            cards: [..._cards, parable],
-          ),
-          progressRepository: progress,
-        ),
-      );
-      await settle(tester);
-
-      final titleLeft = tester.getTopLeft(find.text('Название дня')).dx;
-      expect(titleLeft, 16);
-      final calendar = find.descendant(
-        of: find.byType(DayWisdomTile),
-        matching: find.byIcon(CupertinoIcons.calendar),
-      );
-      expect(tester.getCenter(calendar).dx, 44);
-      final checks = find.descendant(
-        of: find.byType(DayWisdomTile),
-        matching: find.byIcon(CupertinoIcons.checkmark_alt),
-      );
-      expect(checks, findsNWidgets(2));
-      final label = tester.getRect(find.text('Мудрость дня'));
-      final subtitle = tester.getRect(
-        find.text('Цитата, совет, притча и Евангелие'),
-      );
-      for (final check in checks.evaluate()) {
-        final bounds = tester.getRect(find.byWidget(check.widget));
-        expect(bounds.left, greaterThan(tester.getRect(calendar).right));
-        expect(bounds.left, greaterThan(label.right));
-        expect(bounds.bottom, lessThan(subtitle.top));
-      }
-      expect(label.left, 88);
-    });
-
-    testWidgets('ink кнопок дня занимает всю ширину экрана', (tester) async {
-      final progress = _FakeProgressRepository()
-        ..seedRead({CardType.quote, CardType.advice, CardType.reading});
-      await tester.pumpWidget(buildApp(progressRepository: progress));
+      await tester.pumpWidget(buildApp(courseTopic: _basics));
       await settle(tester);
 
       final screen = tester.getRect(find.byType(TodayScreen));
-      for (final row in find.byType(DayWisdomTile).evaluate()) {
-        final ink = find.descendant(
-          of: find.byWidget(row.widget),
-          matching: find.byType(InkWell),
-        );
-        final bounds = tester.getRect(ink);
-        expect(bounds.left, screen.left);
-        expect(bounds.right, screen.right);
-      }
+      Rect tile(Type type) => tester.getRect(
+        find
+            .descendant(of: find.byType(type), matching: find.byType(InkWell))
+            .first,
+      );
+      final wisdom = tile(DayWisdomTile);
+      final course = tile(CourseProgressHeader);
+      expect(wisdom.left, screen.left + 16);
+      expect(wisdom.right, screen.right - 16);
+      expect(course.left, wisdom.left);
+      expect(course.right, wisdom.right);
+      expect(course.top, greaterThan(wisdom.bottom));
+      expect(
+        find.descendant(
+          of: find.byType(DayWisdomTile),
+          matching: find.byIcon(CupertinoIcons.checkmark_alt),
+        ),
+        findsNWidgets(2),
+      );
     });
 
     for (final scale in [1.0, 2.0]) {
-      testWidgets('длинная седмица видна целиком при масштабе $scale', (
-        tester,
-      ) async {
-        tester.view.physicalSize = Size(scale == 1.0 ? 320 : 800, 1200);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        tester.platformDispatcher.textScaleFactorTestValue = scale;
-        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-        const week = 'Седмица 33-я по Пятидесятнице, по Богоявлении. Глас 8';
-        final progress = _FakeProgressRepository()
-          ..seedRead(_cards.map((card) => card.type).toSet());
-        await tester.pumpWidget(
-          buildApp(
-            cardsRepository: _FakeCardsRepository(week: week),
-            progressRepository: progress,
-          ),
-        );
-        await settle(tester);
-
-        final paragraph = tester.renderObject<RenderParagraph>(
-          find.text(week.toUpperCase()),
-        );
-        expect(paragraph.didExceedMaxLines, isFalse);
-        final boxes = paragraph.getBoxesForSelection(
-          TextSelection(baseOffset: 0, extentOffset: week.length),
-        );
-        expect(boxes.map((box) => box.top).toSet().length, greaterThan(1));
-        expect(
-          tester.getBottomLeft(find.text(week.toUpperCase())).dy,
-          lessThan(tester.getTopLeft(find.byType(WeekStrip)).dy),
-        );
-        expect(tester.takeException(), isNull);
-      });
-
-      testWidgets('место седмицы постоянно при масштабе $scale', (
+      testWidgets('полоска дат не прыгает при загрузке дня, масштаб $scale', (
         tester,
       ) async {
         tester.view.physicalSize = const Size(800, 1200);
@@ -695,7 +658,6 @@ void main() {
           ),
         );
         await settle(tester);
-        expect(find.text('НЕДЕЛЯ 16-Я ПО ПЯТИДЕСЯТНИЦЕ'), findsOneWidget);
         expect(tester.getRect(find.byType(WeekStrip)), stripBefore);
         expect(tester.getRect(find.byType(PageView).last), contentBefore);
 
@@ -704,7 +666,6 @@ void main() {
         );
         container.read(selectedDateProvider.notifier).select(withoutWeek);
         await settle(tester);
-        expect(find.text('НЕДЕЛЯ 16-Я ПО ПЯТИДЕСЯТНИЦЕ'), findsNothing);
         expect(tester.getRect(find.byType(WeekStrip)), stripBefore);
         expect(tester.getRect(find.byType(PageView).last), contentBefore);
 
@@ -716,11 +677,11 @@ void main() {
       });
     }
 
-    testWidgets('седмица стоит над полоской дат, а не над памятью дня', (
+    testWidgets('седмица не показывается, память и пост остаются', (
       tester,
     ) async {
-      // Седмица — свойство недели, а не дня: рядом с памятью она читалась
-      // как часть титула святого.
+      // Строка седмицы над полоской дат почти ничего не сообщала,
+      // а шапку перегружала.
       final progress = _FakeProgressRepository()
         ..seedRead(_cards.map((card) => card.type).toSet());
       await tester.pumpWidget(
@@ -735,11 +696,9 @@ void main() {
       );
       await settle(tester);
 
-      final weekTop = tester
-          .getTopLeft(find.text('СЕДМИЦА 10-Я ПО ПЯТИДЕСЯТНИЦЕ'))
-          .dy;
+      expect(find.textContaining('СЕДМИЦА'), findsNothing);
+      expect(find.textContaining('Седмица'), findsNothing);
       final stripTop = tester.getTopLeft(find.byType(WeekStrip)).dy;
-      expect(weekTop, lessThan(stripTop));
 
       // Память и пометка поста остаются при дне, ниже полоски.
       final nameTop = tester.getTopLeft(find.text('Мц. Христи́ны Тирской')).dy;
@@ -1549,14 +1508,14 @@ void main() {
       await settle(tester);
 
       expect(repo.requested, contains(dateKey(other)));
-      expect(find.text('Вернуться'), findsOneWidget);
-      await tester.tap(find.text('Вернуться'));
+      expect(find.text('Сегодня'), findsOneWidget);
+      await tester.tap(find.text('Сегодня'));
       await settle(tester);
       final container = ProviderScope.containerOf(
         tester.element(find.byType(TodayScreen)),
       );
       expect(dateKey(container.read(selectedDateProvider)), dateKey(today));
-      expect(find.text('Вернуться'), findsNothing);
+      expect(find.text('Сегодня'), findsNothing);
     });
 
     testWidgets('чужая дата не меняет прогресс сегодняшней сессии', (
@@ -1588,16 +1547,19 @@ void main() {
     });
   });
 
-  group('«Лампадка» в полоске недели', () {
-    testWidgets('дни с активностью помечены огоньком', (tester) async {
+  group('«Лампадка» в карточке серии', () {
+    testWidgets('сегодняшняя активность зажигает серию', (tester) async {
       final today = DateTime.now();
       final progress = _FakeProgressRepository()..seedVisited({dateKey(today)});
 
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      final strip = tester.widget<WeekStrip>(find.byType(WeekStrip));
-      expect(strip.litDays, contains(dateKey(today)));
+      final card = find.byType(StreakCard);
+      expect(
+        find.descendant(of: card, matching: find.text('день подряд')),
+        findsOneWidget,
+      );
     });
   });
 

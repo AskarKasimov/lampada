@@ -56,6 +56,29 @@ void main() {
     expect(style.tagForeground, const Color(0xFFF4CFA0));
   });
 
+  for (final (brightness, accent, background, foreground) in [
+    (
+      Brightness.light,
+      const Color(0xFF2B8566),
+      const Color(0xFFD0E8DE),
+      const Color(0xFF0D4635),
+    ),
+    (
+      Brightness.dark,
+      const Color(0xFF5CBF98),
+      const Color(0xFF16302A),
+      const Color(0xFFB2E3CF),
+    ),
+  ]) {
+    test('«Основы» в тон зелёной лампаде ($brightness)', () {
+      final style = CardType.basics.styleFor(brightness);
+
+      expect(style.accent, accent);
+      expect(style.tagBackground, background);
+      expect(style.tagForeground, foreground);
+    });
+  }
+
   test('у каждого типа есть непустой ярлык и короткая подпись', () {
     for (final type in CardType.values) {
       for (final brightness in Brightness.values) {

@@ -47,6 +47,8 @@ flutter:
   assets:
     # Марка приложения: та же лампада, что на иконке, но с прозрачным фоном.
     - assets/brand/lampada.png
+    # Лампада серии дней: зажжённая и погасшая.
+    - assets/illustrations/
 
   fonts:
     - family: Lora

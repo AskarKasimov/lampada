@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/format/date_key.dart';
+import 'package:lampada/core/widgets/streak_flame.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
 
 void main() {
   final today = DateTime(2026, 9, 27);
   late List<DateTime> selections;
 
-  Widget app(DateTime selected) => MaterialApp(
-    home: Scaffold(
-      body: WeekStrip(
-        selected: selected,
-        today: today,
-        litDays: const {},
-        onSelect: selections.add,
-      ),
-    ),
-  );
+  Widget app(DateTime selected, {Set<String> litDays = const {}}) =>
+      MaterialApp(
+        home: Scaffold(
+          body: WeekStrip(
+            selected: selected,
+            today: today,
+            litDays: litDays,
+            onSelect: selections.add,
+          ),
+        ),
+      );
 
   setUp(() => selections = []);
 
@@ -52,21 +55,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpWidget(app(DateTime(2026, 9, 22)));
     expect(find.text('22'), findsOneWidget);
-    expect(find.text('Вернуться'), findsOneWidget);
-    await tester.tap(find.text('Вернуться'));
+    expect(find.text('Сегодня'), findsOneWidget);
+    await tester.tap(find.text('Сегодня'));
     expect(selections, [today]);
     await tester.pumpAndSettle();
     expect(find.text('27'), findsOneWidget);
   });
 
-  testWidgets('месяц слева, Вернуться справа, недельные стрелки отсутствуют', (
+  testWidgets('месяц слева, Сегодня справа, недельные стрелки отсутствуют', (
     tester,
   ) async {
     await tester.pumpWidget(app(DateTime(2026, 9, 22)));
     expect(find.byTooltip('Предыдущая неделя'), findsNothing);
     expect(find.byTooltip('Следующая неделя'), findsNothing);
     expect(tester.getRect(find.text('Сентябрь 2026')).left, lessThan(32));
-    expect(tester.getRect(find.text('Вернуться')).right, greaterThan(768));
+    expect(tester.getRect(find.text('Сегодня')).right, greaterThan(768));
   });
 
   testWidgets('при перетаскивании неделя движется вместе с пальцем', (
@@ -200,5 +203,25 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(selections, [DateTime(2026, 8, 5)]);
+  });
+
+  testWidgets('горевшие дни отмечены только в месячном календаре', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app(today, litDays: {dateKey(today)}));
+    // Огонёк анимирован бесконечно, поэтому без pumpAndSettle.
+    await tester.pump();
+    expect(find.byType(StreakFlame), findsNothing);
+
+    await tester.tap(find.text('Сентябрь 2026'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(StreakFlame),
+      ),
+      findsOneWidget,
+    );
   });
 }

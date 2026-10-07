@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
@@ -22,6 +21,7 @@ import '../widgets/course_progress_header.dart';
 import '../widgets/day_entry_row.dart';
 import '../widgets/day_name_header.dart';
 import '../widgets/day_wisdom_tile.dart';
+import '../widgets/streak_card.dart';
 import '../widgets/today_offline_view.dart';
 import '../widgets/week_strip.dart';
 import 'course_reader_route.dart';
@@ -287,7 +287,7 @@ class _SelectedDayContent extends ConsumerWidget {
   }
 }
 
-/// Полоска недели и заголовок выбранного дня.
+/// Полоска недели над выбранным днём.
 class _Header extends ConsumerWidget {
   const _Header({required this.selected, required this.progress});
 
@@ -296,26 +296,14 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColorsExtension.of(context);
-    final week = ref.watch(dayCardsProvider(dateKey(selected))).value?.week;
-
+    // Строку седмицы над полоской убрали: она почти ничего не сообщала,
+    // а шапку перегружала.
     return Padding(
       padding:
           AppSpacing.of(context).horizontal +
           const EdgeInsets.only(top: 6, bottom: 4),
       child: Column(
         children: [
-          // Пустая строка сохраняет место; длинное название показываем целиком.
-          Text(
-            (week ?? '').toUpperCase(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              letterSpacing: 1.1,
-              color: colors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: 8),
           WeekStrip(
             selected: selected,
             today: DateTime.now(),
@@ -446,6 +434,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
                 : () => _openStory(context, day.title!, day.storyUrl!),
           ),
           const DayEntryDivider(),
+          // Вместе с полем плитки воздух под разделителем равен воздуху над
+          // ним: линия делит шапку и плитки поровну.
+          const SizedBox(height: 10),
         ],
         if (pages.isNotEmpty)
           DayWisdomTile(
@@ -464,6 +455,9 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             ),
           ),
         const _CourseHomeSection(),
+        // Серия относится к сегодняшнему дню, а не к выбранному в полоске.
+        if (ref.watch(dayProgressProvider).value case final progress?)
+          StreakCard(progress: progress, today: DateTime.now()),
       ],
     );
     return RefreshIndicator(onRefresh: _refresh, child: blocks);
@@ -481,36 +475,6 @@ class _CourseHomeSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: AppSpacing.of(context).horizontal,
-          child: Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(
-                    'Планы',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: colors.ink,
-                    ),
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'О курсе',
-                color: colors.textSecondary,
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const PlansInfoScreen(),
-                  ),
-                ),
-                icon: const Icon(CupertinoIcons.info),
-              ),
-            ],
-          ),
-        ),
         if (topic.value case final currentTopic?)
           CourseProgressHeader(
             topic: currentTopic,
@@ -525,6 +489,9 @@ class _CourseHomeSection extends ConsumerWidget {
                 .value
                 ?.length,
             onTap: () => openCourseReader(context, ref),
+            onInfo: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const PlansInfoScreen()),
+            ),
           )
         else
           Padding(

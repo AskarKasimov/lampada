@@ -59,21 +59,23 @@ extension CardTypeStyleX on CardType {
                 tagBackground: Color(0xFFD7EBD7),
                 tagForeground: Color(0xFF1E4E22),
               ),
+      // Изумрудный в тон стеклу лампады серии; с синевой, чтобы не
+      // сливаться с жёлто-зелёным «Советом».
       CardType.basics =>
         isDark
             ? const CardTypeStyle(
                 label: 'Основы',
                 shortLabel: 'Основы',
-                accent: Color(0xFF6BB8E8),
-                tagBackground: Color(0xFF17293A),
-                tagForeground: Color(0xFFB9E0F7),
+                accent: Color(0xFF5CBF98),
+                tagBackground: Color(0xFF16302A),
+                tagForeground: Color(0xFFB2E3CF),
               )
             : const CardTypeStyle(
                 label: 'Основы',
                 shortLabel: 'Основы',
-                accent: Color(0xFF3A95CD),
-                tagBackground: Color(0xFFD1E8FA),
-                tagForeground: Color(0xFF00476D),
+                accent: Color(0xFF2B8566),
+                tagBackground: Color(0xFFD0E8DE),
+                tagForeground: Color(0xFF0D4635),
               ),
       CardType.reading =>
         isDark

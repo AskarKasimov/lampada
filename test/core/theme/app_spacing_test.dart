@@ -77,7 +77,12 @@ void main() {
           final reader = tester.getRect(find.byType(PageView));
           expect(rowText.left, inset + 4);
           expect(rowText.right, 800 - inset - 4);
-          expect(tester.getTopLeft(find.text('Тема курса')).dx, inset);
+          final course = find.descendant(
+            of: find.byType(CourseProgressHeader),
+            matching: find.byType(InkWell),
+          );
+          expect(tester.getRect(course).left, inset);
+          expect(tester.getRect(course).right, 800 - inset);
           expect(reader.left, inset + 13);
           expect(reader.right, 800 - inset);
           final ink = find.descendant(

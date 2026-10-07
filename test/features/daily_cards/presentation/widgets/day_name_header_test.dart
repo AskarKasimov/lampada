@@ -38,7 +38,7 @@ void main() {
         ),
       );
       expect(ink, header);
-      expect(ink.bottom - title.bottom, 14);
+      expect(ink.bottom - title.bottom, 16);
       final firstText = tester.getRect(
         fast
             ? find.text('ПОСТНЫЙ ДЕНЬ')
@@ -102,5 +102,43 @@ void main() {
     await tester.pumpWidget(_wrap(const DayNameHeader(day: day)));
 
     expect(find.byIcon(CupertinoIcons.chevron_right), findsNothing);
+  });
+
+  testWidgets('стрелка не переносится на строку отдельно от названия', (
+    tester,
+  ) async {
+    const title =
+        'Зачатие честного, славного Пророка, Предтечи и Крестителя '
+        'Господня Иоанна';
+    const day = TodayCards(
+      cards: [],
+      title: title,
+      storyUrl: 'https://azbyka.ru/days/story',
+    );
+    addTearDown(tester.view.reset);
+    tester.view.devicePixelRatio = 1;
+    // Перебираем ширины: при какой-то из них стрелка иначе упала бы на
+    // отдельную строку.
+    for (var width = 240.0; width <= 440; width += 2) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pumpWidget(
+        _wrap(
+          Column(
+            children: [DayNameHeader(day: day, onTap: () {})],
+          ),
+        ),
+      );
+      final lastWord = tester.getRect(find.text('Иоанна'));
+      final chevron = tester.getCenter(
+        find.byIcon(CupertinoIcons.chevron_right),
+      );
+      final wordTop = lastWord.top;
+      final wordBottom = lastWord.bottom;
+      expect(
+        chevron.dy,
+        inInclusiveRange(wordTop, wordBottom),
+        reason: 'ширина $width',
+      );
+    }
   });
 }
