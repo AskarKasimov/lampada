@@ -8,6 +8,7 @@ import '../providers/providers.dart';
 import 'bible_reader_screen.dart';
 
 /// Вход во вкладку восстанавливает последнее место, в том числе после перезапуска.
+/// Запрос главы извне ([bibleOpenRequestProvider]) открывает её с начала.
 ///
 /// Это корень вкладки, а не модальный экран: кнопки «Закрыть» нет,
 /// уходят отсюда через навбар.
@@ -45,6 +46,21 @@ class _BibleTabScreenState extends ConsumerState<BibleTabScreen> {
             child: const Text('Повторить загрузку места чтения'),
           ),
         );
+      }
+      final request = ref.watch(bibleOpenRequestProvider);
+      if (request != null) {
+        final requested = bibleBooks
+            .where((book) => book.code == request.book)
+            .firstOrNull;
+        if (requested != null) {
+          return BibleReaderScreen(
+            // Новый запрос заменяет читалку целиком, с первого стиха.
+            key: ValueKey(request.serial),
+            book: requested,
+            chapter: request.chapter,
+            showClose: false,
+          );
+        }
       }
       final statuses = snapshot.data!;
       final id = statuses.lastChapter;

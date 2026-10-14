@@ -79,6 +79,12 @@ class _ProgressRepository implements DayProgressRepository {
     readTypes.add(type);
     return Success(DayProgress(readTypes: readTypes, visitedDays: const {}));
   }
+
+  @override
+  Future<Result<DayProgress>> completeWisdom({
+    DateTime? date,
+    bool markVisited = true,
+  }) async => Success(DayProgress(readTypes: readTypes, visitedDays: const {}));
 }
 
 class _FailingCourseProgressRepository implements CourseProgressRepository {

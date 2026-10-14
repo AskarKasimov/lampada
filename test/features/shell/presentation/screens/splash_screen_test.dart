@@ -53,6 +53,17 @@ class _FakeProgressRepository implements DayProgressRepository {
     _visited = {..._visited, dateKey(DateTime.now())};
     return Success(DayProgress(readTypes: _read, visitedDays: _visited));
   }
+
+  @override
+  Future<Result<DayProgress>> completeWisdom({
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
+    if (markVisited) {
+      _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    }
+    return Success(DayProgress(readTypes: _read, visitedDays: _visited));
+  }
 }
 
 void main() {

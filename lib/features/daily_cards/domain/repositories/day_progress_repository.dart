@@ -17,4 +17,13 @@ abstract interface class DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   });
+
+  /// Отмечает, что «Мудрость дня» за [date] дочитана до экрана итога.
+  ///
+  /// [markVisited] зажигает «Лампадку» даты, не отмечая прочитанной ни одну
+  /// карточку: только так чтение «Мудрости дня» продлевает серию.
+  Future<Result<DayProgress>> completeWisdom({
+    DateTime? date,
+    bool markVisited = true,
+  });
 }

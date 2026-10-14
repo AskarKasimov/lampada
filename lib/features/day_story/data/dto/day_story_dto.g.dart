@@ -10,7 +10,11 @@ _DayStoryDto _$DayStoryDtoFromJson(Map<String, dynamic> json) => _DayStoryDto(
   paragraphs: (json['paragraphs'] as List<dynamic>)
       .map((e) => e as String)
       .toList(),
+  iconUrl: json['iconUrl'] as String?,
 );
 
 Map<String, dynamic> _$DayStoryDtoToJson(_DayStoryDto instance) =>
-    <String, dynamic>{'paragraphs': instance.paragraphs};
+    <String, dynamic>{
+      'paragraphs': instance.paragraphs,
+      'iconUrl': instance.iconUrl,
+    };

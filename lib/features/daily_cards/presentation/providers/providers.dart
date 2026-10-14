@@ -18,6 +18,7 @@ import '../../domain/repositories/course_progress_repository.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
 import '../../domain/usecases/complete_course_topic.dart';
+import '../../domain/usecases/complete_day_wisdom.dart';
 import '../../domain/usecases/get_completed_course_topics.dart';
 import '../../domain/usecases/get_course_page.dart';
 import '../../domain/usecases/get_course_topic.dart';
@@ -83,6 +84,10 @@ final dayProgressRepositoryProvider = Provider<DayProgressRepository>(
 
 final recordCardReadProvider = Provider<RecordCardRead>(
   (ref) => RecordCardRead(ref.watch(dayProgressRepositoryProvider)),
+);
+
+final completeDayWisdomProvider = Provider<CompleteDayWisdom>(
+  (ref) => CompleteDayWisdom(ref.watch(dayProgressRepositoryProvider)),
 );
 
 final loadDayProgressProvider = Provider<LoadDayProgress>(
@@ -235,4 +240,15 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     );
     return saved;
   }
+
+  /// Отмечает «Мудрость дня» дочитанной и, при [markVisited], зажигает
+  /// «Лампадку». Сессия здесь не проверяется: экран итога открывается только
+  /// из уже показанных карточек.
+  Future<bool> completeWisdom({DateTime? date, bool markVisited = true}) =>
+      _apply(
+        ref.read(completeDayWisdomProvider)(
+          date: date,
+          markVisited: markVisited,
+        ),
+      );
 }

@@ -34,6 +34,8 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     this.canMarkRead,
     this.pageBuilder,
     this.actionsBuilder,
+    this.headerBuilder,
+    this.wholeCardOf,
     super.key,
   });
 
@@ -60,6 +62,13 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// Служебная страница может заменить действия закладки и отправки текста.
   /// null из builder оставляет стандартную панель текущей карточки.
   final Widget? Function(BuildContext context, int index)? actionsBuilder;
+
+  /// Заменяет плашку типа над карточкой. null из builder оставляет плашку.
+  final Widget? Function(BuildContext context, int index)? headerBuilder;
+
+  /// Карточка целиком для закладки и отправки. Страница длинного текста —
+  /// только его часть, а сохранять и делиться нужно всем текстом.
+  final DayCard Function(int index)? wholeCardOf;
 
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
@@ -137,12 +146,14 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
           _markCurrentAsRead(page);
         },
         itemBuilder: (context, index) => _cardPage(index),
-        header: AppPillBadge(
-          label: cardStyle.label,
-          background: cardStyle.tagBackground,
-          foreground: cardStyle.tagForeground,
-          letterSpacing: 0.2,
-        ),
+        header:
+            widget.headerBuilder?.call(context, _index) ??
+            AppPillBadge(
+              label: cardStyle.label,
+              background: cardStyle.tagBackground,
+              foreground: cardStyle.tagForeground,
+              letterSpacing: 0.2,
+            ),
         leftRail: ProgressDots(
           count: _pageCount,
           currentIndex: _index,
@@ -154,7 +165,12 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
         ),
         actions:
             widget.actionsBuilder?.call(context, _index) ??
-            _actionsFor(widget.cards[_index], brightness, colors.homeSubtitle),
+            _actionsFor(
+              widget.cards[_index],
+              widget.wholeCardOf?.call(_index) ?? widget.cards[_index],
+              brightness,
+              colors.homeSubtitle,
+            ),
         onClose: () => Navigator.of(context).pop(),
         closeColor: colors.homeSubtitle,
       ),
@@ -186,32 +202,34 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
         : observedContent;
   }
 
-  Widget _actionsFor(DayCard card, Brightness brightness, Color actionColor) =>
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_fullTextNeeded[card.id] ?? false) ...[
-            ReaderActionButton(
-              tooltip: 'Открыть полный текст',
-              onPressed: () => _openFullText(card),
-              icon: CupertinoIcons.fullscreen,
-              color: actionColor,
-            ),
-            const SizedBox(height: 4),
-          ],
-          BookmarkButton(
-            bookmark: _bookmarkFor(card, brightness),
-            iconSize: 28,
-            buttonSize: 56,
-          ),
-          const SizedBox(height: 4),
-          AppShareButton(
-            text: _shareTextFor(card),
-            iconSize: 28,
-            buttonSize: 56,
-          ),
-        ],
-      );
+  /// Полный текст открывается для показанной страницы [page]: не влезла
+  /// именно она. Закладка и отправка относятся ко всей карточке [card].
+  Widget _actionsFor(
+    DayCard page,
+    DayCard card,
+    Brightness brightness,
+    Color actionColor,
+  ) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (_fullTextNeeded[page.id] ?? false) ...[
+        ReaderActionButton(
+          tooltip: 'Открыть полный текст',
+          onPressed: () => _openFullText(page),
+          icon: CupertinoIcons.fullscreen,
+          color: actionColor,
+        ),
+        const SizedBox(height: 4),
+      ],
+      BookmarkButton(
+        bookmark: _bookmarkFor(card, brightness),
+        iconSize: 28,
+        buttonSize: 56,
+      ),
+      const SizedBox(height: 4),
+      AppShareButton(text: _shareTextFor(card), iconSize: 28, buttonSize: 56),
+    ],
+  );
 
   void _openFullText(DayCard card) {
     Navigator.of(context).push(FullCardTextRoute(card: card));

@@ -91,3 +91,22 @@ final bibleChapterProvider = FutureProvider.family<BibleChapter, (String, int)>(
     };
   },
 );
+
+/// Запрос открыть главу во вкладке «Библия», например из «Мудрости дня».
+/// [serial] отличает повторный запрос той же главы от уже выполненного.
+typedef BibleOpenRequest = ({String book, int chapter, int serial});
+
+/// Последний запрос главы. Шелл по нему переключается на «Библию», вкладка
+/// открывает главу с первого стиха. Отдельного окна с главой нет.
+final bibleOpenRequestProvider =
+    NotifierProvider<BibleOpenRequestNotifier, BibleOpenRequest?>(
+      BibleOpenRequestNotifier.new,
+    );
+
+class BibleOpenRequestNotifier extends Notifier<BibleOpenRequest?> {
+  @override
+  BibleOpenRequest? build() => null;
+
+  void open(String book, int chapter) =>
+      state = (book: book, chapter: chapter, serial: (state?.serial ?? 0) + 1);
+}

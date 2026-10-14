@@ -67,6 +67,12 @@ class _FailingDayProgressRepository implements DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   }) async => const Failure(_failure);
+
+  @override
+  Future<Result<DayProgress>> completeWisdom({
+    DateTime? date,
+    bool markVisited = true,
+  }) async => const Failure(_failure);
 }
 
 Future<ProviderContainer> _container(
@@ -105,6 +111,20 @@ void main() {
     final progress = container.read(dayProgressProvider).requireValue;
     expect(progress.allReadOf(_cards.map((c) => c.type)), isTrue);
     expect(progress.isLit(DateTime.now()), isTrue);
+  });
+
+  test('completeWisdom отмечает завершение и зажигает день', () async {
+    final container = await _container(_FreshCardsRepository());
+
+    final saved = await container
+        .read(dayProgressProvider.notifier)
+        .completeWisdom(date: DateTime.now());
+
+    final progress = container.read(dayProgressProvider).requireValue;
+    expect(saved, isTrue);
+    expect(progress.isWisdomCompletedOn(DateTime.now()), isTrue);
+    expect(progress.isLit(DateTime.now()), isTrue);
+    expect(progress.readTypes, isEmpty);
   });
 
   test('прочтение основ не сдвигает тему личного курса', () async {

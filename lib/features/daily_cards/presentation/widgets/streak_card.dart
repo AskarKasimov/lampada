@@ -17,14 +17,27 @@ String streakDaysLabel(int days) {
   return 'дней подряд';
 }
 
-/// Серия дней («Лампадка») на главной: лампада, число дней и одна фраза.
-/// Ряда дней недели нет намеренно: неделя уже есть в полоске наверху, а
-/// второй такой ряд с другим смыслом путал бы.
+/// Серия дней («Лампадка»): лампада, число дней и одна фраза.
+/// На главной ряда дней недели нет намеренно: неделя уже есть в полоске
+/// наверху, а второй такой ряд с другим смыслом путал бы.
 class StreakCard extends StatelessWidget {
-  const StreakCard({required this.progress, required this.today, super.key});
+  const StreakCard({
+    required this.progress,
+    required this.today,
+    this.showWeek = false,
+    this.margin,
+    super.key,
+  });
 
   final DayProgress progress;
   final DateTime today;
+
+  /// Последние семь дней с огоньками. Для экрана завершения «Мудрости дня»,
+  /// где полоски недели нет.
+  final bool showWeek;
+
+  /// Внешние поля. По умолчанию — поля экрана главной.
+  final EdgeInsetsGeometry? margin;
 
   String _message(int streak, bool litToday) {
     // Тон как у трекеров привычек: сначала поддержать, потом мягко позвать.
@@ -47,11 +60,23 @@ class StreakCard extends StatelessWidget {
     final litToday = progress.isLit(today);
     final label = streakDaysLabel(streak);
     final message = _message(streak, litToday);
+    // Смена серии анимируется: на экране завершения это и есть момент,
+    // когда лампада загорается. Reduce Motion оставляет мгновенную смену.
+    final motion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 520);
+    final week = showWeek
+        ? Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: _WeekRow(progress: progress, today: today),
+          )
+        : const SizedBox(width: double.infinity);
 
     return Padding(
       padding:
+          margin ??
           AppSpacing.of(context).horizontal +
-          const EdgeInsets.symmetric(vertical: 6),
+              const EdgeInsets.symmetric(vertical: 6),
       child: Semantics(
         container: true,
         label: 'Лампадка: $streak $label. $message',
@@ -67,15 +92,7 @@ class StreakCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    SizedBox.square(
-                      dimension: 52,
-                      // Сама лампада занимает около половины холста
-                      // иллюстрации, остальное прозрачное поле и свечение.
-                      child: Transform.scale(
-                        scale: 1.7,
-                        child: Image.asset(streak > 0 ? _lampOn : _lampOff),
-                      ),
-                    ),
+                    _StreakLamp(lit: streak > 0),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -85,13 +102,37 @@ class StreakCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
                             children: [
-                              Text(
-                                '$streak',
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.1,
-                                  color: colors.ink,
+                              // Число перекатывается снизу, как счётчик.
+                              AnimatedSwitcher(
+                                duration: motion,
+                                switchInCurve: Curves.easeOutBack,
+                                transitionBuilder: (child, animation) =>
+                                    ClipRect(
+                                      child: SlideTransition(
+                                        position: Tween(
+                                          begin: Offset(
+                                            0,
+                                            child.key == ValueKey(streak)
+                                                ? 0.9
+                                                : -0.9,
+                                          ),
+                                          end: Offset.zero,
+                                        ).animate(animation),
+                                        child: FadeTransition(
+                                          opacity: animation,
+                                          child: child,
+                                        ),
+                                      ),
+                                    ),
+                                child: Text(
+                                  '$streak',
+                                  key: ValueKey(streak),
+                                  style: TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.1,
+                                    color: colors.ink,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -120,6 +161,19 @@ class StreakCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                // Неделя может появиться позже карточки: на экране
+                // завершения она раскрывается, когда лампада загорелась.
+                // AnimatedSize с нулевой длительностью ломает раскладку,
+                // поэтому без анимаций неделя просто вставляется.
+                if (motion == Duration.zero)
+                  week
+                else
+                  AnimatedSize(
+                    duration: motion,
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: week,
+                  ),
               ],
             ),
           ),
@@ -127,4 +181,261 @@ class StreakCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Сколько разгорается лампада серии. Экран завершения ждёт столько,
+/// прежде чем раскрыть неделю.
+const streakLampIgnition = Duration(milliseconds: 900);
+
+/// Лампада серии. Загораясь на глазах, она вспыхивает: за ней раскрывается
+/// свечение, огонь мерцает и разгорается, сама лампада чуть подпрыгивает.
+class _StreakLamp extends StatefulWidget {
+  const _StreakLamp({required this.lit});
+
+  final bool lit;
+
+  @override
+  State<_StreakLamp> createState() => _StreakLampState();
+}
+
+class _StreakLampState extends State<_StreakLamp>
+    with SingleTickerProviderStateMixin {
+  late final _ignite = AnimationController(
+    vsync: this,
+    duration: streakLampIgnition,
+    value: 1,
+  );
+
+  /// Огонь занимается неровно: вспышка, просадка, ровное горение.
+  static final _flame = TweenSequence([
+    TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.7), weight: 18),
+    TweenSequenceItem(tween: Tween(begin: 0.7, end: 0.3), weight: 12),
+    TweenSequenceItem(tween: Tween(begin: 0.3, end: 0.9), weight: 15),
+    TweenSequenceItem(tween: Tween(begin: 0.9, end: 0.6), weight: 10),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 0.6,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 45,
+    ),
+  ]);
+
+  static final _glow = TweenSequence([
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 0.0,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 35,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.0,
+        end: 0.0,
+      ).chain(CurveTween(curve: Curves.easeIn)),
+      weight: 65,
+    ),
+  ]);
+
+  static final _bounce = TweenSequence([
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.0,
+        end: 1.18,
+      ).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 30,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.18,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.elasticOut)),
+      weight: 70,
+    ),
+  ]);
+
+  @override
+  void didUpdateWidget(covariant _StreakLamp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.lit &&
+        !oldWidget.lit &&
+        !MediaQuery.disableAnimationsOf(context)) {
+      _ignite.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ignite.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
+    return SizedBox.square(
+      dimension: 52,
+      child: AnimatedBuilder(
+        animation: _ignite,
+        builder: (context, _) {
+          final t = _ignite.value;
+          final on = widget.lit ? _flame.transform(t) : 0.0;
+          final glow = widget.lit && _ignite.isAnimating
+              ? _glow.transform(t)
+              : 0.0;
+          return Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              if (glow > 0)
+                // Свечение шире самой лампады и выходит за её место.
+                Transform.scale(
+                  scale: 0.6 + t * 1.4,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          colors.flameLight.withValues(alpha: 0.8 * glow),
+                          colors.accent.withValues(alpha: 0.35 * glow),
+                          colors.accent.withValues(alpha: 0),
+                        ],
+                        stops: const [0, 0.45, 1],
+                      ),
+                    ),
+                    child: const SizedBox.square(dimension: 72),
+                  ),
+                ),
+              Transform.scale(
+                // Сама лампада занимает около половины холста иллюстрации,
+                // остальное прозрачное поле и свечение.
+                scale: 1.7 * (widget.lit ? _bounce.transform(t) : 1),
+                child: Stack(
+                  children: [
+                    if (on < 1)
+                      Opacity(opacity: 1 - on, child: Image.asset(_lampOff)),
+                    if (on > 0)
+                      Opacity(opacity: on, child: Image.asset(_lampOn)),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Семь дней, заканчивая сегодняшним. Появляясь, лампадки выходят по очереди
+/// слева направо, сегодняшняя последней и с отскоком.
+class _WeekRow extends StatefulWidget {
+  const _WeekRow({required this.progress, required this.today});
+
+  final DayProgress progress;
+  final DateTime today;
+
+  @override
+  State<_WeekRow> createState() => _WeekRowState();
+}
+
+class _WeekRowState extends State<_WeekRow>
+    with SingleTickerProviderStateMixin {
+  late final _enter = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  static const _weekdays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _enter.value = 1;
+    } else if (_enter.isDismissed) {
+      _enter.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _enter.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
+    final today = widget.today;
+    return Row(
+      children: [
+        for (var i = 0; i < 7; i++)
+          Expanded(
+            child: _appear(
+              index: i,
+              child: _day(
+                DateTime(today.year, today.month, today.day - 6 + i),
+                isToday: i == 6,
+                colors: colors,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _appear({required int index, required Widget child}) {
+    final start = index * 0.07;
+    final isToday = index == 6;
+    final animation = CurvedAnimation(
+      parent: _enter,
+      curve: Interval(
+        start,
+        isToday ? 1 : start + 0.4,
+        curve: isToday ? Curves.elasticOut : Curves.easeOutBack,
+      ),
+    );
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: _enter,
+        curve: Interval(start, start + 0.25),
+      ),
+      child: ScaleTransition(scale: animation, child: child),
+    );
+  }
+
+  Widget _day(
+    DateTime day, {
+    required bool isToday,
+    required AppColorsExtension colors,
+  }) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      // Сегодняшний день выделен подписью: кольцо вокруг лампадки
+      // спорило бы с её свечением.
+      Text(
+        _weekdays[day.weekday - 1],
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
+          color: isToday ? colors.accent : colors.homeSubtitle,
+        ),
+      ),
+      const SizedBox(height: 4),
+      SizedBox.square(
+        dimension: 34,
+        // Как и у большой лампады, сама лампадка занимает около половины
+        // холста иллюстрации.
+        child: Transform.scale(
+          scale: 1.7,
+          child: widget.progress.isLit(day)
+              ? Image.asset(_lampOn)
+              // Погашенные дни приглушены, чтобы горящие читались сразу.
+              : Opacity(opacity: 0.35, child: Image.asset(_lampOff)),
+        ),
+      ),
+    ],
+  );
 }

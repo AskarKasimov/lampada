@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
@@ -23,8 +24,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/course_reader_
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/day_entry_row.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/day_name_header.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/day_memory_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_card.dart';
@@ -111,9 +111,42 @@ class _FakeReadingRepository implements ReadingRepository {
 
 /// Рассказ о дне не должен ходить в сеть из виджет-тестов.
 class _FakeDayStoryRepository implements DayStoryRepository {
+  _FakeDayStoryRepository({this.iconUrl, this.failedUrls = const {}});
+
+  final String? iconUrl;
+  final Set<String> failedUrls;
+  final requestedUrls = <String>[];
+
   @override
-  Future<Result<DayStory>> fetch(String url) async =>
-      const Success(DayStory(paragraphs: ['Рассказ о памяти дня.']));
+  Future<Result<DayStory>> fetch(String url) async {
+    requestedUrls.add(url);
+    if (failedUrls.contains(url)) {
+      return const Failure(AppFailure('Нет сети', kind: FailureKind.network));
+    }
+    return Success(
+      DayStory(
+        paragraphs: const ['Рассказ о памяти дня.'],
+        iconUrl: iconUrl == null
+            ? null
+            : '$iconUrl/${Uri.parse(url).pathSegments.last}.png',
+      ),
+    );
+  }
+}
+
+/// Оставляет загрузку изображения в ожидании: проверяем старт запроса
+/// и повторное использование кэша, не декодирование PNG внутри Flutter.
+class _PendingImageClient implements HttpClient {
+  final requestedUrls = <Uri>[];
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async {
+    requestedUrls.add(url);
+    return Completer<HttpClientRequest>().future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeCardsRepository implements DayCardsRepository {
@@ -201,6 +234,17 @@ class _FakeProgressRepository implements DayProgressRepository {
     return Success(_current);
   }
 
+  @override
+  Future<Result<DayProgress>> completeWisdom({
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
+    if (markVisited) {
+      _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    }
+    return Success(_current);
+  }
+
   Set<CardType> get readTypes => _read;
   Set<String> get visitedDays => _visited;
 
@@ -241,6 +285,7 @@ void main() {
     DayCardsRepository? cardsRepository,
     DayProgressRepository? progressRepository,
     ReadingRepository? readingRepository,
+    DayStoryRepository? storyRepository,
     DateTime? selectedDate,
     DayCard? courseTopic,
     Future<DayCard?> Function()? courseLoader,
@@ -255,7 +300,9 @@ void main() {
       readingRepositoryProvider.overrideWithValue(
         readingRepository ?? _FakeReadingRepository(),
       ),
-      dayStoryRepositoryProvider.overrideWithValue(_FakeDayStoryRepository()),
+      dayStoryRepositoryProvider.overrideWithValue(
+        storyRepository ?? _FakeDayStoryRepository(),
+      ),
       sharedPreferencesProvider.overrideWithValue(prefs),
       if (courseLoader != null)
         courseTopicProvider.overrideWith((ref) => courseLoader())
@@ -314,9 +361,7 @@ void main() {
     );
   });
 
-  testWidgets('разделитель стоит посередине между названием дня и плиткой', (
-    tester,
-  ) async {
+  testWidgets('память дня стоит плиткой над «Мудростью дня»', (tester) async {
     await tester.pumpWidget(
       buildApp(
         cardsRepository: _FakeCardsRepository(title: 'Название дня'),
@@ -325,9 +370,13 @@ void main() {
     );
     await settle(tester);
 
-    final title = tester.getRect(find.text('Название дня'));
-    final divider = tester.getRect(find.byType(DayEntryDivider));
-    final tile = tester.getRect(
+    final memory = tester.getRect(
+      find.descendant(
+        of: find.byType(DayMemoryTile),
+        matching: find.byType(InkWell),
+      ),
+    );
+    final wisdom = tester.getRect(
       find
           .descendant(
             of: find.byType(DayWisdomTile),
@@ -335,10 +384,10 @@ void main() {
           )
           .first,
     );
-    final above = divider.top - title.bottom;
-    final below = tile.top - divider.bottom;
-    expect(above, greaterThanOrEqualTo(12));
-    expect(below, closeTo(above, 1));
+    expect(find.text('Название дня'), findsOneWidget);
+    expect(memory.bottom, lessThan(wisdom.top));
+    expect(memory.left, wisdom.left);
+    expect(memory.right, wisdom.right);
   });
 
   testWidgets('крупная плитка дня открывает чтение по нажатию', (tester) async {
@@ -362,12 +411,6 @@ void main() {
     expect(tester.getSize(button).height, greaterThanOrEqualTo(80));
     expect(tester.getRect(button).left, 16);
     expect(tester.getRect(button).right, 800 - 16);
-    // Остаётся только разделитель после названия дня, над кнопкой.
-    expect(find.byType(DayEntryDivider), findsOneWidget);
-    expect(
-      tester.getBottomLeft(find.byType(DayEntryDivider)).dy,
-      lessThanOrEqualTo(tester.getTopLeft(button).dy),
-    );
 
     await tester.tap(calendar);
     await settle(tester);
@@ -704,7 +747,7 @@ void main() {
       final nameTop = tester.getTopLeft(find.text('Мц. Христи́ны Тирской')).dy;
       expect(nameTop, greaterThan(stripTop));
       expect(
-        tester.getTopLeft(find.text('ПОСТНЫЙ ДЕНЬ')).dy,
+        tester.getTopLeft(find.text('Постный день')).dy,
         greaterThan(stripTop),
       );
     });
@@ -725,60 +768,36 @@ void main() {
       );
       await settle(tester);
 
-      final dayInk = find.ancestor(
-        of: find.descendant(
-          of: find.byType(DayNameHeader),
-          matching: find.byIcon(CupertinoIcons.chevron_right),
-        ),
-        matching: find.byType(InkWell),
-      );
-      expect(tester.getRect(dayInk).left, 0);
-      expect(tester.getRect(dayInk).right, 800);
-      final dividerLine = find.descendant(
-        of: find.byType(DayEntryDivider).first,
-        matching: find.byType(Container),
-      );
-      expect(tester.getRect(dayInk).bottom, tester.getTopLeft(dividerLine).dy);
-      final title = find.ancestor(
-        of: find.descendant(
-          of: find.byType(DayNameHeader),
-          matching: find.byIcon(CupertinoIcons.chevron_right),
-        ),
-        matching: find.byType(Text),
-      );
-      expect(tester.getTopLeft(title).dx, 16);
-
-      await tester.tapAt(Offset(1, tester.getCenter(dayInk).dy));
+      await tester.tap(find.byType(DayMemoryTile));
       await settle(tester);
 
       expect(find.byType(DayStoryScreen), findsOneWidget);
-      expect(find.text('Рассказ о памяти дня.'), findsOneWidget);
+      // Рассказ открывается обложкой с названием, текст идёт следующими
+      // страницами листалки.
+      expect(
+        find.descendant(
+          of: find.byType(DayStoryScreen),
+          matching: find.text('Мц. Христи́ны Тирской'),
+        ),
+        findsWidgets,
+      );
     });
 
-    testWidgets(
-      'память дня без ссылки не рисует стрелку и не открывает рассказ',
-      (tester) async {
-        final progress = _FakeProgressRepository()
-          ..seedRead(_cards.map((card) => card.type).toSet());
-        await tester.pumpWidget(
-          buildApp(
-            cardsRepository: _FakeCardsRepository(
-              title: 'Мц. Христи́ны Тирской',
-            ),
-            progressRepository: progress,
-          ),
-        );
-        await settle(tester);
+    testWidgets('память дня без ссылки не открывает рассказ', (tester) async {
+      final progress = _FakeProgressRepository()
+        ..seedRead(_cards.map((card) => card.type).toSet());
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(title: 'Мц. Христи́ны Тирской'),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
 
-        expect(
-          find.descendant(
-            of: find.byType(DayNameHeader),
-            matching: find.byIcon(CupertinoIcons.chevron_right),
-          ),
-          findsNothing,
-        );
-      },
-    );
+      await tester.tap(find.byType(DayMemoryTile));
+      await settle(tester);
+      expect(find.byType(DayStoryScreen), findsNothing);
+    });
 
     testWidgets('показывает полоску недели и одну кнопку дня', (tester) async {
       await tester.pumpWidget(buildApp());
@@ -1494,6 +1513,171 @@ void main() {
       );
     });
 
+    _FakeCardsRepository daysWithRelatedContent() => _FakeCardsRepository(
+      pendingDates: {
+        for (final day in [14, 15, 16, 17, 18, 19])
+          '2026-09-$day': Future.value(
+            Success(
+              TodayCards(
+                title: 'Память $day сентября',
+                storyUrl: 'https://azbyka.ru/days/2026-09-$day',
+                cards: [
+                  DayCard(
+                    id: 'reading-$day',
+                    type: CardType.reading,
+                    body: 'Ин.10:$day',
+                    source: 'Азбука веры',
+                    reference: 'Jn.10:$day',
+                  ),
+                ],
+              ),
+            ),
+          ),
+      },
+    );
+
+    testWidgets('до свайпа загружает стихи и рассказы выбранной даты ±1', (
+      tester,
+    ) async {
+      final reading = _FakeReadingRepository();
+      final story = _FakeDayStoryRepository();
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: daysWithRelatedContent(),
+          readingRepository: reading,
+          storyRepository: story,
+          selectedDate: DateTime(2026, 9, 15),
+        ),
+      );
+      await settle(tester);
+      expect(
+        reading.requestedReferences,
+        unorderedEquals(['Jn.10:14', 'Jn.10:15', 'Jn.10:16']),
+      );
+      expect(
+        story.requestedUrls,
+        unorderedEquals([
+          'https://azbyka.ru/days/2026-09-14',
+          'https://azbyka.ru/days/2026-09-15',
+          'https://azbyka.ru/days/2026-09-16',
+        ]),
+      );
+      expect(find.text('Память 14 сентября'), findsNothing);
+      expect(find.text('Память 16 сентября'), findsNothing);
+    });
+
+    testWidgets(
+      'смена даты переносит окно предзагрузки без повторных запросов',
+      (tester) async {
+        final reading = _FakeReadingRepository();
+        final story = _FakeDayStoryRepository();
+        await tester.pumpWidget(
+          buildApp(
+            cardsRepository: daysWithRelatedContent(),
+            readingRepository: reading,
+            storyRepository: story,
+            selectedDate: DateTime(2026, 9, 15),
+          ),
+        );
+        await settle(tester);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(TodayScreen)),
+        );
+        container
+            .read(selectedDateProvider.notifier)
+            .select(DateTime(2026, 9, 18));
+        await settle(tester);
+        expect(
+          reading.requestedReferences,
+          unorderedEquals([
+            'Jn.10:14',
+            'Jn.10:15',
+            'Jn.10:16',
+            'Jn.10:17',
+            'Jn.10:18',
+            'Jn.10:19',
+          ]),
+        );
+        container
+            .read(selectedDateProvider.notifier)
+            .select(DateTime(2026, 9, 15));
+        await settle(tester);
+        expect(reading.requestedReferences, hasLength(6));
+        expect(story.requestedUrls, hasLength(6));
+      },
+    );
+
+    testWidgets(
+      'до свайпа начинает загрузку изображений икон выбранной даты ±1',
+      (tester) async {
+        final images = _PendingImageClient();
+        debugNetworkImageHttpClientProvider = () => images;
+        try {
+          await tester.pumpWidget(
+            buildApp(
+              cardsRepository: daysWithRelatedContent(),
+              storyRepository: _FakeDayStoryRepository(
+                iconUrl: 'https://azbyka.ru/review-prefetch-icons',
+              ),
+              selectedDate: DateTime(2026, 9, 15),
+            ),
+          );
+          await settle(tester);
+          expect(
+            images.requestedUrls.map((url) => url.toString()),
+            unorderedEquals([
+              'https://azbyka.ru/review-prefetch-icons/2026-09-14.png',
+              'https://azbyka.ru/review-prefetch-icons/2026-09-15.png',
+              'https://azbyka.ru/review-prefetch-icons/2026-09-16.png',
+            ]),
+          );
+          final container = ProviderScope.containerOf(
+            tester.element(find.byType(TodayScreen)),
+          );
+          container
+              .read(selectedDateProvider.notifier)
+              .select(DateTime(2026, 9, 16));
+          await settle(tester);
+          expect(
+            images.requestedUrls,
+            hasLength(4),
+            reason: 'пересекающиеся дни используют уже начатую загрузку иконы',
+          );
+        } finally {
+          debugNetworkImageHttpClientProvider = null;
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
+        }
+      },
+    );
+
+    testWidgets(
+      'ошибка соседнего рассказа не блокирует предзагрузку стихов и текущий день',
+      (tester) async {
+        final reading = _FakeReadingRepository();
+        final story = _FakeDayStoryRepository(
+          failedUrls: {'https://azbyka.ru/days/2026-09-14'},
+        );
+        await tester.pumpWidget(
+          buildApp(
+            cardsRepository: daysWithRelatedContent(),
+            readingRepository: reading,
+            storyRepository: story,
+            selectedDate: DateTime(2026, 9, 15),
+          ),
+        );
+        await settle(tester);
+        expect(
+          reading.requestedReferences,
+          unorderedEquals(['Jn.10:14', 'Jn.10:15', 'Jn.10:16']),
+        );
+        expect(story.requestedUrls, hasLength(3));
+        expect(find.text('Память 15 сентября'), findsOneWidget);
+        expect(entry('Мудрость дня'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('тап по дню недели запрашивает карточки этой даты', (
       tester,
     ) async {
@@ -1564,12 +1748,11 @@ void main() {
   });
 
   group('конец сессии', () {
-    testWidgets('после последней карточки просмотрщик закрывается крестиком', (
+    testWidgets('просмотрщик закрывается стрелкой «Назад» в любой момент', (
       tester,
     ) async {
-      // Экрана завершения нет вовсе. Любая надпись на нём выходила либо
-      // неправдой («увидимся завтра», когда осталось Евангелие), либо
-      // церемонией: «Сегодня» и так показывает, что не пройдено.
+      // Экран итога стоит только в конце листалки; уйти раньше можно
+      // без него, и прочитанное при этом сохраняется.
       await tester.pumpWidget(buildApp());
       await settle(tester);
 

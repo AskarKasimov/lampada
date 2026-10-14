@@ -36,8 +36,9 @@ class AzbykaDayStoryRepository implements DayStoryRepository {
   final List<Duration> _retryDelays;
   final NetworkStatus? _networkStatus;
 
-  static const _cachePrefix = 'day_story_cache_v2:';
-  static const _cacheIndexKey = 'day_story_cache_index_v2';
+  /// v3 добавил икону: рассказы из v2 без неё загружаются заново.
+  static const _cachePrefix = 'day_story_cache_v3:';
+  static const _cacheIndexKey = 'day_story_cache_index_v3';
   static const _maxCachedStories = 20;
   static const _minAttempt = Duration(milliseconds: 500);
 
@@ -139,7 +140,12 @@ class AzbykaDayStoryRepository implements DayStoryRepository {
   Future<void> _clearLegacyCache() async {
     final legacyKeys = _prefs
         .getKeys()
-        .where((key) => key.startsWith('day_story_cache_v1:'))
+        .where(
+          (key) =>
+              key.startsWith('day_story_cache_v1:') ||
+              key.startsWith('day_story_cache_v2:') ||
+              key == 'day_story_cache_index_v2',
+        )
         .toList();
     for (final key in legacyKeys) {
       try {

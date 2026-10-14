@@ -16,10 +16,10 @@ import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
+import '../providers/day_content_provider.dart';
 import '../providers/providers.dart';
 import '../widgets/course_progress_header.dart';
-import '../widgets/day_entry_row.dart';
-import '../widgets/day_name_header.dart';
+import '../widgets/day_memory_tile.dart';
 import '../widgets/day_wisdom_tile.dart';
 import '../widgets/streak_card.dart';
 import '../widgets/today_offline_view.dart';
@@ -74,6 +74,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   late final PageController _pageController;
   Object? _pageAnimation;
   late final AnimationController _fadeController;
+  final _prefetchedIconUrls = <String>{};
 
   @override
   void initState() {
@@ -152,17 +153,34 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
     }
   }
 
+  /// Прогрев изображений остаётся в presentation: он требует контекст
+  /// Flutter и использует тот же ImageCache, что плитка и обложка рассказа.
+  void _precacheIcon(String? iconUrl) {
+    if (iconUrl == null || !_prefetchedIconUrls.add(iconUrl)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(
+        precacheImage(
+          NetworkImage(iconUrl),
+          context,
+          // Ошибка иконы не блокирует текст; следующая перестройка
+          // позволяет повторить загрузку изображения.
+          onError: (_, _) => _prefetchedIconUrls.remove(iconUrl),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = ref.watch(selectedDateProvider);
     final progress = ref.watch(dayProgressProvider).value;
     final selectedPage = _pageMapper.pageForDate(selected);
-    ref.watch(
-      dayCardsProvider(dateKey(_pageMapper.dateForPage(selectedPage - 1))),
-    );
-    ref.watch(
-      dayCardsProvider(dateKey(_pageMapper.dateForPage(selectedPage + 1))),
-    );
+    for (var offset = -1; offset <= 1; offset++) {
+      final date = _pageMapper.dateForPage(selectedPage + offset);
+      final content = ref.watch(dayContentProvider(dateKey(date)));
+      _precacheIcon(content.iconUrl);
+    }
     ref.listen<DateTime>(selectedDateProvider, (_, selected) {
       _syncPage(selected);
     });
@@ -212,28 +230,9 @@ class _SelectedDayContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final key = dateKey(date);
-    final cardsAsync = ref.watch(dayCardsProvider(key));
-    final day = cardsAsync.value;
+    final content = ref.watch(dayContentProvider(key));
     final progress = ref.watch(dayProgressProvider).value;
-    final reference = day?.cards
-        .where((card) => card.type == CardType.reading)
-        .firstOrNull
-        ?.reference;
-    // Запускаем загрузку стихов вместе с днём, до входа в читалку:
-    // временная карточка не должна превращаться в несколько точек на глазах.
-    final readingIsLoading =
-        reference != null &&
-        ref.watch(dailyReadingProvider(reference)).isLoading;
-    return _body(
-      context,
-      ref,
-      date,
-      key,
-      cardsAsync,
-      day,
-      progress,
-      readingIsLoading,
-    );
+    return _body(context, ref, date, key, content, progress);
   }
 
   Widget _body(
@@ -241,19 +240,14 @@ class _SelectedDayContent extends ConsumerWidget {
     WidgetRef ref,
     DateTime selected,
     String key,
-    AsyncValue<TodayCards> cardsAsync,
-    TodayCards? day,
+    DayContentState content,
     DayProgress? progress,
-    bool readingIsLoading,
   ) {
+    final cardsAsync = content.cards;
+    final day = cardsAsync.value;
     // Готовый день остаётся полезнее последней ошибки обновления.
     if (day != null && progress != null) {
-      return _DayBlocks(
-        date: selected,
-        day: day,
-        progress: progress,
-        readingIsLoading: readingIsLoading,
-      );
+      return _DayBlocks(date: selected, content: content, progress: progress);
     }
 
     if (cardsAsync.hasError || progress == null && !cardsAsync.isLoading) {
@@ -320,15 +314,13 @@ class _Header extends ConsumerWidget {
 class _DayBlocks extends ConsumerStatefulWidget {
   const _DayBlocks({
     required this.date,
-    required this.day,
+    required this.content,
     required this.progress,
-    required this.readingIsLoading,
   });
 
   final DateTime date;
-  final TodayCards day;
+  final DayContentState content;
   final DayProgress progress;
-  final bool readingIsLoading;
 
   @override
   ConsumerState<_DayBlocks> createState() => _DayBlocksState();
@@ -336,7 +328,7 @@ class _DayBlocks extends ConsumerStatefulWidget {
 
 class _DayBlocksState extends ConsumerState<_DayBlocks> {
   DateTime get date => widget.date;
-  TodayCards get day => widget.day;
+  TodayCards get day => widget.content.cards.requireValue;
   DayProgress get progress => widget.progress;
 
   bool get _isToday => dateKey(date) == dateKey(DateTime.now());
@@ -353,7 +345,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ..sort((a, b) => a.type.index.compareTo(b.type.index));
 
   Future<void> _openWisdom() async {
-    if (widget.readingIsLoading) return;
+    if (widget.content.readingIsLoading) return;
     final pages = _pages;
     final firstUnread = pages.indexWhere((card) => !_isRead(card));
     // Открывается внутри вкладки, а не модально: навбар остаётся виден.
@@ -426,21 +418,26 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
       children: [
-        if (day.hasName) ...[
-          DayNameHeader(
+        if ((day.title ?? '').isNotEmpty)
+          DayMemoryTile(
             day: day,
-            onTap: (day.title ?? '').isEmpty || day.storyUrl == null
-                ? null
-                : () => _openStory(context, day.title!, day.storyUrl!),
+            iconUrl: widget.content.iconUrl,
+            onTap: () => _openStory(context, day.title!, day.storyUrl!),
+          )
+        else if (day.isFast)
+          // Без памяти дня пост всё равно отмечаем, но без плитки.
+          Padding(
+            padding:
+                AppSpacing.of(context).horizontal +
+                const EdgeInsets.only(top: 4, bottom: 8),
+            child: Text(
+              'Постный день',
+              style: TextStyle(fontSize: 13, color: colors.accent),
+            ),
           ),
-          const DayEntryDivider(),
-          // Вместе с полем плитки воздух под разделителем равен воздуху над
-          // ним: линия делит шапку и плитки поровну.
-          const SizedBox(height: 10),
-        ],
         if (pages.isNotEmpty)
           DayWisdomTile(
-            isLoading: widget.readingIsLoading,
+            isLoading: widget.content.readingIsLoading,
             isUnread: pages.any((card) => !_isRead(card)),
             onTap: _openWisdom,
           ),

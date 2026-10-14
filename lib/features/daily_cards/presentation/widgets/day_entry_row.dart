@@ -93,18 +93,3 @@ class DayEntryRow extends StatelessWidget {
     );
   }
 }
-
-/// Волосяная линия между группами записей. Единственный разделитель на
-/// экране: границ у самих записей нет.
-class DayEntryDivider extends StatelessWidget {
-  const DayEntryDivider({super.key});
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: AppSpacing.of(context).horizontal,
-    child: Container(
-      height: 1,
-      color: AppColorsExtension.of(context).chipUnreadBorder,
-    ),
-  );
-}

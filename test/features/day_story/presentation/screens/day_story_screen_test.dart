@@ -9,6 +9,7 @@ import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart'
     show bookmarksProvider;
+import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
 import 'package:lampada/features/day_story/presentation/providers/providers.dart';
@@ -52,7 +53,12 @@ void main() {
     ),
   );
 
-  testWidgets('показывает заголовок и абзацы рассказа', (tester) async {
+  Future<void> next(WidgetTester tester) async {
+    await tester.drag(find.byType(PageView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('листалка: обложка с заголовком, затем абзацы', (tester) async {
     final repo = _FakeRepository(
       const Success(DayStory(paragraphs: ['Абзац первый.', 'Абзац второй.'])),
     );
@@ -61,8 +67,38 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(_title), findsOneWidget);
-    expect(find.text('Абзац первый.'), findsOneWidget);
-    expect(find.text('Абзац второй.'), findsOneWidget);
+    expect(find.textContaining('Абзац первый.'), findsNothing);
+    await next(tester);
+    expect(find.text('Абзац первый.\n\nАбзац второй.'), findsOneWidget);
+    expect(find.text('— Азбука веры'), findsOneWidget);
+  });
+
+  testWidgets('длинный рассказ делится на страницы, подпись в конце', (
+    tester,
+  ) async {
+    String paragraph(String word) => List.filled(
+      4,
+      'Это предложение о святом рассказывает про $word подробно.',
+    ).join(' ');
+    final paragraphs = [paragraph('детство'), paragraph('подвиг')];
+    final repo = _FakeRepository(Success(DayStory(paragraphs: paragraphs)));
+
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    final rail = tester.widget<ReaderProgressRail>(
+      find.byType(ReaderProgressRail),
+    );
+    // Обложка и не меньше двух страниц текста.
+    expect(rail.count, greaterThanOrEqualTo(3));
+    await next(tester);
+    expect(find.textContaining('детство'), findsOneWidget);
+    expect(find.text('— Азбука веры'), findsNothing);
+    for (var page = 2; page < rail.count; page++) {
+      await next(tester);
+    }
+    expect(find.textContaining('подвиг'), findsOneWidget);
+    expect(find.text('— Азбука веры'), findsOneWidget);
   });
 
   testWidgets('показывает кнопку «Поделиться» для рассказа', (tester) async {
@@ -87,7 +123,13 @@ void main() {
     await tester.pumpWidget(wrap(repo));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SelectableShareArea), findsOneWidget);
+    expect(
+      find.ancestor(
+        of: find.text(_title),
+        matching: find.byType(SelectableShareArea),
+      ),
+      findsWidgets,
+    );
   });
 
   testWidgets('сбой загрузки показывает сообщение и кнопку повтора', (
@@ -206,5 +248,95 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(DayStoryScreen), findsNothing);
+  });
+
+  testWidgets('свайп дальше последней страницы возвращает на главную', (
+    tester,
+  ) async {
+    final repo = _FakeRepository(
+      const Success(DayStory(paragraphs: ['Абзац первый.'])),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          dayStoryRepositoryProvider.overrideWithValue(repo),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          const DayStoryScreen(title: _title, storyUrl: _url),
+                    ),
+                  ),
+                  child: const Text('Открыть'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Открыть'));
+    await tester.pumpAndSettle();
+
+    // Обложка, затем единственная страница текста.
+    await next(tester);
+    expect(find.text('Абзац первый.'), findsOneWidget);
+    expect(find.byType(DayStoryScreen), findsOneWidget);
+    final rail = tester.widget<ReaderProgressRail>(
+      find.byType(ReaderProgressRail),
+    );
+    expect(rail.count, 2, reason: 'служебная страница не считается');
+
+    await next(tester);
+    expect(find.byType(DayStoryScreen), findsNothing);
+    expect(find.text('Открыть'), findsOneWidget);
+  });
+
+  group('обложка с иконой', () {
+    const icon =
+        'https://azbyka.ru/days/storage/images/icons-of-saints/1/a.jpg';
+
+    Finder iconImage() => find.byWidgetPredicate(
+      (widget) =>
+          widget is Image &&
+          widget.image is NetworkImage &&
+          (widget.image as NetworkImage).url == icon,
+    );
+
+    testWidgets('название наверху, под ним икона дня', (tester) async {
+      final repo = _FakeRepository(
+        const Success(DayStory(paragraphs: ['Абзац первый.'], iconUrl: icon)),
+      );
+
+      await tester.pumpWidget(wrap(repo));
+      await tester.pumpAndSettle();
+
+      expect(iconImage(), findsOneWidget);
+      final title = find.text(_title).first;
+      expect(
+        tester.getBottomLeft(title).dy,
+        lessThanOrEqualTo(tester.getTopLeft(iconImage()).dy),
+      );
+    });
+
+    testWidgets('без иконы обложка остаётся с одним названием', (tester) async {
+      final repo = _FakeRepository(
+        const Success(DayStory(paragraphs: ['Абзац первый.'])),
+      );
+
+      await tester.pumpWidget(wrap(repo));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_title), findsWidgets);
+      expect(find.byType(Image), findsNothing);
+    });
   });
 }

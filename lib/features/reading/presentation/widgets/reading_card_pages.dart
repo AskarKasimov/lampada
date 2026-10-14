@@ -1,19 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../bible/domain/entities/bible_book.dart';
-import '../../../bible/presentation/screens/bible_reader_screen.dart';
+import '../../../bible/presentation/providers/providers.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../domain/entities/daily_reading.dart';
 import 'interpretation_sheet.dart';
 import 'verse_view.dart';
 
+/// Подпись ссылки и переход по ней.
+typedef ReadingLink = ({String label, VoidCallback onPressed});
+
 /// Страницы одного евангельского отрывка для отдельного и общего просмотрщика.
 class ReadingCardPages {
-  const ReadingCardPages({required this.reference, required this.reading});
+  const ReadingCardPages({
+    required this.reference,
+    required this.reading,
+    this.offerChapters = true,
+  });
 
   final String reference;
   final DailyReading reading;
+
+  /// Завершать ли стихи страницей с предложением прочитать главу. «Мудрость
+  /// дня» её выключает и показывает [chapterLinks] на экране завершения.
+  final bool offerChapters;
 
   BibleBook? get _book => bibleBooks
       .where((book) => book.code == reference.trim().split('.').first)
@@ -34,7 +46,7 @@ class ReadingCardPages {
         source:
             '${reading.label.split('.').first}.${verse.chapter}:${verse.number}',
       ),
-    if (_chapters.isNotEmpty)
+    if (offerChapters && _chapters.isNotEmpty)
       DayCard(
         id: 'reading-chapters-$reference',
         type: CardType.reading,
@@ -63,37 +75,46 @@ class ReadingCardPages {
       );
     }
 
-    final chapters = _chapters;
+    final links = chapterLinks(context);
     final colors = AppColorsExtension.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            chapters.length == 1
+            links.length == 1
                 ? 'Хотите прочесть главу полностью?'
                 : 'Хотите прочесть главы полностью?',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 22, color: colors.ink),
           ),
           const SizedBox(height: 18),
-          for (final chapter in chapters)
-            TextButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  fullscreenDialog: true,
-                  builder: (_) =>
-                      BibleReaderScreen(book: _book!, chapter: chapter),
-                ),
-              ),
-              child: Text(
-                chapters.length == 1
-                    ? 'Прочитать главу полностью'
-                    : 'Прочитать главу $chapter',
-              ),
-            ),
+          for (final link in links)
+            TextButton(onPressed: link.onPressed, child: Text(link.label)),
         ],
       ),
     );
+  }
+
+  /// Полные главы отрывка с первого стиха. Пусто, если книгу не узнали.
+  ///
+  /// Глава открывается во вкладке «Библия», а не отдельным окном: там её
+  /// можно дочитать и листать дальше, место чтения сохраняется.
+  List<ReadingLink> chapterLinks(BuildContext context) {
+    final chapters = _chapters;
+    final book = _book;
+    if (book == null) return const [];
+    return [
+      for (final chapter in chapters)
+        (
+          label: chapters.length == 1
+              ? 'Прочитать главу полностью'
+              : 'Прочитать главу $chapter',
+          onPressed: () => ProviderScope.containerOf(
+            context,
+            listen: false,
+          ).read(bibleOpenRequestProvider.notifier).open(book.code, chapter),
+        ),
+    ];
   }
 }

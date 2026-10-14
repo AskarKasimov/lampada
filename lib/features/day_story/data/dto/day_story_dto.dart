@@ -7,7 +7,12 @@ part 'day_story_dto.g.dart';
 /// через mapper. JSON нужен для кэша по ссылке в prefs.
 @freezed
 abstract class DayStoryDto with _$DayStoryDto {
-  const factory DayStoryDto({required List<String> paragraphs}) = _DayStoryDto;
+  const factory DayStoryDto({
+    required List<String> paragraphs,
+
+    /// Адрес иконы праздника или святого на Азбуке, если она есть.
+    String? iconUrl,
+  }) = _DayStoryDto;
 
   factory DayStoryDto.fromJson(Map<String, dynamic> json) =>
       _$DayStoryDtoFromJson(json);
