@@ -31,7 +31,6 @@ import 'package:lampada/features/reading/presentation/providers/providers.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
-import 'package:lampada/features/shell/presentation/widgets/home_tab_icon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
@@ -185,13 +184,8 @@ void main() {
     matching: find.byIcon(icon),
   );
 
-  /// Своя иконка «Главной»: дом с крестом, контурный или залитый.
-  Finder homeIcon({required bool filled}) => find.descendant(
-    of: find.byType(FloatingNavBar),
-    matching: find.byWidgetPredicate(
-      (widget) => widget is HomeTabIcon && widget.filled == filled,
-    ),
-  );
+  Finder homeIcon({required bool filled}) =>
+      tabIcon(filled ? CupertinoIcons.house_fill : CupertinoIcons.house);
 
   // StreakFlame крутится бесконечно — pumpAndSettle никогда не осядет.
   // Прокачиваем с запасом: переходы маршрутов длиннее анимации карточки,

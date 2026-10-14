@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/shell_providers.dart';
-import 'home_tab_icon.dart';
 
 /// Высота самой капсулы.
 const _barHeight = 58.0;
@@ -93,8 +92,7 @@ class FloatingNavBar extends StatefulWidget {
   static final _items = [
     (
       tab: ShellTab.today,
-      icon: (bool active, Color color) =>
-          HomeTabIcon(filled: active, color: color, size: _iconSize),
+      icon: _cupertino(CupertinoIcons.house, CupertinoIcons.house_fill),
       label: 'Главная',
     ),
     (
