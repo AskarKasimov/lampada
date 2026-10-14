@@ -248,4 +248,75 @@ void main() {
     );
     expect(calls, 0);
   });
+
+  group('икона дня', () {
+    const description =
+        '<div class="block saint-description"><div class="brif">'
+        '<p>Житие.</p></div></div>';
+
+    Future<String?> iconOf(String html) async {
+      final dto = await _servingHtml(
+        '<html><head>$html</head><body>$description</body></html>',
+      ).fetch('https://azbyka.ru/days/sv', timeout: const Duration(seconds: 5));
+      return dto.iconUrl;
+    }
+
+    test('берёт оригинал иконы праздника из галереи', () async {
+      expect(
+        await iconOf(
+          '<meta property="og:image" content="https://azbyka.ru/days/cache/'
+          '1200x600/storage/images/icons-of-holidays/14/main.jpg">'
+          '<div class="slideshow"><a data-fancybox-href="https://azbyka.ru/'
+          'days/storage/images/icons-of-holidays/14/main.jpg"></a>'
+          '<a data-fancybox-href="https://azbyka.ru/days/storage/images/'
+          'icons-of-holidays/14/other.png"></a></div>',
+        ),
+        'https://azbyka.ru/days/storage/images/icons-of-holidays/14/main.jpg',
+      );
+    });
+
+    test('у собора святых берёт его икону, а не фото дня', () async {
+      expect(
+        await iconOf(
+          '<meta property="og:image" content="https://azbyka.ru/days/img/'
+          'calendar_social.png?1.0.2">'
+          '<a data-fancybox-href="/days/storage/images/photos-of-day/a.JPG">'
+          '</a><a data-fancybox-href="https://azbyka.ru/days/storage/images/'
+          'saints-group/87/group.jpg"></a>',
+        ),
+        'https://azbyka.ru/days/storage/images/saints-group/87/group.jpg',
+      );
+    });
+
+    test('без галереи берёт икону из og:image', () async {
+      expect(
+        await iconOf(
+          '<meta property="og:image" content="https://azbyka.ru/days/cache/'
+          '1200x600/storage/images/icons-of-saints/5733/saint.jpg">',
+        ),
+        'https://azbyka.ru/days/cache/1200x600/storage/images/icons-of-saints/'
+        '5733/saint.jpg',
+      );
+    });
+
+    test('относительная ссылка становится абсолютной', () async {
+      expect(
+        await iconOf(
+          '<a data-fancybox-href="/days/storage/images/icons-of-saints/1/'
+          'a.jpg"></a>',
+        ),
+        'https://azbyka.ru/days/storage/images/icons-of-saints/1/a.jpg',
+      );
+    });
+
+    test('без иконы — null, общая картинка сайта не считается', () async {
+      expect(
+        await iconOf(
+          '<meta property="og:image" content="https://azbyka.ru/days/img/'
+          'calendar_social.png?1.0.2">',
+        ),
+        isNull,
+      );
+    });
+  });
 }

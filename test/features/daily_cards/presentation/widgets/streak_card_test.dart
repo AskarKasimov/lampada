@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/core/widgets/streak_flame.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_card.dart';
 
@@ -81,6 +82,34 @@ void main() {
 
     expect(find.byIcon(CupertinoIcons.share), findsNothing);
     expect(find.byTooltip('Поделиться'), findsNothing);
+  });
+
+  testWidgets('на экране завершения видна последняя неделя с огоньками', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: StreakCard(
+            progress: _visited([0, 1, 5, 9]),
+            today: _today,
+            showWeek: true,
+          ),
+        ),
+      ),
+    );
+
+    // Семь дней, заканчивая сегодняшней средой.
+    for (final day in ['чт', 'пт', 'сб', 'вс', 'пн', 'вт', 'ср']) {
+      expect(find.text(day), findsOneWidget);
+    }
+    // Дни недели отмечены маленькими лампадками: три горят, четыре
+    // погашены. Ещё одна горящая — сама лампада серии. Девять дней назад
+    // в неделю не входит.
+    expect(_lamp('on'), findsNWidgets(4));
+    expect(_lamp('off'), findsNWidgets(4));
+    expect(find.byType(StreakFlame), findsNothing);
   });
 
   test('подпись к числу дней согласована по падежу', () {

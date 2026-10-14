@@ -105,6 +105,44 @@ void main() {
     expect(progress.isLit(yesterday), isFalse);
   });
 
+  test('completeWisdom отмечает завершение и зажигает день', () async {
+    final repo = await build();
+
+    final p = _unwrap(await repo.completeWisdom());
+
+    expect(p.isWisdomCompletedOn(fixedNow), isTrue);
+    expect(p.isLit(fixedNow), isTrue);
+    expect(p.streakOn(fixedNow), 1);
+    expect(p.readTypes, isEmpty);
+    expect(p.readTypesByDate, isEmpty);
+    final reloaded = _unwrap(await repo.loadToday());
+    expect(reloaded.isWisdomCompletedOn(fixedNow), isTrue);
+    expect(reloaded.isLit(fixedNow), isTrue);
+  });
+
+  test('завершение прошлого дня не зажигает его', () async {
+    final repo = await build();
+    final yesterday = DateTime(2026, 7, 16);
+
+    final p = _unwrap(
+      await repo.completeWisdom(date: yesterday, markVisited: false),
+    );
+
+    expect(p.isWisdomCompletedOn(yesterday), isTrue);
+    expect(p.isWisdomCompletedOn(fixedNow), isFalse);
+    expect(p.isLit(yesterday), isFalse);
+  });
+
+  test('completeWisdom не теряет прочитанное за день', () async {
+    final repo = await build();
+    await repo.markRead(CardType.quote, markVisited: false);
+
+    final p = _unwrap(await repo.completeWisdom());
+
+    expect(p.readTypes, {CardType.quote});
+    expect(p.visitedDays, {'2026-07-17'});
+  });
+
   test('переносит прочитанные типы из прежнего формата', () async {
     SharedPreferences.setMockInitialValues({
       'flutter.day_progress': jsonEncode({

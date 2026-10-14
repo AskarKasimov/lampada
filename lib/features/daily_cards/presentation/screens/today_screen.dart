@@ -18,8 +18,7 @@ import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/today_cards.dart';
 import '../providers/providers.dart';
 import '../widgets/course_progress_header.dart';
-import '../widgets/day_entry_row.dart';
-import '../widgets/day_name_header.dart';
+import '../widgets/day_memory_tile.dart';
 import '../widgets/day_wisdom_tile.dart';
 import '../widgets/streak_card.dart';
 import '../widgets/today_offline_view.dart';
@@ -426,18 +425,22 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
       children: [
-        if (day.hasName) ...[
-          DayNameHeader(
+        if ((day.title ?? '').isNotEmpty)
+          DayMemoryTile(
             day: day,
-            onTap: (day.title ?? '').isEmpty || day.storyUrl == null
-                ? null
-                : () => _openStory(context, day.title!, day.storyUrl!),
+            onTap: () => _openStory(context, day.title!, day.storyUrl!),
+          )
+        else if (day.isFast)
+          // Без памяти дня пост всё равно отмечаем, но без плитки.
+          Padding(
+            padding:
+                AppSpacing.of(context).horizontal +
+                const EdgeInsets.only(top: 4, bottom: 8),
+            child: Text(
+              'Постный день',
+              style: TextStyle(fontSize: 13, color: colors.accent),
+            ),
           ),
-          const DayEntryDivider(),
-          // Вместе с полем плитки воздух под разделителем равен воздуху над
-          // ним: линия делит шапку и плитки поровну.
-          const SizedBox(height: 10),
-        ],
         if (pages.isNotEmpty)
           DayWisdomTile(
             isLoading: widget.readingIsLoading,

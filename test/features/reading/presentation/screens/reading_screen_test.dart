@@ -84,7 +84,7 @@ void main() {
   const ending = 'Хотите прочесть главу полностью?';
 
   testWidgets(
-    'сохраняет дневные стихи и толкование, в конце предлагает полную главу с первого стиха',
+    'сохраняет дневные стихи и толкование, в конце предлагает полную главу во вкладке Библии',
     (tester) async {
       await open(tester, crossesChapter: false);
       expect(find.text('Дневной стих').hitTestable(), findsOneWidget);
@@ -101,12 +101,12 @@ void main() {
       expect(find.byType(BookmarkButton), findsNothing);
       await tester.tap(find.text('Прочитать главу полностью'));
       await tester.pumpAndSettle();
-      expect(find.text('Jn 10:1').hitTestable(), findsOneWidget);
-      await next(tester);
-      expect(find.text('Jn 10:2').hitTestable(), findsOneWidget);
-      Navigator.of(tester.element(find.byType(BibleReaderScreen))).pop();
-      await tester.pumpAndSettle();
-      expect(find.text(ending).hitTestable(), findsOneWidget);
+      // Отдельного окна с главой нет: её открывает вкладка «Библия».
+      expect(find.byType(BibleReaderScreen), findsNothing);
+      final request = ProviderScope.containerOf(
+        tester.element(find.byType(ReadingScreen)),
+      ).read(bibleOpenRequestProvider);
+      expect((request?.book, request?.chapter), ('Jn', 10));
     },
   );
 
@@ -122,7 +122,10 @@ void main() {
     expect(find.text('Прочитать главу 11'), findsOneWidget);
     await tester.tap(find.text('Прочитать главу 11'));
     await tester.pumpAndSettle();
-    expect(find.text('Jn 11:1').hitTestable(), findsOneWidget);
+    final request = ProviderScope.containerOf(
+      tester.element(find.byType(ReadingScreen)),
+    ).read(bibleOpenRequestProvider);
+    expect((request?.book, request?.chapter), ('Jn', 11));
   });
 
   for (final recordRead in [true, false]) {

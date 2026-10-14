@@ -24,5 +24,6 @@ extension DayProgressDtoMapper on DayProgressDto {
             .toSet(),
     },
     visitedDays: visitedDays.toSet(),
+    wisdomCompletedDays: wisdomCompletedDays.toSet(),
   );
 }

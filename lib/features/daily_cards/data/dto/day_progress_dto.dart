@@ -22,6 +22,9 @@ abstract class DayProgressDto with _$DayProgressDto {
     /// Даты (yyyy-MM-dd) с активностью. Серия выводится из них, а не хранится
     /// числом: счётчик было негде сбрасывать, и он только рос.
     @Default(<String>[]) List<String> visitedDays,
+
+    /// Даты (yyyy-MM-dd), в которые «Мудрость дня» дочитана до экрана итога.
+    @Default(<String>[]) List<String> wisdomCompletedDays,
   }) = _DayProgressDto;
 
   factory DayProgressDto.fromJson(Map<String, dynamic> json) =>

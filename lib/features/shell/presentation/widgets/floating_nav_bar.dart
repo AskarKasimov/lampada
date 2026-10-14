@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/shell_providers.dart';
+import 'home_tab_icon.dart';
 
 /// Высота самой капсулы.
 const _barHeight = 58.0;
@@ -79,23 +80,31 @@ class FloatingNavBar extends StatefulWidget {
   final ShellTab current;
   final void Function(ShellTab tab) onSelect;
 
-  static const _items = [
+  /// Иконка вкладки по состоянию: залитая у активной, контурная у прочих.
+  static Widget Function(bool active, Color color) _cupertino(
+    IconData icon,
+    IconData activeIcon,
+  ) =>
+      (active, color) =>
+          Icon(active ? activeIcon : icon, size: _iconSize, color: color);
+
+  static const _iconSize = 20.0;
+
+  static final _items = [
     (
       tab: ShellTab.today,
-      icon: CupertinoIcons.sunset,
-      activeIcon: CupertinoIcons.sunset_fill,
+      icon: (bool active, Color color) =>
+          HomeTabIcon(filled: active, color: color, size: _iconSize),
       label: 'Главная',
     ),
     (
       tab: ShellTab.bible,
-      icon: CupertinoIcons.book,
-      activeIcon: CupertinoIcons.book_fill,
+      icon: _cupertino(CupertinoIcons.book, CupertinoIcons.book_fill),
       label: 'Библия',
     ),
     (
       tab: ShellTab.profile,
-      icon: CupertinoIcons.person,
-      activeIcon: CupertinoIcons.person_fill,
+      icon: _cupertino(CupertinoIcons.person, CupertinoIcons.person_fill),
       label: 'Профиль',
     ),
   ];
@@ -209,7 +218,6 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
                                     Expanded(
                                       child: _NavItem(
                                         icon: item.icon,
-                                        activeIcon: item.activeIcon,
                                         label: item.label,
                                         isSelected: item.tab == widget.current,
                                         onTap: () => widget.onSelect(item.tab),
@@ -265,14 +273,12 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.icon,
-    required this.activeIcon,
     required this.label,
     required this.isSelected,
     required this.onTap,
   });
 
-  final IconData icon;
-  final IconData activeIcon;
+  final Widget Function(bool active, Color color) icon;
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
@@ -289,7 +295,7 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         customBorder: const StadiumBorder(),
         child: _NavItemContent(
-          icon: isSelected ? activeIcon : icon,
+          icon: (color) => icon(isSelected, color),
           label: label,
           color: isSelected ? colors.accent : colors.homeIcon,
           isSelected: isSelected,
@@ -307,7 +313,7 @@ class _NavItemContent extends StatelessWidget {
     required this.isSelected,
   });
 
-  final IconData icon;
+  final Widget Function(Color color) icon;
   final String label;
   final Color color;
   final bool isSelected;
@@ -319,7 +325,7 @@ class _NavItemContent extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 20, color: color),
+        icon(color),
         const SizedBox(height: 3),
         Text(
           label,

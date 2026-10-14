@@ -7,21 +7,29 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_link_button.dart';
+import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/brand_loading_view.dart';
+import '../../../../core/widgets/reading_action_space.dart';
+import '../../../../core/widgets/reading_overflow_listener.dart';
 import '../../../../core/widgets/selectable_share_area.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
+import '../../../daily_cards/domain/entities/day_card.dart';
+import '../../../daily_cards/domain/split_day_card_text.dart';
+import '../../../daily_cards/presentation/screens/full_card_text_screen.dart';
+import '../../../daily_cards/presentation/widgets/card_content.dart';
+import '../../../daily_cards/presentation/widgets/reader_progress_rail.dart';
+import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
 import '../../domain/entities/day_story.dart';
 import '../providers/providers.dart';
 
 /// Рассказ о празднике или святом дня — открывается тапом по заголовку
 /// на «Сегодня».
 ///
-/// Текст выключен по левому краю, а не центрирован, как цитата: рассказ
-/// бывает на несколько экранов (у больших праздников — с историческим
-/// разбором на тысячи слов), и простыня по центру на таком объёме
-/// нечитаема (тот же принцип, что у толкования).
+/// Рассказ бывает на несколько экранов (у больших праздников с историческим
+/// разбором на тысячи слов), поэтому он идёт листалкой по страницам, как
+/// карточки дня, а не простынёй с прокруткой.
 class DayStoryScreen extends ConsumerWidget {
   const DayStoryScreen({
     required this.title,
@@ -48,7 +56,6 @@ class DayStoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dayStoryProvider(storyUrl));
-    final colors = AppColorsExtension.of(context);
 
     return Scaffold(
       body: SafeArea(
@@ -64,33 +71,12 @@ class DayStoryScreen extends ConsumerWidget {
           ),
           data: (story) => story.paragraphs.isEmpty
               ? _StoryStatusView(onClose: () => Navigator.of(context).pop())
-              : Column(
-                  children: [
-                    Padding(
-                      padding:
-                          AppSpacing.of(context).horizontal +
-                          const EdgeInsets.only(top: 8),
-                      child: Row(
-                        children: [
-                          const Spacer(),
-                          BookmarkButton(bookmark: _bookmarkFor(story)),
-                          AppShareButton(text: _shareTextFor(story)),
-                          IconButton(
-                            tooltip: 'Закрыть рассказ',
-                            icon: Icon(
-                              CupertinoIcons.xmark,
-                              size: 22,
-                              color: colors.homeSubtitle,
-                            ),
-                            onPressed: () => Navigator.of(context).pop(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: _StoryView(title: title, story: story),
-                    ),
-                  ],
+              : _StoryReader(
+                  title: title,
+                  story: story,
+                  bookmark: _bookmarkFor(story),
+                  shareText: _shareTextFor(story),
+                  onClose: () => Navigator.of(context).pop(),
                 ),
         ),
       ),
@@ -98,49 +84,220 @@ class DayStoryScreen extends ConsumerWidget {
   }
 }
 
-class _StoryView extends StatelessWidget {
-  const _StoryView({required this.title, required this.story});
+/// Рассказ в той же вертикальной листалке, что «Мудрость дня»: обложка с
+/// названием, затем текст страницами по несколько предложений. Длинный
+/// рассказ большого праздника так читается без простыни и полноэкранного
+/// режима, а полоса слева показывает, сколько осталось. Свайп дальше
+/// последней страницы возвращает на главную.
+class _StoryReader extends StatefulWidget {
+  const _StoryReader({
+    required this.title,
+    required this.story,
+    required this.bookmark,
+    required this.shareText,
+    required this.onClose,
+  });
 
   final String title;
   final DayStory story;
+  final Bookmark bookmark;
+  final String shareText;
+  final VoidCallback onClose;
+
+  @override
+  State<_StoryReader> createState() => _StoryReaderState();
+}
+
+class _StoryReaderState extends State<_StoryReader> {
+  final _controller = PageController();
+  final _fullTextNeeded = <String, bool>{};
+  var _index = 0;
+
+  late final List<DayCard> _pages = _pagesOf(widget.title, widget.story);
+
+  /// Тип нужен карточке только для шрифта: рассказ набран, как притча дня.
+  static List<DayCard> _pagesOf(String title, DayStory story) {
+    final chunks = splitDayCardText(story.paragraphs.join('\n\n'));
+    return [
+      DayCard(
+        id: 'story-title',
+        type: CardType.parable,
+        body: title,
+        source: '',
+      ),
+      for (var i = 0; i < chunks.length; i++)
+        DayCard(
+          id: 'story-$i',
+          type: CardType.parable,
+          body: chunks[i],
+          source: 'Азбука веры',
+        ),
+    ];
+  }
+
+  bool _isLast(int index) => index == _pages.length - 1;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// За последней страницей идёт пустая служебная: долистав до неё, юзер
+  /// закрывает рассказ тем же свайпом, каким читал.
+  bool _isExit(int index) => index == _pages.length;
+
+  var _closing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_closeAtExit);
+  }
+
+  /// Закрываем, только когда служебная страница встала на место: смена
+  /// страницы засчитывается уже на середине свайпа, и рассказ закрывался бы
+  /// под пальцем, который ещё может вернуться назад.
+  void _closeAtExit() {
+    if (_closing || !_controller.hasClients) return;
+    if ((_controller.page ?? 0) < _pages.length - 0.001) return;
+    _closing = true;
+    widget.onClose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
-    final content = SingleChildScrollView(
-      padding:
-          AppSpacing.of(context).horizontal +
-          const EdgeInsets.only(top: 8, bottom: 40),
+    final page = _pages[_index];
+    return VerticalCardReader(
+      controller: _controller,
+      itemCount: _pages.length + 1,
+      onPageChanged: (index) {
+        if (!_isExit(index)) setState(() => _index = index);
+      },
+      itemBuilder: (context, index) {
+        if (_isExit(index)) return const SizedBox.shrink();
+        final icon = widget.story.iconUrl;
+        if (index == 0 && icon != null) {
+          return SelectableShareArea(
+            child: _StoryCover(title: widget.title, iconUrl: icon),
+          );
+        }
+        final card = _pages[index];
+        return ReadingOverflowListener(
+          key: ValueKey(card.id),
+          onChanged: (needed) {
+            if (_fullTextNeeded[card.id] == needed) return;
+            setState(() => _fullTextNeeded[card.id] = needed);
+          },
+          child: SelectableShareArea(
+            child: CardContent(
+              key: ValueKey(card.id),
+              card: card,
+              showBadge: false,
+              scrollable: false,
+              // Источник подписывает весь рассказ, поэтому стоит в конце.
+              showSource: index > 0 && _isLast(index),
+            ),
+          ),
+        );
+      },
+      header: AppPillBadge(
+        label: 'Память дня',
+        background: colors.ink.withValues(alpha: 0.06),
+        foreground: colors.textSecondary,
+        letterSpacing: 0.2,
+      ),
+      leftRail: ReaderProgressRail(
+        count: _pages.length,
+        currentIndex: _index,
+        accent: colors.accent,
+      ),
+      actions: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_fullTextNeeded[page.id] ?? false) ...[
+            ReaderActionButton(
+              tooltip: 'Открыть полный текст',
+              onPressed: () => Navigator.of(context).push(
+                FullCardTextRoute(card: page, showSource: _isLast(_index)),
+              ),
+              icon: CupertinoIcons.fullscreen,
+              color: colors.homeSubtitle,
+            ),
+            const SizedBox(height: 4),
+          ],
+          // Закладка и отправка относятся ко всему рассказу, а не к странице.
+          BookmarkButton(
+            bookmark: widget.bookmark,
+            iconSize: 28,
+            buttonSize: 56,
+          ),
+          const SizedBox(height: 4),
+          AppShareButton(text: widget.shareText, iconSize: 28, buttonSize: 56),
+        ],
+      ),
+      onClose: widget.onClose,
+      closeColor: colors.homeSubtitle,
+      topLeftAction: IconButton(
+        tooltip: 'Закрыть рассказ',
+        icon: Icon(CupertinoIcons.xmark, size: 22, color: colors.homeSubtitle),
+        onPressed: widget.onClose,
+      ),
+    );
+  }
+}
+
+/// Обложка рассказа: название наверху, под ним икона дня. Пока икона
+/// грузится, на её месте спокойная подложка; если не загрузилась, остаётся
+/// одно название.
+class _StoryCover extends StatelessWidget {
+  const _StoryCover({required this.title, required this.iconUrl});
+
+  final String title;
+  final String iconUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
+    return Padding(
+      // Низ оставляем кнопкам закладки и отправки, как у страниц текста.
+      padding: EdgeInsets.only(bottom: ReadingActionSpace.of(context)),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
+            textAlign: TextAlign.center,
             style: AppTheme.quoteStyle(
               context,
             ).copyWith(fontSize: 25, height: 1.25),
           ),
-          const SizedBox(height: 20),
-          for (final paragraph in story.paragraphs) ...[
-            Text(
-              paragraph,
-              style: TextStyle(fontSize: 16, height: 1.65, color: colors.ink),
-            ),
-            const SizedBox(height: 14),
-          ],
-          const SizedBox(height: 8),
-          Text(
-            '— Азбука веры',
-            style: TextStyle(
-              fontSize: 13,
-              letterSpacing: 0.2,
-              color: colors.textSecondary,
+          const SizedBox(height: 24),
+          Expanded(
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  iconUrl,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'Икона: $title',
+                  loadingBuilder: (context, child, progress) => progress == null
+                      ? child
+                      : AspectRatio(
+                          aspectRatio: 0.8,
+                          child: ColoredBox(
+                            color: colors.ink.withValues(alpha: 0.05),
+                          ),
+                        ),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
-    return SelectableShareArea(child: content);
   }
 }
 

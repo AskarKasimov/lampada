@@ -27,12 +27,19 @@ abstract class DayProgress with _$DayProgress {
     /// Типы прочитанного контента по календарным датам.
     @Default(<String, Set<CardType>>{})
     Map<String, Set<CardType>> readTypesByDate,
+
+    /// Даты (yyyy-MM-dd), в которые «Мудрость дня» дочитана до экрана итога.
+    /// Праздничное появление итога показывается только в первый раз.
+    @Default(<String>{}) Set<String> wisdomCompletedDays,
   }) = _DayProgress;
 
   bool isRead(CardType type) => readTypes.contains(type);
 
   bool isReadOn(DateTime date, CardType type) =>
       readTypesByDate[dateKey(date)]?.contains(type) ?? false;
+
+  bool isWisdomCompletedOn(DateTime date) =>
+      wisdomCompletedDays.contains(dateKey(date));
 
   int get readCount => readTypes.length;
 

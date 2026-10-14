@@ -7,10 +7,14 @@ import '../../../reading/domain/entities/daily_reading.dart';
 import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/widgets/reading_card_pages.dart';
 import '../../domain/entities/day_card.dart';
+import '../../domain/split_day_card_text.dart';
 import '../widgets/card_content.dart';
+import '../widgets/day_wisdom_complete_view.dart';
 import 'card_viewer_screen.dart';
 
 /// Цитата, совет, притча и стихи Евангелия в одной вертикальной листалке.
+/// Завершает её экран итога дня: только он засчитывает день в «Лампадку»,
+/// чтение отдельных карточек серию не продлевает.
 class DayWisdomScreen extends ConsumerWidget {
   const DayWisdomScreen({
     required this.cards,
@@ -52,10 +56,17 @@ class DayWisdomScreen extends ConsumerWidget {
     }
     final reading = readingAsync?.value;
     final readingPages = reading != null && reading.verses.isNotEmpty
-        ? ReadingCardPages(reference: reference!, reading: reading)
+        ? ReadingCardPages(
+            reference: reference!,
+            reading: reading,
+            offerChapters: false,
+          )
         : null;
-    final viewerCards = [
-      ...ordinary,
+    // Длинная цитата, совет или притча делятся на страницы, чтобы реже
+    // приходилось открывать полный текст.
+    final ordinaryPages = [for (final card in ordinary) ..._pagesOf(card)];
+    final contentCards = [
+      for (final page in ordinaryPages) page.page,
       if (readingCard != null)
         if (readingPages != null)
           ...readingPages.cards
@@ -67,33 +78,84 @@ class DayWisdomScreen extends ConsumerWidget {
             source: readingCard.source,
           ),
     ];
-    if (viewerCards.isEmpty) {
+    if (contentCards.isEmpty) {
       return const Scaffold(
         body: Center(child: Text('За этот день карточек нет')),
       );
     }
+    final completeIndex = contentCards.length;
+    final viewerCards = [
+      ...contentCards,
+      // Тип нужен только точке прогресса: она продолжает цвет последней
+      // карточки, а не притворяется ещё одним материалом.
+      DayCard(
+        id: 'day-complete',
+        type: contentCards.last.type,
+        body: '',
+        source: '',
+      ),
+    ];
 
     return CardViewerScreen(
       cards: viewerCards,
-      startIndex: startIndex.clamp(0, viewerCards.length - 1),
+      startIndex: _viewerStart(
+        startIndex,
+        ordinary,
+        ordinaryPages,
+        contentCards.length,
+      ),
       date: date,
-      recordProgress: recordProgress,
+      // Карточки отмечаются прочитанными, но день зажигает только
+      // экран завершения, см. DayWisdomCompleteView.countsDay.
+      recordProgress: false,
       recordRead: recordRead,
       canMarkRead: (index) =>
-          index < ordinary.length ||
+          index < ordinaryPages.length ||
           (readingPages != null &&
-              readingPages.isVerse(index - ordinary.length)),
+              index < completeIndex &&
+              readingPages.isVerse(index - ordinaryPages.length)),
+      wholeCardOf: (index) => index < ordinaryPages.length
+          ? ordinaryPages[index].card
+          : viewerCards[index],
+      headerBuilder: (context, index) =>
+          index == completeIndex ? const SizedBox.shrink() : null,
       pageBuilder: (context, index) {
-        if (index < ordinary.length) {
+        if (index == completeIndex) {
+          return DayWisdomCompleteView(
+            date: date,
+            recordsCompletion: recordRead,
+            countsDay: recordProgress,
+            onDone: () => Navigator.of(context).pop(),
+            // Глава открывается во вкладке «Библия», а «Мудрость дня»
+            // закрывается: вернувшись на «Главную», юзер видит день.
+            links: [
+              for (final link
+                  in readingPages?.chapterLinks(context) ??
+                      const <ReadingLink>[])
+                (
+                  label: link.label,
+                  onPressed: () {
+                    // Сначала запрос: контекст страницы ещё жив до pop.
+                    link.onPressed();
+                    Navigator.of(context).pop();
+                  },
+                ),
+            ],
+          );
+        }
+        if (index < ordinaryPages.length) {
+          final page = ordinaryPages[index];
           return CardContent(
-            key: ValueKey(viewerCards[index].id),
-            card: viewerCards[index],
+            key: ValueKey(page.page.id),
+            card: page.page,
             showBadge: false,
             scrollable: false,
+            // Источник подписывает весь текст, поэтому стоит в его конце.
+            showSource: page.isLast,
           );
         }
         if (readingPages != null) {
-          return readingPages.page(context, index - ordinary.length);
+          return readingPages.page(context, index - ordinaryPages.length);
         }
         return _ReadingStatus(
           isLoading: readingAsync?.isLoading ?? false,
@@ -103,14 +165,50 @@ class DayWisdomScreen extends ConsumerWidget {
         );
       },
       actionsBuilder: (context, index) {
-        if (index < ordinary.length) return null;
+        if (index < ordinaryPages.length) return null;
+        if (index == completeIndex) return const SizedBox.shrink();
         if (readingPages != null) {
-          return readingPages.actions(context, index - ordinary.length);
+          return readingPages.actions(context, index - ordinaryPages.length);
         }
         return const SizedBox.shrink();
       },
     );
   }
+}
+
+typedef _CardPage = ({DayCard page, DayCard card, bool isLast});
+
+/// Страницы одной карточки. Короткая карточка остаётся собой, чтобы её
+/// id и прогресс не менялись.
+List<_CardPage> _pagesOf(DayCard card) {
+  final chunks = splitDayCardText(card.body);
+  if (chunks.length == 1) return [(page: card, card: card, isLast: true)];
+  return [
+    for (var i = 0; i < chunks.length; i++)
+      (
+        page: card.copyWith(id: '${card.id}#${i + 1}', body: chunks[i]),
+        card: card,
+        isLast: i == chunks.length - 1,
+      ),
+  ];
+}
+
+/// [DayWisdomScreen.startIndex] указывает на карточку, а листалка считает
+/// страницы: открываем первую страницу этой карточки.
+int _viewerStart(
+  int startIndex,
+  List<DayCard> ordinary,
+  List<_CardPage> pages,
+  int contentCount,
+) {
+  if (startIndex < ordinary.length) {
+    final id = ordinary[startIndex].id;
+    final page = pages.indexWhere((page) => page.card.id == id);
+    if (page >= 0) return page;
+  }
+  // Евангелие идёт после всех страниц обычных карточек.
+  final reading = pages.length + startIndex - ordinary.length;
+  return reading.clamp(0, contentCount - 1);
 }
 
 class _ReadingStatus extends StatelessWidget {

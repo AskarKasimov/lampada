@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../bible/presentation/providers/providers.dart';
 import '../../../bible/presentation/screens/bible_tab_screen.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
@@ -151,6 +152,14 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   Widget build(BuildContext context) {
+    // Глава, запрошенная из другой вкладки, открывается в «Библии» поверх
+    // её корня: каталог или справка не должны её заслонять.
+    ref.listen(bibleOpenRequestProvider, (_, request) {
+      if (request == null) return;
+      ref.read(selectedTabProvider.notifier).select(ShellTab.bible);
+      final navigator = _bibleNavigatorKey.currentState;
+      if (navigator != null) unawaited(_returnToRoot(navigator));
+    });
     final tab = ref.watch(selectedTabProvider);
     if (tab == ShellTab.bible) _bibleVisited = true;
     return ReminderScheduler(

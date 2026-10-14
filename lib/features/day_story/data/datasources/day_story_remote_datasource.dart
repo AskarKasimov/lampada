@@ -14,7 +14,8 @@ abstract interface class DayStoryRemoteDatasource {
   Future<DayStoryDto> fetch(String url, {required Duration timeout});
 }
 
-/// Извлекает полный текст рассказа из блока `.brif` страницы Азбуки.
+/// Извлекает полный текст рассказа из блока `.brif` страницы Азбуки
+/// и икону праздника или святого.
 class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
   AzbykaDayStoryRemoteDatasource({http.Client? client})
     : _client = client ?? http.Client();
@@ -55,6 +56,7 @@ class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
     }
 
     final doc = html_parser.parse(response.body);
+    final iconUrl = _iconFrom(doc);
     final container = doc.querySelector(_selector);
     if (container == null) {
       // Не у каждой календарной страницы есть описание в этом формате.
@@ -67,7 +69,29 @@ class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
       netLog('описание праздника/святого пустое');
     }
     netLog('${paragraphs.length} абзацев за ${elapsed.elapsedMilliseconds}мс');
-    return DayStoryDto(paragraphs: paragraphs);
+    return DayStoryDto(paragraphs: paragraphs, iconUrl: iconUrl);
+  }
+
+  /// Иконы лежат в своих папках хранилища. Фото дня и общая картинка
+  /// сайта иконой не считаются.
+  static final _iconPath = RegExp(
+    r'/storage/images/(icons-of-holidays|icons-of-saints|saints-group)/',
+  );
+
+  /// Сначала оригинал из галереи: у соборов святых в og:image стоит общая
+  /// картинка сайта, а их икона есть только в галерее. Без галереи берём
+  /// уменьшенную копию из og:image.
+  static String? _iconFrom(Document doc) {
+    final candidates = [
+      for (final link in doc.querySelectorAll('a[data-fancybox-href]'))
+        link.attributes['data-fancybox-href'],
+      doc.querySelector('meta[property="og:image"]')?.attributes['content'],
+    ];
+    for (final candidate in candidates.nonNulls) {
+      if (!_iconPath.hasMatch(candidate)) continue;
+      return Uri.parse('https://azbyka.ru/').resolve(candidate).toString();
+    }
+    return null;
   }
 
   static List<String> _paragraphsFrom(Element container) {

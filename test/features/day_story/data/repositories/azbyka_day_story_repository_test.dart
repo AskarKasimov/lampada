@@ -10,13 +10,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _url = 'https://azbyka.ru/days/sv-ivanov';
 
+const _icon = 'https://azbyka.ru/days/storage/images/icons-of-saints/1/a.jpg';
+
 class _FakeDatasource implements DayStoryRemoteDatasource {
   int calls = 0;
 
   @override
   Future<DayStoryDto> fetch(String url, {required Duration timeout}) async {
     calls++;
-    return const DayStoryDto(paragraphs: ['СВЕЖИЙ РАССКАЗ']);
+    return const DayStoryDto(paragraphs: ['СВЕЖИЙ РАССКАЗ'], iconUrl: _icon);
   }
 }
 
@@ -61,6 +63,33 @@ void main() {
     expect(valueOf(second).paragraphs, ['СВЕЖИЙ РАССКАЗ']);
   });
 
+  test('икона переживает кэш', () async {
+    final prefs = await prefsWith({});
+    final repo = AzbykaDayStoryRepository(_FakeDatasource(), prefs);
+
+    await repo.fetch(_url);
+    final cached = await AzbykaDayStoryRepository(
+      _FailingDatasource(FailureKind.network),
+      prefs,
+    ).fetch(_url);
+
+    expect(valueOf(cached).iconUrl, _icon);
+  });
+
+  test('при переходе на v3 удаляется кэш v2 без икон', () async {
+    final prefs = await prefsWith({
+      'day_story_cache_v2:$_url': '{"paragraphs":["СТАРЫЙ РАССКАЗ"]}',
+      'day_story_cache_index_v2': '["$_url"]',
+    });
+    final remote = _FakeDatasource();
+
+    final result = await AzbykaDayStoryRepository(remote, prefs).fetch(_url);
+
+    expect(remote.calls, 1, reason: 'рассказ без иконы надо загрузить заново');
+    expect(valueOf(result).iconUrl, _icon);
+    expect(prefs.getKeys().where((key) => key.contains('_v2')), isEmpty);
+  });
+
   test('отсутствие описания — успех без сохранения пустого кэша', () async {
     final prefs = await prefsWith({});
     var calls = 0;
@@ -71,13 +100,13 @@ void main() {
     final repo = AzbykaDayStoryRepository(remote, prefs);
 
     expect(valueOf(await repo.fetch(_url)).paragraphs, isEmpty);
-    expect(prefs.getString('day_story_cache_v2:$_url'), isNull);
+    expect(prefs.getString('day_story_cache_v3:$_url'), isNull);
     await repo.fetch(_url);
     expect(calls, 2, reason: 'описание может появиться на источнике позже');
   });
 
   test('битый кэш не роняет рассказ — молча идём в сеть', () async {
-    final prefs = await prefsWith({'day_story_cache_v2:$_url': 'не json'});
+    final prefs = await prefsWith({'day_story_cache_v3:$_url': 'не json'});
     final remote = _FakeDatasource();
 
     final result = await AzbykaDayStoryRepository(remote, prefs).fetch(_url);
@@ -87,7 +116,7 @@ void main() {
   });
 
   test('кэш верного JSON-типа не роняет рассказ — молча идём в сеть', () async {
-    final prefs = await prefsWith({'day_story_cache_v2:$_url': '"не объект"'});
+    final prefs = await prefsWith({'day_story_cache_v3:$_url': '"не объект"'});
     final remote = _FakeDatasource();
 
     final result = await AzbykaDayStoryRepository(remote, prefs).fetch(_url);
@@ -177,7 +206,7 @@ void main() {
     ).fetch(_url);
 
     expect(valueOf(result).paragraphs, ['РАССКАЗ СО ВТОРОЙ ПОПЫТКИ']);
-    expect(prefs.getString('day_story_cache_v2:$_url'), isNotNull);
+    expect(prefs.getString('day_story_cache_v3:$_url'), isNotNull);
   });
 
   test('кэш рассказов хранит не больше двадцати URL', () async {
@@ -194,7 +223,7 @@ void main() {
     }
 
     final cacheKeys = prefs.getKeys().where(
-      (key) => key.startsWith('day_story_cache_v2:'),
+      (key) => key.startsWith('day_story_cache_v3:'),
     );
     expect(cacheKeys, hasLength(20));
 

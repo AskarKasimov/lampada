@@ -81,11 +81,7 @@ class PrefsDayProgressRepository implements DayProgressRepository {
     try {
       final dto = _forToday(_read());
       final day = dateKey(date ?? _clock());
-      final visited = {...dto.visitedDays, if (markVisited) day}.toList()
-        ..sort();
-      final retainedVisited = visited.length > _maxVisitedDays
-          ? visited.sublist(visited.length - _maxVisitedDays)
-          : visited;
+      final retainedVisited = _withVisited(dto, markVisited ? day : null);
       final readTypes = {
         ...dto.readTypesByDate[day] ?? const <String>[],
         type.name,
@@ -115,5 +111,41 @@ class PrefsDayProgressRepository implements DayProgressRepository {
         ),
       );
     }
+  }
+
+  @override
+  Future<Result<DayProgress>> completeWisdom({
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
+    try {
+      final dto = _forToday(_read());
+      final day = dateKey(date ?? _clock());
+      final completed = {...dto.wisdomCompletedDays, day}.toList()..sort();
+      final updated = dto.copyWith(
+        visitedDays: _withVisited(dto, markVisited ? day : null),
+        wisdomCompletedDays: completed.length > _maxVisitedDays
+            ? completed.sublist(completed.length - _maxVisitedDays)
+            : completed,
+      );
+      await _write(updated);
+      return Success(updated.toEntity());
+    } on Object catch (e) {
+      return Failure(
+        AppFailure(
+          'Не удалось сохранить прогресс',
+          kind: FailureKind.unknown,
+          cause: e,
+        ),
+      );
+    }
+  }
+
+  /// Посещённые дни с добавленным [day], обрезанные до [_maxVisitedDays].
+  List<String> _withVisited(DayProgressDto dto, String? day) {
+    final visited = {...dto.visitedDays, ?day}.toList()..sort();
+    return visited.length > _maxVisitedDays
+        ? visited.sublist(visited.length - _maxVisitedDays)
+        : visited;
   }
 }

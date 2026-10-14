@@ -9,5 +9,10 @@ part 'day_story.freezed.dart';
 /// карточки дня, — единым текстом с переносами между абзацами.
 @freezed
 abstract class DayStory with _$DayStory {
-  const factory DayStory({required List<String> paragraphs}) = _DayStory;
+  const factory DayStory({
+    required List<String> paragraphs,
+
+    /// Икона праздника или святого. Null, если на странице её нет.
+    String? iconUrl,
+  }) = _DayStory;
 }

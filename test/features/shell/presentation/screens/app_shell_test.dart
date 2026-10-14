@@ -9,6 +9,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_tab_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
@@ -30,6 +31,7 @@ import 'package:lampada/features/reading/presentation/providers/providers.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
+import 'package:lampada/features/shell/presentation/widgets/home_tab_icon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
@@ -92,6 +94,17 @@ class _FakeProgressRepository implements DayProgressRepository {
       key: {...?_history[key], type},
     };
     _visited = {..._visited, dateKey(DateTime.now())};
+    return Success(_current);
+  }
+
+  @override
+  Future<Result<DayProgress>> completeWisdom({
+    DateTime? date,
+    bool markVisited = true,
+  }) async {
+    if (markVisited) {
+      _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    }
     return Success(_current);
   }
 }
@@ -170,6 +183,14 @@ void main() {
   Finder tabIcon(IconData icon) => find.descendant(
     of: find.byType(FloatingNavBar),
     matching: find.byIcon(icon),
+  );
+
+  /// Своя иконка «Главной»: дом с крестом, контурный или залитый.
+  Finder homeIcon({required bool filled}) => find.descendant(
+    of: find.byType(FloatingNavBar),
+    matching: find.byWidgetPredicate(
+      (widget) => widget is HomeTabIcon && widget.filled == filled,
+    ),
   );
 
   // StreakFlame крутится бесконечно — pumpAndSettle никогда не осядет.
@@ -270,7 +291,7 @@ void main() {
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await settle(tester);
     expect(find.text('Второй стих Матфея'), findsOneWidget);
-    await tester.tap(tabIcon(CupertinoIcons.sunset));
+    await tester.tap(homeIcon(filled: false));
     await settle(tester);
     await tester.tap(tabIcon(CupertinoIcons.book));
     await settle(tester);
@@ -295,11 +316,31 @@ void main() {
       await settle(tester);
       expect(find.text('Сохранённый стих Иоанна'), findsOneWidget);
       expect(find.text('3:2'), findsOneWidget);
-      await tester.tap(tabIcon(CupertinoIcons.sunset));
+      await tester.tap(homeIcon(filled: false));
       await settle(tester);
       expect(find.byType(TodayScreen), findsOneWidget);
     },
   );
+
+  testWidgets('запрос главы открывает её во вкладке «Библия»', (tester) async {
+    await prefs.setString(
+      'bible_chapter_v1:Jn.10',
+      '{"book":"Jn","number":10,"verses":[{"number":1,"text":"Первый стих Иоанна 10"}]}',
+    );
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    expect(find.byType(TodayScreen), findsOneWidget);
+
+    ProviderScope.containerOf(
+      tester.element(find.byType(AppShell)),
+    ).read(bibleOpenRequestProvider.notifier).open('Jn', 10);
+    await settle(tester);
+
+    expect(find.byType(BibleTabScreen), findsOneWidget);
+    expect(tabIcon(CupertinoIcons.book_fill), findsOneWidget);
+    expect(find.text('Первый стих Иоанна 10'), findsOneWidget);
+    expect(find.byTooltip('Закрыть'), findsNothing);
+  });
 
   testWidgets('стартует на «Главной» с кнопкой Мудрость дня', (tester) async {
     await tester.pumpWidget(buildApp());
@@ -315,7 +356,7 @@ void main() {
     await settle(tester);
 
     expect(find.byType(FloatingNavBar), findsOneWidget);
-    expect(tabIcon(CupertinoIcons.sunset_fill), findsOneWidget);
+    expect(homeIcon(filled: true), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(FloatingNavBar),
@@ -420,7 +461,7 @@ void main() {
     expect(wisdom, findsOneWidget);
     expect(ModalRoute.of(tester.element(wisdom))!.fullscreenDialog, isFalse);
     expect(find.byType(FloatingNavBar), findsOneWidget);
-    expect(tabIcon(CupertinoIcons.sunset_fill), findsOneWidget);
+    expect(homeIcon(filled: true), findsOneWidget);
     await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
     await settle(tester);
     expect(find.byType(DayWisdomScreen), findsNothing);
@@ -466,7 +507,7 @@ void main() {
     await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
     expect(find.byType(ProfileScreen), findsOneWidget);
-    await tester.tap(tabIcon(CupertinoIcons.sunset));
+    await tester.tap(homeIcon(filled: false));
     await settle(tester);
     expect(find.byType(DayWisdomScreen), findsOneWidget);
   });
@@ -478,7 +519,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Мудрость дня'));
     await settle(tester);
-    await tester.tap(tabIcon(CupertinoIcons.sunset_fill));
+    await tester.tap(homeIcon(filled: true));
     await settle(tester);
     expect(find.byType(DayWisdomScreen), findsNothing);
     expect(find.text('Мудрость дня'), findsOneWidget);
@@ -504,9 +545,9 @@ void main() {
         // Справка над ридером тоже должна закрыться при возврате к корню.
         await tester.tap(find.byTooltip('О курсе'));
         await settle(tester);
-        await tester.tap(tabIcon(CupertinoIcons.sunset_fill));
+        await tester.tap(homeIcon(filled: true));
         await settle(tester);
-        await tester.tap(tabIcon(CupertinoIcons.sunset_fill));
+        await tester.tap(homeIcon(filled: true));
         await settle(tester);
         expect(find.byType(CourseReaderScreen), findsOneWidget);
         // Пока выход ждёт запись, новый экран не должен перехватить pop.
@@ -729,7 +770,7 @@ void main() {
 
     await tester.tap(tabIcon(CupertinoIcons.person));
     await settle(tester);
-    await tester.tap(tabIcon(CupertinoIcons.sunset));
+    await tester.tap(homeIcon(filled: false));
     await settle(tester);
 
     expect(dateKey(container.read(selectedDateProvider)), dateKey(other));

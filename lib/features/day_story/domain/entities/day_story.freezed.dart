@@ -14,7 +14,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DayStory {
 
- List<String> get paragraphs;
+ List<String> get paragraphs;/// Икона праздника или святого. Null, если на странице её нет.
+ String? get iconUrl;
 /// Create a copy of DayStory
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +26,16 @@ $DayStoryCopyWith<DayStory> get copyWith => _$DayStoryCopyWithImpl<DayStory>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayStory&&const DeepCollectionEquality().equals(other.paragraphs, paragraphs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayStory&&const DeepCollectionEquality().equals(other.paragraphs, paragraphs)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(paragraphs));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(paragraphs),iconUrl);
 
 @override
 String toString() {
-  return 'DayStory(paragraphs: $paragraphs)';
+  return 'DayStory(paragraphs: $paragraphs, iconUrl: $iconUrl)';
 }
 
 
@@ -45,7 +46,7 @@ abstract mixin class $DayStoryCopyWith<$Res>  {
   factory $DayStoryCopyWith(DayStory value, $Res Function(DayStory) _then) = _$DayStoryCopyWithImpl;
 @useResult
 $Res call({
- List<String> paragraphs
+ List<String> paragraphs, String? iconUrl
 });
 
 
@@ -62,10 +63,11 @@ class _$DayStoryCopyWithImpl<$Res>
 
 /// Create a copy of DayStory
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? paragraphs = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? paragraphs = null,Object? iconUrl = freezed,}) {
   return _then(_self.copyWith(
 paragraphs: null == paragraphs ? _self.paragraphs : paragraphs // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,iconUrl: freezed == iconUrl ? _self.iconUrl : iconUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -150,10 +152,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<String> paragraphs)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<String> paragraphs,  String? iconUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DayStory() when $default != null:
-return $default(_that.paragraphs);case _:
+return $default(_that.paragraphs,_that.iconUrl);case _:
   return orElse();
 
 }
@@ -171,10 +173,10 @@ return $default(_that.paragraphs);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<String> paragraphs)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<String> paragraphs,  String? iconUrl)  $default,) {final _that = this;
 switch (_that) {
 case _DayStory():
-return $default(_that.paragraphs);case _:
+return $default(_that.paragraphs,_that.iconUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -191,10 +193,10 @@ return $default(_that.paragraphs);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<String> paragraphs)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<String> paragraphs,  String? iconUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _DayStory() when $default != null:
-return $default(_that.paragraphs);case _:
+return $default(_that.paragraphs,_that.iconUrl);case _:
   return null;
 
 }
@@ -206,8 +208,8 @@ return $default(_that.paragraphs);case _:
 
 
 class _DayStory implements DayStory {
-  const _DayStory({required final  List<String> paragraphs}): _paragraphs = paragraphs;
-
+  const _DayStory({required final  List<String> paragraphs, this.iconUrl}): _paragraphs = paragraphs;
+  
 
  final  List<String> _paragraphs;
 @override List<String> get paragraphs {
@@ -216,6 +218,8 @@ class _DayStory implements DayStory {
   return EqualUnmodifiableListView(_paragraphs);
 }
 
+/// Икона праздника или святого. Null, если на странице её нет.
+@override final  String? iconUrl;
 
 /// Create a copy of DayStory
 /// with the given fields replaced by the non-null parameter values.
@@ -227,16 +231,16 @@ _$DayStoryCopyWith<_DayStory> get copyWith => __$DayStoryCopyWithImpl<_DayStory>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayStory&&const DeepCollectionEquality().equals(other._paragraphs, _paragraphs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayStory&&const DeepCollectionEquality().equals(other._paragraphs, _paragraphs)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_paragraphs));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_paragraphs),iconUrl);
 
 @override
 String toString() {
-  return 'DayStory(paragraphs: $paragraphs)';
+  return 'DayStory(paragraphs: $paragraphs, iconUrl: $iconUrl)';
 }
 
 
@@ -247,7 +251,7 @@ abstract mixin class _$DayStoryCopyWith<$Res> implements $DayStoryCopyWith<$Res>
   factory _$DayStoryCopyWith(_DayStory value, $Res Function(_DayStory) _then) = __$DayStoryCopyWithImpl;
 @override @useResult
 $Res call({
- List<String> paragraphs
+ List<String> paragraphs, String? iconUrl
 });
 
 
@@ -264,10 +268,11 @@ class __$DayStoryCopyWithImpl<$Res>
 
 /// Create a copy of DayStory
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? paragraphs = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? paragraphs = null,Object? iconUrl = freezed,}) {
   return _then(_DayStory(
 paragraphs: null == paragraphs ? _self._paragraphs : paragraphs // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,iconUrl: freezed == iconUrl ? _self.iconUrl : iconUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

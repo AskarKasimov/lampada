@@ -23,6 +23,12 @@ class _DayProgressRepository implements DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   }) async => const Success(DayProgress(readTypes: {}, visitedDays: {}));
+
+  @override
+  Future<Result<DayProgress>> completeWisdom({
+    DateTime? date,
+    bool markVisited = true,
+  }) async => const Success(DayProgress(readTypes: {}, visitedDays: {}));
 }
 
 void main() {

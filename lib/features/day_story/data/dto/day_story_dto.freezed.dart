@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DayStoryDto {
 
- List<String> get paragraphs;
+ List<String> get paragraphs;/// Адрес иконы праздника или святого на Азбуке, если она есть.
+ String? get iconUrl;
 /// Create a copy of DayStoryDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +29,16 @@ $DayStoryDtoCopyWith<DayStoryDto> get copyWith => _$DayStoryDtoCopyWithImpl<DayS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayStoryDto&&const DeepCollectionEquality().equals(other.paragraphs, paragraphs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayStoryDto&&const DeepCollectionEquality().equals(other.paragraphs, paragraphs)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(paragraphs));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(paragraphs),iconUrl);
 
 @override
 String toString() {
-  return 'DayStoryDto(paragraphs: $paragraphs)';
+  return 'DayStoryDto(paragraphs: $paragraphs, iconUrl: $iconUrl)';
 }
 
 
@@ -48,7 +49,7 @@ abstract mixin class $DayStoryDtoCopyWith<$Res>  {
   factory $DayStoryDtoCopyWith(DayStoryDto value, $Res Function(DayStoryDto) _then) = _$DayStoryDtoCopyWithImpl;
 @useResult
 $Res call({
- List<String> paragraphs
+ List<String> paragraphs, String? iconUrl
 });
 
 
@@ -65,10 +66,11 @@ class _$DayStoryDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayStoryDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? paragraphs = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? paragraphs = null,Object? iconUrl = freezed,}) {
   return _then(_self.copyWith(
 paragraphs: null == paragraphs ? _self.paragraphs : paragraphs // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,iconUrl: freezed == iconUrl ? _self.iconUrl : iconUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -153,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<String> paragraphs)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<String> paragraphs,  String? iconUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DayStoryDto() when $default != null:
-return $default(_that.paragraphs);case _:
+return $default(_that.paragraphs,_that.iconUrl);case _:
   return orElse();
 
 }
@@ -174,10 +176,10 @@ return $default(_that.paragraphs);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<String> paragraphs)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<String> paragraphs,  String? iconUrl)  $default,) {final _that = this;
 switch (_that) {
 case _DayStoryDto():
-return $default(_that.paragraphs);case _:
+return $default(_that.paragraphs,_that.iconUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -194,10 +196,10 @@ return $default(_that.paragraphs);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<String> paragraphs)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<String> paragraphs,  String? iconUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _DayStoryDto() when $default != null:
-return $default(_that.paragraphs);case _:
+return $default(_that.paragraphs,_that.iconUrl);case _:
   return null;
 
 }
@@ -209,7 +211,7 @@ return $default(_that.paragraphs);case _:
 @JsonSerializable()
 
 class _DayStoryDto implements DayStoryDto {
-  const _DayStoryDto({required final  List<String> paragraphs}): _paragraphs = paragraphs;
+  const _DayStoryDto({required final  List<String> paragraphs, this.iconUrl}): _paragraphs = paragraphs;
   factory _DayStoryDto.fromJson(Map<String, dynamic> json) => _$DayStoryDtoFromJson(json);
 
  final  List<String> _paragraphs;
@@ -219,6 +221,8 @@ class _DayStoryDto implements DayStoryDto {
   return EqualUnmodifiableListView(_paragraphs);
 }
 
+/// Адрес иконы праздника или святого на Азбуке, если она есть.
+@override final  String? iconUrl;
 
 /// Create a copy of DayStoryDto
 /// with the given fields replaced by the non-null parameter values.
@@ -233,16 +237,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayStoryDto&&const DeepCollectionEquality().equals(other._paragraphs, _paragraphs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayStoryDto&&const DeepCollectionEquality().equals(other._paragraphs, _paragraphs)&&(identical(other.iconUrl, iconUrl) || other.iconUrl == iconUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_paragraphs));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_paragraphs),iconUrl);
 
 @override
 String toString() {
-  return 'DayStoryDto(paragraphs: $paragraphs)';
+  return 'DayStoryDto(paragraphs: $paragraphs, iconUrl: $iconUrl)';
 }
 
 
@@ -253,7 +257,7 @@ abstract mixin class _$DayStoryDtoCopyWith<$Res> implements $DayStoryDtoCopyWith
   factory _$DayStoryDtoCopyWith(_DayStoryDto value, $Res Function(_DayStoryDto) _then) = __$DayStoryDtoCopyWithImpl;
 @override @useResult
 $Res call({
- List<String> paragraphs
+ List<String> paragraphs, String? iconUrl
 });
 
 
@@ -270,10 +274,11 @@ class __$DayStoryDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayStoryDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? paragraphs = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? paragraphs = null,Object? iconUrl = freezed,}) {
   return _then(_DayStoryDto(
 paragraphs: null == paragraphs ? _self._paragraphs : paragraphs // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,iconUrl: freezed == iconUrl ? _self.iconUrl : iconUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

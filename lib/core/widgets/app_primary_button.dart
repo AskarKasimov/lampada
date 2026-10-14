@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Основная CTA-кнопка (FilledButton, stadium-форма) — общий стиль для
-/// «Дальше»/«Готово» на карточках и «Начать»/«Продолжить» на Home.
+/// Основная CTA-кнопка: FilledButton в форме скруглённого прямоугольника.
+/// Общий стиль для «Готово», «Напоминать» и входа в приложение. Капсула
+/// здесь не используется: широкая кнопка в ней выглядела надутой.
 class AppPrimaryButton extends StatelessWidget {
   const AppPrimaryButton({
     required this.label,
@@ -23,9 +24,11 @@ class AppPrimaryButton extends StatelessWidget {
         backgroundColor: color,
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,
-          vertical: 14,
+          vertical: 16,
         ),
-        shape: const StadiumBorder(),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
       onPressed: onPressed,
