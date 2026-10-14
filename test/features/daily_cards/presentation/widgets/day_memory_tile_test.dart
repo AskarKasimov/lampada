@@ -1,29 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_memory_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/home_tile.dart';
-import 'package:lampada/features/day_story/domain/entities/day_story.dart';
-import 'package:lampada/features/day_story/presentation/providers/providers.dart';
 
 const _story = 'https://azbyka.ru/days/pokrov';
 const _icon =
     'https://azbyka.ru/days/storage/images/icons-of-holidays/14/a.jpg';
 const _title = 'Покров Пресвятой Владычицы нашей Богородицы и Приснодевы Марии';
 
-Widget _wrap(Widget child, {String? iconUrl}) => ProviderScope(
-  overrides: [
-    dayStoryProvider.overrideWith(
-      (ref, url) async =>
-          DayStory(paragraphs: const ['Рассказ.'], iconUrl: iconUrl),
-    ),
-  ],
-  child: MaterialApp(
-    theme: AppTheme.light,
-    home: Scaffold(body: ListView(children: [child])),
-  ),
+Widget _wrap(Widget child) => MaterialApp(
+  theme: AppTheme.light,
+  home: Scaffold(body: ListView(children: [child])),
 );
 
 Finder _iconImage() => find.byWidgetPredicate(
@@ -47,9 +36,9 @@ void main() {
       _wrap(
         DayMemoryTile(
           day: const TodayCards(cards: [], title: _title, storyUrl: _story),
+          iconUrl: _icon,
           onTap: () => taps++,
         ),
-        iconUrl: _icon,
       ),
     );
     await tester.pump();
@@ -101,9 +90,9 @@ void main() {
             title: 'Сщмч. Иерофея, епископа Афинского',
             storyUrl: _story,
           ),
+          iconUrl: _icon,
           onTap: () {},
         ),
-        iconUrl: _icon,
       ),
     );
     await tester.pump();
@@ -156,15 +145,12 @@ void main() {
     expect(find.text(_title), findsOneWidget);
   });
 
-  testWidgets('без рассказа плитка не нажимается и икону не ищет', (
-    tester,
-  ) async {
+  testWidgets('без ссылки на рассказ плитка не нажимается', (tester) async {
     await tester.pumpWidget(
       _wrap(
         const DayMemoryTile(
           day: TodayCards(cards: [], title: _title),
         ),
-        iconUrl: _icon,
       ),
     );
     await tester.pump();

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../day_story/presentation/providers/providers.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/today_cards.dart';
 import '../theme/card_type_style.dart';
@@ -12,13 +10,13 @@ import 'home_tile.dart';
 /// Память дня на главной: такая же плитка, как «Мудрость дня», только
 /// вместо декоративной иллюстрации справа икона праздника или святого.
 ///
-/// Икона приходит со страницы рассказа. Тот же запрос заранее кладёт
-/// рассказ в кэш, и по тапу он открывается сразу. Пока икона грузится или
-/// если её нет, название занимает плитку целиком.
-class DayMemoryTile extends ConsumerWidget {
-  const DayMemoryTile({required this.day, this.onTap, super.key});
+/// Адрес иконы передаёт загрузчик содержимого дня. Если адреса нет,
+/// название занимает плитку целиком.
+class DayMemoryTile extends StatelessWidget {
+  const DayMemoryTile({required this.day, this.iconUrl, this.onTap, super.key});
 
   final TodayCards day;
+  final String? iconUrl;
 
   /// Открывает рассказ. Без ссылки на рассказ плитка не нажимается.
   final VoidCallback? onTap;
@@ -46,11 +44,8 @@ class DayMemoryTile extends ConsumerWidget {
   static const _placeholder = ColoredBox(color: Color(0x14000000));
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final storyUrl = day.storyUrl;
-    final iconUrl = storyUrl == null
-        ? null
-        : ref.watch(dayStoryProvider(storyUrl)).value?.iconUrl;
     final title = day.title!.trim();
     final style = _type.styleFor(Theme.of(context).brightness);
     return LayoutBuilder(
