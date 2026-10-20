@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -44,29 +47,7 @@ class BookmarkTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            PageRouteBuilder<void>(
-              opaque: false,
-              transitionDuration: const Duration(milliseconds: 280),
-              reverseTransitionDuration: const Duration(milliseconds: 220),
-              pageBuilder: (_, animation, secondaryAnimation) =>
-                  BookmarkDetailScreen(bookmark: bookmark),
-              transitionsBuilder: (_, animation, secondaryAnimation, child) {
-                final curve = CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutCubic,
-                  reverseCurve: Curves.easeInCubic,
-                );
-                return FadeTransition(
-                  opacity: curve,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.88, end: 1).animate(curve),
-                    child: child,
-                  ),
-                );
-              },
-            ),
-          ),
+          onTap: () => _open(context),
           child: Padding(
             // Поля внутри строки не ограничивают ink и область нажатия.
             padding:
@@ -95,6 +76,35 @@ class BookmarkTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _open(BuildContext context) {
+    ProviderScope.containerOf(context, listen: false)
+        .read(analyticsProvider)
+        .log(AnalyticsEvent.bookmarkOpened(kind: bookmark.kind.name));
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+        pageBuilder: (_, animation, secondaryAnimation) =>
+            BookmarkDetailScreen(bookmark: bookmark),
+        transitionsBuilder: (_, animation, secondaryAnimation, child) {
+          final curve = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curve,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.88, end: 1).animate(curve),
+              child: child,
+            ),
+          );
+        },
       ),
     );
   }

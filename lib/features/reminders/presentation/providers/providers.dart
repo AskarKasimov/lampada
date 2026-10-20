@@ -1,6 +1,8 @@
 // Единственное место, где presentation фичи видит data.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/repositories/prefs_reminder_repository.dart';
@@ -55,12 +57,17 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       _save(const ReminderSettings(enabled: false, asked: true));
 
   Future<void> setEnabled({required bool enabled}) async {
+    final analytics = ref.read(analyticsProvider);
     if (!enabled) {
       await ref.read(notificationServiceProvider).cancelAll();
       await _save(const ReminderSettings(enabled: false, asked: true));
+      analytics.log(AnalyticsEvent.remindersToggled(enabled: false));
       return;
     }
-    await requestAndEnable();
+    final granted = await requestAndEnable();
+    analytics.log(
+      AnalyticsEvent.remindersToggled(enabled: true, osGranted: granted),
+    );
   }
 
   Future<bool> _save(ReminderSettings settings) async {

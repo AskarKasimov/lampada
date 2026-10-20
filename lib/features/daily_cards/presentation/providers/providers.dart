@@ -2,6 +2,8 @@
 // и провайдер прогресса склеиваются в DI-граф.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/log/net_log.dart';
 import '../../../../core/network/network_status_provider.dart';
@@ -13,6 +15,7 @@ import '../../data/repositories/prefs_course_progress_repository.dart';
 import '../../data/repositories/prefs_day_progress_repository.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
+import '../../domain/entities/day_section.dart';
 import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 import '../../domain/repositories/day_cards_repository.dart';
@@ -76,6 +79,37 @@ class SelectedDateNotifier extends Notifier<DateTime> {
   DateTime build() => _atMidnight(DateTime.now());
 
   void select(DateTime date) => state = _atMidnight(date);
+}
+
+/// Разовая просьба открыть раздел сегодняшнего дня, как только он готов.
+/// Её оставляют приветствие («Открыть сегодняшний день» обещает чтение, а
+/// не главную) и нажатие на напоминание (оно зовёт в конкретный раздел).
+final openDaySectionRequestProvider =
+    NotifierProvider<OpenDaySectionRequestNotifier, SectionRequest?>(
+      OpenDaySectionRequestNotifier.new,
+    );
+
+/// Кто попросил открыть раздел: аналитика различает переход из
+/// приветствия и из напоминания.
+enum SectionRequestOrigin { onboarding, notification }
+
+typedef SectionRequest = ({DaySection section, SectionRequestOrigin origin});
+
+class OpenDaySectionRequestNotifier extends Notifier<SectionRequest?> {
+  @override
+  SectionRequest? build() => null;
+
+  void request(DaySection section, {required SectionRequestOrigin origin}) =>
+      state = (section: section, origin: origin);
+
+  /// Снимает просьбу о [section] и возвращает её источник, если она была:
+  /// раздел должен открыть ровно один экран.
+  SectionRequestOrigin? consume(DaySection section) {
+    final pending = state;
+    if (pending == null || pending.section != section) return null;
+    state = null;
+    return pending.origin;
+  }
 }
 
 final dayProgressRepositoryProvider = Provider<DayProgressRepository>(
@@ -231,6 +265,8 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
     bool markVisited = true,
   }) async {
     if (markVisited && _session == null) return false;
+    final day = date ?? DateTime.now();
+    final wasRead = state.value?.isReadOn(day, type) ?? true;
     final saved = await _apply(
       ref.read(recordCardReadProvider)(
         type,
@@ -238,6 +274,17 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
         markVisited: markVisited,
       ),
     );
+    // Тема курса пишет своё событие; здесь только карточки «Мудрости».
+    if (saved && !wasRead && type != CardType.basics) {
+      ref
+          .read(analyticsProvider)
+          .log(
+            AnalyticsEvent.cardRead(
+              cardType: type.name,
+              dayOffset: dayOffset(day),
+            ),
+          );
+    }
     return saved;
   }
 

@@ -2,6 +2,9 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_on_show.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -56,19 +59,35 @@ class DayStoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dayStoryProvider(storyUrl));
+    // При закрытии ref этого виджета уже недоступен.
+    final analytics = ref.read(analyticsProvider);
 
     return Scaffold(
       body: SafeArea(
         child: async.when(
           loading: () => const BrandLoadingView(),
-          error: (e, _) => _StoryStatusView(
-            kind: switch (e) {
+          error: (e, _) {
+            final kind = switch (e) {
               AppFailure(kind: final k) => k,
               _ => FailureKind.unknown,
-            },
-            onRetry: () => ref.invalidate(dayStoryProvider(storyUrl)),
-            onClose: () => Navigator.of(context).pop(),
-          ),
+            };
+            return AnalyticsOnShow(
+              event: AnalyticsEvent.contentLoadFailed(
+                content: LoadedContent.story,
+                kind: kind.name,
+              ),
+              child: _StoryStatusView(
+                kind: kind,
+                onRetry: () {
+                  analytics.log(
+                    AnalyticsEvent.contentRetryTapped(LoadedContent.story),
+                  );
+                  ref.invalidate(dayStoryProvider(storyUrl));
+                },
+                onClose: () => Navigator.of(context).pop(),
+              ),
+            );
+          },
           data: (story) => story.paragraphs.isEmpty
               ? _StoryStatusView(onClose: () => Navigator.of(context).pop())
               : _StoryReader(
@@ -77,6 +96,15 @@ class DayStoryScreen extends ConsumerWidget {
                   bookmark: _bookmarkFor(story),
                   shareText: _shareTextFor(story),
                   onClose: () => Navigator.of(context).pop(),
+                  onExit: (furthest, total, finished) => analytics.log(
+                    AnalyticsEvent.storyClosed(
+                      pagesSeen: furthest + 1,
+                      pagesTotal: total,
+                      finished: finished,
+                    ),
+                  ),
+                  onFullText: () =>
+                      analytics.log(AnalyticsEvent.fullTextOpened('story')),
                 ),
         ),
       ),
@@ -96,6 +124,8 @@ class _StoryReader extends StatefulWidget {
     required this.bookmark,
     required this.shareText,
     required this.onClose,
+    required this.onExit,
+    required this.onFullText,
   });
 
   final String title;
@@ -103,6 +133,10 @@ class _StoryReader extends StatefulWidget {
   final Bookmark bookmark;
   final String shareText;
   final VoidCallback onClose;
+
+  /// Закрытие с самой дальней страницей и признаком «долистал до конца».
+  final void Function(int furthest, int total, bool finished) onExit;
+  final VoidCallback onFullText;
 
   @override
   State<_StoryReader> createState() => _StoryReaderState();
@@ -112,6 +146,7 @@ class _StoryReaderState extends State<_StoryReader> {
   final _controller = PageController();
   final _fullTextNeeded = <String, bool>{};
   var _index = 0;
+  var _furthest = 0;
 
   late final List<DayCard> _pages = _pagesOf(widget.title, widget.story);
 
@@ -139,6 +174,7 @@ class _StoryReaderState extends State<_StoryReader> {
 
   @override
   void dispose() {
+    widget.onExit(_furthest, _pages.length, _closing);
     _controller.dispose();
     super.dispose();
   }
@@ -173,13 +209,19 @@ class _StoryReaderState extends State<_StoryReader> {
       controller: _controller,
       itemCount: _pages.length + 1,
       onPageChanged: (index) {
-        if (!_isExit(index)) setState(() => _index = index);
+        if (!_isExit(index)) {
+          setState(() {
+            _index = index;
+            if (index > _furthest) _furthest = index;
+          });
+        }
       },
       itemBuilder: (context, index) {
         if (_isExit(index)) return const SizedBox.shrink();
         final icon = widget.story.iconUrl;
         if (index == 0 && icon != null) {
           return SelectableShareArea(
+            content: SharedContent.story,
             child: _StoryCover(title: widget.title, iconUrl: icon),
           );
         }
@@ -191,9 +233,11 @@ class _StoryReaderState extends State<_StoryReader> {
             setState(() => _fullTextNeeded[card.id] = needed);
           },
           child: SelectableShareArea(
+            content: SharedContent.story,
             child: CardContent(
               key: ValueKey(card.id),
               card: card,
+              shareContent: SharedContent.story,
               showBadge: false,
               scrollable: false,
               // Источник подписывает весь рассказ, поэтому стоит в конце.
@@ -219,9 +263,12 @@ class _StoryReaderState extends State<_StoryReader> {
           if (_fullTextNeeded[page.id] ?? false) ...[
             ReaderActionButton(
               tooltip: 'Открыть полный текст',
-              onPressed: () => Navigator.of(context).push(
-                FullCardTextRoute(card: page, showSource: _isLast(_index)),
-              ),
+              onPressed: () {
+                widget.onFullText();
+                Navigator.of(context).push(
+                  FullCardTextRoute(card: page, showSource: _isLast(_index)),
+                );
+              },
               icon: CupertinoIcons.fullscreen,
               color: colors.homeSubtitle,
             ),
@@ -234,7 +281,12 @@ class _StoryReaderState extends State<_StoryReader> {
             buttonSize: 56,
           ),
           const SizedBox(height: 4),
-          AppShareButton(text: widget.shareText, iconSize: 28, buttonSize: 56),
+          AppShareButton(
+            text: widget.shareText,
+            content: SharedContent.story,
+            iconSize: 28,
+            buttonSize: 56,
+          ),
         ],
       ),
       onClose: widget.onClose,

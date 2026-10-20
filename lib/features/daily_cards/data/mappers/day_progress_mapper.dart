@@ -1,3 +1,4 @@
+import '../../../../core/format/date_key.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../dto/day_progress_dto.dart';
@@ -25,5 +26,13 @@ extension DayProgressDtoMapper on DayProgressDto {
     },
     visitedDays: visitedDays.toSet(),
     wisdomCompletedDays: wisdomCompletedDays.toSet(),
+    wisdomCompletedAt: _completedAtOf(date),
   );
+
+  /// Момент завершения имеет смысл только для своего дня: вчерашний
+  /// не должен запускать сегодняшние напоминания.
+  DateTime? _completedAtOf(String day) {
+    final at = DateTime.tryParse(wisdomCompletedAt ?? '');
+    return at != null && dateKey(at) == day ? at : null;
+  }
 }

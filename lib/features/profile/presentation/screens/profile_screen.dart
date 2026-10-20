@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../bookmarks/presentation/providers/providers.dart';
 import '../../../bookmarks/presentation/screens/bookmarks_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_setting_tile.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
@@ -29,7 +32,10 @@ class ProfileScreen extends ConsumerWidget {
     final navInset = FloatingNavInset.of(context);
     final actions = ref.read(profileActionsServiceProvider);
 
+    final analytics = ref.read(analyticsProvider);
+
     Future<void> requestReview() async {
+      analytics.log(AnalyticsEvent.reviewRequested(ReviewTrigger.profile));
       final opened = await actions.requestReview();
       if (opened || !context.mounted) return;
 
@@ -55,20 +61,37 @@ class ProfileScreen extends ConsumerWidget {
           sliver: SliverList.list(
             children: [
               ProfileBookmarksTile(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    fullscreenDialog: true,
-                    builder: (context) => BookmarksScreen(
-                      onClose: () => Navigator.of(context).pop(),
+                onTap: () {
+                  analytics.log(
+                    AnalyticsEvent.bookmarksOpened(
+                      count: ref.read(bookmarksProvider).value?.length ?? 0,
                     ),
-                  ),
-                ),
+                  );
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (context) => BookmarksScreen(
+                        onClose: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 10),
               const ReminderSettingTile(),
               ProfileLinkTile(
                 label: 'Поделиться приложением',
-                onTap: actions.shareApp,
+                onTap: () async {
+                  final outcome = await actions.shareApp();
+                  if (outcome == null) return;
+                  analytics.log(
+                    AnalyticsEvent.contentShared(
+                      content: SharedContent.app,
+                      method: ShareMethod.button,
+                      result: outcome,
+                    ),
+                  );
+                },
               ),
               ProfileLinkTile(label: actions.reviewLabel, onTap: requestReview),
               ProfileLinkTile(

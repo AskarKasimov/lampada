@@ -4,6 +4,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../../../core/log/net_log.dart';
+import '../../../daily_cards/domain/entities/day_section.dart';
 import '../../domain/entities/planned_reminder.dart';
 
 /// Платформенная часть напоминаний. Всё знание про
@@ -13,7 +14,10 @@ abstract interface class NotificationService {
   /// Готовит плагин к работе. Разрешения НЕ запрашивает: система показывает
   /// запрос один раз за установку, и потратить его на холодный старт значит
   /// потерять большинство согласий.
-  Future<void> init({void Function()? onTap});
+  ///
+  /// [onTap] получает нажатое напоминание, в том числе когда нажатие
+  /// запустило приложение с нуля.
+  Future<void> init({void Function(NotificationTap tap)? onTap});
 
   /// Показывает системный запрос. true — разрешили.
   Future<bool> requestPermission();
@@ -27,6 +31,24 @@ abstract interface class NotificationService {
   Future<void> cancelAll();
 }
 
+/// Нажатое напоминание: раздел из payload, номер слота (по нему аналитика
+/// отличает утро от вечера) и признак запуска приложения с нуля.
+typedef NotificationTap = ({DaySection section, int? id, bool coldStart});
+
+NotificationTap tapFrom({
+  required String? payload,
+  required int? id,
+  required bool coldStart,
+}) => (section: sectionFromPayload(payload), id: id, coldStart: coldStart);
+
+/// Раздел кладётся в payload уведомления, чтобы нажатие открыло его сразу.
+String payloadFor(DaySection section) => section.name;
+
+/// Неизвестный или пустой payload (расписание прошлой версии ещё живёт в
+/// системе) ведёт в «Мудрость дня», как раньше вело любое напоминание.
+DaySection sectionFromPayload(String? payload) =>
+    DaySection.values.asNameMap()[payload] ?? DaySection.wisdom;
+
 class LocalNotificationService implements NotificationService {
   LocalNotificationService([FlutterLocalNotificationsPlugin? plugin])
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
@@ -37,7 +59,7 @@ class LocalNotificationService implements NotificationService {
   static const _channelId = 'daily_reminders';
 
   @override
-  Future<void> init({void Function()? onTap}) async {
+  Future<void> init({void Function(NotificationTap tap)? onTap}) async {
     if (_ready) return;
 
     tz_data.initializeTimeZones();
@@ -59,9 +81,21 @@ class LocalNotificationService implements NotificationService {
         ),
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ),
-      onDidReceiveNotificationResponse: (_) => onTap?.call(),
+      onDidReceiveNotificationResponse: (response) => onTap?.call(
+        tapFrom(payload: response.payload, id: response.id, coldStart: false),
+      ),
     );
     _ready = true;
+
+    // Нажатие, которое запустило приложение с нуля, в колбэк выше не
+    // приходит: плагин отдаёт его только через детали запуска.
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    if (launch?.didNotificationLaunchApp ?? false) {
+      final response = launch!.notificationResponse;
+      onTap?.call(
+        tapFrom(payload: response?.payload, id: response?.id, coldStart: true),
+      );
+    }
   }
 
   @override
@@ -120,6 +154,7 @@ class LocalNotificationService implements NotificationService {
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: payloadFor(r.section),
       );
     }
     netLog('напоминаний запланировано: ${reminders.length}');

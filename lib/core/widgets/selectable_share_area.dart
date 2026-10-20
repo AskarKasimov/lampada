@@ -1,21 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show SelectedContent;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../analytics/analytics_event.dart';
+import '../analytics/analytics_provider.dart';
 import '../format/app_download_links.dart';
+import 'app_share_button.dart' show shareOutcomeOf;
 
 /// Делает вложенный текст выделяемым, не отнимая горизонтальные свайпы у
 /// PageView на Android.
-class SelectableShareArea extends StatefulWidget {
-  const SelectableShareArea({required this.child, super.key});
+class SelectableShareArea extends ConsumerStatefulWidget {
+  const SelectableShareArea({required this.child, super.key, this.content});
 
   final Widget child;
 
+  /// Тип материала для аналитики; null — отправку не считаем.
+  final SharedContent? content;
+
   @override
-  State<SelectableShareArea> createState() => _SelectableShareAreaState();
+  ConsumerState<SelectableShareArea> createState() =>
+      _SelectableShareAreaState();
 }
 
-class _SelectableShareAreaState extends State<SelectableShareArea> {
+class _SelectableShareAreaState extends ConsumerState<SelectableShareArea> {
   final _selectionAreaKey = GlobalKey<SelectionAreaState>();
   SelectedContent? _selectedContent;
   var _selectionEnabled = false;
@@ -82,11 +90,21 @@ class _SelectableShareAreaState extends State<SelectableShareArea> {
   ) async {
     selectableRegionState.hideToolbar();
     final box = context.findRenderObject()! as RenderBox;
-    await SharePlus.instance.share(
+    final analytics = ref.read(analyticsProvider);
+    final result = await SharePlus.instance.share(
       ShareParams(
         text: appendAppDownloadLinks(text),
         // На iPad лист отправки открывается поповером; задаём его источник.
         sharePositionOrigin: box.localToGlobal(Offset.zero) & box.size,
+      ),
+    );
+    final content = widget.content;
+    if (content == null) return;
+    analytics.log(
+      AnalyticsEvent.contentShared(
+        content: content,
+        method: ShareMethod.selection,
+        result: shareOutcomeOf(result),
       ),
     );
   }

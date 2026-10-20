@@ -7,6 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/format/date_key.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_primary_button.dart';
@@ -122,13 +125,11 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
     final before = _before = ref.read(dayProgressProvider).value;
     final repeat = before?.isWisdomCompletedOn(widget.date) ?? false;
     if (widget.recordsCompletion) {
-      ref
-          .read(dayProgressProvider.notifier)
-          .completeWisdom(date: widget.date, markVisited: widget.countsDay);
+      unawaited(_complete(before, repeat: repeat));
     }
     if (repeat && widget.links.isNotEmpty) {
       // Итог уже видели: праздновать второй раз незачем, ведём к главе.
-      widget.links.first.onPressed();
+      _openChapter(widget.links.first, auto: true);
       return;
     }
     if (repeat || MediaQuery.disableAnimationsOf(context)) {
@@ -142,6 +143,45 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
     }
     HapticFeedback.lightImpact();
     _intro.forward();
+  }
+
+  Future<void> _complete(DayProgress? before, {required bool repeat}) async {
+    final analytics = ref.read(analyticsProvider);
+    final saved = await ref
+        .read(dayProgressProvider.notifier)
+        .completeWisdom(date: widget.date, markVisited: widget.countsDay);
+    if (!saved || repeat || !mounted) return;
+    final after = ref.read(dayProgressProvider).value;
+    if (after == null) return;
+    analytics.log(
+      AnalyticsEvent.wisdomCompleted(
+        dayOffset: dayOffset(widget.date),
+        countsStreak: widget.countsDay,
+        lifetimeDays: after.wisdomCompletedDays.length,
+      ),
+    );
+    final today = DateTime.now();
+    if (widget.countsDay &&
+        !(before?.isLit(today) ?? false) &&
+        after.isLit(today)) {
+      analytics.log(
+        AnalyticsEvent.lampLit(
+          source: LampSource.wisdom,
+          streak: after.streakOn(today),
+          restarted: (before?.streakOn(today) ?? 0) == 0,
+        ),
+      );
+    }
+  }
+
+  void _openChapter(
+    ({String label, VoidCallback onPressed}) link, {
+    required bool auto,
+  }) {
+    ref
+        .read(analyticsProvider)
+        .log(AnalyticsEvent.summaryChapterOpened(auto: auto));
+    link.onPressed();
   }
 
   void _lightUp() {
@@ -263,7 +303,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                     animation: _actionStep(0.2, 1),
                     enabled: _weekShown,
                     child: TextButton(
-                      onPressed: link.onPressed,
+                      onPressed: () => _openChapter(link, auto: false),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

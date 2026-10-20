@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
@@ -36,6 +38,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     this.actionsBuilder,
     this.headerBuilder,
     this.wholeCardOf,
+    this.onExit,
     super.key,
   });
 
@@ -70,6 +73,10 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// только его часть, а сохранять и делиться нужно всем текстом.
   final DayCard Function(int index)? wholeCardOf;
 
+  /// Вызывается при закрытии с самым дальним показанным индексом: по нему
+  /// аналитика видит, на какой карточке бросают чтение.
+  final void Function(int furthestIndex)? onExit;
+
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
 }
@@ -81,6 +88,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     initialPage: widget.startIndex,
   );
   late int _index = widget.startIndex;
+  late int _furthest = widget.startIndex;
   String? _markedCardId;
   var _swipeNudgeHasStarted = false;
 
@@ -94,6 +102,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
 
   @override
   void dispose() {
+    widget.onExit?.call(_furthest);
     _controller.dispose();
     super.dispose();
   }
@@ -142,7 +151,10 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
         controller: _controller,
         itemCount: _pageCount,
         onPageChanged: (page) {
-          setState(() => _index = page);
+          setState(() {
+            _index = page;
+            if (page > _furthest) _furthest = page;
+          });
           _markCurrentAsRead(page);
         },
         itemBuilder: (context, index) => _cardPage(index),
@@ -227,11 +239,19 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
         buttonSize: 56,
       ),
       const SizedBox(height: 4),
-      AppShareButton(text: _shareTextFor(card), iconSize: 28, buttonSize: 56),
+      AppShareButton(
+        text: _shareTextFor(card),
+        content: SharedContent.values.byName(card.type.name),
+        iconSize: 28,
+        buttonSize: 56,
+      ),
     ],
   );
 
   void _openFullText(DayCard card) {
+    ref
+        .read(analyticsProvider)
+        .log(AnalyticsEvent.fullTextOpened(card.type.name));
     Navigator.of(context).push(FullCardTextRoute(card: card));
   }
 

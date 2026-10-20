@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 
@@ -39,6 +41,11 @@ class ThemeModeSettingTile extends ConsumerWidget {
             final saved = await ref
                 .read(themeModeProvider.notifier)
                 .select(selection.first);
+            if (saved) {
+              ref
+                  .read(analyticsProvider)
+                  .log(AnalyticsEvent.themeChanged(selection.first.name));
+            }
             if (!saved && context.mounted) {
               ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                 const SnackBar(content: Text('Не удалось сохранить тему')),

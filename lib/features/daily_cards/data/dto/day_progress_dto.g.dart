@@ -30,6 +30,7 @@ _DayProgressDto _$DayProgressDtoFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           const <String>[],
+      wisdomCompletedAt: json['wisdomCompletedAt'] as String?,
     );
 
 Map<String, dynamic> _$DayProgressDtoToJson(_DayProgressDto instance) =>
@@ -39,4 +40,5 @@ Map<String, dynamic> _$DayProgressDtoToJson(_DayProgressDto instance) =>
       'readTypesByDate': instance.readTypesByDate,
       'visitedDays': instance.visitedDays,
       'wisdomCompletedDays': instance.wisdomCompletedDays,
+      'wisdomCompletedAt': instance.wisdomCompletedAt,
     };

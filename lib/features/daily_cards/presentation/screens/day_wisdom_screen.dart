@@ -1,6 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_on_show.dart';
+import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/format/date_key.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../reading/domain/entities/daily_reading.dart';
@@ -96,8 +102,18 @@ class DayWisdomScreen extends ConsumerWidget {
       ),
     ];
 
+    // Экземпляр берём сейчас: при закрытии ref этого виджета уже недоступен.
+    final analytics = ref.read(analyticsProvider);
     return CardViewerScreen(
       cards: viewerCards,
+      onExit: (furthest) => analytics.log(
+        AnalyticsEvent.wisdomClosed(
+          dayOffset: dayOffset(date),
+          pagesSeen: math.min(furthest + 1, completeIndex),
+          pagesTotal: completeIndex,
+          completed: furthest >= completeIndex,
+        ),
+      ),
       startIndex: _viewerStart(
         startIndex,
         ordinary,
@@ -157,11 +173,24 @@ class DayWisdomScreen extends ConsumerWidget {
         if (readingPages != null) {
           return readingPages.page(context, index - ordinaryPages.length);
         }
-        return _ReadingStatus(
+        final status = _ReadingStatus(
           isLoading: readingAsync?.isLoading ?? false,
           onRetry: reference == null
               ? null
-              : () => ref.invalidate(dailyReadingProvider(reference)),
+              : () {
+                  analytics.log(
+                    AnalyticsEvent.contentRetryTapped(LoadedContent.gospel),
+                  );
+                  ref.invalidate(dailyReadingProvider(reference));
+                },
+        );
+        if (readingAsync?.hasError != true) return status;
+        return AnalyticsOnShow(
+          event: AnalyticsEvent.contentLoadFailed(
+            content: LoadedContent.gospel,
+            kind: failureKindOf(readingAsync?.error),
+          ),
+          child: status,
         );
       },
       actionsBuilder: (context, index) {

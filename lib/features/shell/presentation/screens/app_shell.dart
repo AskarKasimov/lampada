@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../bible/presentation/providers/providers.dart';
 import '../../../bible/presentation/screens/bible_tab_screen.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
@@ -10,6 +12,7 @@ import '../../../daily_cards/presentation/screens/today_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_scheduler.dart';
 import '../providers/shell_providers.dart';
+import '../widgets/analytics_profile_sync.dart';
 import '../widgets/floating_nav_bar.dart';
 
 /// Дом приложения: три вкладки. Экрана-прослойки между запуском и контентом
@@ -147,6 +150,15 @@ class _AppShellState extends ConsumerState<AppShell>
       if (navigator != null) unawaited(_returnToRoot(navigator));
       return;
     }
+    ref
+        .read(analyticsProvider)
+        .log(
+          AnalyticsEvent.tabOpened(switch (selected) {
+            ShellTab.today => AnalyticsTab.home,
+            ShellTab.bible => AnalyticsTab.bible,
+            ShellTab.profile => AnalyticsTab.profile,
+          }),
+        );
     ref.read(selectedTabProvider.notifier).select(selected);
   }
 
@@ -162,45 +174,48 @@ class _AppShellState extends ConsumerState<AppShell>
     });
     final tab = ref.watch(selectedTabProvider);
     if (tab == ShellTab.bible) _bibleVisited = true;
-    return ReminderScheduler(
-      child: Scaffold(
-        body: Stack(
-          children: [
-            SafeArea(
-              bottom: false,
-              child: FloatingNavInset(
-                inset: kFloatingNavInset,
-                child: IndexedStack(
-                  index: tab.index,
-                  children: [
-                    _tabNavigator(
-                      navigatorKey: _homeNavigatorKey,
-                      active: tab == ShellTab.today,
-                      root: const TodayScreen(),
-                    ),
-                    if (_bibleVisited)
+    // Атрибуты профиля аналитики собираются из всех фич, как и расписание.
+    return AnalyticsProfileSync(
+      child: ReminderScheduler(
+        child: Scaffold(
+          body: Stack(
+            children: [
+              SafeArea(
+                bottom: false,
+                child: FloatingNavInset(
+                  inset: kFloatingNavInset,
+                  child: IndexedStack(
+                    index: tab.index,
+                    children: [
                       _tabNavigator(
-                        navigatorKey: _bibleNavigatorKey,
-                        active: tab == ShellTab.bible,
-                        root: const BibleTabScreen(),
-                      )
-                    else
-                      const SizedBox.shrink(),
-                    const ProfileScreen(),
-                  ],
+                        navigatorKey: _homeNavigatorKey,
+                        active: tab == ShellTab.today,
+                        root: const TodayScreen(),
+                      ),
+                      if (_bibleVisited)
+                        _tabNavigator(
+                          navigatorKey: _bibleNavigatorKey,
+                          active: tab == ShellTab.bible,
+                          root: const BibleTabScreen(),
+                        )
+                      else
+                        const SizedBox.shrink(),
+                      const ProfileScreen(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: FloatingNavBar(
-                current: tab,
-                onSelect: (selected) => _select(tab, selected),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: FloatingNavBar(
+                  current: tab,
+                  onSelect: (selected) => _select(tab, selected),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

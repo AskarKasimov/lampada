@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -73,6 +74,7 @@ class BookmarkDetailScreen extends StatelessWidget {
                       book: chapter.book,
                       chapter: chapter.chapter,
                       initialVerse: chapter.verse,
+                      openSource: BibleOpenSource.bookmark,
                     ),
                   ),
                 ),
@@ -144,11 +146,13 @@ class BookmarkDetailScreen extends StatelessWidget {
                   children: [
                     BookmarkButton(
                       bookmark: bookmark,
+                      placement: BookmarkPlacement.detail,
                       iconSize: 28,
                       buttonSize: 56,
                     ),
                     AppShareButton(
                       text: '${bookmark.text}\n\n— ${bookmark.source}',
+                      content: SharedContent.bookmark,
                       iconSize: 28,
                       buttonSize: 56,
                     ),

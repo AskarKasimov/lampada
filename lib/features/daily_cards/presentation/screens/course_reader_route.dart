@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/result/result.dart';
-
 import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
 import '../../domain/entities/day_card.dart';
@@ -10,7 +11,11 @@ import '../providers/providers.dart';
 import 'course_reader_screen.dart';
 
 /// Вход в читалку из списка планов.
-Future<void> openCourseReader(BuildContext context, WidgetRef ref) async {
+Future<void> openCourseReader(
+  BuildContext context,
+  WidgetRef ref, {
+  OpenSource source = OpenSource.tile,
+}) async {
   DayCard? currentTopic;
   try {
     currentTopic = await ref.read(courseTopicProvider.future);
@@ -35,6 +40,21 @@ Future<void> openCourseReader(BuildContext context, WidgetRef ref) async {
     return;
   }
   final page = (pageResult as Success<int?>).value ?? 0;
+  bool firstTime;
+  try {
+    firstTime = !await ref.read(hasStartedCourseProvider.future);
+  } on Object {
+    firstTime = false;
+  }
+  ref
+      .read(analyticsProvider)
+      .log(
+        AnalyticsEvent.courseOpened(
+          source: source,
+          topic: number,
+          firstTime: firstTime,
+        ),
+      );
   // Только явный вход в читалку создаёт активный план и первую позицию.
   final started = await ref.read(saveCourseTopicProvider)(number, page: page);
   if (!context.mounted) return;
@@ -61,7 +81,8 @@ Future<void> openCourseReader(BuildContext context, WidgetRef ref) async {
   await Navigator.of(context, rootNavigator: true).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
-      builder: (_) => const ReminderPermissionScreen(),
+      builder: (_) =>
+          const ReminderPermissionScreen(trigger: ReminderPromptTrigger.course),
     ),
   );
 }
