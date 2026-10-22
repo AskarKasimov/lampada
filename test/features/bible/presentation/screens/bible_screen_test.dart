@@ -16,6 +16,7 @@ import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.
 import 'package:lampada/features/bible/presentation/screens/bible_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/full_card_text_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/vertical_card_reader.dart';
 
 class _FakeRepository implements BibleRepository {
@@ -128,7 +129,7 @@ void main() {
         ],
         child: const MaterialApp(
           home: BibleReaderScreen(
-            book: BibleBook('Mt', 'От Матфея', 28),
+            book: BibleBook('Mt', 'От Матфея', 28, 'Мф'),
             chapter: 1,
           ),
         ),
@@ -181,7 +182,7 @@ void main() {
         ],
         child: const MaterialApp(
           home: BibleReaderScreen(
-            book: BibleBook('Mt', 'От Матфея', 28),
+            book: BibleBook('Mt', 'От Матфея', 28, 'Мф'),
             chapter: 1,
           ),
         ),
@@ -216,7 +217,7 @@ void main() {
         ],
         child: const MaterialApp(
           home: BibleReaderScreen(
-            book: BibleBook('Mt', 'От Матфея', 28),
+            book: BibleBook('Mt', 'От Матфея', 28, 'Мф'),
             chapter: 1,
             showClose: false,
           ),
@@ -251,7 +252,7 @@ void main() {
         overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
         child: const MaterialApp(
           home: BibleReaderScreen(
-            book: BibleBook('Mt', 'От Матфея', 28),
+            book: BibleBook('Mt', 'От Матфея', 28, 'Мф'),
             chapter: 1,
           ),
         ),
@@ -619,7 +620,7 @@ void main() {
         overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
         child: const MaterialApp(
           home: BibleReaderScreen(
-            book: BibleBook('Jn', 'От Иоанна', 21),
+            book: BibleBook('Jn', 'От Иоанна', 21, 'Ин'),
             chapter: 1,
           ),
         ),
@@ -667,7 +668,7 @@ void main() {
         ],
         child: const MaterialApp(
           home: BibleReaderScreen(
-            book: BibleBook('Apok', 'Откровение', 1),
+            book: BibleBook('Apok', 'Откровение', 1, 'Откр'),
             chapter: 1,
           ),
         ),
@@ -688,7 +689,7 @@ void main() {
         ],
         child: const MaterialApp(
           home: BibleReaderScreen(
-            book: BibleBook('Apok', 'Откровение', 1),
+            book: BibleBook('Apok', 'Откровение', 1, 'Откр'),
             chapter: 1,
           ),
         ),
@@ -724,7 +725,7 @@ void main() {
         ],
         child: const MaterialApp(
           home: BibleReaderScreen(
-            book: BibleBook('Apok', 'Откровение', 1),
+            book: BibleBook('Apok', 'Откровение', 1, 'Откр'),
             chapter: 1,
           ),
         ),
@@ -749,7 +750,7 @@ void main() {
     );
     final railScroll = tester.widget<SingleChildScrollView>(
       find.descendant(
-        of: find.byType(VerticalCardReader),
+        of: find.byType(ReaderProgressRail),
         matching: find.byType(SingleChildScrollView),
       ),
     );

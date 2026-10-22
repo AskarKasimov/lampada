@@ -5,6 +5,35 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lampada/features/bible/data/datasources/bible_remote_datasource.dart';
 
+String _chapterPage({String interprets = ''}) =>
+    '<div class="verse lang-r" data-verse="Gen.1:1">В начале</div>'
+    '<div class="verse lang-r" data-verse="Gen.1:2">Земля же</div>'
+    '<ul class="interprets">$interprets</ul>';
+
+const _lopuhin =
+    '<li><a href="/otechnik/Lopuhin/tolkovaja_biblija_01/1">'
+    'Толковая Библия А.П. Лопухина</a></li>';
+
+const _interpretationPage =
+    '<p class="h5"><span class="bibText1">'
+    '<a href="https://azbyka.ru/biblia/?Gen.1:2">Быт.1:2</a>.</span> '
+    '<span class="quote synodal">Земля же</span></p>'
+    '<p class="txt">О ЗЕМЛЕ</p>';
+
+/// Первый запрос — глава, второй — страница толкования.
+AzbykaBibleRemoteDatasource _serving({
+  required String chapter,
+  int interpretationStatus = 200,
+}) => AzbykaBibleRemoteDatasource(
+  client: MockClient((request) async {
+    final isInterpretation = request.url.path.contains('otechnik');
+    return http.Response.bytes(
+      utf8.encode(isInterpretation ? _interpretationPage : chapter),
+      isInterpretation ? interpretationStatus : 200,
+    );
+  }),
+);
+
 void main() {
   test('читает только синодальные стихи выбранной главы', () async {
     final source = AzbykaBibleRemoteDatasource(
@@ -51,4 +80,42 @@ void main() {
       );
     },
   );
+
+  group('толкование', () {
+    test('привязывается к стиху и подписывается сокращением книги', () async {
+      final chapter = await _serving(
+        chapter: _chapterPage(interprets: _lopuhin),
+      ).fetchChapter('Gen', 1);
+
+      expect(chapter.verses[0].interpretation, isNull);
+      expect(chapter.verses[1].interpretation, 'О ЗЕМЛЕ');
+      expect(chapter.verses[1].interpretationRange, 'Быт.1:2');
+      expect(chapter.interpretationAuthor, 'Толковая Библия А.П. Лопухина');
+      expect(chapter.interpretationsChecked, isTrue);
+    });
+
+    test(
+      'сбой толкования не скрывает главу и оставляет её на перепроверку',
+      () async {
+        final chapter = await _serving(
+          chapter: _chapterPage(interprets: _lopuhin),
+          interpretationStatus: 500,
+        ).fetchChapter('Gen', 1);
+
+        expect(chapter.verses, hasLength(2));
+        expect(chapter.verses.every((v) => v.interpretation == null), isTrue);
+        expect(chapter.interpretationAuthor, isNull);
+        expect(chapter.interpretationsChecked, isFalse);
+      },
+    );
+
+    test('у главы нет толкователя — это окончательный ответ', () async {
+      final chapter = await _serving(
+        chapter: _chapterPage(),
+      ).fetchChapter('Gen', 1);
+
+      expect(chapter.verses.every((v) => v.interpretation == null), isTrue);
+      expect(chapter.interpretationsChecked, isTrue);
+    });
+  });
 }

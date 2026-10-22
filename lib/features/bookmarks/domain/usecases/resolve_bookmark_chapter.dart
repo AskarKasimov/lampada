@@ -13,10 +13,10 @@ class ResolveBookmarkChapter {
     r'^verse-([A-Za-z0-9]+)\.\d+:\d+(?:-(?:\d+:)?\d+)?-(\d+):(\d+)$',
   );
   static final _legacyVerse = RegExp(r'^verse-([A-Za-z0-9]+)\.(\d+):(\d+)$');
+  // Сокращение книги может содержать точку: «Посл.Иер.1:5».
   static final _interpretation = RegExp(
-    r'^interpretation-([А-Яа-яA-Za-z0-9]+)\.(\d+):(\d+)(?:[–—-]\d+)?$',
+    r'^interpretation-([А-Яа-яA-Za-z0-9.]+?)\.(\d+):(\d+)(?:[–—-]\d+)?$',
   );
-  static const _gospels = {'Мф': 'Mt', 'Мк': 'Mk', 'Лк': 'Lk', 'Ин': 'Jn'};
 
   BookmarkChapter? call(Bookmark bookmark) {
     final match = switch (bookmark.kind) {
@@ -29,8 +29,11 @@ class ResolveBookmarkChapter {
     };
     if (match == null) return null;
 
-    final code = _gospels[match.group(1)] ?? match.group(1);
-    final book = bibleBooks.where((book) => book.code == code).firstOrNull;
+    // У толкования в ID русское сокращение книги, у стиха — код.
+    final name = match.group(1);
+    final book = bibleBooks
+        .where((book) => book.code == name || book.abbreviation == name)
+        .firstOrNull;
     final chapter = int.tryParse(match.group(2)!);
     final verse = int.tryParse(match.group(3)!);
     if (book == null ||

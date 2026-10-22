@@ -30,8 +30,18 @@ class AzbykaBibleRepository implements BibleRepository {
   Future<Result<BibleChapter>> getChapter(String book, int chapter) async {
     try {
       final cached = _readCache(book, chapter);
-      if (cached != null) return Success(cached.toEntity());
-      final downloaded = await _source.fetchChapter(book, chapter);
+      if (cached != null && cached.interpretationsChecked) {
+        return Success(cached.toEntity());
+      }
+      final BibleChapterDto downloaded;
+      try {
+        downloaded = await _source.fetchChapter(book, chapter);
+      } on Object catch (error) {
+        // Глава без толкования лучше, чем никакой: офлайн она открывается.
+        if (cached == null) rethrow;
+        netLog('глава $book.$chapter из кэша без толкования: $error');
+        return Success(cached.toEntity());
+      }
       try {
         await requirePreferenceWrite(
           _prefs.setString(

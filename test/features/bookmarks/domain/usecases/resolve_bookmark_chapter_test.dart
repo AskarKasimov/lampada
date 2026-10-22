@@ -23,6 +23,10 @@ void main() {
     ('interpretation-Мф.20:1–7', BookmarkKind.interpretation, 'Mt', 20, 1),
     ('interpretation-Мк.1:1', BookmarkKind.interpretation, 'Mk', 1, 1),
     ('interpretation-Лк.2:1', BookmarkKind.interpretation, 'Lk', 2, 1),
+    // Толкования из вкладки «Библия» подписаны сокращением любой книги.
+    ('interpretation-Быт.1:1–2', BookmarkKind.interpretation, 'Gen', 1, 1),
+    ('interpretation-1Цар.2:3', BookmarkKind.interpretation, '1Sam', 2, 3),
+    ('interpretation-Посл.Иер.1:5', BookmarkKind.interpretation, 'pJer', 1, 5),
   ]) {
     test('определяет главу старой закладки $id', () {
       final target = resolve(bookmark(id, kind));

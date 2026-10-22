@@ -13,4 +13,14 @@ void main() {
       containsAll(['Tov', 'pJer', '3Ezr']),
     );
   });
+
+  test('у каждой книги своё сокращение, как в ссылках Азбуки', () {
+    expect(bibleBooks.map((book) => book.abbreviation).toSet(), hasLength(77));
+    final byCode = {for (final book in bibleBooks) book.code: book};
+    expect(byCode['Gen']!.abbreviation, 'Быт');
+    expect(byCode['Mt']!.abbreviation, 'Мф');
+    expect(byCode['1King']!.abbreviation, '3Цар');
+    expect(byCode['pJer']!.abbreviation, 'Посл.Иер');
+    expect(byCode['Apok']!.abbreviation, 'Откр');
+  });
 }

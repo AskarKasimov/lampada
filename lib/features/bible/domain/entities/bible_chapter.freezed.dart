@@ -14,7 +14,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BibleVerse {
 
- int get number; String get text;
+ int get number; String get text;/// Толкование открывается со стиха, как в чтении дня. Блок на несколько
+/// стихов достаётся последнему из них.
+ String? get interpretation;/// Отрывок, на который написано толкование: «Быт.1:1–2».
+ String? get interpretationRange;
 /// Create a copy of BibleVerse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +28,16 @@ $BibleVerseCopyWith<BibleVerse> get copyWith => _$BibleVerseCopyWithImpl<BibleVe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BibleVerse&&(identical(other.number, number) || other.number == number)&&(identical(other.text, text) || other.text == text));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BibleVerse&&(identical(other.number, number) || other.number == number)&&(identical(other.text, text) || other.text == text)&&(identical(other.interpretation, interpretation) || other.interpretation == interpretation)&&(identical(other.interpretationRange, interpretationRange) || other.interpretationRange == interpretationRange));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,number,text);
+int get hashCode => Object.hash(runtimeType,number,text,interpretation,interpretationRange);
 
 @override
 String toString() {
-  return 'BibleVerse(number: $number, text: $text)';
+  return 'BibleVerse(number: $number, text: $text, interpretation: $interpretation, interpretationRange: $interpretationRange)';
 }
 
 
@@ -45,7 +48,7 @@ abstract mixin class $BibleVerseCopyWith<$Res>  {
   factory $BibleVerseCopyWith(BibleVerse value, $Res Function(BibleVerse) _then) = _$BibleVerseCopyWithImpl;
 @useResult
 $Res call({
- int number, String text
+ int number, String text, String? interpretation, String? interpretationRange
 });
 
 
@@ -62,11 +65,13 @@ class _$BibleVerseCopyWithImpl<$Res>
 
 /// Create a copy of BibleVerse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? text = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? number = null,Object? text = null,Object? interpretation = freezed,Object? interpretationRange = freezed,}) {
   return _then(_self.copyWith(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String,
+as String,interpretation: freezed == interpretation ? _self.interpretation : interpretation // ignore: cast_nullable_to_non_nullable
+as String?,interpretationRange: freezed == interpretationRange ? _self.interpretationRange : interpretationRange // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -151,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int number,  String text)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int number,  String text,  String? interpretation,  String? interpretationRange)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BibleVerse() when $default != null:
-return $default(_that.number,_that.text);case _:
+return $default(_that.number,_that.text,_that.interpretation,_that.interpretationRange);case _:
   return orElse();
 
 }
@@ -172,10 +177,10 @@ return $default(_that.number,_that.text);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int number,  String text)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int number,  String text,  String? interpretation,  String? interpretationRange)  $default,) {final _that = this;
 switch (_that) {
 case _BibleVerse():
-return $default(_that.number,_that.text);case _:
+return $default(_that.number,_that.text,_that.interpretation,_that.interpretationRange);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -192,10 +197,10 @@ return $default(_that.number,_that.text);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int number,  String text)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int number,  String text,  String? interpretation,  String? interpretationRange)?  $default,) {final _that = this;
 switch (_that) {
 case _BibleVerse() when $default != null:
-return $default(_that.number,_that.text);case _:
+return $default(_that.number,_that.text,_that.interpretation,_that.interpretationRange);case _:
   return null;
 
 }
@@ -206,12 +211,17 @@ return $default(_that.number,_that.text);case _:
 /// @nodoc
 
 
-class _BibleVerse implements BibleVerse {
-  const _BibleVerse({required this.number, required this.text});
+class _BibleVerse extends BibleVerse {
+  const _BibleVerse({required this.number, required this.text, this.interpretation, this.interpretationRange}): super._();
   
 
 @override final  int number;
 @override final  String text;
+/// Толкование открывается со стиха, как в чтении дня. Блок на несколько
+/// стихов достаётся последнему из них.
+@override final  String? interpretation;
+/// Отрывок, на который написано толкование: «Быт.1:1–2».
+@override final  String? interpretationRange;
 
 /// Create a copy of BibleVerse
 /// with the given fields replaced by the non-null parameter values.
@@ -223,16 +233,16 @@ _$BibleVerseCopyWith<_BibleVerse> get copyWith => __$BibleVerseCopyWithImpl<_Bib
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BibleVerse&&(identical(other.number, number) || other.number == number)&&(identical(other.text, text) || other.text == text));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BibleVerse&&(identical(other.number, number) || other.number == number)&&(identical(other.text, text) || other.text == text)&&(identical(other.interpretation, interpretation) || other.interpretation == interpretation)&&(identical(other.interpretationRange, interpretationRange) || other.interpretationRange == interpretationRange));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,number,text);
+int get hashCode => Object.hash(runtimeType,number,text,interpretation,interpretationRange);
 
 @override
 String toString() {
-  return 'BibleVerse(number: $number, text: $text)';
+  return 'BibleVerse(number: $number, text: $text, interpretation: $interpretation, interpretationRange: $interpretationRange)';
 }
 
 
@@ -243,7 +253,7 @@ abstract mixin class _$BibleVerseCopyWith<$Res> implements $BibleVerseCopyWith<$
   factory _$BibleVerseCopyWith(_BibleVerse value, $Res Function(_BibleVerse) _then) = __$BibleVerseCopyWithImpl;
 @override @useResult
 $Res call({
- int number, String text
+ int number, String text, String? interpretation, String? interpretationRange
 });
 
 
@@ -260,11 +270,13 @@ class __$BibleVerseCopyWithImpl<$Res>
 
 /// Create a copy of BibleVerse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? text = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? number = null,Object? text = null,Object? interpretation = freezed,Object? interpretationRange = freezed,}) {
   return _then(_BibleVerse(
 number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String,
+as String,interpretation: freezed == interpretation ? _self.interpretation : interpretation // ignore: cast_nullable_to_non_nullable
+as String?,interpretationRange: freezed == interpretationRange ? _self.interpretationRange : interpretationRange // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -274,7 +286,8 @@ as String,
 /// @nodoc
 mixin _$BibleChapter {
 
- String get book; int get number; List<BibleVerse> get verses;
+ String get book; int get number; List<BibleVerse> get verses;/// Один толкователь на главу — страница толкования одна.
+ String? get interpretationAuthor;
 /// Create a copy of BibleChapter
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -285,16 +298,16 @@ $BibleChapterCopyWith<BibleChapter> get copyWith => _$BibleChapterCopyWithImpl<B
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BibleChapter&&(identical(other.book, book) || other.book == book)&&(identical(other.number, number) || other.number == number)&&const DeepCollectionEquality().equals(other.verses, verses));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BibleChapter&&(identical(other.book, book) || other.book == book)&&(identical(other.number, number) || other.number == number)&&const DeepCollectionEquality().equals(other.verses, verses)&&(identical(other.interpretationAuthor, interpretationAuthor) || other.interpretationAuthor == interpretationAuthor));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,book,number,const DeepCollectionEquality().hash(verses));
+int get hashCode => Object.hash(runtimeType,book,number,const DeepCollectionEquality().hash(verses),interpretationAuthor);
 
 @override
 String toString() {
-  return 'BibleChapter(book: $book, number: $number, verses: $verses)';
+  return 'BibleChapter(book: $book, number: $number, verses: $verses, interpretationAuthor: $interpretationAuthor)';
 }
 
 
@@ -305,7 +318,7 @@ abstract mixin class $BibleChapterCopyWith<$Res>  {
   factory $BibleChapterCopyWith(BibleChapter value, $Res Function(BibleChapter) _then) = _$BibleChapterCopyWithImpl;
 @useResult
 $Res call({
- String book, int number, List<BibleVerse> verses
+ String book, int number, List<BibleVerse> verses, String? interpretationAuthor
 });
 
 
@@ -322,12 +335,13 @@ class _$BibleChapterCopyWithImpl<$Res>
 
 /// Create a copy of BibleChapter
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? book = null,Object? number = null,Object? verses = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? book = null,Object? number = null,Object? verses = null,Object? interpretationAuthor = freezed,}) {
   return _then(_self.copyWith(
 book: null == book ? _self.book : book // ignore: cast_nullable_to_non_nullable
 as String,number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,verses: null == verses ? _self.verses : verses // ignore: cast_nullable_to_non_nullable
-as List<BibleVerse>,
+as List<BibleVerse>,interpretationAuthor: freezed == interpretationAuthor ? _self.interpretationAuthor : interpretationAuthor // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -412,10 +426,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String book,  int number,  List<BibleVerse> verses)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String book,  int number,  List<BibleVerse> verses,  String? interpretationAuthor)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BibleChapter() when $default != null:
-return $default(_that.book,_that.number,_that.verses);case _:
+return $default(_that.book,_that.number,_that.verses,_that.interpretationAuthor);case _:
   return orElse();
 
 }
@@ -433,10 +447,10 @@ return $default(_that.book,_that.number,_that.verses);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String book,  int number,  List<BibleVerse> verses)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String book,  int number,  List<BibleVerse> verses,  String? interpretationAuthor)  $default,) {final _that = this;
 switch (_that) {
 case _BibleChapter():
-return $default(_that.book,_that.number,_that.verses);case _:
+return $default(_that.book,_that.number,_that.verses,_that.interpretationAuthor);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -453,10 +467,10 @@ return $default(_that.book,_that.number,_that.verses);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String book,  int number,  List<BibleVerse> verses)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String book,  int number,  List<BibleVerse> verses,  String? interpretationAuthor)?  $default,) {final _that = this;
 switch (_that) {
 case _BibleChapter() when $default != null:
-return $default(_that.book,_that.number,_that.verses);case _:
+return $default(_that.book,_that.number,_that.verses,_that.interpretationAuthor);case _:
   return null;
 
 }
@@ -468,7 +482,7 @@ return $default(_that.book,_that.number,_that.verses);case _:
 
 
 class _BibleChapter implements BibleChapter {
-  const _BibleChapter({required this.book, required this.number, required final  List<BibleVerse> verses}): _verses = verses;
+  const _BibleChapter({required this.book, required this.number, required final  List<BibleVerse> verses, this.interpretationAuthor}): _verses = verses;
   
 
 @override final  String book;
@@ -480,6 +494,8 @@ class _BibleChapter implements BibleChapter {
   return EqualUnmodifiableListView(_verses);
 }
 
+/// Один толкователь на главу — страница толкования одна.
+@override final  String? interpretationAuthor;
 
 /// Create a copy of BibleChapter
 /// with the given fields replaced by the non-null parameter values.
@@ -491,16 +507,16 @@ _$BibleChapterCopyWith<_BibleChapter> get copyWith => __$BibleChapterCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BibleChapter&&(identical(other.book, book) || other.book == book)&&(identical(other.number, number) || other.number == number)&&const DeepCollectionEquality().equals(other._verses, _verses));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BibleChapter&&(identical(other.book, book) || other.book == book)&&(identical(other.number, number) || other.number == number)&&const DeepCollectionEquality().equals(other._verses, _verses)&&(identical(other.interpretationAuthor, interpretationAuthor) || other.interpretationAuthor == interpretationAuthor));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,book,number,const DeepCollectionEquality().hash(_verses));
+int get hashCode => Object.hash(runtimeType,book,number,const DeepCollectionEquality().hash(_verses),interpretationAuthor);
 
 @override
 String toString() {
-  return 'BibleChapter(book: $book, number: $number, verses: $verses)';
+  return 'BibleChapter(book: $book, number: $number, verses: $verses, interpretationAuthor: $interpretationAuthor)';
 }
 
 
@@ -511,7 +527,7 @@ abstract mixin class _$BibleChapterCopyWith<$Res> implements $BibleChapterCopyWi
   factory _$BibleChapterCopyWith(_BibleChapter value, $Res Function(_BibleChapter) _then) = __$BibleChapterCopyWithImpl;
 @override @useResult
 $Res call({
- String book, int number, List<BibleVerse> verses
+ String book, int number, List<BibleVerse> verses, String? interpretationAuthor
 });
 
 
@@ -528,12 +544,13 @@ class __$BibleChapterCopyWithImpl<$Res>
 
 /// Create a copy of BibleChapter
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? book = null,Object? number = null,Object? verses = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? book = null,Object? number = null,Object? verses = null,Object? interpretationAuthor = freezed,}) {
   return _then(_BibleChapter(
 book: null == book ? _self.book : book // ignore: cast_nullable_to_non_nullable
 as String,number: null == number ? _self.number : number // ignore: cast_nullable_to_non_nullable
 as int,verses: null == verses ? _self._verses : verses // ignore: cast_nullable_to_non_nullable
-as List<BibleVerse>,
+as List<BibleVerse>,interpretationAuthor: freezed == interpretationAuthor ? _self.interpretationAuthor : interpretationAuthor // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

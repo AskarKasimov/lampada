@@ -14,9 +14,18 @@ import '../../domain/entities/daily_reading.dart';
 /// Один стих на весь экран — герой ридера (§6). Номер подписью снизу,
 /// чтобы не разбивать сам текст служебной цифрой.
 class VerseView extends StatelessWidget {
-  const VerseView({required this.verse, super.key, this.onOpenInterpretation});
+  const VerseView({
+    required this.verse,
+    super.key,
+    this.onOpenInterpretation,
+    this.shareContent = SharedContent.reading,
+  });
 
   final Verse verse;
+
+  /// Тип материала для аналитики отправки выделенного текста: тот же вид
+  /// стиха показывает и Библия.
+  final SharedContent shareContent;
 
   /// null — у стиха толкования нет, действие не показываем.
   final VoidCallback? onOpenInterpretation;
@@ -31,7 +40,7 @@ class VerseView extends StatelessWidget {
       color: colors.textSecondary,
     );
     return SelectableShareArea(
-      content: SharedContent.reading,
+      content: shareContent,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableHeight =

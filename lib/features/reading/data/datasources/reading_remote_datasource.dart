@@ -5,6 +5,7 @@ import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
+import '../../../../core/azbyka/azbyka_interpretations.dart';
 import '../../../../core/log/net_log.dart';
 import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
@@ -68,7 +69,7 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
   final http.Client _client;
 
   // Толкователь по умолчанию.
-  static const _interpreterSlug = 'Feofilakt_Bolgarskij';
+  static const _interpreterSlugs = ['Feofilakt_Bolgarskij'];
 
   // URL использует латинский slug, страницы толкований — русские сокращения.
   static const _russianAbbr = {'Mt': 'Мф', 'Mk': 'Мк', 'Lk': 'Лк', 'Jn': 'Ин'};
@@ -107,7 +108,10 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
     // Сбой толкования не должен скрывать само чтение.
     var withInterpretations = verses;
     String? author;
-    final link = _interpreterLink(passageDoc);
+    final link = AzbykaInterpretations.interpreterLink(
+      passageDoc,
+      _interpreterSlugs,
+    );
     if (link != null) {
       final left = timeout - elapsed.elapsed;
       if (left > const Duration(milliseconds: 500)) {
@@ -197,68 +201,18 @@ class AzbykaReadingRemoteDatasource implements ReadingRemoteDatasource {
     return (int.parse(m.group(1)!), int.parse(m.group(2)!));
   }
 
-  static ({String href, String author})? _interpreterLink(Document doc) {
-    for (final a in doc.querySelectorAll('.interprets a[href]')) {
-      final href = a.attributes['href']!;
-      if (!href.contains(_interpreterSlug)) continue;
-      return (
-        href: href.startsWith('http') ? href : 'https://azbyka.ru$href',
-        author: a.text.trim(),
-      );
-    }
-    return null;
-  }
-
-  /// Группирует `p.h5`/`p.txt` и привязывает комментарий к последнему стиху.
-  static Map<int, ({String text, String range})> _interpretationsByVerse(
+  static Map<int, AzbykaInterpretation> _interpretationsByVerse(
     Document doc,
     PassageRef ref,
   ) {
     final abbr = _russianAbbr[ref.book];
     if (abbr == null) return const {};
-
-    final result = <int, ({String text, String range})>{};
-    var group = <int>[];
-    var commentary = <String>[];
-
-    void flush() {
-      if (group.isNotEmpty && commentary.isNotEmpty) {
-        final range = group.length == 1
-            ? '$abbr.${ref.fromChapter}:${group.first}'
-            : '$abbr.${ref.fromChapter}:${group.first}–${group.last}';
-        result[group.last] = (text: commentary.join('\n\n'), range: range);
-      }
-      group = [];
-      commentary = [];
-    }
-
-    for (final p in doc.querySelectorAll('p.h5, p.txt')) {
-      if (p.classes.contains('h5')) {
-        if (commentary.isNotEmpty) flush();
-        final number = _verseNumberOf(p, ref);
-        if (number != null) group.add(number);
-      } else {
-        final text = p.text.replaceAll(RegExp(r'\s+'), ' ').trim();
-        if (text.isNotEmpty) commentary.add(text);
-      }
-    }
-    flush();
-
-    return result;
-  }
-
-  // Часть `p.h5` — подзаголовки без ссылки на стих.
-  static int? _verseNumberOf(Element paragraph, PassageRef ref) {
-    for (final a in paragraph.querySelectorAll('a[href]')) {
-      final m = RegExp(
-        r'\?([A-Za-z0-9]+)\.(\d+):(\d+)',
-      ).firstMatch(a.attributes['href']!);
-      if (m == null) continue;
-      if (m.group(1) != ref.book) continue;
-      if (int.parse(m.group(2)!) != ref.fromChapter) continue;
-      return int.parse(m.group(3)!);
-    }
-    return null;
+    return AzbykaInterpretations.byVerse(
+      doc,
+      book: ref.book,
+      chapter: ref.fromChapter,
+      abbreviation: abbr,
+    );
   }
 
   // Преобразует URL-формат ссылки в подпись для интерфейса.

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/network/remote_fetch_exception.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/bible/data/datasources/bible_remote_datasource.dart';
 import 'package:lampada/features/bible/data/dto/bible_chapter_dto.dart';
@@ -18,9 +21,49 @@ class _Source implements BibleRemoteDatasource {
       book: book,
       number: chapter,
       verses: const [BibleVerseDto(number: 1, text: 'Стих')],
+      interpretationsChecked: true,
     );
   }
 }
+
+/// Глава с толкованием либо сетевой сбой — для кэша старой схемы.
+class _InterpretedSource implements BibleRemoteDatasource {
+  _InterpretedSource({this.offline = false});
+
+  final bool offline;
+  int calls = 0;
+
+  @override
+  Future<BibleChapterDto> fetchChapter(String book, int chapter) async {
+    calls++;
+    if (offline) {
+      throw RemoteFetchException(FailureKind.network, Exception('нет сети'));
+    }
+    return BibleChapterDto(
+      book: book,
+      number: chapter,
+      verses: const [
+        BibleVerseDto(
+          number: 1,
+          text: 'Стих',
+          interpretation: 'Толкование',
+          interpretationRange: 'Ин.3:1',
+        ),
+      ],
+      interpretationAuthor: 'Феофилакт',
+      interpretationsChecked: true,
+    );
+  }
+}
+
+/// Запись главы, сохранённая до появления толкований.
+final _legacyCache = jsonEncode({
+  'book': 'Jn',
+  'number': 3,
+  'verses': [
+    {'number': 1, 'text': 'Стих'},
+  ],
+});
 
 void main() {
   test(
@@ -143,4 +186,36 @@ void main() {
       expect(status.read, contains(('Jn', 3)));
     },
   );
+
+  test('глава из кэша без толкований один раз перезапрашивается', () async {
+    SharedPreferences.setMockInitialValues({
+      'bible_chapter_v1:Jn.3': _legacyCache,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final source = _InterpretedSource();
+    final repository = AzbykaBibleRepository(source, prefs);
+
+    final chapter =
+        (await repository.getChapter('Jn', 3) as Success<BibleChapter>).value;
+    expect(chapter.verses.single.interpretation, 'Толкование');
+    expect(chapter.interpretationAuthor, 'Феофилакт');
+
+    await repository.getChapter('Jn', 3);
+    expect(source.calls, 1);
+  });
+
+  test('без сети глава из старого кэша открывается как есть', () async {
+    SharedPreferences.setMockInitialValues({
+      'bible_chapter_v1:Jn.3': _legacyCache,
+    });
+    final repository = AzbykaBibleRepository(
+      _InterpretedSource(offline: true),
+      await SharedPreferences.getInstance(),
+    );
+
+    final chapter =
+        (await repository.getChapter('Jn', 3) as Success<BibleChapter>).value;
+    expect(chapter.verses.single.text, 'Стих');
+    expect(chapter.verses.single.interpretation, isNull);
+  });
 }

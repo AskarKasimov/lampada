@@ -13,9 +13,11 @@ import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/screens/full_card_text_screen.dart';
-import '../../../daily_cards/presentation/widgets/card_content.dart';
 import '../../../daily_cards/presentation/widgets/reader_progress_rail.dart';
 import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
+import '../../../reading/domain/entities/daily_reading.dart';
+import '../../../reading/presentation/widgets/interpretation_sheet.dart';
+import '../../../reading/presentation/widgets/verse_view.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
 import '../providers/providers.dart';
@@ -50,7 +52,12 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
   ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
 }
 
-typedef _ReadingVerse = ({BibleBook book, int chapter, BibleVerse verse});
+typedef _ReadingVerse = ({
+  BibleBook book,
+  int chapter,
+  BibleVerse verse,
+  String? interpretationAuthor,
+});
 
 class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   final _fullTextNeeded = <String, bool>{};
@@ -104,7 +111,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         _controller = PageController(initialPage: _page);
         _verses.addAll([
           for (final verse in chapter.verses)
-            (book: _book, chapter: _chapter, verse: verse),
+            (
+              book: _book,
+              chapter: _chapter,
+              verse: verse,
+              interpretationAuthor: chapter.interpretationAuthor,
+            ),
         ]);
         _lastBook = _book;
         _lastChapter = _chapter;
@@ -149,7 +161,12 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       setState(() {
         _verses.addAll([
           for (final verse in chapter.verses)
-            (book: target.$1, chapter: target.$2, verse: verse),
+            (
+              book: target.$1,
+              chapter: target.$2,
+              verse: verse,
+              interpretationAuthor: chapter.interpretationAuthor,
+            ),
         ]);
         _lastBook = target.$1;
         _lastChapter = target.$2;
@@ -426,19 +443,27 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
                     ),
             );
           }
-          final itemCard = _cardFor(_verses[index]);
+          final item = _verses[index];
+          final itemCard = _cardFor(item);
+          final verse = _verseOf(item);
           return ReadingOverflowListener(
             key: ValueKey(itemCard.id),
             onChanged: (needed) {
               if (_fullTextNeeded[itemCard.id] == needed) return;
               setState(() => _fullTextNeeded[itemCard.id] = needed);
             },
-            child: CardContent(
-              card: itemCard,
+            // Тот же вид стиха, что в чтении дня: толкование открывается
+            // кнопкой под стихом, к которому написано.
+            child: VerseView(
+              verse: verse,
               shareContent: SharedContent.bibleVerse,
-              showBadge: false,
-              showSourceDash: false,
-              scrollable: false,
+              onOpenInterpretation: verse.hasInterpretation
+                  ? () => InterpretationSheet.show(
+                      context,
+                      verse: verse,
+                      author: item.interpretationAuthor,
+                    )
+                  : null,
             ),
           );
         },
@@ -490,6 +515,14 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     type: CardType.reading,
     body: position.verse.text,
     source: '${position.chapter}:${position.verse.number}',
+  );
+
+  Verse _verseOf(_ReadingVerse position) => Verse(
+    number: position.verse.number,
+    chapter: position.chapter,
+    text: position.verse.text,
+    interpretation: position.verse.interpretation,
+    interpretationRange: position.verse.interpretationRange,
   );
 
   Widget _chapterProgress(_ReadingVerse position, AppColorsExtension colors) {
