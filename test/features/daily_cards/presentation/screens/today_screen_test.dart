@@ -5,6 +5,8 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_event.dart';
+import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
@@ -15,6 +17,7 @@ import 'package:lampada/core/widgets/brand_loading_view.dart';
 import 'package:lampada/features/daily_cards/domain/course_calendar.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
+import 'package:lampada/features/daily_cards/domain/entities/day_section.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
@@ -34,6 +37,8 @@ import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
 import 'package:lampada/features/day_story/presentation/providers/providers.dart';
 import 'package:lampada/features/day_story/presentation/screens/day_story_screen.dart';
+import 'package:lampada/features/profile/presentation/providers/providers.dart';
+import 'package:lampada/features/profile/presentation/services/profile_actions_service.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/domain/repositories/reading_repository.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
@@ -42,6 +47,8 @@ import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 import 'package:lampada/features/reminders/presentation/screens/reminder_permission_screen.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/fake_analytics.dart';
 
 const _cards = [
   DayCard(
@@ -206,11 +213,13 @@ class _FakeProgressRepository implements DayProgressRepository {
   Set<CardType> _read = {};
   Set<String> _visited = {};
   Map<String, Set<CardType>> _readByDate = {};
+  Set<String> _wisdomCompleted = {};
 
   DayProgress get _current => DayProgress(
     readTypes: _read,
     readTypesByDate: _readByDate,
     visitedDays: _visited,
+    wisdomCompletedDays: _wisdomCompleted,
   );
 
   @override
@@ -239,9 +248,9 @@ class _FakeProgressRepository implements DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   }) async {
-    if (markVisited) {
-      _visited = {..._visited, dateKey(date ?? DateTime.now())};
-    }
+    final day = dateKey(date ?? DateTime.now());
+    _wisdomCompleted = {..._wisdomCompleted, day};
+    if (markVisited) _visited = {..._visited, day};
     return Success(_current);
   }
 
@@ -257,6 +266,28 @@ class _FakeProgressRepository implements DayProgressRepository {
       _readByDate = {..._readByDate, dateKey(date): types};
 
   void seedVisited(Set<String> days) => _visited = days;
+
+  void seedWisdomCompleted(Set<String> days) => _wisdomCompleted = days;
+}
+
+/// Платформенный запрос отзыва в `flutter test` недоступен: считаем вызовы.
+class _FakeProfileActions implements ProfileActionsService {
+  int reviewRequests = 0;
+
+  @override
+  String get reviewLabel => 'Оставить отзыв';
+
+  @override
+  Future<void> openUrl(String url) async {}
+
+  @override
+  Future<ShareOutcome?> shareApp() async => null;
+
+  @override
+  Future<bool> requestReview() async {
+    reviewRequests++;
+    return true;
+  }
 }
 
 class _SelectedDateNotifier extends SelectedDateNotifier {
@@ -268,15 +299,27 @@ class _SelectedDateNotifier extends SelectedDateNotifier {
   DateTime build() => date;
 }
 
+class _PendingSection extends OpenDaySectionRequestNotifier {
+  _PendingSection(this.section);
+
+  final DaySection section;
+
+  @override
+  SectionRequest? build() =>
+      (section: section, origin: SectionRequestOrigin.notification);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late SharedPreferences prefs;
+  late FakeAnalytics analytics;
 
   /// По умолчанию считаем, что про напоминания уже спрашивали: их экран
   /// всплывает после закрытия карточки и накрыл бы собой «Сегодня».
   /// Тест про сам запрос ставит флаг обратно.
   setUp(() async {
+    analytics = FakeAnalytics();
     SharedPreferences.setMockInitialValues({'flutter.reminders_asked': true});
     prefs = await SharedPreferences.getInstance();
   });
@@ -289,8 +332,13 @@ void main() {
     DateTime? selectedDate,
     DayCard? courseTopic,
     Future<DayCard?> Function()? courseLoader,
+    ProfileActionsService? profileActions,
+    DaySection? requestedSection,
   }) => ProviderScope(
     overrides: [
+      profileActionsServiceProvider.overrideWithValue(
+        profileActions ?? _FakeProfileActions(),
+      ),
       dayCardsRepositoryProvider.overrideWithValue(
         cardsRepository ?? _FakeCardsRepository(),
       ),
@@ -304,6 +352,7 @@ void main() {
         storyRepository ?? _FakeDayStoryRepository(),
       ),
       sharedPreferencesProvider.overrideWithValue(prefs),
+      analyticsProvider.overrideWithValue(analytics),
       if (courseLoader != null)
         courseTopicProvider.overrideWith((ref) => courseLoader())
       else if (courseTopic != null)
@@ -311,6 +360,10 @@ void main() {
       if (selectedDate != null)
         selectedDateProvider.overrideWith(
           () => _SelectedDateNotifier(selectedDate),
+        ),
+      if (requestedSection != null)
+        openDaySectionRequestProvider.overrideWith(
+          () => _PendingSection(requestedSection),
         ),
     ],
     child: MaterialApp(
@@ -345,6 +398,58 @@ void main() {
     expect(find.byType(DayWisdomTile), findsOneWidget);
     expect(find.text('Мудрость дня'), findsOneWidget);
     expect(find.byType(CourseProgressHeader), findsOneWidget);
+  });
+
+  testWidgets('просьба из приветствия сразу открывает «Мудрость дня»', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildApp(courseTopic: _basics, requestedSection: DaySection.wisdom),
+    );
+    // Сначала грузится день, потом едет переход в чтение.
+    await settle(tester);
+    await settle(tester);
+
+    expect(find.byType(CardViewerScreen), findsOneWidget);
+    expect(find.text('Первая карточка'), findsOneWidget);
+  });
+
+  testWidgets('после закрытия чтение по просьбе не открывается снова', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildApp(courseTopic: _basics, requestedSection: DaySection.wisdom),
+    );
+    await settle(tester);
+    await settle(tester);
+
+    await tester.tap(find.byTooltip('Назад'));
+    await settle(tester);
+    await settle(tester);
+
+    expect(find.byType(CardViewerScreen), findsNothing);
+    expect(find.byType(DayWisdomTile), findsOneWidget);
+  });
+
+  testWidgets('просьба ждёт Евангелие, а не открывает чтение без него', (
+    tester,
+  ) async {
+    final pending = Completer<Result<DailyReading>>();
+    final reading = _FakeReadingRepository(pending: pending.future);
+    await tester.pumpWidget(
+      buildApp(
+        courseTopic: _basics,
+        requestedSection: DaySection.wisdom,
+        readingRepository: reading,
+      ),
+    );
+    await settle(tester);
+    expect(find.byType(CardViewerScreen), findsNothing);
+
+    pending.complete(Success(reading.reading));
+    await settle(tester);
+
+    expect(find.byType(CardViewerScreen), findsOneWidget);
   });
 
   testWidgets('карточка серии стоит под «Основами веры»', (tester) async {
@@ -541,6 +646,11 @@ void main() {
 
     expect(find.textContaining('не загружены'), findsOneWidget);
     expect(find.byType(CourseProgressHeader), findsOneWidget);
+    // Экран ошибки перестраивается, но показ считается одним.
+    expect(analytics.single('content_load_failed'), {
+      'content': 'day',
+      'kind': 'network',
+    });
   });
 
   testWidgets('курс доступен пока материал выбранного дня загружается', (
@@ -750,6 +860,59 @@ void main() {
         tester.getTopLeft(find.text('Постный день')).dy,
         greaterThan(stripTop),
       );
+    });
+
+    testWidgets('напоминание о святом открывает рассказ дня', (tester) async {
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            title: 'Мц. Христи́ны Тирской',
+            storyUrl: 'https://azbyka.ru/days/sv-hristina',
+          ),
+          requestedSection: DaySection.story,
+        ),
+      );
+      await settle(tester);
+      await settle(tester);
+
+      expect(find.byType(DayStoryScreen), findsOneWidget);
+      expect(analytics.single('story_opened')['source'], 'notification');
+    });
+
+    testWidgets('открытый рассказ отмечается прочитанным за свой день', (
+      tester,
+    ) async {
+      // Иначе напоминание о святом пришло бы тому, кто уже прочитал.
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            title: 'Мц. Христи́ны Тирской',
+            storyUrl: 'https://azbyka.ru/days/sv-hristina',
+          ),
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(find.byType(DayMemoryTile));
+      await settle(tester);
+
+      expect(
+        prefs.getStringList('story_read_days'),
+        contains(dateKey(DateTime.now())),
+      );
+    });
+
+    testWidgets('напоминание о курсе открывает тему «Основ веры»', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildApp(courseTopic: _basics, requestedSection: DaySection.course),
+      );
+      await settle(tester);
+      await settle(tester);
+
+      expect(find.byType(CourseReaderScreen), findsOneWidget);
+      expect(analytics.single('course_opened')['source'], 'notification');
     });
 
     testWidgets('тап по памяти дня со ссылкой открывает рассказ', (
@@ -1344,6 +1507,10 @@ void main() {
         dateKey(container.read(selectedDateProvider)),
         dateKey(DateTime.now().add(const Duration(days: 1))),
       );
+      expect(analytics.single('date_selected'), {
+        'source': 'swipe',
+        'day_offset': 1,
+      });
     });
 
     testWidgets('на будущем дне показывает непрочитанный статус', (
@@ -1803,7 +1970,7 @@ void main() {
       await settle(tester);
 
       expect(find.byType(ReminderPermissionScreen), findsOneWidget);
-      expect(find.textContaining('Чтобы не остановиться'), findsOneWidget);
+      expect(find.textContaining('на 36% чаще'), findsOneWidget);
     });
 
     testWidgets('спрашиваем один раз, даже после отказа', (tester) async {
@@ -1825,6 +1992,151 @@ void main() {
       await settle(tester);
 
       expect(find.byType(ReminderPermissionScreen), findsNothing);
+    });
+  });
+
+  group('запрос оценки', () {
+    /// Листает «Мудрость дня» до экрана итога и ждёт, пока «Готово» станет
+    /// нажимаемой: итог раскрывается анимацией.
+    Future<void> reachSummary(WidgetTester tester) async {
+      await tester.tap(entry('Мудрость дня'));
+      await settle(tester);
+      for (var i = 0; i < 8 && find.text('Готово').evaluate().isEmpty; i++) {
+        await tester.drag(
+          find.descendant(
+            of: find.byType(CardViewerScreen),
+            matching: find.byType(PageView),
+          ),
+          const Offset(0, -600),
+        );
+        await settle(tester);
+      }
+      // Анимации итога идут цепочкой, каждой нужен свой кадр.
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      expect(find.text('Готово').hitTestable(), findsOneWidget);
+    }
+
+    group('аналитика', () {
+      testWidgets('тап по плитке пишет открытие «Мудрости»', (tester) async {
+        await tester.pumpWidget(buildApp());
+        await settle(tester);
+
+        await tester.tap(entry('Мудрость дня'));
+        await settle(tester);
+
+        final opened = analytics.single('wisdom_opened');
+        expect(opened['source'], 'tile');
+        expect(opened['day_offset'], 0);
+        expect(opened['already_completed'], false);
+      });
+
+      testWidgets('выход до итога пишет глубину чтения', (tester) async {
+        await tester.pumpWidget(buildApp());
+        await settle(tester);
+        await tester.tap(entry('Мудрость дня'));
+        await settle(tester);
+
+        await tester.tap(find.byTooltip('Назад'));
+        await settle(tester);
+
+        final closed = analytics.single('wisdom_closed');
+        expect(closed['pages_seen'], 1);
+        expect(closed['completed'], false);
+        expect(closed['pages_total'], greaterThan(1));
+      });
+
+      testWidgets('первый итог дня пишет завершение и зажжённую лампаду', (
+        tester,
+      ) async {
+        await tester.pumpWidget(buildApp());
+        await settle(tester);
+
+        await reachSummary(tester);
+
+        final completed = analytics.single('wisdom_completed');
+        expect(completed['counts_streak'], true);
+        expect(completed['lifetime_days'], 1);
+        expect(analytics.single('lamp_lit'), {
+          'source': 'wisdom',
+          'streak': 1,
+          'restarted': true,
+        });
+      });
+
+      testWidgets('повторный итог ведёт в главу и завершением не считается', (
+        tester,
+      ) async {
+        final progress = _FakeProgressRepository()
+          ..seedWisdomCompleted({dateKey(DateTime.now())});
+        await tester.pumpWidget(buildApp(progressRepository: progress));
+        await settle(tester);
+        await tester.tap(entry('Мудрость дня'));
+        await settle(tester);
+
+        for (var i = 0; i < 8; i++) {
+          final reader = find.descendant(
+            of: find.byType(CardViewerScreen),
+            matching: find.byType(PageView),
+          );
+          if (reader.evaluate().isEmpty) break;
+          await tester.drag(reader, const Offset(0, -600));
+          await settle(tester);
+        }
+
+        expect(analytics.names, isNot(contains('wisdom_completed')));
+        expect(analytics.single('summary_chapter_opened'), {'auto': true});
+      });
+    });
+
+    testWidgets('после первого итога просим оценку, когда юзер ушёл с него', (
+      tester,
+    ) async {
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(buildApp(profileActions: actions));
+      await settle(tester);
+
+      await reachSummary(tester);
+      // Пока юзер смотрит на лампаду, системный диалог не перебивает итог.
+      expect(actions.reviewRequests, 0);
+
+      await tester.tap(find.text('Готово'));
+      await settle(tester);
+
+      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(actions.reviewRequests, 1);
+    });
+
+    testWidgets('после повторного итога оценку не просим', (tester) async {
+      final actions = _FakeProfileActions();
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final progress = _FakeProgressRepository()
+        ..seedWisdomCompleted({dateKey(yesterday)});
+      await tester.pumpWidget(
+        buildApp(progressRepository: progress, profileActions: actions),
+      );
+      await settle(tester);
+
+      await reachSummary(tester);
+      await tester.tap(find.text('Готово'));
+      await settle(tester);
+
+      expect(actions.reviewRequests, 0);
+    });
+
+    testWidgets('ушли до итога: оценку не просим', (tester) async {
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(buildApp(profileActions: actions));
+      await settle(tester);
+
+      await tester.tap(entry('Мудрость дня'));
+      await settle(tester);
+      await tester.tap(find.byTooltip('Назад'));
+      await settle(tester);
+
+      expect(find.byType(CardViewerScreen), findsNothing);
+      expect(actions.reviewRequests, 0);
     });
   });
 }

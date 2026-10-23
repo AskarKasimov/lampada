@@ -10,10 +10,17 @@ _BibleVerseDto _$BibleVerseDtoFromJson(Map<String, dynamic> json) =>
     _BibleVerseDto(
       number: (json['number'] as num).toInt(),
       text: json['text'] as String,
+      interpretation: json['interpretation'] as String?,
+      interpretationRange: json['interpretationRange'] as String?,
     );
 
 Map<String, dynamic> _$BibleVerseDtoToJson(_BibleVerseDto instance) =>
-    <String, dynamic>{'number': instance.number, 'text': instance.text};
+    <String, dynamic>{
+      'number': instance.number,
+      'text': instance.text,
+      'interpretation': instance.interpretation,
+      'interpretationRange': instance.interpretationRange,
+    };
 
 _BibleChapterDto _$BibleChapterDtoFromJson(Map<String, dynamic> json) =>
     _BibleChapterDto(
@@ -22,6 +29,8 @@ _BibleChapterDto _$BibleChapterDtoFromJson(Map<String, dynamic> json) =>
       verses: (json['verses'] as List<dynamic>)
           .map((e) => BibleVerseDto.fromJson(e as Map<String, dynamic>))
           .toList(),
+      interpretationAuthor: json['interpretationAuthor'] as String?,
+      interpretationsChecked: json['interpretationsChecked'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$BibleChapterDtoToJson(_BibleChapterDto instance) =>
@@ -29,4 +38,6 @@ Map<String, dynamic> _$BibleChapterDtoToJson(_BibleChapterDto instance) =>
       'book': instance.book,
       'number': instance.number,
       'verses': instance.verses,
+      'interpretationAuthor': instance.interpretationAuthor,
+      'interpretationsChecked': instance.interpretationsChecked,
     };

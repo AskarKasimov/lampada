@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/streak_flame.dart';
@@ -17,7 +18,9 @@ class WeekStrip extends StatefulWidget {
 
   final DateTime selected;
   final DateTime today;
-  final void Function(DateTime day) onSelect;
+
+  /// Выбранный день и откуда он пришёл: аналитика различает источники.
+  final void Function(DateTime day, DateSelectSource source) onSelect;
 
   /// Ключи `yyyy-MM-dd` дней с активностью. Отмечаются только в месячном
   /// календаре: в полосе недели серию показывает карточка под плитками.
@@ -81,9 +84,9 @@ class _WeekStripState extends State<WeekStrip> {
     if (_controller.hasClients) _controller.jumpToPage(_initialPage + offset);
   }
 
-  void _select(DateTime day) {
+  void _select(DateTime day, DateSelectSource source) {
     setState(() => _showWeek(day));
-    widget.onSelect(day);
+    widget.onSelect(day, source);
   }
 
   Future<void> _openMonth() async {
@@ -106,7 +109,7 @@ class _WeekStripState extends State<WeekStrip> {
         litDays: widget.litDays,
       ),
     );
-    if (day != null && mounted) _select(day);
+    if (day != null && mounted) _select(day, DateSelectSource.calendar);
   }
 
   @override
@@ -152,7 +155,8 @@ class _WeekStripState extends State<WeekStrip> {
             ),
             if (awayFromToday)
               TextButton(
-                onPressed: () => _select(widget.today),
+                onPressed: () =>
+                    _select(widget.today, DateSelectSource.todayButton),
                 child: Text('Сегодня', style: TextStyle(color: colors.accent)),
               ),
           ],
@@ -188,7 +192,7 @@ class _WeekStripState extends State<WeekStrip> {
     isSelected: dateKey(day) == dateKey(widget.selected),
     isToday: dateKey(day) == dateKey(widget.today),
     isFuture: dateKey(day).compareTo(dateKey(widget.today)) > 0,
-    onTap: () => _select(day),
+    onTap: () => _select(day, DateSelectSource.weekTap),
   );
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
@@ -24,6 +25,8 @@ import 'package:lampada/features/daily_cards/presentation/providers/providers.da
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/fake_analytics.dart';
 
 class _CourseCardsRepository implements DayCardsRepository {
   _CourseCardsRepository({Map<int, int> failuresRemaining = const {}})
@@ -64,10 +67,11 @@ class _CourseCardsRepository implements DayCardsRepository {
 class _ProgressRepository implements DayProgressRepository {
   final readTypes = <CardType>{};
   final markReadCalls = <CardType>[];
+  final visited = <String>{};
 
   @override
   Future<Result<DayProgress>> loadToday() async =>
-      Success(DayProgress(readTypes: readTypes, visitedDays: const {}));
+      Success(DayProgress(readTypes: readTypes, visitedDays: {...visited}));
 
   @override
   Future<Result<DayProgress>> markRead(
@@ -77,7 +81,10 @@ class _ProgressRepository implements DayProgressRepository {
   }) async {
     markReadCalls.add(type);
     readTypes.add(type);
-    return Success(DayProgress(readTypes: readTypes, visitedDays: const {}));
+    if (markVisited) visited.add(dateKey(date ?? DateTime.now()));
+    return Success(
+      DayProgress(readTypes: readTypes, visitedDays: {...visited}),
+    );
   }
 
   @override
@@ -185,8 +192,10 @@ void main() {
   late SharedPreferences prefs;
   late _CourseCardsRepository cards;
   late _ProgressRepository progress;
+  late FakeAnalytics analytics;
 
   setUp(() async {
+    analytics = FakeAnalytics();
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     cards = _CourseCardsRepository();
@@ -200,6 +209,7 @@ void main() {
   }) => ProviderScope(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
+      analyticsProvider.overrideWithValue(analytics),
       dayCardsRepositoryProvider.overrideWithValue(cards),
       dayProgressRepositoryProvider.overrideWithValue(progress),
       if (courseProgressRepository != null)
@@ -454,6 +464,25 @@ void main() {
     expect(stored['completedTopics'], [3]);
   });
 
+  testWidgets('засчитанная тема пишет завершение и зажжённую лампаду', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(analytics.single('course_topic_completed'), {
+      'topic': 3,
+      'topics_completed': 1,
+    });
+    expect(analytics.single('lamp_lit'), {
+      'source': 'course',
+      'streak': 1,
+      'restarted': true,
+    });
+  });
+
   testWidgets('вмещающееся предложение длиннее 150 не требует полного экрана', (
     tester,
   ) async {
@@ -523,6 +552,7 @@ void main() {
             as Map<String, dynamic>;
     expect(stored['completedTopics'], contains(365));
     expect(progress.readTypes, {CardType.basics});
+    expect(analytics.names, contains('course_finished'));
     final dots = tester.widget<ProgressDots>(find.byType(ProgressDots));
     expect(dots.count, 1);
     await tester.drag(find.byType(PageView), const Offset(0, -500));

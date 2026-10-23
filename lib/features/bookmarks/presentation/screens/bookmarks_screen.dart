@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
@@ -43,6 +45,16 @@ class BookmarksScreen extends ConsumerWidget {
                 final removed = await ref
                     .read(bookmarksProvider.notifier)
                     .remove(bookmark.id);
+                if (removed) {
+                  ref
+                      .read(analyticsProvider)
+                      .log(
+                        AnalyticsEvent.bookmarkRemoved(
+                          kind: bookmark.kind.name,
+                          placement: BookmarkPlacement.listSwipe,
+                        ),
+                      );
+                }
                 if (!removed && context.mounted) {
                   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                     const SnackBar(

@@ -25,6 +25,10 @@ abstract class DayProgressDto with _$DayProgressDto {
 
     /// Даты (yyyy-MM-dd), в которые «Мудрость дня» дочитана до экрана итога.
     @Default(<String>[]) List<String> wisdomCompletedDays,
+
+    /// Момент (ISO 8601, локальное время) первого завершения «Мудрости дня»
+    /// за [date]. От него отсчитываются дневные напоминания.
+    String? wisdomCompletedAt,
   }) = _DayProgressDto;
 
   factory DayProgressDto.fromJson(Map<String, dynamic> json) =>

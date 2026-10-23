@@ -239,4 +239,48 @@ void main() {
     final progress = (result as Success<DayProgress>).value;
     expect(progress.readTypes, {CardType.quote});
   });
+
+  group('время прочтения «Мудрости дня»', () {
+    // От него отсчитываются дневные напоминания о святом и курсе; расписание
+    // пересобирается часто, поэтому момент нужно хранить, а не брать «сейчас».
+    test('первое завершение сегодня запоминает момент', () async {
+      fixedNow = DateTime(2026, 7, 17, 10, 30);
+      final repo = await build();
+
+      final p = _unwrap(await repo.completeWisdom());
+
+      expect(p.wisdomCompletedAt, DateTime(2026, 7, 17, 10, 30));
+    });
+
+    test('повторное завершение не сдвигает момент', () async {
+      fixedNow = DateTime(2026, 7, 17, 10, 30);
+      final repo = await build();
+      await repo.completeWisdom();
+
+      fixedNow = DateTime(2026, 7, 17, 15);
+      final p = _unwrap(await repo.completeWisdom());
+
+      expect(p.wisdomCompletedAt, DateTime(2026, 7, 17, 10, 30));
+    });
+
+    test('завершение другого дня момент не ставит', () async {
+      fixedNow = DateTime(2026, 7, 17, 10, 30);
+      final repo = await build();
+
+      final p = _unwrap(await repo.completeWisdom(date: DateTime(2026, 7, 16)));
+
+      expect(p.wisdomCompletedAt, isNull);
+    });
+
+    test('назавтра вчерашний момент не считается сегодняшним', () async {
+      fixedNow = DateTime(2026, 7, 17, 10, 30);
+      final repo = await build();
+      await repo.completeWisdom();
+
+      fixedNow = DateTime(2026, 7, 18, 8);
+      final p = _unwrap(await repo.loadToday());
+
+      expect(p.wisdomCompletedAt, isNull);
+    });
+  });
 }

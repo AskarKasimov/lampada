@@ -31,6 +31,10 @@ abstract class DayProgress with _$DayProgress {
     /// Даты (yyyy-MM-dd), в которые «Мудрость дня» дочитана до экрана итога.
     /// Праздничное появление итога показывается только в первый раз.
     @Default(<String>{}) Set<String> wisdomCompletedDays,
+
+    /// Когда сегодня впервые дочитана «Мудрость дня»; null, если ещё нет.
+    /// От этого момента отсчитываются напоминания о святом и курсе.
+    DateTime? wisdomCompletedAt,
   }) = _DayProgress;
 
   bool isRead(CardType type) => readTypes.contains(type);

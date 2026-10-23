@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/reminders/data/services/notification_service.dart';
 import 'package:lampada/features/reminders/domain/entities/planned_reminder.dart';
 import 'package:lampada/features/reminders/domain/repositories/reminder_repository.dart';
 import 'package:lampada/features/reminders/presentation/providers/providers.dart';
+
+import '../../../../support/fake_analytics.dart';
 
 class _RejectingReminderRepository implements ReminderRepository {
   @override
@@ -36,7 +39,7 @@ class _GrantingNotificationService implements NotificationService {
   Future<void> cancelAll() async {}
 
   @override
-  Future<void> init({void Function()? onTap}) async {}
+  Future<void> init({void Function(NotificationTap tap)? onTap}) async {}
 
   @override
   Future<bool> isPermitted() async => true;
@@ -98,5 +101,49 @@ void main() {
     expect(enabled, isFalse);
     expect(repository.saved.enabled, isFalse);
     expect(repository.saved.asked, isTrue);
+  });
+
+  group('переключатель в профиле', () {
+    Future<FakeAnalytics> toggle({
+      required bool enabled,
+      NotificationService? service,
+    }) async {
+      final analytics = FakeAnalytics();
+      final container = ProviderContainer(
+        overrides: [
+          reminderRepositoryProvider.overrideWithValue(
+            _SavingReminderRepository(),
+          ),
+          notificationServiceProvider.overrideWithValue(
+            service ?? _GrantingNotificationService(),
+          ),
+          analyticsProvider.overrideWithValue(analytics),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(reminderSettingsProvider.future);
+      await container
+          .read(reminderSettingsProvider.notifier)
+          .setEnabled(enabled: enabled);
+      return analytics;
+    }
+
+    test('включение пишет ответ системы', () async {
+      final analytics = await toggle(
+        enabled: true,
+        service: _DenyingNotificationService(),
+      );
+
+      expect(analytics.single('reminders_toggled'), {
+        'enabled': true,
+        'os_granted': false,
+      });
+    });
+
+    test('выключение пишется без запроса к системе', () async {
+      final analytics = await toggle(enabled: false);
+
+      expect(analytics.single('reminders_toggled'), {'enabled': false});
+    });
   });
 }

@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/reading_overflow_listener.dart';
@@ -11,9 +13,11 @@ import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/screens/full_card_text_screen.dart';
-import '../../../daily_cards/presentation/widgets/card_content.dart';
 import '../../../daily_cards/presentation/widgets/reader_progress_rail.dart';
 import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
+import '../../../reading/domain/entities/daily_reading.dart';
+import '../../../reading/presentation/widgets/interpretation_sheet.dart';
+import '../../../reading/presentation/widgets/verse_view.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
 import '../providers/providers.dart';
@@ -26,8 +30,13 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
     this.initialVerse = 1,
     this.onClose,
     this.showClose = true,
+    this.openSource = BibleOpenSource.tab,
     super.key,
   });
+
+  /// Откуда открыта глава: аналитика отличает первый вход, каталог,
+  /// чтение дня и закладку.
+  final BibleOpenSource openSource;
 
   final BibleBook book;
   final int chapter;
@@ -43,7 +52,12 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
   ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
 }
 
-typedef _ReadingVerse = ({BibleBook book, int chapter, BibleVerse verse});
+typedef _ReadingVerse = ({
+  BibleBook book,
+  int chapter,
+  BibleVerse verse,
+  String? interpretationAuthor,
+});
 
 class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   final _fullTextNeeded = <String, bool>{};
@@ -51,6 +65,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   late BibleBook _book = widget.book;
   late int _chapter = widget.chapter;
   late int _initialVerse = widget.initialVerse;
+  late BibleOpenSource _openSource = widget.openSource;
   PageController? _controller;
   final _verses = <_ReadingVerse>[];
   int _page = 0;
@@ -96,16 +111,23 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         _controller = PageController(initialPage: _page);
         _verses.addAll([
           for (final verse in chapter.verses)
-            (book: _book, chapter: _chapter, verse: verse),
+            (
+              book: _book,
+              chapter: _chapter,
+              verse: verse,
+              interpretationAuthor: chapter.interpretationAuthor,
+            ),
         ]);
         _lastBook = _book;
         _lastChapter = _chapter;
         _loadingInitial = false;
       });
+      _logOpened(_book, _chapter, _openSource);
       ref.read(bibleChapterStatusesProvider.notifier).refresh();
       _saveReadingPosition(_page);
     } on Object catch (error) {
       if (!mounted || revision != _loadRevision) return;
+      _logLoadFailed(error);
       setState(() {
         _loadingInitial = false;
         _initialError = error;
@@ -139,16 +161,23 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       setState(() {
         _verses.addAll([
           for (final verse in chapter.verses)
-            (book: target.$1, chapter: target.$2, verse: verse),
+            (
+              book: target.$1,
+              chapter: target.$2,
+              verse: verse,
+              interpretationAuthor: chapter.interpretationAuthor,
+            ),
         ]);
         _lastBook = target.$1;
         _lastChapter = target.$2;
         _loadingNext = false;
       });
+      _logOpened(target.$1, target.$2, BibleOpenSource.next);
       ref.read(bibleChapterStatusesProvider.notifier).refresh();
       _saveReadingPosition(_page);
     } on Object catch (error) {
       if (!mounted || revision != _loadRevision) return;
+      _logLoadFailed(error);
       setState(() {
         _loadingNext = false;
         _nextError = error;
@@ -202,9 +231,40 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       return;
     }
     ref
+        .read(analyticsProvider)
+        .log(
+          AnalyticsEvent.bibleChapterCompleted(
+            book: verse.book.code,
+            chapter: verse.chapter,
+          ),
+        );
+    ref
         .read(bibleChapterStatusesProvider.notifier)
         .markRead(verse.book.code, verse.chapter);
   }
+
+  void _logLoadFailed(Object error) => ref
+      .read(analyticsProvider)
+      .log(
+        AnalyticsEvent.contentLoadFailed(
+          content: LoadedContent.bibleChapter,
+          kind: failureKindOf(error),
+        ),
+      );
+
+  void _logRetry() => ref
+      .read(analyticsProvider)
+      .log(AnalyticsEvent.contentRetryTapped(LoadedContent.bibleChapter));
+
+  void _logOpened(BibleBook book, int chapter, BibleOpenSource source) => ref
+      .read(analyticsProvider)
+      .log(
+        AnalyticsEvent.bibleChapterOpened(
+          book: book.code,
+          chapter: chapter,
+          source: source,
+        ),
+      );
 
   Future<void> _selectChapter() async {
     final target = await Navigator.of(context).push<(BibleBook, int, int)>(
@@ -216,6 +276,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     _book = target.$1;
     _chapter = target.$2;
     _initialVerse = target.$3;
+    _openSource = BibleOpenSource.catalog;
     _verses.clear();
     _lastBook = null;
     _lastChapter = null;
@@ -333,6 +394,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
               const Text('Не удалось открыть чтение'),
               TextButton(
                 onPressed: () {
+                  _logRetry();
                   ref.invalidate(bibleChapterProvider((_book.code, _chapter)));
                   _loadInitial();
                 },
@@ -371,6 +433,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
                       onPressed: () {
                         final target = _nextTarget;
                         if (target == null) return;
+                        _logRetry();
                         ref.invalidate(
                           bibleChapterProvider((target.$1.code, target.$2)),
                         );
@@ -380,18 +443,27 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
                     ),
             );
           }
-          final itemCard = _cardFor(_verses[index]);
+          final item = _verses[index];
+          final itemCard = _cardFor(item);
+          final verse = _verseOf(item);
           return ReadingOverflowListener(
             key: ValueKey(itemCard.id),
             onChanged: (needed) {
               if (_fullTextNeeded[itemCard.id] == needed) return;
               setState(() => _fullTextNeeded[itemCard.id] = needed);
             },
-            child: CardContent(
-              card: itemCard,
-              showBadge: false,
-              showSourceDash: false,
-              scrollable: false,
+            // Тот же вид стиха, что в чтении дня: толкование открывается
+            // кнопкой под стихом, к которому написано.
+            child: VerseView(
+              verse: verse,
+              shareContent: SharedContent.bibleVerse,
+              onOpenInterpretation: verse.hasInterpretation
+                  ? () => InterpretationSheet.show(
+                      context,
+                      verse: verse,
+                      author: item.interpretationAuthor,
+                    )
+                  : null,
             ),
           );
         },
@@ -420,6 +492,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             BookmarkButton(bookmark: bookmark, iconSize: 28, buttonSize: 56),
             AppShareButton(
               text: '${bookmark.text}\n\n— $source',
+              content: SharedContent.bibleVerse,
               iconSize: 28,
               buttonSize: 56,
             ),
@@ -442,6 +515,14 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     type: CardType.reading,
     body: position.verse.text,
     source: '${position.chapter}:${position.verse.number}',
+  );
+
+  Verse _verseOf(_ReadingVerse position) => Verse(
+    number: position.verse.number,
+    chapter: position.chapter,
+    text: position.verse.text,
+    interpretation: position.verse.interpretation,
+    interpretationRange: position.verse.interpretationRange,
   );
 
   Widget _chapterProgress(_ReadingVerse position, AppColorsExtension colors) {

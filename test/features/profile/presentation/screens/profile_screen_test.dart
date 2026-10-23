@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_event.dart';
+import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/profile/presentation/providers/providers.dart';
@@ -10,6 +12,8 @@ import 'package:lampada/features/reminders/data/services/notification_service.da
 import 'package:lampada/features/reminders/domain/entities/planned_reminder.dart';
 import 'package:lampada/features/reminders/presentation/providers/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/fake_analytics.dart';
 
 /// Настоящий сервис дёргает url_launcher/share_plus/in_app_review — их
 /// платформенных каналов в `flutter test` нет. Фейк только записывает вызовы.
@@ -26,7 +30,10 @@ class _FakeProfileActionsService implements ProfileActionsService {
   Future<void> openUrl(String url) async => openedUrls.add(url);
 
   @override
-  Future<void> shareApp() async => shareCalls++;
+  Future<ShareOutcome?> shareApp() async {
+    shareCalls++;
+    return ShareOutcome.success;
+  }
 
   @override
   Future<bool> requestReview() async {
@@ -37,7 +44,7 @@ class _FakeProfileActionsService implements ProfileActionsService {
 
 class _NotificationService implements NotificationService {
   @override
-  Future<void> init({void Function()? onTap}) async {}
+  Future<void> init({void Function(NotificationTap tap)? onTap}) async {}
   @override
   Future<bool> requestPermission() async => true;
   @override
@@ -53,8 +60,10 @@ void main() {
 
   late SharedPreferences prefs;
   late _FakeProfileActionsService actions;
+  late FakeAnalytics analytics;
 
   setUp(() async {
+    analytics = FakeAnalytics();
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     actions = _FakeProfileActionsService();
@@ -65,6 +74,7 @@ void main() {
       sharedPreferencesProvider.overrideWithValue(prefs),
       profileActionsServiceProvider.overrideWithValue(actions),
       notificationServiceProvider.overrideWithValue(_NotificationService()),
+      analyticsProvider.overrideWithValue(analytics),
     ],
     child: MaterialApp(
       theme: AppTheme.light,
@@ -238,5 +248,51 @@ void main() {
       actions.openedUrls.single,
       'https://sites.google.com/view/lampada-terms-of-use/',
     );
+  });
+
+  group('аналитика профиля', () {
+    testWidgets('отправка приложения пишет исход', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Поделиться приложением'));
+      await tester.pumpAndSettle();
+
+      expect(analytics.single('content_shared'), {
+        'content': 'app',
+        'method': 'button',
+        'result': 'success',
+      });
+    });
+
+    testWidgets('запрос оценки из профиля помечен источником', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Оставить отзыв в App Store'));
+      await tester.pumpAndSettle();
+
+      expect(analytics.single('review_requested'), {'trigger': 'profile'});
+    });
+
+    testWidgets('смена темы пишет выбранную тему', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Тёмная'));
+      await tester.pumpAndSettle();
+
+      expect(analytics.single('theme_changed'), {'theme': 'dark'});
+    });
+
+    testWidgets('открытие копилки пишет число закладок', (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Закладки'));
+      await tester.pumpAndSettle();
+
+      expect(analytics.single('bookmarks_opened'), {'count': 0});
+    });
   });
 }

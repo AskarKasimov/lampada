@@ -103,6 +103,27 @@ void main() {
     expect(find.text(longText), findsOneWidget);
   });
 
+  testWidgets('толкование — плашка со скруглёнными углами, а не пилюля', (
+    tester,
+  ) async {
+    // Как плитки глав и основные кнопки: капсула выглядела чужой.
+    await tester.pumpWidget(_app(VerseInterpretationButton(onPressed: () {})));
+
+    final material = tester.widget<Material>(
+      find.descendant(
+        of: find.byType(VerseInterpretationButton),
+        matching: find.byType(Material),
+      ),
+    );
+    expect(
+      material.shape,
+      const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+    );
+    expect(material.color, isNot(Colors.transparent));
+  });
+
   testWidgets('кнопка зовёт колбэк', (tester) async {
     var opened = false;
     await tester.pumpWidget(

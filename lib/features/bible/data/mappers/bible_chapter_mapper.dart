@@ -7,7 +7,13 @@ extension BibleChapterMapper on BibleChapterDto {
     number: number,
     verses: [
       for (final verse in verses)
-        BibleVerse(number: verse.number, text: verse.text),
+        BibleVerse(
+          number: verse.number,
+          text: verse.text,
+          interpretation: verse.interpretation,
+          interpretationRange: verse.interpretationRange,
+        ),
     ],
+    interpretationAuthor: interpretationAuthor,
   );
 }

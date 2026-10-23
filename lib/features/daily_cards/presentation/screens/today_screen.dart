@@ -4,17 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_on_show.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../day_story/presentation/providers/providers.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
+import '../../../profile/presentation/providers/providers.dart';
 import '../../../reading/presentation/providers/providers.dart';
 import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
+import '../../domain/entities/day_section.dart';
 import '../../domain/entities/today_cards.dart';
 import '../providers/day_content_provider.dart';
 import '../providers/providers.dart';
@@ -196,9 +202,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
               onPageChanged: (page) {
                 // При выборе даты промежуточные страницы не меняют календарь.
                 if (_pageAnimation != null) return;
-                ref
-                    .read(selectedDateProvider.notifier)
-                    .select(_pageMapper.dateForPage(page));
+                final day = _pageMapper.dateForPage(page);
+                _logDateSelected(ref, day, DateSelectSource.swipe);
+                ref.read(selectedDateProvider.notifier).select(day);
               },
               itemBuilder: (context, page) =>
                   _TodayDayPage(date: _pageMapper.dateForPage(page)),
@@ -260,13 +266,24 @@ class _SelectedDayContent extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
-            child: TodayOfflineView(
-              date: selected,
-              kind: kind,
-              onRetry: () {
-                ref.invalidate(dayCardsProvider(key));
-                ref.invalidate(dayProgressProvider);
-              },
+            child: AnalyticsOnShow(
+              event: AnalyticsEvent.contentLoadFailed(
+                content: LoadedContent.day,
+                kind: kind.name,
+              ),
+              child: TodayOfflineView(
+                date: selected,
+                kind: kind,
+                onRetry: () {
+                  ref
+                      .read(analyticsProvider)
+                      .log(
+                        AnalyticsEvent.contentRetryTapped(LoadedContent.day),
+                      );
+                  ref.invalidate(dayCardsProvider(key));
+                  ref.invalidate(dayProgressProvider);
+                },
+              ),
             ),
           ),
           const _CourseHomeSection(),
@@ -302,8 +319,10 @@ class _Header extends ConsumerWidget {
             selected: selected,
             today: DateTime.now(),
             litDays: progress?.visitedDays ?? const {},
-            onSelect: (day) =>
-                ref.read(selectedDateProvider.notifier).select(day),
+            onSelect: (day, source) {
+              _logDateSelected(ref, day, source);
+              ref.read(selectedDateProvider.notifier).select(day);
+            },
           ),
         ],
       ),
@@ -344,10 +363,22 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       day.cards.where((c) => c.type != CardType.basics).toList()
         ..sort((a, b) => a.type.index.compareTo(b.type.index));
 
-  Future<void> _openWisdom() async {
+  Future<void> _openWisdom({OpenSource source = OpenSource.tile}) async {
     if (widget.content.readingIsLoading) return;
     final pages = _pages;
     final firstUnread = pages.indexWhere((card) => !_isRead(card));
+    final completedBefore = _wisdomEverCompleted;
+    ref
+        .read(analyticsProvider)
+        .log(
+          AnalyticsEvent.wisdomOpened(
+            source: source,
+            dayOffset: dayOffset(date),
+            cardsTotal: pages.length,
+            resumed: firstUnread > 0,
+            alreadyCompleted: progress.isWisdomCompletedOn(date),
+          ),
+        );
     // Открывается внутри вкладки, а не модально: навбар остаётся виден.
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -361,7 +392,19 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       ),
     );
     if (mounted) await _maybeAskReminders();
+    if (mounted && !completedBefore && _wisdomEverCompleted) {
+      ref
+          .read(analyticsProvider)
+          .log(AnalyticsEvent.reviewRequested(ReviewTrigger.firstCompletion));
+      await ref.read(profileActionsServiceProvider).requestReview();
+    }
   }
+
+  /// Оценку просим один раз: когда юзер впервые прошёл «Мудрость дня» и ушёл
+  /// с итога. Пока он смотрит на лампаду, системный диалог её не перекрывает.
+  bool get _wisdomEverCompleted =>
+      ref.read(dayProgressProvider).value?.wisdomCompletedDays.isNotEmpty ??
+      false;
 
   /// Просит разрешение после закрытия контента, не на старте сессии.
   Future<void> _maybeAskReminders() async {
@@ -369,16 +412,31 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     await _maybeAskForReminders(context, ref);
   }
 
+  /// Открытие рассказа считается прочтением: напоминание о святом звало
+  /// именно открыть его.
   Future<void> _openStory(
     BuildContext context,
     String title,
-    String storyUrl,
-  ) => Navigator.of(context, rootNavigator: true).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (_) => DayStoryScreen(title: title, storyUrl: storyUrl),
-    ),
-  );
+    String storyUrl, {
+    OpenSource source = OpenSource.tile,
+  }) {
+    ref
+        .read(analyticsProvider)
+        .log(
+          AnalyticsEvent.storyOpened(
+            source: source,
+            dayOffset: dayOffset(date),
+            hasIcon: widget.content.iconUrl != null,
+          ),
+        );
+    unawaited(ref.read(readStoryDaysProvider.notifier).markRead(date));
+    return Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => DayStoryScreen(title: title, storyUrl: storyUrl),
+      ),
+    );
+  }
 
   bool _isRead(DayCard card) => progress.isReadOn(date, card.type);
 
@@ -410,10 +468,41 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     }
   }
 
+  /// Открывает раздел по просьбе приветствия или напоминания, когда
+  /// сегодняшний день загружен. «Мудрость» ждёт и Евангелие, как и тап по
+  /// плитке. Если раздела у дня нет, просьбу просто снимаем.
+  void _openRequestedSection(List<DayCard> pages) {
+    if (!_isToday) return;
+    final section = ref.watch(openDaySectionRequestProvider)?.section;
+    if (section == DaySection.wisdom && widget.content.readingIsLoading) {
+      return;
+    }
+    if (section != DaySection.wisdom && section != DaySection.story) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final origin = ref
+          .read(openDaySectionRequestProvider.notifier)
+          .consume(section!);
+      if (origin == null) return;
+      final source = OpenSource.values.byName(origin.name);
+      switch (section) {
+        case DaySection.wisdom when pages.isNotEmpty:
+          _openWisdom(source: source);
+        case DaySection.story when _hasStory:
+          _openStory(context, day.title!, day.storyUrl!, source: source);
+        default:
+          break;
+      }
+    });
+  }
+
+  bool get _hasStory => (day.title ?? '').isNotEmpty && day.storyUrl != null;
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final pages = _pages;
+    _openRequestedSection(pages);
     final blocks = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
@@ -469,6 +558,25 @@ class _CourseHomeSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final topic = ref.watch(courseTopicProvider);
     final colors = AppColorsExtension.of(context);
+    // Курс не зависит от дня, поэтому просьбу из напоминания о курсе
+    // исполняет сама секция, как только тема загружена.
+    if (topic.hasValue &&
+        ref.watch(openDaySectionRequestProvider)?.section ==
+            DaySection.course) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        final origin = ref
+            .read(openDaySectionRequestProvider.notifier)
+            .consume(DaySection.course);
+        if (origin != null && topic.value != null) {
+          openCourseReader(
+            context,
+            ref,
+            source: OpenSource.values.byName(origin.name),
+          );
+        }
+      });
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -486,9 +594,18 @@ class _CourseHomeSection extends ConsumerWidget {
                 .value
                 ?.length,
             onTap: () => openCourseReader(context, ref),
-            onInfo: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const PlansInfoScreen()),
-            ),
+            onInfo: () {
+              ref
+                  .read(analyticsProvider)
+                  .log(
+                    AnalyticsEvent.courseInfoOpened(CourseInfoScreen.plansInfo),
+                  );
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const PlansInfoScreen(),
+                ),
+              );
+            },
           )
         else
           Padding(
@@ -498,20 +615,45 @@ class _CourseHomeSection extends ConsumerWidget {
                     'Загружаем «Основы веры»',
                     style: TextStyle(color: colors.homeSubtitle),
                   )
-                : Column(
-                    children: [
-                      const Text('Не удалось загрузить «Основы веры»'),
-                      TextButton(
-                        onPressed: () => ref.invalidate(courseTopicProvider),
-                        child: const Text('Повторить'),
-                      ),
-                    ],
+                : AnalyticsOnShow(
+                    event: AnalyticsEvent.contentLoadFailed(
+                      content: LoadedContent.courseTopic,
+                      kind: failureKindOf(topic.error),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text('Не удалось загрузить «Основы веры»'),
+                        TextButton(
+                          onPressed: () {
+                            ref
+                                .read(analyticsProvider)
+                                .log(
+                                  AnalyticsEvent.contentRetryTapped(
+                                    LoadedContent.courseTopic,
+                                  ),
+                                );
+                            ref.invalidate(courseTopicProvider);
+                          },
+                          child: const Text('Повторить'),
+                        ),
+                      ],
+                    ),
                   ),
           ),
       ],
     );
   }
 }
+
+void _logDateSelected(WidgetRef ref, DateTime day, DateSelectSource source) =>
+    ref
+        .read(analyticsProvider)
+        .log(
+          AnalyticsEvent.dateSelected(
+            source: source,
+            dayOffset: dayOffset(day),
+          ),
+        );
 
 Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
   final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
@@ -525,7 +667,8 @@ Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
   await Navigator.of(context, rootNavigator: true).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
-      builder: (_) => const ReminderPermissionScreen(),
+      builder: (_) =>
+          const ReminderPermissionScreen(trigger: ReminderPromptTrigger.wisdom),
     ),
   );
 }

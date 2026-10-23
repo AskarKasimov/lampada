@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_event.dart';
+import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
+
+import '../../support/fake_analytics.dart';
 
 class _RecordingSharePlatform extends SharePlatform {
   ShareParams? params;
@@ -22,11 +27,18 @@ void main() {
     SharePlatform.instance = platform;
     addTearDown(() => SharePlatform.instance = originalPlatform);
 
+    final analytics = FakeAnalytics();
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (_) => const AppShareButton(text: 'Текст материала'),
+      ProviderScope(
+        overrides: [analyticsProvider.overrideWithValue(analytics)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (_) => const AppShareButton(
+                text: 'Текст материала',
+                content: SharedContent.quote,
+              ),
+            ),
           ),
         ),
       ),
@@ -45,5 +57,10 @@ void main() {
       'RuStore: https://clck.su/hdeZJ',
     );
     expect(platform.params?.sharePositionOrigin, isNotNull);
+    expect(analytics.single('content_shared'), {
+      'content': 'quote',
+      'method': 'button',
+      'result': 'unavailable',
+    });
   });
 }

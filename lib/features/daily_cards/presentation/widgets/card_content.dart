@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/reading_font_size.dart';
@@ -23,9 +24,14 @@ class CardContent extends StatefulWidget {
     this.showSource = true,
     this.scrollable = true,
     this.scrollController,
+    this.shareContent,
   });
 
   final DayCard card;
+
+  /// Тип материала для аналитики отправки выделенного текста. По умолчанию
+  /// берётся из типа карточки; Библия и рассказ задают свой.
+  final SharedContent? shareContent;
   final bool showBadge;
   final bool showSourceDash;
   final bool showSource;
@@ -43,6 +49,9 @@ class CardContent extends StatefulWidget {
 }
 
 class _CardContentState extends State<CardContent> {
+  SharedContent get _shareContent =>
+      widget.shareContent ?? SharedContent.values.byName(widget.card.type.name);
+
   late final ScrollController _scrollController;
   late final bool _ownsScrollController;
   bool _hasMoreBelow = false;
@@ -182,6 +191,7 @@ class _CardContentState extends State<CardContent> {
   ) => Stack(
     children: [
       SelectableShareArea(
+        content: _shareContent,
         child: SingleChildScrollView(
           controller: _scrollController,
           child: ConstrainedBox(
@@ -244,6 +254,7 @@ class _CardContentState extends State<CardContent> {
       mainAxisSize: MainAxisSize.min,
       children: [
         SelectableShareArea(
+          content: _shareContent,
           child: Text(body, style: bodyStyle, textAlign: TextAlign.center),
         ),
         if (widget.showSource) ...[

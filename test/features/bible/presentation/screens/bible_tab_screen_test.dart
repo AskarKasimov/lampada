@@ -8,6 +8,7 @@ import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
 import 'package:lampada/features/bible/domain/repositories/bible_repository.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
+import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_tab_screen.dart';
 
 class _PendingStatusesRepository implements BibleRepository {
@@ -32,7 +33,47 @@ class _PendingStatusesRepository implements BibleRepository {
   ) => throw UnimplementedError();
 }
 
+/// Чистая установка: места чтения нет, главы грузятся бесконечно.
+class _FreshInstallRepository extends _PendingStatusesRepository {
+  _FreshInstallRepository() {
+    statuses.complete(
+      const Success((
+        lastChapter: null,
+        cached: <BibleChapterId>{},
+        read: <BibleChapterId>{},
+        progress: <BibleChapterId, BibleChapterProgress>{},
+      )),
+    );
+  }
+
+  @override
+  Future<Result<BibleChapter>> getChapter(String book, int chapter) =>
+      Completer<Result<BibleChapter>>().future;
+}
+
 void main() {
+  testWidgets('первый вход открывает Евангелие от Иоанна с первой главы', (
+    tester,
+  ) async {
+    // «В начале было Слово» понятнее новичку, чем родословие у Матфея.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          bibleRepositoryProvider.overrideWithValue(_FreshInstallRepository()),
+        ],
+        child: const MaterialApp(home: BibleTabScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final reader = tester.widget<BibleReaderScreen>(
+      find.byType(BibleReaderScreen),
+    );
+    expect(reader.book.code, 'Jn');
+    expect(reader.chapter, 1);
+  });
+
   for (final fail in [false, true]) {
     testWidgets(
       'вкладка Библии без кнопки закрытия при ${fail ? "ошибке" : "загрузке"} позиции',

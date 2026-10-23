@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/reading_font_size.dart';
@@ -13,9 +14,18 @@ import '../../domain/entities/daily_reading.dart';
 /// Один стих на весь экран — герой ридера (§6). Номер подписью снизу,
 /// чтобы не разбивать сам текст служебной цифрой.
 class VerseView extends StatelessWidget {
-  const VerseView({required this.verse, super.key, this.onOpenInterpretation});
+  const VerseView({
+    required this.verse,
+    super.key,
+    this.onOpenInterpretation,
+    this.shareContent = SharedContent.reading,
+  });
 
   final Verse verse;
+
+  /// Тип материала для аналитики отправки выделенного текста: тот же вид
+  /// стиха показывает и Библия.
+  final SharedContent shareContent;
 
   /// null — у стиха толкования нет, действие не показываем.
   final VoidCallback? onOpenInterpretation;
@@ -30,6 +40,7 @@ class VerseView extends StatelessWidget {
       color: colors.textSecondary,
     );
     return SelectableShareArea(
+      content: shareContent,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableHeight =
@@ -115,9 +126,10 @@ class VerseView extends StatelessWidget {
 /// «Толкование» под стихом — свой тип, чтобы тесты искали по структуре,
 /// а не по тексту кнопки.
 ///
-/// Обведённая пилюля с иконкой, а не текстовая ссылка 12-м кеглем: ссылкой
-/// действие терялось под номером стиха и его просто не находили. Контур, а не
-/// заливка — по §6 высокий контраст остаётся за самим стихом.
+/// Плашка с иконкой, а не текстовая ссылка 12-м кеглем: ссылкой действие
+/// терялось под номером стиха и его просто не находили. Скруглённый
+/// прямоугольник, как плитки глав и основные кнопки; заливка лишь тенью
+/// акцента, чтобы высокий контраст по §6 оставался за самим стихом.
 class VerseInterpretationButton extends StatelessWidget {
   const VerseInterpretationButton({required this.onPressed, super.key});
 
@@ -127,8 +139,10 @@ class VerseInterpretationButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     return Material(
-      color: Colors.transparent,
-      shape: const StadiumBorder(),
+      color: colors.accent.withValues(alpha: 0.1),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onPressed,
@@ -138,22 +152,19 @@ class VerseInterpretationButton extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 44),
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: ShapeDecoration(
-            shape: StadiumBorder(
-              side: BorderSide(color: colors.accent.withValues(alpha: 0.55)),
-            ),
-          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(CupertinoIcons.book, size: 15, color: colors.accent),
               const SizedBox(width: 7),
+              // Акцент на акцентной заливке в светлой теме даёт 4.1:1, ниже
+              // AA для 13pt; тёмный текст держит контраст, иконка — тон.
               Text(
                 'Толкование',
                 style: TextStyle(
                   fontSize: 13,
                   letterSpacing: 0.2,
-                  color: colors.accent,
+                  color: colors.homeIcon,
                 ),
               ),
             ],

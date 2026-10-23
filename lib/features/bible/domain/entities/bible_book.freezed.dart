@@ -14,7 +14,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BibleBook {
 
- String get code; String get title; int get chapterCount;
+ String get code; String get title; int get chapterCount;/// Сокращение из ссылок Азбуки: «Быт», «3Цар», «Посл.Иер». Подписывает
+/// толкования и по нему закладка толкования находит свою главу.
+ String get abbreviation;
 /// Create a copy of BibleBook
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +27,16 @@ $BibleBookCopyWith<BibleBook> get copyWith => _$BibleBookCopyWithImpl<BibleBook>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BibleBook&&(identical(other.code, code) || other.code == code)&&(identical(other.title, title) || other.title == title)&&(identical(other.chapterCount, chapterCount) || other.chapterCount == chapterCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BibleBook&&(identical(other.code, code) || other.code == code)&&(identical(other.title, title) || other.title == title)&&(identical(other.chapterCount, chapterCount) || other.chapterCount == chapterCount)&&(identical(other.abbreviation, abbreviation) || other.abbreviation == abbreviation));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,code,title,chapterCount);
+int get hashCode => Object.hash(runtimeType,code,title,chapterCount,abbreviation);
 
 @override
 String toString() {
-  return 'BibleBook(code: $code, title: $title, chapterCount: $chapterCount)';
+  return 'BibleBook(code: $code, title: $title, chapterCount: $chapterCount, abbreviation: $abbreviation)';
 }
 
 
@@ -45,7 +47,7 @@ abstract mixin class $BibleBookCopyWith<$Res>  {
   factory $BibleBookCopyWith(BibleBook value, $Res Function(BibleBook) _then) = _$BibleBookCopyWithImpl;
 @useResult
 $Res call({
- String code, String title, int chapterCount
+ String code, String title, int chapterCount, String abbreviation
 });
 
 
@@ -62,12 +64,13 @@ class _$BibleBookCopyWithImpl<$Res>
 
 /// Create a copy of BibleBook
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? title = null,Object? chapterCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? title = null,Object? chapterCount = null,Object? abbreviation = null,}) {
   return _then(_self.copyWith(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,chapterCount: null == chapterCount ? _self.chapterCount : chapterCount // ignore: cast_nullable_to_non_nullable
-as int,
+as int,abbreviation: null == abbreviation ? _self.abbreviation : abbreviation // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -152,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String title,  int chapterCount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String title,  int chapterCount,  String abbreviation)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BibleBook() when $default != null:
-return $default(_that.code,_that.title,_that.chapterCount);case _:
+return $default(_that.code,_that.title,_that.chapterCount,_that.abbreviation);case _:
   return orElse();
 
 }
@@ -173,10 +176,10 @@ return $default(_that.code,_that.title,_that.chapterCount);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String title,  int chapterCount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String title,  int chapterCount,  String abbreviation)  $default,) {final _that = this;
 switch (_that) {
 case _BibleBook():
-return $default(_that.code,_that.title,_that.chapterCount);case _:
+return $default(_that.code,_that.title,_that.chapterCount,_that.abbreviation);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -193,10 +196,10 @@ return $default(_that.code,_that.title,_that.chapterCount);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String title,  int chapterCount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String title,  int chapterCount,  String abbreviation)?  $default,) {final _that = this;
 switch (_that) {
 case _BibleBook() when $default != null:
-return $default(_that.code,_that.title,_that.chapterCount);case _:
+return $default(_that.code,_that.title,_that.chapterCount,_that.abbreviation);case _:
   return null;
 
 }
@@ -208,12 +211,15 @@ return $default(_that.code,_that.title,_that.chapterCount);case _:
 
 
 class _BibleBook implements BibleBook {
-  const _BibleBook(this.code, this.title, this.chapterCount);
+  const _BibleBook(this.code, this.title, this.chapterCount, this.abbreviation);
   
 
 @override final  String code;
 @override final  String title;
 @override final  int chapterCount;
+/// Сокращение из ссылок Азбуки: «Быт», «3Цар», «Посл.Иер». Подписывает
+/// толкования и по нему закладка толкования находит свою главу.
+@override final  String abbreviation;
 
 /// Create a copy of BibleBook
 /// with the given fields replaced by the non-null parameter values.
@@ -225,16 +231,16 @@ _$BibleBookCopyWith<_BibleBook> get copyWith => __$BibleBookCopyWithImpl<_BibleB
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BibleBook&&(identical(other.code, code) || other.code == code)&&(identical(other.title, title) || other.title == title)&&(identical(other.chapterCount, chapterCount) || other.chapterCount == chapterCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BibleBook&&(identical(other.code, code) || other.code == code)&&(identical(other.title, title) || other.title == title)&&(identical(other.chapterCount, chapterCount) || other.chapterCount == chapterCount)&&(identical(other.abbreviation, abbreviation) || other.abbreviation == abbreviation));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,code,title,chapterCount);
+int get hashCode => Object.hash(runtimeType,code,title,chapterCount,abbreviation);
 
 @override
 String toString() {
-  return 'BibleBook(code: $code, title: $title, chapterCount: $chapterCount)';
+  return 'BibleBook(code: $code, title: $title, chapterCount: $chapterCount, abbreviation: $abbreviation)';
 }
 
 
@@ -245,7 +251,7 @@ abstract mixin class _$BibleBookCopyWith<$Res> implements $BibleBookCopyWith<$Re
   factory _$BibleBookCopyWith(_BibleBook value, $Res Function(_BibleBook) _then) = __$BibleBookCopyWithImpl;
 @override @useResult
 $Res call({
- String code, String title, int chapterCount
+ String code, String title, int chapterCount, String abbreviation
 });
 
 
@@ -262,12 +268,13 @@ class __$BibleBookCopyWithImpl<$Res>
 
 /// Create a copy of BibleBook
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? title = null,Object? chapterCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? title = null,Object? chapterCount = null,Object? abbreviation = null,}) {
   return _then(_BibleBook(
 null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
 as String,null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,null == chapterCount ? _self.chapterCount : chapterCount // ignore: cast_nullable_to_non_nullable
-as int,
+as int,null == abbreviation ? _self.abbreviation : abbreviation // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

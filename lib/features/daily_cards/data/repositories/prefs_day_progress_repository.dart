@@ -127,6 +127,12 @@ class PrefsDayProgressRepository implements DayProgressRepository {
         wisdomCompletedDays: completed.length > _maxVisitedDays
             ? completed.sublist(completed.length - _maxVisitedDays)
             : completed,
+        // Запоминаем только первое сегодняшнее завершение: повторное
+        // прохождение не должно сдвигать дневные напоминания.
+        wisdomCompletedAt:
+            day == _today && !dto.wisdomCompletedDays.contains(day)
+            ? _clock().toIso8601String()
+            : dto.wisdomCompletedAt,
       );
       await _write(updated);
       return Success(updated.toEntity());

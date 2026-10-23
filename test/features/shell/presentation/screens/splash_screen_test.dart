@@ -11,6 +11,7 @@ import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/onboarding/presentation/screens/welcome_screen.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
 import 'package:lampada/features/shell/presentation/screens/splash_screen.dart';
@@ -111,6 +112,8 @@ void main() {
     await tester.pumpWidget(app(prefs));
     await settle(tester);
 
+    await tester.tap(find.text('Продолжить'));
+    await settle(tester);
     await tester.tap(find.text('Открыть сегодняшний день'));
     await settle(tester);
 
@@ -120,6 +123,9 @@ void main() {
     // Приветствие именно УДАЛЕНО из дерева: pushReplacement, а не push.
     expect(find.byType(WelcomeScreen, skipOffstage: false), findsNothing);
     expect(prefs.getBool('onboarding_shown'), isTrue);
+    // Кнопка обещает сегодняшний день: ведём прямо в чтение, не на главную.
+    expect(find.byType(CardViewerScreen), findsOneWidget);
+    expect(find.text('Мысль дня'), findsOneWidget);
   });
 
   testWidgets('второй запуск приветствие пропускает', (tester) async {

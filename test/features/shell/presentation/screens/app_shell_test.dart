@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
@@ -32,6 +33,8 @@ import 'package:lampada/features/shell/presentation/providers/shell_providers.da
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/fake_analytics.dart';
 
 class _FakeCardsRepository implements DayCardsRepository {
   @override
@@ -146,11 +149,13 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late SharedPreferences prefs;
+  late FakeAnalytics analytics;
 
   /// Разрешение на напоминания спрашивается после первой закрытой карточки
   /// и накрывает шелл своим маршрутом. Тестам про навигацию это мешает,
   /// поэтому считаем, что спросили раньше.
   setUp(() async {
+    analytics = FakeAnalytics();
     SharedPreferences.setMockInitialValues({'flutter.reminders_asked': true});
     prefs = await SharedPreferences.getInstance();
   });
@@ -170,6 +175,7 @@ void main() {
       ),
       readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
       sharedPreferencesProvider.overrideWithValue(prefs),
+      analyticsProvider.overrideWithValue(analytics),
     ],
     child: MaterialApp(
       theme: AppTheme.light.copyWith(platform: platform),
@@ -201,8 +207,8 @@ void main() {
     tester,
   ) async {
     await prefs.setString(
-      'bible_chapter_v1:Mt.1',
-      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"}]}',
+      'bible_chapter_v1:Jn.1',
+      '{"book":"Jn","number":1,"verses":[{"number":1,"text":"Первый стих Иоанна"}]}',
     );
     await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
     await settle(tester);
@@ -218,8 +224,8 @@ void main() {
 
   testWidgets('кнопки читалки Библии не уходят под навбар', (tester) async {
     await prefs.setString(
-      'bible_chapter_v1:Mt.1',
-      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"}]}',
+      'bible_chapter_v1:Jn.1',
+      '{"book":"Jn","number":1,"verses":[{"number":1,"text":"Первый стих Иоанна"}]}',
     );
     tester.view.padding = const FakeViewPadding(bottom: 34 * 3);
     addTearDown(tester.view.reset);
@@ -240,8 +246,8 @@ void main() {
     tester,
   ) async {
     await prefs.setString(
-      'bible_chapter_v1:Mt.1',
-      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"}]}',
+      'bible_chapter_v1:Jn.1',
+      '{"book":"Jn","number":1,"verses":[{"number":1,"text":"Первый стих Иоанна"}]}',
     );
     await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
     await settle(tester);
@@ -255,8 +261,8 @@ void main() {
 
   testWidgets('из Библии навбар переключает на Профиль', (tester) async {
     await prefs.setString(
-      'bible_chapter_v1:Mt.1',
-      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"}]}',
+      'bible_chapter_v1:Jn.1',
+      '{"book":"Jn","number":1,"verses":[{"number":1,"text":"Первый стих Иоанна"}]}',
     );
     await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
     await settle(tester);
@@ -269,27 +275,33 @@ void main() {
     expect(tabIcon(CupertinoIcons.person_fill), findsOneWidget);
   });
 
-  testWidgets('Библия впервые открывает Матфея и возвращает последний стих', (
+  testWidgets('Библия впервые открывает Иоанна и возвращает последний стих', (
     tester,
   ) async {
     await prefs.setString(
-      'bible_chapter_v1:Mt.1',
-      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"},{"number":2,"text":"Второй стих Матфея"}]}',
+      'bible_chapter_v1:Jn.1',
+      '{"book":"Jn","number":1,"verses":[{"number":1,"text":"Первый стих Иоанна"},{"number":2,"text":"Второй стих Иоанна"}]}',
     );
     await tester.pumpWidget(buildApp());
     await settle(tester);
     await tester.tap(tabIcon(CupertinoIcons.book));
     await settle(tester);
-    expect(find.text('Первый стих Матфея'), findsOneWidget);
+    expect(find.text('Первый стих Иоанна'), findsOneWidget);
+    expect(analytics.single('tab_opened'), {'tab': 'bible'});
+    expect(analytics.single('bible_chapter_opened'), {
+      'book': 'Jn',
+      'chapter': 1,
+      'source': 'first_open',
+    });
     expect(find.byType(FloatingNavBar), findsOneWidget);
     await tester.drag(find.byType(PageView), const Offset(0, -500));
     await settle(tester);
-    expect(find.text('Второй стих Матфея'), findsOneWidget);
+    expect(find.text('Второй стих Иоанна'), findsOneWidget);
     await tester.tap(homeIcon(filled: false));
     await settle(tester);
     await tester.tap(tabIcon(CupertinoIcons.book));
     await settle(tester);
-    expect(find.text('Второй стих Матфея'), findsOneWidget);
+    expect(find.text('Второй стих Иоанна'), findsOneWidget);
   });
 
   testWidgets(
@@ -776,8 +788,8 @@ void main() {
     // На этом держится FR-015: тап по пушу обязан открыть «Главную»,
     // где бы юзер ни был в прошлый раз.
     await prefs.setString(
-      'bible_chapter_v1:Mt.1',
-      '{"book":"Mt","number":1,"verses":[{"number":1,"text":"Первый стих Матфея"}]}',
+      'bible_chapter_v1:Jn.1',
+      '{"book":"Jn","number":1,"verses":[{"number":1,"text":"Первый стих Иоанна"}]}',
     );
     final container = ProviderContainer(
       overrides: [

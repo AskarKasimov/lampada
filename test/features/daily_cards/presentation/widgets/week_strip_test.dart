@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_event.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/widgets/streak_flame.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dart';
@@ -7,6 +8,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/week_strip.dar
 void main() {
   final today = DateTime(2026, 9, 27);
   late List<DateTime> selections;
+  late List<DateSelectSource> sources;
 
   Widget app(DateTime selected, {Set<String> litDays = const {}}) =>
       MaterialApp(
@@ -15,12 +17,29 @@ void main() {
             selected: selected,
             today: today,
             litDays: litDays,
-            onSelect: selections.add,
+            onSelect: (day, source) {
+              selections.add(day);
+              sources.add(source);
+            },
           ),
         ),
       );
 
-  setUp(() => selections = []);
+  setUp(() {
+    selections = [];
+    sources = [];
+  });
+
+  testWidgets('выбор дня сообщает, откуда он пришёл', (tester) async {
+    // Аналитика различает тап по дню, «Сегодня» и месячный календарь.
+    await tester.pumpWidget(app(DateTime(2026, 9, 22)));
+
+    await tester.tap(find.text('24'));
+    await tester.pumpWidget(app(DateTime(2026, 9, 24)));
+    await tester.tap(find.text('Сегодня'));
+
+    expect(sources, [DateSelectSource.weekTap, DateSelectSource.todayButton]);
+  });
 
   testWidgets('страницы листаются через границу месяца без выбора дня', (
     tester,

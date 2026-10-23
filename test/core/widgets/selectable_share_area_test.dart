@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_event.dart';
+import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
+
+import '../../support/fake_analytics.dart';
 
 class _RecordingSharePlatform extends SharePlatform {
   ShareParams? params;
@@ -18,13 +23,15 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PageView(
-            children: const [
-              SelectableShareArea(child: Center(child: Text('Первая'))),
-              SelectableShareArea(child: Center(child: Text('Вторая'))),
-            ],
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: PageView(
+              children: const [
+                SelectableShareArea(child: Center(child: Text('Первая'))),
+                SelectableShareArea(child: Center(child: Text('Вторая'))),
+              ],
+            ),
           ),
         ),
       ),
@@ -42,11 +49,16 @@ void main() {
     SharePlatform.instance = platform;
     addTearDown(() => SharePlatform.instance = originalPlatform);
 
+    final analytics = FakeAnalytics();
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: const SelectableShareArea(
-            child: Center(child: Text('Текст материала')),
+      ProviderScope(
+        overrides: [analyticsProvider.overrideWithValue(analytics)],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SelectableShareArea(
+              content: SharedContent.bibleVerse,
+              child: Center(child: Text('Текст материала')),
+            ),
           ),
         ),
       ),
@@ -73,5 +85,10 @@ void main() {
       'RuStore: https://clck.su/hdeZJ',
     );
     expect(platform.params?.sharePositionOrigin, isNotNull);
+    expect(analytics.single('content_shared'), {
+      'content': 'bible_verse',
+      'method': 'selection',
+      'result': 'unavailable',
+    });
   });
 }

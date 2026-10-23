@@ -14,3 +14,13 @@ String dateKey(DateTime date) {
   final d = date.day.toString().padLeft(2, '0');
   return '$y-$m-$d';
 }
+
+/// Сколько календарных дней [date] отстоит от [today] (по умолчанию от
+/// сегодня): 0 сегодня, -1 вчера. UTC-полночь не сдвигается переходом на
+/// летнее время, в отличие от разницы локальных дат.
+int dayOffset(DateTime date, {DateTime? today}) {
+  final now = today ?? DateTime.now();
+  final from = DateTime.utc(now.year, now.month, now.day);
+  final to = DateTime.utc(date.year, date.month, date.day);
+  return to.difference(from).inDays;
+}

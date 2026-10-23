@@ -5,7 +5,9 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/format/app_download_links.dart';
+import '../../../../core/widgets/app_share_button.dart' show shareOutcomeOf;
 
 /// Ссылки на карточки приложения в магазинах нужны получателю, чтобы он мог
 /// установить Лампаду прямо из текста системного листа «Поделиться».
@@ -24,7 +26,9 @@ abstract interface class ProfileActionsService {
   String get reviewLabel;
 
   Future<void> openUrl(String url);
-  Future<void> shareApp();
+
+  /// Исход системного листа; null — исход неизвестен.
+  Future<ShareOutcome?> shareApp();
   Future<bool> requestReview();
 }
 
@@ -50,8 +54,9 @@ class PlatformProfileActionsService implements ProfileActionsService {
       launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
   @override
-  Future<void> shareApp() =>
-      SharePlus.instance.share(ShareParams(text: shareText));
+  Future<ShareOutcome?> shareApp() async => shareOutcomeOf(
+    await SharePlus.instance.share(ShareParams(text: shareText)),
+  );
 
   @override
   Future<bool> requestReview() async {

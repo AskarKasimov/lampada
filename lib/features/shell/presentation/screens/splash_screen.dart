@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/brand_loading_view.dart';
+import '../../../daily_cards/domain/entities/day_section.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../onboarding/presentation/providers/providers.dart';
 import '../../../onboarding/presentation/screens/welcome_screen.dart';
@@ -44,7 +45,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   /// `context` бросает «This widget has been unmounted». Внешне это выглядело
   /// как молчащая кнопка.
   Widget _welcome() => WelcomeScreen(
-    onStart: (welcomeContext) => _replaceWith(welcomeContext, const AppShell()),
+    onStart: (welcomeContext) {
+      // ref сплэша к этому моменту уже недоступен: берём контейнер из
+      // контекста приветствия.
+      ProviderScope.containerOf(welcomeContext, listen: false)
+          .read(openDaySectionRequestProvider.notifier)
+          .request(DaySection.wisdom, origin: SectionRequestOrigin.onboarding);
+      _replaceWith(welcomeContext, const AppShell());
+    },
   );
 
   void _replaceWith(BuildContext context, Widget screen) {

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
@@ -33,16 +36,22 @@ class InterpretationSheet extends StatelessWidget {
     BuildContext context, {
     required Verse verse,
     required String? author,
-  }) => showModalBottomSheet<void>(
-    context: context,
-    // Шторка открывается из вкладки со своим навигатором; без корневого
-    // навигатора её низ ушёл бы под капсулу навбара.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    showDragHandle: true,
-    backgroundColor: AppColorsExtension.of(context).background,
-    builder: (_) => InterpretationSheet(verse: verse, author: author),
-  );
+  }) {
+    ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(analyticsProvider).log(AnalyticsEvent.interpretationOpened());
+    return showModalBottomSheet<void>(
+      context: context,
+      // Шторка открывается из вкладки со своим навигатором; без корневого
+      // навигатора её низ ушёл бы под капсулу навбара.
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColorsExtension.of(context).background,
+      builder: (_) => InterpretationSheet(verse: verse, author: author),
+    );
+  }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
   Bookmark get _bookmark => Bookmark(
@@ -88,7 +97,10 @@ class InterpretationSheet extends StatelessWidget {
                     fontSize: 11.5,
                   ),
                   const Spacer(),
-                  AppShareButton(text: _shareText),
+                  AppShareButton(
+                    text: _shareText,
+                    content: SharedContent.interpretation,
+                  ),
                   BookmarkButton(bookmark: _bookmark),
                 ],
               ),
@@ -104,6 +116,7 @@ class InterpretationSheet extends StatelessWidget {
               const SizedBox(height: 14),
               Flexible(
                 child: SelectableShareArea(
+                  content: SharedContent.interpretation,
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

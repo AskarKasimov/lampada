@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
@@ -13,6 +15,7 @@ import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/entities/day_card.dart';
+import '../../domain/entities/day_progress.dart';
 import '../../domain/split_course_text.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
@@ -77,6 +80,10 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   @override
   void initState() {
     super.initState();
+    // Прогреваем: аналитике при отметке темы нужно состояние «до записи».
+    ref
+      ..read(completedCourseTopicsProvider)
+      ..read(dayProgressProvider);
     final topic = _topicNumber(widget.currentTopic.id);
     if (topic > 1) ref.read(courseTopicByNumberProvider(topic - 1));
     // Старые версии сохраняли позицию на странице завершения, а ОС могла
@@ -209,8 +216,16 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       } else {
         _onPageChanged(_index);
       }
-    } on Object {
+    } on Object catch (error) {
       if (!mounted) return;
+      ref
+          .read(analyticsProvider)
+          .log(
+            AnalyticsEvent.contentLoadFailed(
+              content: LoadedContent.courseTopic,
+              kind: failureKindOf(error),
+            ),
+          );
       setState(() {
         _loading = false;
         _loadErrors.add(previous);
@@ -237,6 +252,12 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   }
 
   Future<void> _completeTopic(int topic) async {
+    // Синхронно, чтобы не задерживать запись: провайдеры прогреты в initState.
+    final completedBefore = ref.read(completedCourseTopicsProvider).value;
+    final litBefore = ref
+        .read(dayProgressProvider)
+        .value
+        ?.isLit(DateTime.now());
     final result = await ref.read(completeCourseTopicProvider)(topic);
     if (!mounted) return;
     setState(() {
@@ -261,7 +282,54 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     // Тема могла сохраниться даже при неудачной записи активности дня.
     ref.invalidate(completedCourseTopicsProvider);
     ref.invalidate(courseTopicProvider);
-    if (result is Success) ref.invalidate(dayProgressProvider);
+    if (result is Success) {
+      ref.invalidate(dayProgressProvider);
+      // После инвалидации: лампаду сравниваем с уже перезагруженным днём.
+      unawaited(_logCompletion(topic, completedBefore, litBefore));
+    }
+  }
+
+  void _openFullText(Route<void> route) {
+    ref.read(analyticsProvider).log(AnalyticsEvent.fullTextOpened('basics'));
+    Navigator.of(context).push(route);
+  }
+
+  /// Тема засчитывается и при восстановлении после сбоя: в аналитику идёт
+  /// только новая отметка. Лампада сравнивается с прогрессом до записи.
+  Future<void> _logCompletion(
+    int topic,
+    Set<int>? completedBefore,
+    bool? litBefore,
+  ) async {
+    final analytics = ref.read(analyticsProvider);
+    if (completedBefore != null && !completedBefore.contains(topic)) {
+      final total = completedBefore.length + 1;
+      analytics.log(
+        AnalyticsEvent.courseTopicCompleted(
+          topic: topic,
+          topicsCompleted: total,
+        ),
+      );
+      if (total >= courseTopicCount) {
+        analytics.log(AnalyticsEvent.courseFinished());
+      }
+    }
+    if (litBefore ?? true) return;
+    final DayProgress after;
+    try {
+      after = await ref.read(dayProgressProvider.future);
+    } on Object {
+      return;
+    }
+    final today = DateTime.now();
+    if (!after.isLit(today)) return;
+    analytics.log(
+      AnalyticsEvent.lampLit(
+        source: LampSource.course,
+        streak: after.streakOn(today),
+        restarted: after.streakOn(today) == 1,
+      ),
+    );
   }
 
   Future<void> _dismiss() async {
@@ -309,6 +377,13 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                             const Text('Тема недоступна'),
                             TextButton(
                               onPressed: () {
+                                ref
+                                    .read(analyticsProvider)
+                                    .log(
+                                      AnalyticsEvent.contentRetryTapped(
+                                        LoadedContent.courseTopic,
+                                      ),
+                                    );
                                 final previous = index < 0;
                                 final number = previous
                                     ? _topicNumber(_pages.first.topic.id) - 1
@@ -364,7 +439,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                           false)
                         ReaderActionButton(
                           tooltip: 'Открыть полный текст',
-                          onPressed: () => Navigator.of(context).push(
+                          onPressed: () => _openFullText(
                             FullCardTextRoute(
                               card: card.copyWith(
                                 body: visible.text.trim(),
@@ -390,6 +465,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                       ),
                       AppShareButton(
                         text: '${card.body}\n\n— ${card.source}',
+                        content: SharedContent.basics,
                         iconSize: 28,
                         buttonSize: 56,
                       ),
@@ -399,11 +475,20 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
             closeColor: colors.homeSubtitle,
             topRightAction: IconButton(
               tooltip: 'О курсе',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const CourseDetailScreen(),
-                ),
-              ),
+              onPressed: () {
+                ref
+                    .read(analyticsProvider)
+                    .log(
+                      AnalyticsEvent.courseInfoOpened(
+                        CourseInfoScreen.courseDetail,
+                      ),
+                    );
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const CourseDetailScreen(),
+                  ),
+                );
+              },
               icon: Icon(
                 CupertinoIcons.info,
                 size: 22,
