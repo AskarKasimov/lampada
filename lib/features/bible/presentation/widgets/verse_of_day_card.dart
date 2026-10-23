@@ -57,9 +57,15 @@ class VerseOfDayCard extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(8, 18, 8, 8),
         decoration: BoxDecoration(
           // Нейтральная подложка: цветные плитки ниже остаются входами в
-          // разделы, а стих читается прямо здесь.
-          color: colors.ink.withValues(alpha: isDark ? 0.07 : 0.045),
+          // разделы, а стих читается прямо здесь. Она непрозрачная: тень
+          // рисуется под всей карточкой и сквозь прозрачную подложку
+          // затемнила бы её.
+          color: Color.alphaBlend(
+            colors.ink.withValues(alpha: isDark ? 0.07 : 0.045),
+            colors.background,
+          ),
           borderRadius: BorderRadius.circular(24),
+          boxShadow: AppTheme.cardShadow(context),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

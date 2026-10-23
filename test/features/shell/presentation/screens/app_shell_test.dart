@@ -320,7 +320,7 @@ void main() {
       await tester.tap(tabIcon(CupertinoIcons.book));
       await settle(tester);
       expect(find.text('Сохранённый стих Иоанна'), findsOneWidget);
-      expect(find.text('3:2'), findsOneWidget);
+      expect(find.text('Ин. 3:2'), findsOneWidget);
       await tester.tap(homeIcon(filled: false));
       await settle(tester);
       expect(find.byType(TodayScreen), findsOneWidget);
@@ -455,7 +455,7 @@ void main() {
     }
   });
 
-  testWidgets('Мудрость дня открывается внутри Главной под навбаром', (
+  testWidgets('Мудрость дня выезжает снизу внутри Главной под навбаром', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
@@ -464,10 +464,12 @@ void main() {
     await settle(tester);
     final wisdom = find.byType(DayWisdomScreen);
     expect(wisdom, findsOneWidget);
-    expect(ModalRoute.of(tester.element(wisdom))!.fullscreenDialog, isFalse);
+    // Снизу, как рассказ «Памяти дня», но навбар остаётся виден.
+    expect(ModalRoute.of(tester.element(wisdom))!.fullscreenDialog, isTrue);
     expect(find.byType(FloatingNavBar), findsOneWidget);
     expect(homeIcon(filled: true), findsOneWidget);
-    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    expect(find.byIcon(CupertinoIcons.arrow_left), findsNothing);
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
     await settle(tester);
     expect(find.byType(DayWisdomScreen), findsNothing);
     expect(find.text('Мудрость дня'), findsOneWidget);

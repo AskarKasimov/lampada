@@ -141,4 +141,40 @@ void main() {
 
     expect(style.color, AppColorsExtension.dark.ink);
   });
+
+  testWidgets('тень карточек главной мягкая и широкая, как у iOS-виджетов', (
+    tester,
+  ) async {
+    late List<BoxShadow> light;
+    late List<BoxShadow> dark;
+    Widget capture(ThemeData theme, void Function(List<BoxShadow>) save) =>
+        MaterialApp(
+          theme: theme,
+          home: Builder(
+            builder: (context) {
+              save(AppTheme.cardShadow(context));
+              return const SizedBox();
+            },
+          ),
+        );
+    await tester.pumpWidget(capture(AppTheme.light, (s) => light = s));
+    await tester.pumpWidget(capture(AppTheme.dark, (s) => dark = s));
+
+    for (final shadows in [light, dark]) {
+      // Широкое рассеянное облако вокруг всей карточки, а не короткая
+      // полоска под нижним краем.
+      final ambient = shadows.reduce(
+        (a, b) => a.blurRadius >= b.blurRadius ? a : b,
+      );
+      expect(ambient.blurRadius, greaterThanOrEqualTo(28));
+      expect(ambient.offset.dx, 0);
+      expect(ambient.offset.dy, lessThan(ambient.blurRadius / 2));
+    }
+    // В светлой теме облако заметное, но мягкое: карточка явно отрывается
+    // от фона и не темнеет по краям.
+    final ambient = light.reduce(
+      (a, b) => a.blurRadius >= b.blurRadius ? a : b,
+    );
+    expect(ambient.color.a, inInclusiveRange(0.10, 0.16));
+  });
 }

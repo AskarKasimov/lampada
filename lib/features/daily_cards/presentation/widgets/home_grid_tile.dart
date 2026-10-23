@@ -1,10 +1,12 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
+import 'frosted_fade.dart';
 
 /// Плитка дня в ряду из двух на главной: иллюстрация на всю плитку и
 /// небольшое название внизу на полосе матового стекла от края до края.
@@ -55,36 +57,43 @@ class HomeGridTile extends StatelessWidget {
       button: true,
       enabled: onTap != null,
       label: semanticsLabel,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(_radius),
-        child: ColoredBox(
-          color: style.tagBackground,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minWidth: double.infinity,
-              minHeight: minHeight,
-            ),
-            // Всё нужное скринридеру уже в подписи плитки.
-            child: ExcludeSemantics(
-              child: Stack(
-                // Название прижато к низу; высоту плитки задаёт минимум или
-                // ряд, а при крупном тексте само название.
-                alignment: AlignmentDirectional.bottomStart,
-                children: [
-                  Positioned.fill(child: background(style)),
-                  SizedBox(
-                    width: double.infinity,
-                    child: _label(context, style),
-                  ),
-                  // Нажатие поверх иллюстрации: иначе волна от тапа
-                  // пряталась бы под иконой.
-                  Positioned.fill(
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: InkWell(onTap: onTap),
+      // Тень снаружи обрезки: внутри ClipRRect её бы срезало.
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(_radius),
+          boxShadow: AppTheme.cardShadow(context),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(_radius),
+          child: ColoredBox(
+            color: style.tagBackground,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: double.infinity,
+                minHeight: minHeight,
+              ),
+              // Всё нужное скринридеру уже в подписи плитки.
+              child: ExcludeSemantics(
+                child: Stack(
+                  // Название прижато к низу; высоту плитки задаёт минимум или
+                  // ряд, а при крупном тексте само название.
+                  alignment: AlignmentDirectional.bottomStart,
+                  children: [
+                    Positioned.fill(child: background(style)),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _label(context, style),
                     ),
-                  ),
-                ],
+                    // Нажатие поверх иллюстрации: иначе волна от тапа
+                    // пряталась бы под иконой.
+                    Positioned.fill(
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: InkWell(onTap: _withHaptic(onTap)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -93,23 +102,32 @@ class HomeGridTile extends StatelessWidget {
     );
   }
 
+  /// Лёгкая отдача на нажатие плитки; выключенная плитка не вибрирует.
+  static VoidCallback? _withHaptic(VoidCallback? onTap) => onTap == null
+      ? null
+      : () {
+          HapticFeedback.lightImpact();
+          onTap();
+        };
+
   Widget _label(BuildContext context, CardTypeStyle style) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tint = style.tagBackground.withValues(alpha: _frostTint);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Верхний край стекла растворяется, а не обрывается линией.
+        FrostedFade(color: tint, blur: _frostBlur, fadesDown: false),
+        _strip(context, tint),
+      ],
+    );
+  }
+
+  Widget _strip(BuildContext context, Color tint) {
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: _frostBlur, sigmaY: _frostBlur),
         child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: style.tagBackground.withValues(alpha: _frostTint),
-            // Светлая кромка сверху: по ней полоса читается как стекло, а не
-            // как заливка.
-            border: Border(
-              top: BorderSide(
-                color: Colors.white.withValues(alpha: isDark ? 0.12 : 0.45),
-                width: 0.5,
-              ),
-            ),
-          ),
+          decoration: BoxDecoration(color: tint),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 12, 12),
             // Отметка всегда справа, а не на новой строке под названием.
@@ -118,7 +136,7 @@ class HomeGridTile extends StatelessWidget {
                 Expanded(
                   // Название всегда в одну строку: если половины ширины
                   // мало, оно чуть уменьшается, а не переносится. Цвет
-                  // текста как у заголовка «Сегодня», а не цвет плитки.
+                  // текста как у приветствия, а не цвет плитки.
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: AlignmentDirectional.centerStart,

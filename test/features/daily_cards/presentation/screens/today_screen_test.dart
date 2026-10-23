@@ -386,7 +386,7 @@ void main() {
     await settle(tester);
     await settle(tester);
 
-    await tester.tap(find.byTooltip('Назад'));
+    await tester.tap(find.byTooltip('Закрыть'));
     await settle(tester);
     await settle(tester);
 
@@ -825,18 +825,14 @@ void main() {
       );
       await settle(tester);
 
-      final today = tester.getRect(find.text('Сегодня'));
-      final date = tester.getRect(
-        find.text(russianDayMonth(DateTime.now()), findRichText: true),
-      );
+      final greeting = tester.getRect(find.text(greetingFor(DateTime.now())));
       final plans = tester.getRect(find.text('Планы'));
       Rect tile(Type type) => tester.getRect(
         find
             .descendant(of: find.byType(type), matching: find.byType(InkWell))
             .first,
       );
-      expect(date.bottom, lessThanOrEqualTo(today.top));
-      expect(today.bottom, lessThanOrEqualTo(tile(DayMemoryTile).top));
+      expect(greeting.bottom, lessThanOrEqualTo(tile(DayMemoryTile).top));
       expect(plans.top, greaterThan(tile(DayWisdomTile).bottom));
       expect(plans.bottom, lessThanOrEqualTo(tile(CourseProgressHeader).top));
       expect(find.text('в своём темпе'), findsNothing);
@@ -844,7 +840,7 @@ void main() {
       expect(plans.top - tile(DayWisdomTile).bottom, greaterThan(16));
     });
 
-    testWidgets('седмица не показывается, память и пост остаются', (
+    testWidgets('седмица и пост не показываются, память остаётся', (
       tester,
     ) async {
       // Строка седмицы почти ничего не сообщала, а шапку перегружала.
@@ -866,13 +862,17 @@ void main() {
       expect(find.textContaining('Седмица'), findsNothing);
       final headerBottom = tester.getBottomLeft(find.byType(HomeHeader)).dy;
 
-      // Память остаётся плиткой дня, пост отмечен в заголовке «Сегодня».
+      // Память остаётся плиткой дня; ни даты, ни поста в шапке нет.
       final nameTop = tester.getTopLeft(find.text('Память дня')).dy;
       expect(nameTop, greaterThan(headerBottom));
-      final today = tester.getRect(find.text('Сегодня'));
-      final fast = find.textContaining('Постный день', findRichText: true);
-      expect(fast, findsOneWidget);
-      expect(tester.getRect(fast).bottom, lessThanOrEqualTo(today.top));
+      expect(find.textContaining('Постный', findRichText: true), findsNothing);
+      expect(
+        find.textContaining(
+          russianDayMonth(DateTime.now()),
+          findRichText: true,
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('напоминание о святом открывает рассказ дня', (tester) async {
@@ -1008,14 +1008,26 @@ void main() {
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      final headerBottom = tester.getBottomLeft(find.text('Сегодня')).dy;
+      final greetingBottom = tester
+          .getBottomLeft(find.text(greetingFor(DateTime.now())))
+          .dy;
       final firstTop = tester.getTopLeft(find.byType(DayWisdomTile).first).dy;
-      expect(firstTop - headerBottom, greaterThanOrEqualTo(4));
+      expect(firstTop - greetingBottom, greaterThanOrEqualTo(4));
 
-      final list = tester.widget<ListView>(find.byType(ListView));
+      // Список уходит под шапку: начинается от верха экрана, а в покое
+      // отступает на всю высоту шапки вместе с зоной растворения.
+      final listFinder = find.byType(ListView);
+      final header = tester.getRect(find.byType(FrostedHomeHeader));
+      expect(tester.getRect(listFinder).top, header.top);
+      final list = tester.widget<ListView>(listFinder);
       final padding = list.padding!.resolve(TextDirection.ltr);
-      expect(padding.top, 0);
+      expect(padding.top, header.height);
       expect(padding.bottom, kFloatingNavInset + 32);
+      expect(
+        firstTop,
+        greaterThanOrEqualTo(header.bottom),
+        reason: 'в покое под размытием ничего не стоит',
+      );
     });
 
     testWidgets('pull-to-refresh обновляет все источники контента дня', (
@@ -1215,7 +1227,7 @@ void main() {
 
       await tester.tap(entry('Мудрость дня'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+      await tester.tap(find.byIcon(CupertinoIcons.xmark));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
@@ -1305,7 +1317,7 @@ void main() {
   });
 
   group('шапка и шторка серии', () {
-    testWidgets('шапка без приветствия показывает серию', (tester) async {
+    testWidgets('шапка здоровается и показывает серию', (tester) async {
       final today = DateTime.now();
       final progress = _FakeProgressRepository()
         ..seedVisited({
@@ -1316,8 +1328,8 @@ void main() {
       await tester.pumpWidget(buildApp(progressRepository: progress));
       await settle(tester);
 
-      expect(find.text('Сегодня'), findsOneWidget);
-      expect(find.textContaining('Добр'), findsNothing);
+      expect(find.text(greetingFor(DateTime.now())), findsOneWidget);
+      expect(find.text('Сегодня'), findsNothing);
       expect(find.bySemanticsLabel('Лампадка: 2 дня подряд'), findsOneWidget);
     });
 
@@ -1369,8 +1381,7 @@ void main() {
         find.textContaining('${months[today.month - 1]} ${today.year}'),
         findsNothing,
       );
-      // Кнопки «Сегодня» из прежнего календаря нет; «Сегодня» на главной
-      // только заголовок раздела.
+      // Кнопки «Сегодня» из прежнего календаря нет.
       expect(find.widgetWithText(TextButton, 'Сегодня'), findsNothing);
     });
 
@@ -1409,7 +1420,7 @@ void main() {
   });
 
   group('конец сессии', () {
-    testWidgets('просмотрщик закрывается стрелкой «Назад» в любой момент', (
+    testWidgets('просмотрщик закрывается крестиком в любой момент', (
       tester,
     ) async {
       // Экран итога стоит только в конце листалки; уйти раньше можно
@@ -1428,7 +1439,7 @@ void main() {
         await settle(tester);
       }
 
-      await tester.tap(find.byTooltip('Назад'));
+      await tester.tap(find.byTooltip('Закрыть'));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);
@@ -1460,7 +1471,7 @@ void main() {
 
       await tester.tap(entry('Мудрость дня'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+      await tester.tap(find.byIcon(CupertinoIcons.xmark));
       await settle(tester);
 
       expect(find.byType(ReminderPermissionScreen), findsOneWidget);
@@ -1471,7 +1482,7 @@ void main() {
       await pumpFresh(tester);
       await tester.tap(entry('Мудрость дня'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+      await tester.tap(find.byIcon(CupertinoIcons.xmark));
       await settle(tester);
 
       await tester.tap(find.text('Не сейчас'));
@@ -1482,7 +1493,7 @@ void main() {
       // системное разрешение всё равно показывается только однажды.
       await tester.tap(entry('Мудрость дня'));
       await settle(tester);
-      await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+      await tester.tap(find.byIcon(CupertinoIcons.xmark));
       await settle(tester);
 
       expect(find.byType(ReminderPermissionScreen), findsNothing);
@@ -1532,7 +1543,7 @@ void main() {
         await tester.tap(entry('Мудрость дня'));
         await settle(tester);
 
-        await tester.tap(find.byTooltip('Назад'));
+        await tester.tap(find.byTooltip('Закрыть'));
         await settle(tester);
 
         final closed = analytics.single('wisdom_closed');
@@ -1626,7 +1637,7 @@ void main() {
 
       await tester.tap(entry('Мудрость дня'));
       await settle(tester);
-      await tester.tap(find.byTooltip('Назад'));
+      await tester.tap(find.byTooltip('Закрыть'));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);

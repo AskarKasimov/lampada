@@ -88,6 +88,27 @@ void main() {
     );
   });
 
+  testWidgets('под карточкой лёгкая тень, подложка непрозрачная', (
+    tester,
+  ) async {
+    await pump(tester);
+
+    final card = tester
+        .widgetList<Container>(
+          find.descendant(
+            of: find.byType(VerseOfDayCard),
+            matching: find.byType(Container),
+          ),
+        )
+        .map((container) => container.decoration)
+        .whereType<BoxDecoration>()
+        .first;
+    expect(card.boxShadow, isNotEmpty);
+    // Тень рисуется под всей карточкой: сквозь полупрозрачную подложку она
+    // затемняла бы саму карточку.
+    expect(card.color!.a, 1);
+  });
+
   testWidgets('«Открыть главу» ведёт во вкладку Библии на этот стих', (
     tester,
   ) async {

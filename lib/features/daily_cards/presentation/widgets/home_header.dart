@@ -1,33 +1,35 @@
-import 'package:flutter/material.dart';
+import 'dart:ui' show ImageFilter;
 
-import '../../../../core/format/russian_date.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
-import 'home_section_header.dart';
+import 'frosted_fade.dart';
 import 'streak_card.dart';
 import 'streak_lamp_icon.dart';
 
-/// Шапка главной: строка даты над крупным «Сегодня», без приветствия, и
-/// лампада серии, которая открывает шторку «Лампадки». Шапка закреплена над
-/// списком, поэтому серия видна и при прокрутке.
-///
-/// Дата и пост стоят одной строкой одного кегля и цвета над заголовком, а
-/// не подписями сбоку: рядом с крупной Lora две мелкие подписи разного
-/// цвета выглядели разрозненно.
+/// Приветствие по времени суток. Отдельной ночи нет: «Доброй ночи»
+/// по-русски прощание, поэтому до 4 утра продолжается вечер.
+String greetingFor(DateTime now) {
+  final hour = now.hour;
+  if (hour >= 4 && hour < 12) return 'Доброе утро!';
+  if (hour >= 12 && hour < 18) return 'Добрый день!';
+  return 'Добрый вечер!';
+}
+
+/// Шапка главной: приветствие и лампада серии, которая открывает шторку
+/// «Лампадки». Даты и поста в шапке нет.
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
-    required this.date,
+    required this.now,
     required this.streak,
     required this.onStreakTap,
-    this.isFast = false,
     super.key,
   });
 
-  final DateTime date;
-
-  /// Пост относится ко всему дню, поэтому отмечен здесь, а не на плитке.
-  final bool isFast;
+  final DateTime now;
 
   /// Текущая серия; null, пока прогресс не загружен.
   final int? streak;
@@ -36,41 +38,20 @@ class HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
     final streak = this.streak;
     return Padding(
       padding:
           AppSpacing.of(context).horizontal +
-          const EdgeInsets.only(top: 8, bottom: 6),
+          const EdgeInsets.only(top: 8, bottom: 8),
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  [
-                    russianDayMonth(date),
-                    if (isFast) 'Постный день',
-                  ].join(' · '),
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.2,
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Semantics(
-                  header: true,
-                  child: Text(
-                    'Сегодня',
-                    style: AppTheme.headingStyle(
-                      context,
-                      fontSize: HomeSectionHeader.titleSize,
-                    ),
-                  ),
-                ),
-              ],
+            child: Semantics(
+              header: true,
+              child: Text(
+                greetingFor(now),
+                style: AppTheme.headingStyle(context, fontSize: 30),
+              ),
             ),
           ),
           if (streak != null) ...[
@@ -79,6 +60,46 @@ class HomeHeader extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Подложка закреплённой шапки, под которую уходит список. Матовое стекло
+/// цвета фона, а ниже зона растворения ([FrostedFade]), где размытие и
+/// подложка плавно сходят на нет. Так у шапки нет чёткой границы, о
+/// которую обрезался бы контент.
+class FrostedHomeHeader extends StatelessWidget {
+  const FrostedHomeHeader({required this.child, super.key});
+
+  final Widget child;
+
+  static const _blur = 12.0;
+  static const _tint = 0.82;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = AppColorsExtension.of(context).background;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: _blur, sigmaY: _blur),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: background.withValues(alpha: _tint),
+              ),
+              child: child,
+            ),
+          ),
+        ),
+        FrostedFade(
+          color: background.withValues(alpha: _tint),
+          blur: _blur,
+          fadesDown: true,
+        ),
+      ],
     );
   }
 }
@@ -97,7 +118,10 @@ class _StreakButton extends StatelessWidget {
       label: 'Лампадка: $streak ${streakDaysLabel(streak)}',
       excludeSemantics: true,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
         borderRadius: BorderRadius.circular(22),
         child: ConstrainedBox(
           // Минимальная зона нажатия по HIG.

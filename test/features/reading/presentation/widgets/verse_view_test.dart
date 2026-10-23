@@ -153,4 +153,13 @@ void main() {
 
     expect(find.byType(SelectableShareArea), findsOneWidget);
   });
+
+  testWidgets('под стихом сокращение книги, глава и стих', (tester) async {
+    await tester.pumpWidget(
+      _app(const VerseView(verse: _verse, bookAbbreviation: 'Ин')),
+    );
+
+    expect(find.text('Ин. 10:1'), findsOneWidget);
+    expect(find.text('10:1'), findsNothing);
+  });
 }

@@ -5,6 +5,8 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/home_tile.dart';
 
+import '../../../../support/haptics.dart';
+
 void main() {
   Future<Rect> tileRect(WidgetTester tester, HomeTile tile) async {
     // Широкий экран: заголовок гарантированно в одну строку.
@@ -58,7 +60,7 @@ void main() {
     final rect = await tileRect(tester, tile(subtitle: '0/365'));
 
     expect(rect.height, HomeTile.compactHeight);
-    // Цвета текста как у заголовка «Сегодня» и подписей главной.
+    // Цвета текста как у приветствия и подписей главной.
     expect(
       tester.widget<Text>(find.text('Мудрость')).style?.color,
       AppColorsExtension.light.ink,
@@ -73,5 +75,37 @@ void main() {
     final rect = await tileRect(tester, tile(minHeight: 116));
 
     expect(rect.height, 116);
+  });
+
+  testWidgets('тап по плитке даёт лёгкую вибрацию, под ней тень', (
+    tester,
+  ) async {
+    final haptics = recordHaptics(tester);
+    var taps = 0;
+    await tileRect(
+      tester,
+      HomeTile(
+        title: 'Основы веры',
+        type: CardType.basics,
+        semanticsLabel: 'Основы веры',
+        onTap: () => taps++,
+      ),
+    );
+
+    await tester.tap(find.byType(HomeTile));
+
+    expect(taps, 1);
+    expect(haptics, ['HapticFeedbackType.lightImpact']);
+    final shadows = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byType(HomeTile),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .expand((decoration) => decoration.boxShadow ?? const <BoxShadow>[]);
+    expect(shadows, isNotEmpty);
   });
 }

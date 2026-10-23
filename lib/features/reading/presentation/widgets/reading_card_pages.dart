@@ -65,6 +65,7 @@ class ReadingCardPages {
       final verse = reading.verses[index];
       return VerseView(
         verse: verse,
+        bookAbbreviation: _book?.abbreviation,
         onOpenInterpretation: verse.hasInterpretation
             ? () => InterpretationSheet.show(
                 context,

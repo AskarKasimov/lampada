@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -73,44 +74,55 @@ class HomeTile extends StatelessWidget {
         button: true,
         enabled: onTap != null,
         label: semanticsLabel,
-        child: Material(
-          color: style.tagBackground,
-          borderRadius: BorderRadius.circular(_radius),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: ConstrainedBox(
-              // Плитка всегда во всю ширину, даже в Column без stretch.
-              constraints: BoxConstraints(
-                minWidth: double.infinity,
-                minHeight: minHeight,
-              ),
-              child: Stack(
-                alignment: AlignmentDirectional.centerStart,
-                children: [
-                  if (illustration case final illustration?)
-                    Positioned(
-                      right: _illustrationOffset.dx,
-                      bottom: _illustrationOffset.dy,
-                      child: ExcludeSemantics(
-                        child: illustration(
-                          style.accent.withValues(alpha: 0.22),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_radius),
+            boxShadow: AppTheme.cardShadow(context),
+          ),
+          child: Material(
+            color: style.tagBackground,
+            borderRadius: BorderRadius.circular(_radius),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap == null
+                  ? null
+                  : () {
+                      HapticFeedback.lightImpact();
+                      onTap!();
+                    },
+              child: ConstrainedBox(
+                // Плитка всегда во всю ширину, даже в Column без stretch.
+                constraints: BoxConstraints(
+                  minWidth: double.infinity,
+                  minHeight: minHeight,
+                ),
+                child: Stack(
+                  alignment: AlignmentDirectional.centerStart,
+                  children: [
+                    if (illustration case final illustration?)
+                      Positioned(
+                        right: _illustrationOffset.dx,
+                        bottom: _illustrationOffset.dy,
+                        child: ExcludeSemantics(
+                          child: illustration(
+                            style.accent.withValues(alpha: 0.22),
+                          ),
                         ),
                       ),
-                    ),
-                  // Всё нужное скринридеру уже в подписи плитки.
-                  ExcludeSemantics(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        20,
-                        16,
-                        illustrationInset,
-                        16,
+                    // Всё нужное скринридеру уже в подписи плитки.
+                    ExcludeSemantics(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          20,
+                          16,
+                          illustrationInset,
+                          16,
+                        ),
+                        child: _content(context),
                       ),
-                      child: _content(context),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -127,7 +139,7 @@ class HomeTile extends StatelessWidget {
         spacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          // Цвета текста как у заголовка «Сегодня» и подписей главной.
+          // Цвета текста как у приветствия и подписей главной.
           Text(title, style: AppTheme.cardTitleStyle(context)),
           ?titleTrailing,
         ],

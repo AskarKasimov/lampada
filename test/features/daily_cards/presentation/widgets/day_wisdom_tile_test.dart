@@ -7,6 +7,8 @@ import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_til
 import 'package:lampada/features/daily_cards/presentation/widgets/home_grid_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/orthodox_cross.dart';
 
+import '../../../../support/haptics.dart';
+
 Widget _app(Widget child, {double scale = 1}) => MaterialApp(
   theme: AppTheme.light,
   home: Scaffold(
@@ -61,7 +63,7 @@ void main() {
       tester.widget<Text>(find.text('Мудрость дня')).style?.fontSize,
       AppTheme.cardTitleSize,
     );
-    // Цвет текста плиток как у заголовка «Сегодня», а не цвет плитки.
+    // Цвет текста плиток как у приветствия, а не цвет плитки.
     expect(
       tester.widget<Text>(find.text('Мудрость дня')).style?.color,
       AppColorsExtension.light.ink,
@@ -147,7 +149,38 @@ void main() {
     expect(find.byType(OrthodoxCross), findsOneWidget);
   });
 
+  testWidgets('тап по плитке даёт лёгкую вибрацию', (tester) async {
+    final haptics = recordHaptics(tester);
+    var opened = false;
+    await tester.pumpWidget(
+      _app(DayWisdomTile(isUnread: true, onTap: () => opened = true)),
+    );
+
+    await tester.tap(find.byType(DayWisdomTile));
+
+    expect(opened, isTrue);
+    expect(haptics, ['HapticFeedbackType.lightImpact']);
+  });
+
+  testWidgets('под плиткой лёгкая тень', (tester) async {
+    await tester.pumpWidget(_app(DayWisdomTile(isUnread: true, onTap: () {})));
+
+    final shadows = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byType(DayWisdomTile),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .expand((decoration) => decoration.boxShadow ?? const <BoxShadow>[]);
+    expect(shadows, isNotEmpty);
+    expect(shadows.first.blurRadius, greaterThan(0));
+  });
+
   testWidgets('во время загрузки плитка дня не открывается', (tester) async {
+    final haptics = recordHaptics(tester);
     var opened = false;
     await tester.pumpWidget(
       _app(
@@ -161,6 +194,7 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     await tester.tap(find.text('Мудрость дня'));
     expect(opened, isFalse);
+    expect(haptics, isEmpty, reason: 'выключенная плитка не вибрирует');
   });
 
   testWidgets('иллюстрация плитки дня это православный крест', (tester) async {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/reading_action_space.dart';
+import 'rail_scrubber.dart';
 
 /// Общая TikTok-подобная рамка читалок карточек и курса.
 ///
@@ -78,33 +79,41 @@ class VerticalCardReader extends StatelessWidget {
           right: 76,
           child: IgnorePointer(child: Center(child: header)),
         ),
+        // Колонка шире самих точек: по ней листают пальцем
+        // ([RailScrubber]). Точки по-прежнему в 16 pt от края.
         Positioned(
           top: 64,
           bottom: 64,
-          left: 12,
+          left: 0,
+          width: RailScrubber.hitWidth,
           child: Center(child: leftRail),
         ),
         Positioned(right: 12, bottom: _actionsBottom, child: actions),
         Positioned(
           top: 0,
           left: 0,
-          child:
-              topLeftAction ??
-              IconButton(
-                onPressed: onClose,
-                icon: Icon(
-                  CupertinoIcons.arrow_left,
-                  size: 22,
-                  color: closeColor,
-                ),
-                tooltip: 'Назад',
-              ),
+          child: topLeftAction ?? _closeButton(context),
         ),
         if (topRightAction != null)
           Positioned(top: 0, right: 0, child: topRightAction!),
       ],
     ),
   );
+
+  /// Экран, выехавший снизу, закрывается крестиком, как AppBar такого
+  /// маршрута; открытый вбок уходит стрелкой назад.
+  Widget _closeButton(BuildContext context) {
+    final isDialog = ModalRoute.of(context)?.fullscreenDialog ?? false;
+    return IconButton(
+      onPressed: onClose,
+      icon: Icon(
+        isDialog ? CupertinoIcons.xmark : CupertinoIcons.arrow_left,
+        size: 22,
+        color: closeColor,
+      ),
+      tooltip: isDialog ? 'Закрыть' : 'Назад',
+    );
+  }
 }
 
 /// Единый крупный формат действий в правой панели читалки.

@@ -104,8 +104,8 @@ abstract final class AppTheme {
   /// Небольшой, чтобы главными на плитках были иллюстрации.
   static const cardTitleSize = 19.0;
 
-  /// Название карточки главной. Один стиль на все карточки, чтобы под
-  /// заголовком «Сегодня» не набиралось разных шрифтов.
+  /// Название карточки главной. Один стиль на все карточки, чтобы на
+  /// главной не набиралось разных шрифтов.
   static TextStyle cardTitleStyle(BuildContext context) =>
       headingStyle(context, fontSize: cardTitleSize).copyWith(height: 1.15);
 
@@ -115,6 +115,27 @@ abstract final class AppTheme {
     height: 1.2,
     color: AppColorsExtension.of(context).textSecondary,
   );
+
+  /// Тень под карточками главной: широкое мягкое облако вокруг всей
+  /// карточки, как у виджетов iOS, и тонкая контактная тень у нижнего края.
+  /// Карточки заметно отрываются от фона, но не темнеют по краям. В тёмной
+  /// теме тень чёрная, а не цвета текста.
+  static List<BoxShadow> cardShadow(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? Colors.black : AppColorsExtension.of(context).ink;
+    return [
+      BoxShadow(
+        color: color.withValues(alpha: isDark ? 0.50 : 0.13),
+        blurRadius: 32,
+        offset: const Offset(0, 8),
+      ),
+      BoxShadow(
+        color: color.withValues(alpha: isDark ? 0.30 : 0.05),
+        blurRadius: 4,
+        offset: const Offset(0, 1),
+      ),
+    ];
+  }
 
   /// Евангелие не меняет набор при переходе из карточки в полный текст.
   static TextStyle readingTextStyle(BuildContext context) =>

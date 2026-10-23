@@ -114,6 +114,8 @@ class DayWisdomScreen extends ConsumerWidget {
           completed: furthest >= completeIndex,
         ),
       ),
+      // Итог зажигает лампаду: до него доходят чтением, а не по точкам.
+      lastScrubbablePage: completeIndex - 1,
       startIndex: _viewerStart(
         startIndex,
         ordinary,

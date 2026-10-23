@@ -10,8 +10,7 @@ class HomeSectionHeader extends StatelessWidget {
 
   final String title;
 
-  /// Кегль названия раздела и «Сегодня» в шапке: заметно крупнее названий
-  /// карточек ниже.
+  /// Кегль названия раздела: заметно крупнее названий карточек ниже.
   static const titleSize = 26.0;
 
   @override

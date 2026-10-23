@@ -6,8 +6,11 @@ import 'package:lampada/core/theme/app_colors.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_memory_tile.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/frosted_fade.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/home_grid_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/read_status_checks.dart';
+
+import 'frosted_fade_expectations.dart';
 
 const _story = 'https://azbyka.ru/days/pokrov';
 const _icon =
@@ -76,7 +79,7 @@ void main() {
 
     expect(find.text('Память дня'), findsOneWidget);
     expect(find.text('Пасха'), findsOneWidget);
-    // Цвет текста плиток как у заголовка «Сегодня».
+    // Цвет текста плиток как у приветствия.
     for (final text in ['Память дня', 'Пасха']) {
       expect(
         tester.widget<Text>(find.text(text)).style?.color,
@@ -148,6 +151,14 @@ void main() {
         tester.widget<DecoratedBox>(bandFinder).decoration as BoxDecoration;
     expect(decoration.color!.a, inExclusiveRange(0.2, 0.7));
     expect(decoration.borderRadius, isNull);
+    // Верхний край стекла не резкий: над полосой зона растворения, где
+    // размытие той же силы плавно сходит на нет.
+    expect(decoration.border, isNull);
+    final fadeRect = tester.getRect(find.byType(FrostedFade));
+    expect(fadeRect.bottom, band.top);
+    expect(fadeRect.left, tile.left);
+    expect(fadeRect.right, tile.right);
+    expectSmoothFade(tester, find.byType(HomeGridTile));
   });
 
   testWidgets('без иконы на плитке имя святого', (tester) async {
@@ -166,9 +177,7 @@ void main() {
     expect(find.text('Пасха'), findsOneWidget);
   });
 
-  testWidgets('пост отмечается в шапке «Сегодня», а не на плитке', (
-    tester,
-  ) async {
+  testWidgets('пост на плитке не отмечается', (tester) async {
     await tester.pumpWidget(
       _wrap(
         const DayMemoryTile(

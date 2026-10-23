@@ -1,39 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lampada/core/theme/app_colors.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/home_header.dart';
+
+import '../../../../support/haptics.dart';
+import 'frosted_fade_expectations.dart';
 
 Finder _lamp(String state) =>
     find.image(AssetImage('assets/illustrations/lampada_$state.png'));
 
 void main() {
+  group('приветствие по времени суток', () {
+    String at(int hour, [int minute = 0]) =>
+        greetingFor(DateTime(2026, 10, 22, hour, minute));
+
+    test('утро с 4:00 до полудня', () {
+      expect(at(4), 'Доброе утро!');
+      expect(at(8, 30), 'Доброе утро!');
+      expect(at(11, 59), 'Доброе утро!');
+    });
+
+    test('день с полудня до 18:00', () {
+      expect(at(12), 'Добрый день!');
+      expect(at(17, 59), 'Добрый день!');
+    });
+
+    test('вечер с 18:00 и до 4:00 следующего утра', () {
+      // «Доброй ночи» по-русски прощание, поэтому ночью продолжается вечер.
+      expect(at(18), 'Добрый вечер!');
+      expect(at(23, 59), 'Добрый вечер!');
+      expect(at(0), 'Добрый вечер!');
+      expect(at(3, 59), 'Добрый вечер!');
+    });
+  });
+
   Widget app({
     required int? streak,
     VoidCallback? onStreakTap,
     ThemeData? theme,
-    bool isFast = false,
   }) => MaterialApp(
     theme: theme ?? AppTheme.light,
     home: Scaffold(
       body: HomeHeader(
-        date: DateTime(2026, 10, 22, 6, 16),
-        isFast: isFast,
+        now: DateTime(2026, 10, 22, 6, 16),
         streak: streak,
         onStreakTap: onStreakTap ?? () {},
       ),
     ),
   );
 
-  testWidgets('шапка начинается сразу с «Сегодня», без приветствия', (
+  testWidgets('шапка показывает приветствие, лампаду и число серии', (
     tester,
   ) async {
     await tester.pumpWidget(app(streak: 3));
 
-    expect(find.text('Сегодня'), findsOneWidget);
-    expect(find.text('22 октября', findRichText: true), findsOneWidget);
-    expect(find.textContaining('Добр'), findsNothing);
-    expect(tester.widget<Text>(find.text('Сегодня')).style?.fontFamily, 'Lora');
+    expect(find.text('Доброе утро!'), findsOneWidget);
+    // Приветствие набрано той же гарнитурой, что названия плиток ниже.
+    expect(
+      tester.widget<Text>(find.text('Доброе утро!')).style?.fontFamily,
+      'Lora',
+    );
+    // Дата и пост в шапке больше не показываются.
+    expect(find.text('Сегодня'), findsNothing);
+    expect(find.textContaining('октября', findRichText: true), findsNothing);
+    expect(find.textContaining('Постный', findRichText: true), findsNothing);
     expect(find.text('3'), findsOneWidget);
     expect(_lamp('on'), findsOneWidget);
     expect(find.bySemanticsLabel('Лампадка: 3 дня подряд'), findsOneWidget);
@@ -47,60 +77,23 @@ void main() {
     expect(_lamp('on'), findsNothing);
   });
 
-  testWidgets('дата и пост одной строкой над «Сегодня»', (tester) async {
-    await tester.pumpWidget(app(streak: 1, isFast: true));
-
-    // Одна строка одного кегля, а не две разрозненные подписи сбоку от
-    // крупного заголовка.
-    final line = find.text('22 октября · Постный день', findRichText: true);
-    expect(line, findsOneWidget);
-    final today = tester.getRect(find.text('Сегодня'));
-    final rect = tester.getRect(line);
-    expect(rect.bottom, lessThanOrEqualTo(today.top));
-    expect(rect.left, today.left);
-    // Дата и пост одного цвета: строка читается одной подписью.
-    final colors = <Color?>{};
-    tester.widget<RichText>(line).text.visitChildren((span) {
-      if (span is TextSpan && span.text != null) {
-        colors.add(span.style?.color);
-      }
-      return true;
-    });
-    expect(
-      tester.widget<RichText>(line).text.style?.color,
-      AppColorsExtension.light.textSecondary,
-    );
-    expect(
-      colors.nonNulls.where((c) => c != AppColorsExtension.light.textSecondary),
-      isEmpty,
-    );
-  });
-
-  testWidgets('лампада стоит по центру блока даты и заголовка', (tester) async {
-    await tester.pumpWidget(app(streak: 2));
-
-    final block = tester.getRect(find.byType(HomeHeader));
-    final lamp = tester.getRect(
-      find.bySemanticsLabel('Лампадка: 2 дня подряд'),
-    );
-    expect(lamp.center.dy, closeTo(block.center.dy, 4));
-  });
-
   testWidgets('пока прогресс грузится, серии в шапке нет', (tester) async {
     await tester.pumpWidget(app(streak: null));
 
-    expect(find.text('Сегодня'), findsOneWidget);
+    expect(find.text('Доброе утро!'), findsOneWidget);
     expect(_lamp('on'), findsNothing);
     expect(_lamp('off'), findsNothing);
   });
 
-  testWidgets('тап по лампаде вызывает обработчик', (tester) async {
+  testWidgets('тап по лампаде вызывает обработчик с вибрацией', (tester) async {
+    final haptics = recordHaptics(tester);
     var taps = 0;
     await tester.pumpWidget(app(streak: 2, onStreakTap: () => taps++));
 
     await tester.tap(_lamp('on'));
 
     expect(taps, 1);
+    expect(haptics, ['HapticFeedbackType.lightImpact']);
   });
 
   testWidgets('кнопка серии не меньше 44 pt по высоте', (tester) async {
@@ -110,7 +103,31 @@ void main() {
     expect(tester.getSize(button).height, greaterThanOrEqualTo(44));
   });
 
-  testWidgets('крупный шрифт переносит заголовок, а не ломает шапку', (
+  testWidgets('шапка над списком размыта и мягко растворяется книзу', (
+    tester,
+  ) async {
+    const key = ValueKey('header');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: FrostedHomeHeader(child: SizedBox(key: key, height: 60)),
+          ),
+        ),
+      ),
+    );
+
+    // Ниже самой шапки зона растворения, а не чёткая граница.
+    final frosted = tester.getRect(find.byType(FrostedHomeHeader));
+    expect(frosted.height, greaterThan(60 + 12));
+    // Размытие той же силы, что у стекла, плавно сходит на нет под
+    // градиентной маской: без ступенек из полос разной силы.
+    expectSmoothFade(tester, find.byType(FrostedHomeHeader));
+  });
+
+  testWidgets('крупный шрифт переносит приветствие, а не ломает шапку', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 640);

@@ -4,6 +4,8 @@ import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
 
+import '../../../../support/haptics.dart';
+
 /// Расстояние от нижнего края капсулы до низа экрана.
 Future<double> _bottomGap(
   WidgetTester tester, {
@@ -74,5 +76,70 @@ void main() {
     );
 
     expect(gap, greaterThanOrEqualTo(10));
+  });
+
+  Future<List<ShellTab>> pumpBar(WidgetTester tester) async {
+    final selected = <ShellTab>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light.copyWith(platform: TargetPlatform.iOS),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: FloatingNavBar(
+              current: ShellTab.today,
+              onSelect: selected.add,
+            ),
+          ),
+        ),
+      ),
+    );
+    return selected;
+  }
+
+  double scaleOf(WidgetTester tester, String label) => tester
+      .widget<AnimatedScale>(
+        find.ancestor(
+          of: find.text(label),
+          matching: find.byType(AnimatedScale),
+        ),
+      )
+      .scale;
+
+  testWidgets('нажатая вкладка сжимается и отпружинивает, как в iOS', (
+    tester,
+  ) async {
+    await pumpBar(tester);
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Библия')),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(scaleOf(tester, 'Библия'), lessThan(1));
+    // Соседние вкладки не реагируют.
+    expect(scaleOf(tester, 'Профиль'), 1);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(scaleOf(tester, 'Библия'), 1);
+    // Материальной «волны» от тапа нет: она не похожа на iOS.
+    expect(
+      find.descendant(
+        of: find.byType(FloatingNavBar),
+        matching: find.byType(InkWell),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('тап по вкладке переключает её с лёгким щелчком', (tester) async {
+    final haptics = recordHaptics(tester);
+    final selected = await pumpBar(tester);
+
+    await tester.tap(find.text('Библия'));
+    await tester.pumpAndSettle();
+
+    expect(selected, [ShellTab.bible]);
+    expect(haptics, ['HapticFeedbackType.selectionClick']);
   });
 }

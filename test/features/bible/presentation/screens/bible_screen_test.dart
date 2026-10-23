@@ -203,7 +203,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bible-chapter-Mk-3')));
     await tester.pumpAndSettle();
     expect(find.text('От Марка'), findsOneWidget);
-    expect(find.text('3:1'), findsOneWidget);
+    expect(find.text('Мк. 3:1'), findsOneWidget);
     expect(find.byType(BibleScreen), findsNothing);
   });
 
@@ -277,7 +277,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('3:1'), findsOneWidget);
+    expect(find.text('Мк. 3:1'), findsOneWidget);
     expect(
       tester
           .widget<VerticalCardReader>(find.byType(VerticalCardReader))
@@ -334,10 +334,10 @@ void main() {
         );
         await tester.tap(tile);
         await tester.pumpAndSettle();
-        expect(find.text('1:31'), findsOneWidget);
+        expect(find.text('Иак. 1:31'), findsOneWidget);
         await tester.drag(find.byType(PageView), const Offset(0, 500));
         await tester.pumpAndSettle();
-        expect(find.text('1:30'), findsOneWidget);
+        expect(find.text('Иак. 1:30'), findsOneWidget);
       },
     );
   }
@@ -594,7 +594,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('3:1'), findsOneWidget);
+      expect(find.text('Ин. 3:1'), findsOneWidget);
       expect(find.text('— 3:1'), findsNothing);
       expect(find.text('От Иоанна 3:1'), findsNothing);
       expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);
@@ -648,7 +648,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Первый стих'), findsOneWidget);
-    expect(find.text('2:1'), findsOneWidget);
+    expect(find.text('Ин. 2:1'), findsOneWidget);
     expect(repository.cached, {('Jn', 1), ('Jn', 2)});
     expect(
       tester.widget<ProgressDots>(find.byType(ProgressDots)).currentIndex,
@@ -743,7 +743,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('1:31'), findsOneWidget);
+    expect(find.text('Откр. 1:31'), findsOneWidget);
     expect(
       tester.widget<ProgressDots>(find.byType(ProgressDots)).currentIndex,
       30,

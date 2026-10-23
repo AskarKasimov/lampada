@@ -16,7 +16,9 @@ import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/day_wisdom_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_complete_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_card.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
@@ -88,6 +90,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(VerseView), findsOneWidget);
     expect(find.text('Первый стих'), findsOneWidget);
+    // Под стихом Евангелия дня книга, глава и стих.
+    expect(find.text('Ин. 10:1'), findsOneWidget);
+
+    // Экран итога зажигает лампаду, поэтому по точкам до него не долистать:
+    // последняя точка открывает последнюю карточку.
+    final rail = tester.getRect(find.byType(RailScrubber));
+    await tester.tapAt(rail.bottomCenter - const Offset(0, 1));
+    await tester.pumpAndSettle();
+    expect(find.byType(DayWisdomCompleteView), findsNothing);
+    expect(find.text('Первый стих'), findsOneWidget);
+
+    // По столбику точек можно вернуться пальцем к первой карточке.
+    await tester.tapAt(rail.topCenter + const Offset(0, 1));
+    await tester.pumpAndSettle();
+    expect(find.byType(VerseView), findsNothing);
   });
 
   testWidgets('загрузка не засчитывает Евангелие до первого стиха', (

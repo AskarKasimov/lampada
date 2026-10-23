@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
@@ -37,35 +38,98 @@ import 'course_reader_route.dart';
 import 'day_wisdom_screen.dart';
 
 /// Дневная сессия: всегда сегодняшний день, без выбора даты.
-class TodayScreen extends ConsumerWidget {
+///
+/// Список уходит под закреплённую шапку: она матовая и растворяется книзу,
+/// поэтому контент скрывается под ней мягко, без чёткой границы. Высоту
+/// шапки меряем, чтобы в покое список начинался сразу под ней.
+class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TodayScreen> createState() => _TodayScreenState();
+}
+
+class _TodayScreenState extends ConsumerState<TodayScreen> {
+  double _headerHeight = 0;
+
+  @override
+  Widget build(BuildContext context) {
     // «Сегодня» берём при каждой перестройке: при возврате в приложение
     // прогресс перечитывается, и после полуночи экран сам переходит на
     // новый день.
     final now = DateTime.now();
     final progress = ref.watch(dayProgressProvider).value;
-    final day = ref.watch(dayContentProvider(dateKey(now))).cards.value;
-    return Column(
+    return Stack(
       children: [
-        HomeHeader(
-          date: now,
-          isFast: day?.isFast ?? false,
-          streak: progress?.streakOn(now),
-          onStreakTap: () => showStreakSheet(context),
+        Positioned.fill(
+          child: _DayContent(date: now, topInset: _headerHeight),
         ),
-        Expanded(child: _DayContent(date: now)),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: _HeightReporter(
+            onHeight: (height) {
+              if (height != _headerHeight) {
+                setState(() => _headerHeight = height);
+              }
+            },
+            child: FrostedHomeHeader(
+              child: HomeHeader(
+                now: now,
+                streak: progress?.streakOn(now),
+                onStreakTap: () => showStreakSheet(context),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
+/// Сообщает высоту ребёнка после раскладки. Шапка меняет высоту с
+/// системным масштабом текста, а список должен отступать ровно на неё.
+class _HeightReporter extends SingleChildRenderObjectWidget {
+  const _HeightReporter({required this.onHeight, required super.child});
+
+  final ValueChanged<double> onHeight;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderHeightReporter(onHeight);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderHeightReporter renderObject,
+  ) => renderObject.onHeight = onHeight;
+}
+
+class _RenderHeightReporter extends RenderProxyBox {
+  _RenderHeightReporter(this.onHeight);
+
+  ValueChanged<double> onHeight;
+  double? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final height = size.height;
+    if (height == _reported) return;
+    _reported = height;
+    // Менять состояние во время раскладки нельзя: сообщаем после кадра.
+    WidgetsBinding.instance.addPostFrameCallback((_) => onHeight(height));
+  }
+}
+
 class _DayContent extends ConsumerWidget {
-  const _DayContent({required this.date});
+  const _DayContent({required this.date, required this.topInset});
 
   final DateTime date;
+
+  /// Высота шапки над списком.
+  final double topInset;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -87,7 +151,12 @@ class _DayContent extends ConsumerWidget {
     final day = cardsAsync.value;
     // Готовый день остаётся полезнее последней ошибки обновления.
     if (day != null && progress != null) {
-      return _DayBlocks(date: date, content: content, progress: progress);
+      return _DayBlocks(
+        date: date,
+        content: content,
+        progress: progress,
+        topInset: topInset,
+      );
     }
 
     if (cardsAsync.hasError || progress == null && !cardsAsync.isLoading) {
@@ -96,7 +165,10 @@ class _DayContent extends ConsumerWidget {
         _ => FailureKind.unknown,
       };
       return ListView(
-        padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
+        padding: EdgeInsets.only(
+          top: topInset,
+          bottom: FloatingNavInset.of(context) + 32,
+        ),
         children: [
           // Стих дня не зависит от материалов дня и виден и без них.
           VerseOfDaySection(date: date),
@@ -129,7 +201,10 @@ class _DayContent extends ConsumerWidget {
     }
 
     return ListView(
-      padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
+      padding: EdgeInsets.only(
+        top: topInset,
+        bottom: FloatingNavInset.of(context) + 32,
+      ),
       children: [
         VerseOfDaySection(date: date),
         _plansHeader,
@@ -144,11 +219,13 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.date,
     required this.content,
     required this.progress,
+    required this.topInset,
   });
 
   final DateTime date;
   final DayContentState content;
   final DayProgress progress;
+  final double topInset;
 
   @override
   ConsumerState<_DayBlocks> createState() => _DayBlocksState();
@@ -185,9 +262,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             alreadyCompleted: progress.isWisdomCompletedOn(date),
           ),
         );
-    // Открывается внутри вкладки, а не модально: навбар остаётся виден.
+    // Выезжает снизу, как рассказ «Памяти дня», но в навигаторе вкладки, а
+    // не корневом: навбар остаётся виден.
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
+        fullscreenDialog: true,
         builder: (_) => DayWisdomScreen(
           cards: pages,
           startIndex: firstUnread < 0 ? 0 : firstUnread,
@@ -357,7 +436,10 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     _openRequestedSection(pages);
     final blocks = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
+      padding: EdgeInsets.only(
+        top: widget.topInset,
+        bottom: FloatingNavInset.of(context) + 32,
+      ),
       children: [
         VerseOfDaySection(date: date),
         _dayTiles(context, pages),
@@ -375,7 +457,12 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         const _CourseHomeSection(),
       ],
     );
-    return RefreshIndicator(onRefresh: _refresh, child: blocks);
+    return RefreshIndicator(
+      // Индикатор выезжает из-под шапки, а не прячется за ней.
+      edgeOffset: widget.topInset,
+      onRefresh: _refresh,
+      child: blocks,
+    );
   }
 }
 
