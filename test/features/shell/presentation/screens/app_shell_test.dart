@@ -193,8 +193,7 @@ void main() {
   Finder homeIcon({required bool filled}) =>
       tabIcon(filled ? CupertinoIcons.house_fill : CupertinoIcons.house);
 
-  // StreakFlame крутится бесконечно — pumpAndSettle никогда не осядет.
-  // Прокачиваем с запасом: переходы маршрутов длиннее анимации карточки,
+  // Прокачиваем вручную и с запасом: переходы маршрутов длиннее анимации карточки,
   // а недокачанный переход держит AbsorbPointer и тапы не доходят.
   Future<void> settle(WidgetTester tester) async {
     await tester.pump();
@@ -746,40 +745,6 @@ void main() {
     expect(find.byType(BookmarksScreen), findsNothing);
     expect(find.text('Закладки').hitTestable(), findsOneWidget);
     expect(find.text('Тема').hitTestable(), findsOneWidget);
-  });
-
-  testWidgets('выбранная дата переживает уход на другую вкладку', (
-    tester,
-  ) async {
-    final container = ProviderContainer(
-      overrides: [
-        dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
-        dayProgressRepositoryProvider.overrideWithValue(
-          _FakeProgressRepository(),
-        ),
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(theme: AppTheme.light, home: const AppShell()),
-      ),
-    );
-    await settle(tester);
-
-    final other = DateTime.now().subtract(const Duration(days: 3));
-    container.read(selectedDateProvider.notifier).select(other);
-    await settle(tester);
-
-    await tester.tap(tabIcon(CupertinoIcons.person));
-    await settle(tester);
-    await tester.tap(homeIcon(filled: false));
-    await settle(tester);
-
-    expect(dateKey(container.read(selectedDateProvider)), dateKey(other));
   });
 
   testWidgets('selectedTabProvider переключает вкладку снаружи', (

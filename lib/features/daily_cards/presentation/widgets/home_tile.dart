@@ -5,12 +5,12 @@ import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
 
-/// Крупная цветная плитка входа на главной.
+/// Широкая цветная плитка входа на главной, например в курс.
 ///
-/// «Мудрость дня» и «Основы веры» собраны на ней одинаково: только заголовок,
-/// цвет типа материала и декоративная иллюстрация. «Память дня» вместо
-/// иллюстрации показывает икону у того же правого нижнего угла.
-/// Подробности открываются внутри.
+/// Заголовок (при крупном тексте переносится) с отметкой прочтения справа,
+/// необязательная мелкая подпись под ним и иллюстрация у правого нижнего
+/// угла. Отметка в строке заголовка, а не отдельной строкой над ним: так
+/// компактная плитка остаётся низкой, а заголовок стоит ровно посередине.
 class HomeTile extends StatelessWidget {
   const HomeTile({
     required this.title,
@@ -18,15 +18,9 @@ class HomeTile extends StatelessWidget {
     required this.semanticsLabel,
     required this.onTap,
     this.illustration,
-    this.illustrationOffset = const Offset(-20, -28),
-    this.titleMaxWidth = 170,
-    this.contentEndInset = 20,
-    this.titleFontSize = 30,
-    this.titleMaxLines,
-    this.status,
-    this.action,
-    this.progress,
-    this.progressLabel,
+    this.titleTrailing,
+    this.subtitle,
+    this.minHeight = compactHeight,
     super.key,
   });
 
@@ -35,52 +29,41 @@ class HomeTile extends StatelessWidget {
   /// Цвета плитки берутся из стиля этого типа карточки.
   final CardType type;
 
-  /// Иллюстрация у правого нижнего угла; цвет для декоративной задаёт
-  /// плитка, икона его не использует.
+  /// Декоративная иллюстрация у правого нижнего угла; цвет задаёт плитка.
   final Widget Function(Color color)? illustration;
 
-  /// Отступ иллюстрации от правого и нижнего края. Отрицательный уводит её
-  /// за край плитки, где она обрезается.
-  final Offset illustrationOffset;
+  /// Отметка прочтения или индикатор загрузки справа от заголовка.
+  final Widget? titleTrailing;
 
-  /// Узкий заголовок переносится на две строки, как на плитках-обложках,
-  /// и не наезжает на иллюстрацию. `null` отдаёт ему всю ширину до
-  /// [contentEndInset].
-  final double? titleMaxWidth;
+  /// Мелкая подпись под заголовком, например «7/365».
+  final String? subtitle;
 
-  /// Правое поле текста. Крупной иллюстрации, которая не должна уходить
-  /// под заголовок, оно освобождает место.
-  final double contentEndInset;
+  /// Нижняя граница высоты.
+  final double minHeight;
 
-  final double titleFontSize;
-
-  /// Длинное название праздника обрезается многоточием.
-  final int? titleMaxLines;
   final String semanticsLabel;
 
   /// `null` выключает нажатие, например пока материалы дня грузятся.
   final VoidCallback? onTap;
 
-  /// Отметка прочтения или индикатор загрузки над заголовком. Без неё
-  /// строка не резервируется.
-  final Widget? status;
+  /// Правое поле под декоративную иллюстрацию (крест, книга).
+  static const illustrationInset = 108.0;
 
-  /// Небольшая кнопка в правом верхнем углу.
-  final Widget? action;
+  /// Высота компактной плитки: заголовок с подписью и поля. Декоративные
+  /// иллюстрации подобраны под неё (см. [illustrationSize]).
+  static const compactHeight = 84.0;
 
-  /// Доля пройденного: показывается полосой, без текста.
-  final double? progress;
-
-  /// Короткий счётчик справа от полосы, например «7/365».
-  final String? progressLabel;
+  /// Размер креста и книги в компактной плитке: крупнее самой плитки, как
+  /// водяной знак. Они уходят за нижний край на 24 и чуть за правый, но
+  /// верх креста и его подножие остаются внутри, и силуэт читается.
+  static const illustrationSize = 112.0;
+  static const _illustrationOffset = Offset(-8, -24);
 
   static const _radius = 24.0;
-  static const _minHeight = 136.0;
 
   @override
   Widget build(BuildContext context) {
     final style = type.styleFor(Theme.of(context).brightness);
-    final progress = this.progress;
     return Padding(
       padding:
           AppSpacing.of(context).horizontal +
@@ -98,21 +81,17 @@ class HomeTile extends StatelessWidget {
             onTap: onTap,
             child: ConstrainedBox(
               // Плитка всегда во всю ширину, даже в Column без stretch.
-              constraints: const BoxConstraints(
+              constraints: BoxConstraints(
                 minWidth: double.infinity,
-                minHeight: _minHeight,
+                minHeight: minHeight,
               ),
               child: Stack(
-                // Без строки статуса заголовок стоит посередине плитки,
-                // а не прижат к пустому месту сверху.
-                alignment: status == null
-                    ? AlignmentDirectional.centerStart
-                    : AlignmentDirectional.topStart,
+                alignment: AlignmentDirectional.centerStart,
                 children: [
                   if (illustration case final illustration?)
                     Positioned(
-                      right: illustrationOffset.dx,
-                      bottom: illustrationOffset.dy,
+                      right: _illustrationOffset.dx,
+                      bottom: _illustrationOffset.dy,
                       child: ExcludeSemantics(
                         child: illustration(
                           style.accent.withValues(alpha: 0.22),
@@ -122,12 +101,15 @@ class HomeTile extends StatelessWidget {
                   // Всё нужное скринридеру уже в подписи плитки.
                   ExcludeSemantics(
                     child: Padding(
-                      padding: EdgeInsets.fromLTRB(20, 18, contentEndInset, 20),
-                      child: _content(context, style, progress),
+                      padding: const EdgeInsets.fromLTRB(
+                        20,
+                        16,
+                        illustrationInset,
+                        16,
+                      ),
+                      child: _content(context),
                     ),
                   ),
-                  if (action case final action?)
-                    Positioned(top: 4, right: 4, child: action),
                 ],
               ),
             ),
@@ -137,64 +119,26 @@ class HomeTile extends StatelessWidget {
     );
   }
 
-  Widget _content(
-    BuildContext context,
-    CardTypeStyle style,
-    double? progress,
-  ) => Column(
+  Widget _content(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     mainAxisSize: MainAxisSize.min,
     children: [
-      if (status case final status?) ...[
-        SizedBox(height: 14, child: status),
-        const SizedBox(height: 10),
-      ],
-      ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: titleMaxWidth ?? double.infinity),
-        child: Text(
-          title,
-          maxLines: titleMaxLines,
-          overflow: titleMaxLines == null ? null : TextOverflow.ellipsis,
-          style: AppTheme.quoteStyle(context).copyWith(
-            fontSize: titleFontSize,
-            height: 1.15,
-            color: style.tagForeground,
-          ),
-        ),
+      Wrap(
+        spacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          // Цвета текста как у заголовка «Сегодня» и подписей главной.
+          Text(title, style: AppTheme.cardTitleStyle(context)),
+          ?titleTrailing,
+        ],
       ),
-      if (progress != null) ...[
-        const SizedBox(height: 16),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // При крупном системном тексте счётчик
-            // получает место за счёт ширины полосы.
-            Flexible(
-              child: SizedBox(
-                width: 120,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 6,
-                    color: style.accent,
-                    backgroundColor: style.accent.withValues(alpha: 0.2),
-                  ),
-                ),
-              ),
-            ),
-            if (progressLabel case final label?) ...[
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: style.tagForeground.withValues(alpha: 0.75),
-                ),
-              ),
-            ],
-          ],
+      if (subtitle case final subtitle?) ...[
+        const SizedBox(height: 3),
+        Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTheme.cardCaptionStyle(context),
         ),
       ],
     ],

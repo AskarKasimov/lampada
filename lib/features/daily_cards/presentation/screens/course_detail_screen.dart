@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/course_calendar.dart';
 import '../providers/providers.dart';
 import '../widgets/day_entry_row.dart';
@@ -37,13 +38,7 @@ class CourseDetailScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'О курсе',
-                style: bodyStyle.copyWith(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text('О курсе', style: AppTheme.headingStyle(context)),
               const SizedBox(height: 14),
               Text(
                 '365 тем об основах православной веры и жизни христианина. '

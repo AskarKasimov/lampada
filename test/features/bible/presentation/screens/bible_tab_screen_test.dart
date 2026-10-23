@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_event.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
@@ -72,6 +73,38 @@ void main() {
     );
     expect(reader.book.code, 'Jn');
     expect(reader.chapter, 1);
+  });
+
+  testWidgets('запрос из «Стиха дня» открывает главу на этом стихе', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        bibleRepositoryProvider.overrideWithValue(_FreshInstallRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: BibleTabScreen()),
+      ),
+    );
+    await tester.pump();
+
+    container
+        .read(bibleOpenRequestProvider.notifier)
+        .open('Ps', 22, verse: 3, source: BibleOpenSource.verseOfDay);
+    await tester.pump();
+    await tester.pump();
+
+    final reader = tester.widget<BibleReaderScreen>(
+      find.byType(BibleReaderScreen),
+    );
+    expect(reader.book.code, 'Ps');
+    expect(reader.chapter, 22);
+    expect(reader.initialVerse, 3);
+    expect(reader.openSource, BibleOpenSource.verseOfDay);
   });
 
   for (final fail in [false, true]) {

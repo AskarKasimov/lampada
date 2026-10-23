@@ -9,7 +9,8 @@ import '../providers/providers.dart';
 import 'bible_reader_screen.dart';
 
 /// Вход во вкладку восстанавливает последнее место, в том числе после перезапуска.
-/// Запрос главы извне ([bibleOpenRequestProvider]) открывает её с начала.
+/// Запрос главы извне ([bibleOpenRequestProvider]) открывает её на
+/// запрошенном стихе.
 ///
 /// Это корень вкладки, а не модальный экран: кнопки «Закрыть» нет,
 /// уходят отсюда через навбар.
@@ -59,12 +60,13 @@ class _BibleTabScreenState extends ConsumerState<BibleTabScreen> {
             .firstOrNull;
         if (requested != null) {
           return BibleReaderScreen(
-            // Новый запрос заменяет читалку целиком, с первого стиха.
+            // Новый запрос заменяет читалку целиком.
             key: ValueKey(request.serial),
             book: requested,
             chapter: request.chapter,
+            initialVerse: request.verse,
             showClose: false,
-            openSource: BibleOpenSource.dailyReading,
+            openSource: request.source,
           );
         }
       }

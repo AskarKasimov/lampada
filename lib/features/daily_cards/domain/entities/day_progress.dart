@@ -76,12 +76,7 @@ abstract class DayProgress with _$DayProgress {
   /// серию продлевает, но сам в неё не входит — иначе «5 дней» набиралось бы
   /// из двух заходов.
   int streakOn(DateTime today) {
-    final days = visitedDays.toList()..sort();
-    if (days.isEmpty) return 0;
-
-    final todayKey = dateKey(today);
-    // Будущие даты (сменилась таймзона, переставили часы) в счёт не берём.
-    final past = days.where((d) => d.compareTo(todayKey) <= 0).toList();
+    final past = _pastDays(today);
     if (past.isEmpty) return 0;
 
     var previous = DateTime.parse(past.last);
@@ -96,6 +91,36 @@ abstract class DayProgress with _$DayProgress {
       previous = day;
     }
     return streak;
+  }
+
+  /// Самая длинная серия до [today] включительно, по тем же правилам, что
+  /// [streakOn]. Погасшая серия лучшую не отменяет.
+  int bestStreakOn(DateTime today) {
+    final past = _pastDays(today);
+    var best = 0;
+    var run = 0;
+    DateTime? previous;
+    for (final key in past) {
+      final day = DateTime.parse(key);
+      run = previous != null && _gap(previous, day) <= _maxGapDays
+          ? run + 1
+          : 1;
+      if (run > best) best = run;
+      previous = day;
+    }
+    return best;
+  }
+
+  /// Сколько дней лампада горела в календарном [year].
+  int litDaysInYear(int year) =>
+      visitedDays.where((key) => key.startsWith('$year-')).length;
+
+  /// Дни активности по возрастанию. Будущие даты (сменилась таймзона,
+  /// переставили часы) в счёт не берём.
+  List<String> _pastDays(DateTime today) {
+    final todayKey = dateKey(today);
+    return visitedDays.where((d) => d.compareTo(todayKey) <= 0).toList()
+      ..sort();
   }
 
   /// Разница в календарных днях. Через UTC — иначе переход на летнее время

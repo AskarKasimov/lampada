@@ -27,7 +27,7 @@ final getDayStoryProvider = Provider<GetDayStory>(
 );
 
 /// Рассказ по ссылке праздника/святого. Family, а не единичный провайдер:
-/// календарь открывает чужие дни, и ссылка там своя.
+/// у каждого дня своя ссылка, и смена дня не перечитывает прежний рассказ.
 final dayStoryProvider = FutureProvider.family<DayStory, String>(
   (ref, url) async {
     final result = await ref.watch(getDayStoryProvider)(url);

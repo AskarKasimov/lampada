@@ -1,0 +1,166 @@
+/// Ссылка на стих: код книги из каталога `bibleBooks`, глава и стих в
+/// нумерации Синодального перевода (Псалтирь по греческому счёту).
+typedef VerseRef = ({String book, int chapter, int verse});
+
+/// Подборка для «Стиха дня»: известные короткие стихи, которые читаются
+/// без контекста главы. Текст не хранится здесь, а берётся из той же главы
+/// Синодального перевода, что открывает вкладка «Библия», чтобы не
+/// разойтись с ней ни в одной букве.
+///
+/// Список сгруппирован по книгам; порядок показа перемешивает
+/// [verseOfDayRefFor].
+const verseOfDayRefs = <VerseRef>[
+  // Псалтирь.
+  (book: 'Ps', chapter: 4, verse: 9),
+  (book: 'Ps', chapter: 15, verse: 8),
+  (book: 'Ps', chapter: 17, verse: 2),
+  (book: 'Ps', chapter: 18, verse: 2),
+  (book: 'Ps', chapter: 22, verse: 1),
+  (book: 'Ps', chapter: 24, verse: 4),
+  (book: 'Ps', chapter: 26, verse: 1),
+  (book: 'Ps', chapter: 30, verse: 16),
+  (book: 'Ps', chapter: 31, verse: 8),
+  (book: 'Ps', chapter: 33, verse: 9),
+  (book: 'Ps', chapter: 33, verse: 19),
+  (book: 'Ps', chapter: 36, verse: 4),
+  (book: 'Ps', chapter: 36, verse: 5),
+  (book: 'Ps', chapter: 39, verse: 2),
+  (book: 'Ps', chapter: 41, verse: 2),
+  (book: 'Ps', chapter: 45, verse: 2),
+  (book: 'Ps', chapter: 50, verse: 12),
+  (book: 'Ps', chapter: 54, verse: 23),
+  (book: 'Ps', chapter: 62, verse: 2),
+  (book: 'Ps', chapter: 83, verse: 2),
+  (book: 'Ps', chapter: 85, verse: 11),
+  (book: 'Ps', chapter: 89, verse: 12),
+  (book: 'Ps', chapter: 90, verse: 1),
+  (book: 'Ps', chapter: 99, verse: 2),
+  (book: 'Ps', chapter: 102, verse: 2),
+  (book: 'Ps', chapter: 103, verse: 24),
+  (book: 'Ps', chapter: 117, verse: 24),
+  (book: 'Ps', chapter: 118, verse: 105),
+  (book: 'Ps', chapter: 120, verse: 2),
+  (book: 'Ps', chapter: 126, verse: 1),
+  (book: 'Ps', chapter: 138, verse: 14),
+  (book: 'Ps', chapter: 140, verse: 2),
+  (book: 'Ps', chapter: 142, verse: 8),
+  (book: 'Ps', chapter: 144, verse: 18),
+  (book: 'Ps', chapter: 146, verse: 3),
+  (book: 'Ps', chapter: 150, verse: 6),
+  // Ветхий Завет.
+  (book: 'Deut', chapter: 6, verse: 5),
+  (book: 'Nav', chapter: 1, verse: 9),
+  (book: 'Prov', chapter: 1, verse: 7),
+  (book: 'Prov', chapter: 3, verse: 5),
+  (book: 'Prov', chapter: 3, verse: 6),
+  (book: 'Prov', chapter: 4, verse: 23),
+  (book: 'Prov', chapter: 15, verse: 1),
+  (book: 'Prov', chapter: 16, verse: 3),
+  (book: 'Prov', chapter: 17, verse: 22),
+  (book: 'Eccl', chapter: 3, verse: 1),
+  (book: 'Sir', chapter: 2, verse: 1),
+  (book: 'Is', chapter: 9, verse: 6),
+  (book: 'Is', chapter: 26, verse: 3),
+  (book: 'Is', chapter: 40, verse: 31),
+  (book: 'Is', chapter: 41, verse: 10),
+  (book: 'Is', chapter: 43, verse: 1),
+  (book: 'Jer', chapter: 29, verse: 11),
+  (book: 'Lam', chapter: 3, verse: 22),
+  (book: 'Mic', chapter: 6, verse: 8),
+  // Евангелия.
+  (book: 'Mt', chapter: 5, verse: 3),
+  (book: 'Mt', chapter: 5, verse: 8),
+  (book: 'Mt', chapter: 5, verse: 9),
+  (book: 'Mt', chapter: 5, verse: 14),
+  (book: 'Mt', chapter: 5, verse: 44),
+  (book: 'Mt', chapter: 6, verse: 21),
+  (book: 'Mt', chapter: 6, verse: 33),
+  (book: 'Mt', chapter: 6, verse: 34),
+  (book: 'Mt', chapter: 7, verse: 7),
+  (book: 'Mt', chapter: 7, verse: 12),
+  (book: 'Mt', chapter: 11, verse: 28),
+  (book: 'Mt', chapter: 11, verse: 29),
+  (book: 'Mt', chapter: 18, verse: 20),
+  (book: 'Mt', chapter: 19, verse: 26),
+  (book: 'Mt', chapter: 22, verse: 37),
+  (book: 'Mt', chapter: 28, verse: 20),
+  (book: 'Mk', chapter: 9, verse: 23),
+  (book: 'Mk', chapter: 11, verse: 24),
+  (book: 'Lk', chapter: 1, verse: 37),
+  (book: 'Lk', chapter: 6, verse: 31),
+  (book: 'Lk', chapter: 6, verse: 36),
+  (book: 'Lk', chapter: 6, verse: 37),
+  (book: 'Lk', chapter: 11, verse: 9),
+  (book: 'Lk', chapter: 12, verse: 34),
+  (book: 'Lk', chapter: 18, verse: 27),
+  (book: 'Jn', chapter: 1, verse: 5),
+  (book: 'Jn', chapter: 3, verse: 16),
+  (book: 'Jn', chapter: 6, verse: 35),
+  (book: 'Jn', chapter: 8, verse: 12),
+  (book: 'Jn', chapter: 8, verse: 32),
+  (book: 'Jn', chapter: 10, verse: 11),
+  (book: 'Jn', chapter: 11, verse: 25),
+  (book: 'Jn', chapter: 13, verse: 34),
+  (book: 'Jn', chapter: 14, verse: 6),
+  (book: 'Jn', chapter: 14, verse: 27),
+  (book: 'Jn', chapter: 15, verse: 5),
+  (book: 'Jn', chapter: 15, verse: 13),
+  (book: 'Jn', chapter: 16, verse: 33),
+  // Деяния, Послания, Откровение.
+  (book: 'Act', chapter: 20, verse: 35),
+  (book: 'Jac', chapter: 1, verse: 5),
+  (book: 'Jac', chapter: 1, verse: 19),
+  (book: 'Jac', chapter: 4, verse: 8),
+  (book: '1Pet', chapter: 4, verse: 8),
+  (book: '1Pet', chapter: 5, verse: 7),
+  (book: '1Jn', chapter: 1, verse: 9),
+  (book: '1Jn', chapter: 4, verse: 8),
+  (book: '1Jn', chapter: 4, verse: 18),
+  (book: 'Rom', chapter: 8, verse: 28),
+  (book: 'Rom', chapter: 8, verse: 31),
+  (book: 'Rom', chapter: 12, verse: 12),
+  (book: 'Rom', chapter: 12, verse: 21),
+  (book: 'Rom', chapter: 15, verse: 13),
+  (book: '1Cor', chapter: 10, verse: 13),
+  (book: '1Cor', chapter: 13, verse: 4),
+  (book: '1Cor', chapter: 13, verse: 13),
+  (book: '1Cor', chapter: 16, verse: 14),
+  (book: '2Cor', chapter: 5, verse: 17),
+  (book: '2Cor', chapter: 9, verse: 7),
+  (book: '2Cor', chapter: 12, verse: 9),
+  (book: 'Gal', chapter: 5, verse: 22),
+  (book: 'Gal', chapter: 6, verse: 2),
+  (book: 'Gal', chapter: 6, verse: 9),
+  (book: 'Eph', chapter: 2, verse: 8),
+  (book: 'Eph', chapter: 4, verse: 32),
+  (book: 'Phil', chapter: 4, verse: 4),
+  (book: 'Phil', chapter: 4, verse: 6),
+  (book: 'Phil', chapter: 4, verse: 7),
+  (book: 'Phil', chapter: 4, verse: 13),
+  (book: 'Col', chapter: 3, verse: 14),
+  (book: 'Col', chapter: 3, verse: 23),
+  (book: '1Thes', chapter: 5, verse: 16),
+  (book: '1Thes', chapter: 5, verse: 17),
+  (book: '1Thes', chapter: 5, verse: 18),
+  (book: '2Tim', chapter: 1, verse: 7),
+  (book: 'Hebr', chapter: 11, verse: 1),
+  (book: 'Hebr', chapter: 13, verse: 8),
+  (book: 'Apok', chapter: 3, verse: 20),
+  (book: 'Apok', chapter: 21, verse: 4),
+  (book: 'Apok', chapter: 21, verse: 5),
+];
+
+/// Шаг обхода подборки. Больше самой длинной группы одной книги (Псалтирь)
+/// и меньше длины списка за вычетом этой группы, поэтому соседние дни
+/// всегда из разных книг. Взаимно прост с длиной списка, поэтому за полный
+/// круг каждый стих выходит ровно один раз.
+const _stride = 53;
+
+/// Стих на календарный день [date]. Счёт дней через UTC: переход на летнее
+/// время не должен сдвигать выбор.
+VerseRef verseOfDayRefFor(DateTime date) {
+  final day =
+      DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
+  return verseOfDayRefs[(day * _stride) % verseOfDayRefs.length];
+}

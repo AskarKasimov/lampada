@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
@@ -18,9 +19,7 @@ Widget _app(Widget child) => MaterialApp(
 );
 
 void main() {
-  testWidgets('курс показывает только заголовок и полосу прогресса', (
-    tester,
-  ) async {
+  testWidgets('счётчик тем стоит под заголовком, полосы нет', (tester) async {
     final semantics = tester.ensureSemantics();
     await tester.pumpWidget(
       _app(
@@ -34,15 +33,13 @@ void main() {
     expect(find.text('Основы веры'), findsOneWidget);
     expect(find.text('Тема курса'), findsNothing);
     expect(find.textContaining('Прочитано'), findsNothing);
-    // Счётчик тем стоит справа от полосы, на одной с ней линии.
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    // Справка о курсе открывается из читалки, на плитке кнопки нет.
+    expect(find.byTooltip('О курсе'), findsNothing);
+    final title = tester.getRect(find.text('Основы веры'));
     final counter = tester.getRect(find.text('73/365'));
-    final barRect = tester.getRect(find.byType(LinearProgressIndicator));
-    expect(counter.left, greaterThan(barRect.right));
-    expect(counter.center.dy, closeTo(barRect.center.dy, 2));
-    final bar = tester.widget<LinearProgressIndicator>(
-      find.byType(LinearProgressIndicator),
-    );
-    expect(bar.value, closeTo(73 / 365, 1e-9));
+    expect(counter.top, greaterThanOrEqualTo(title.bottom));
+    expect(counter.left, title.left);
     expect(
       find.bySemanticsLabel(RegExp('Прочитано 73 из 365')),
       findsOneWidget,
@@ -73,14 +70,12 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    final counter = tester.getRect(find.text('365/365'));
-    final bar = tester.getRect(find.byType(LinearProgressIndicator));
-    expect(counter.right, lessThanOrEqualTo(304));
-    expect(bar.width, greaterThan(0));
-    expect(bar.right, lessThan(counter.left));
+    expect(tester.getRect(find.text('365/365')).right, lessThanOrEqualTo(304));
   });
 
-  testWidgets('без счётчика прочитанного полосы прогресса нет', (tester) async {
+  testWidgets('без счётчика прочитанного у заголовка нет числа', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _app(
         CourseProgressHeader(
@@ -90,12 +85,10 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.textContaining('/365'), findsNothing);
   });
 
-  testWidgets('справка о курсе открывается кнопкой на плитке', (tester) async {
-    var info = false;
+  testWidgets('тап по плитке открывает курс', (tester) async {
     var opened = false;
     await tester.pumpWidget(
       _app(
@@ -103,12 +96,36 @@ void main() {
           topic: _topic,
           completedTopicCount: 0,
           onTap: () => opened = true,
-          onInfo: () => info = true,
         ),
       ),
     );
-    await tester.tap(find.byTooltip('О курсе'));
-    expect(info, isTrue);
-    expect(opened, isFalse);
+    await tester.tap(find.text('0/365'));
+    expect(opened, isTrue);
+  });
+
+  testWidgets('книга крупная и не теряется в низкой плитке', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        ListView(
+          children: [
+            CourseProgressHeader(
+              topic: _topic,
+              completedTopicCount: 0,
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final tile = tester.getRect(
+      find.descendant(
+        of: find.byType(CourseProgressHeader),
+        matching: find.byType(InkWell),
+      ),
+    );
+    final book = tester.getRect(find.byIcon(CupertinoIcons.book));
+    expect(book.height, greaterThan(tile.height * 1.25));
+    expect(book.top, greaterThanOrEqualTo(tile.top - book.height * 0.1));
   });
 }

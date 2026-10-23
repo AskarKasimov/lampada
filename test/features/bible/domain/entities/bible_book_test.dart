@@ -14,6 +14,10 @@ void main() {
     );
   });
 
+  test('всего в каталоге 1361 глава: от неё считается доля прочитанного', () {
+    expect(bibleChapterTotal, 1361);
+  });
+
   test('у каждой книги своё сокращение, как в ссылках Азбуки', () {
     expect(bibleBooks.map((book) => book.abbreviation).toSet(), hasLength(77));
     final byCode = {for (final book in bibleBooks) book.code: book};

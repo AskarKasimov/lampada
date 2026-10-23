@@ -58,8 +58,14 @@ flutter:
   fonts:
     - family: Lora
       fonts:
-        - asset: assets/fonts/Lora-Italic.ttf
-          style: italic
+        - asset: assets/fonts/Lora-Regular.ttf
+    # Гуманистический гротеск ParaType для подписей и интерфейса: по
+    # характеру и высоте строчных ближе к Lora, чем системный SF.
+    - family: PT Sans
+      fonts:
+        - asset: assets/fonts/PTSans-Regular.ttf
+        - asset: assets/fonts/PTSans-Bold.ttf
+          weight: 700
 
 # Перед генерацией iOS-иконки: `dart run tool/make_ios_icon.dart`.
 # После `flutter_launcher_icons` проверьте, что

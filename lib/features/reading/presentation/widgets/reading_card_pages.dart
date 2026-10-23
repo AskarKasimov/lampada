@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../bible/domain/entities/bible_book.dart';
 import '../../../bible/presentation/providers/providers.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
@@ -76,7 +76,6 @@ class ReadingCardPages {
     }
 
     final links = chapterLinks(context);
-    final colors = AppColorsExtension.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -86,7 +85,7 @@ class ReadingCardPages {
                 ? 'Хотите прочесть главу полностью?'
                 : 'Хотите прочесть главы полностью?',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 22, color: colors.ink),
+            style: AppTheme.headingStyle(context, fontSize: 22),
           ),
           const SizedBox(height: 18),
           for (final link in links)
