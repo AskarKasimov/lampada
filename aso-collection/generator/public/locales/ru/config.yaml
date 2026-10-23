@@ -1,64 +1,54 @@
 locale: ru
 slides:
-  - id: hero
-    label: Главный
-    title:
-      - Православие
-      - "по 5 минут в день."
-    subtitle:
-      - "Открыл, прочитал, закрыл."
-      - "Непрочитанное не копится."
-    theme: light
-    screenshot: 01-today.png
-  - id: session
-    label: Мудрость дня
-    title:
-      - "Мудрость дня"
-      - "в одной листалке."
-    subtitle:
-      - "Цитата, совет, притча"
-      - "и Евангелие каждый день."
-    theme: dark
-    screenshot: 02-card.png
   - id: gospel
     label: Евангелие
     title:
-      - "Читайте Евангелие"
-      - "с толкованием."
-    subtitle:
-      - "Стих за стихом —"
-      - "с объяснением святых отцов."
+      - "Изучай Библию"
+      - "вместо"
+      - "думскроллинга"
     theme: light
-    screenshot: 03-gospel.png
-    # Панель толкования затемняет весь фон, включая системную строку.
-    status_bar_background: "#736e68"
+    screenshot: gospel.png
+    zoom:
+      # Стих «В начале было Слово…» вместе со ссылкой 1:1.
+      - { x: 0.06, y: 0.405, width: 0.905, height: 0.205, scale: 1.35 }
+      # Плашка «От Иоанна 1»: края на 2 px внутри плашки (580–892 × 151–235
+      # в исходнике), чтобы овал не захватил фон экрана.
+      - { x: 0.6326, y: 0.0767, width: 0.3348, height: 0.0401, scale: 1.7, shape: pill }
+  - id: wisdom
+    label: Мудрость дня
+    title:
+      - "Святые отвечают"
+      - "на твои вопросы"
+    theme: light
+    screenshot: wisdom.png
+  - id: daily
+    label: Каждый день
+    title:
+      - "Ближе к Богу"
+      - "с каждым днём"
+    theme: light
+    screenshot: daily.png
+  - id: course
+    label: Основы веры
+    title:
+      - "Основы веры"
+      - "простыми словами"
+    theme: light
+    screenshot: course.png
   - id: bible
     label: Библия
     title:
-      - "Вся Библия —"
-      - "стих за стихом."
-    subtitle:
-      - "Место чтения сохраняется."
-      - "Скачанные главы — без сети."
+      - "Вся Библия"
+      - "всегда с тобой"
     theme: light
-    screenshot: 06-bible.png
-  - id: course
-    label: Курс
+    screenshot: bible.png
+placements:
+  header:
     title:
-      - "Курс «Основы веры»"
-      - "из 365 тем."
-    subtitle:
-      - "Продолжайте с того места,"
-      - "где остановились."
-    theme: dark
-    screenshot: 04-course.png
-  - id: story
-    label: Память дня
+      - "Православие"
+      - "на каждый день"
+  search-results:
     title:
-      - "Кого Церковь"
-      - "вспоминает сегодня."
-    subtitle:
-      - "Праздник, святой"
-      - "и рассказ о нём."
-    theme: light
-    screenshot: 05-story.png
+      - "Православие"
+      - "на каждый день"
+    screenshots: [course.png, wisdom.png, gospel.png, daily.png, bible.png]

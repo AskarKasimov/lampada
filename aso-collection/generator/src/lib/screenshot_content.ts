@@ -2,15 +2,20 @@ import {
   parseLocaleConfig,
   parseRootConfig,
   selectLocale,
+  type LocalePlacement,
   type LocaleSlide,
   type StoreFormat,
+  type StorePlacement,
 } from "./screenshot_config";
+
+export type LoadedPlacement = StorePlacement & LocalePlacement;
 
 export type LoadedContent = {
   locale: string;
   locales: string[];
   slides: LocaleSlide[];
   formats: StoreFormat[];
+  placements: LoadedPlacement[];
 };
 
 export type ContentFetcher = (url: string) => Promise<Response>;
@@ -39,5 +44,11 @@ export async function loadContent(
     locales: root.locales,
     slides: content.slides,
     formats: root.formats,
+    // Плейсмент без текстов локали не показывается: креатив без заголовка
+    // не собрать, а переводить его обязательно не для каждой локали.
+    placements: root.placements.flatMap((placement) => {
+      const local = content.placements[placement.id];
+      return local ? [{ ...placement, ...local }] : [];
+    }),
   };
 }
