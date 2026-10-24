@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/analytics/analytics_provider.dart';
+import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_book.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
+import 'package:lampada/features/bible/domain/entities/bible_reading_position.dart';
+import 'package:lampada/features/bible/domain/repositories/bible_repository.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
@@ -15,21 +19,72 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../support/fake_analytics.dart';
 import '../../../../support/haptics.dart';
 
+class _RecordingRepository implements BibleRepository {
+  final positions = <BibleReadingPosition>[];
+  final progress = <BibleChapterId, BibleChapterProgress>{};
+
+  @override
+  Future<Result<BibleChapter>> getChapter(String book, int chapter) =>
+      throw UnimplementedError();
+
+  @override
+  Future<Result<BibleChapterStatuses>> getChapterStatuses() async => Success((
+    lastChapter: null,
+    cached: <BibleChapterId>{},
+    read: <BibleChapterId>{},
+    progress: {...progress},
+  ));
+
+  @override
+  Future<Result<BibleReadingPosition?>> getReadingPosition() async =>
+      const Success(null);
+
+  @override
+  Future<Result<void>> markChapterRead(String book, int chapter) async =>
+      const Success(null);
+
+  @override
+  Future<Result<void>> saveChapterProgress(
+    String book,
+    int chapter,
+    BibleChapterProgress value,
+  ) async {
+    progress[(book, chapter)] = value;
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> saveReadingPosition(
+    BibleReadingPosition position,
+  ) async {
+    positions.add(position);
+    return const Success(null);
+  }
+}
+
 void main() {
   late SharedPreferences prefs;
   late FakeAnalytics analytics;
+  late _RecordingRepository repository;
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     analytics = FakeAnalytics();
+    repository = _RecordingRepository();
   });
 
-  Future<void> open(WidgetTester tester, {required int verse}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    required int verse,
+    BibleReadingSessionMode mode = BibleReadingSessionMode.viewer,
+    bool showClose = false,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
           analyticsProvider.overrideWithValue(analytics),
+          bibleRepositoryProvider.overrideWithValue(repository),
           bibleChapterProvider.overrideWith(
             (ref, key) async => const BibleChapter(
               book: 'Gen',
@@ -50,10 +105,11 @@ void main() {
         child: MaterialApp(
           theme: AppTheme.light,
           home: BibleReaderScreen(
+            sessionMode: mode,
             book: bibleBooks.first,
             chapter: 1,
             initialVerse: verse,
-            showClose: false,
+            showClose: showClose,
           ),
         ),
       ),
@@ -66,6 +122,28 @@ void main() {
 
     expect(find.text('В начале').hitTestable(), findsOneWidget);
     expect(find.byType(VerseInterpretationButton), findsNothing);
+  });
+
+  testWidgets('в просмотре нет каталога, крестик остаётся справа', (
+    tester,
+  ) async {
+    await open(tester, verse: 1, showClose: true);
+
+    expect(find.byTooltip('Книги и главы'), findsNothing);
+    expect(find.byTooltip('Закрыть'), findsOneWidget);
+  });
+
+  testWidgets('только основное чтение сохраняет личное место', (tester) async {
+    await open(tester, verse: 2);
+    expect(repository.positions, isEmpty);
+    expect(repository.progress[('Gen', 1)]?.verse, 2);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await open(tester, verse: 2, mode: BibleReadingSessionMode.main);
+
+    expect(repository.positions, [
+      const BibleReadingPosition(book: 'Gen', chapter: 1, verse: 2),
+    ]);
   });
 
   testWidgets('толкование открывается со стиха главы, как в чтении дня', (

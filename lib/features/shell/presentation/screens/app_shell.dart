@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
-import '../../../bible/presentation/providers/providers.dart';
 import '../../../bible/presentation/screens/bible_tab_screen.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
@@ -27,9 +26,8 @@ import '../widgets/floating_nav_bar.dart';
 ///
 /// «Главная» и «Библия» — вкладки со своим [Navigator]: «Мудрость дня»,
 /// «Основы веры», каталог и справка открываются внутри вкладки сдвигом
-/// вправо, и навбар остаётся виден. Полноэкранными поверх шелла остаются
-/// только системные по смыслу экраны (разрешение на напоминания, рассказ
-/// о дне) и шторки — они уходят в корневой навигатор.
+/// вправо, и навбар остаётся виден. Просмотр главы по ссылке и полноэкранные
+/// системные экраны уходят в корневой навигатор.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -164,14 +162,6 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   Widget build(BuildContext context) {
-    // Глава, запрошенная из другой вкладки, открывается в «Библии» поверх
-    // её корня: каталог или справка не должны её заслонять.
-    ref.listen(bibleOpenRequestProvider, (_, request) {
-      if (request == null) return;
-      ref.read(selectedTabProvider.notifier).select(ShellTab.bible);
-      final navigator = _bibleNavigatorKey.currentState;
-      if (navigator != null) unawaited(_returnToRoot(navigator));
-    });
     final tab = ref.watch(selectedTabProvider);
     if (tab == ShellTab.bible) _bibleVisited = true;
     // Атрибуты профиля аналитики собираются из всех фич, как и расписание.

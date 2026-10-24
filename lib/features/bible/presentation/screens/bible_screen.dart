@@ -281,6 +281,8 @@ class _BibleBookTile extends StatelessWidget {
                                       MaterialPageRoute<void>(
                                         fullscreenDialog: true,
                                         builder: (_) => BibleReaderScreen(
+                                          sessionMode:
+                                              BibleReadingSessionMode.main,
                                           book: book,
                                           chapter: chapter,
                                           initialVerse: progress?.verse ?? 1,

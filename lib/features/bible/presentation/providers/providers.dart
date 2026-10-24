@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/datasources/bible_remote_datasource.dart';
@@ -12,8 +11,10 @@ import '../../domain/repositories/bible_repository.dart';
 import '../../domain/usecases/get_bible_chapter.dart';
 import '../../domain/usecases/get_verse_of_day.dart';
 import '../../domain/usecases/load_bible_chapter_statuses.dart';
+import '../../domain/usecases/load_bible_reading_position.dart';
 import '../../domain/usecases/mark_bible_chapter_read.dart';
 import '../../domain/usecases/save_bible_chapter_progress.dart';
+import '../../domain/usecases/save_bible_reading_position.dart';
 
 final bibleRepositoryProvider = Provider<BibleRepository>(
   (ref) => AzbykaBibleRepository(
@@ -56,6 +57,14 @@ final markBibleChapterReadProvider = Provider<MarkBibleChapterRead>(
 
 final saveBibleChapterProgressProvider = Provider<SaveBibleChapterProgress>(
   (ref) => SaveBibleChapterProgress(ref.watch(bibleRepositoryProvider)),
+);
+
+final loadBibleReadingPositionProvider = Provider<LoadBibleReadingPosition>(
+  (ref) => LoadBibleReadingPosition(ref.watch(bibleRepositoryProvider)),
+);
+
+final saveBibleReadingPositionProvider = Provider<SaveBibleReadingPosition>(
+  (ref) => SaveBibleReadingPosition(ref.watch(bibleRepositoryProvider)),
 );
 
 final bibleChapterStatusesProvider =
@@ -114,40 +123,3 @@ final bibleChapterProvider = FutureProvider.family<BibleChapter, (String, int)>(
     };
   },
 );
-
-/// Запрос открыть главу во вкладке «Библия», например из «Мудрости дня»
-/// или «Стиха дня». [verse] — стих, с которого открыть главу; [source] —
-/// откуда пришёл запрос, для аналитики. [serial] отличает повторный запрос
-/// той же главы от уже выполненного.
-typedef BibleOpenRequest = ({
-  String book,
-  int chapter,
-  int verse,
-  BibleOpenSource source,
-  int serial,
-});
-
-/// Последний запрос главы. Шелл по нему переключается на «Библию», вкладка
-/// открывает главу на запрошенном стихе. Отдельного окна с главой нет.
-final bibleOpenRequestProvider =
-    NotifierProvider<BibleOpenRequestNotifier, BibleOpenRequest?>(
-      BibleOpenRequestNotifier.new,
-    );
-
-class BibleOpenRequestNotifier extends Notifier<BibleOpenRequest?> {
-  @override
-  BibleOpenRequest? build() => null;
-
-  void open(
-    String book,
-    int chapter, {
-    int verse = 1,
-    BibleOpenSource source = BibleOpenSource.dailyReading,
-  }) => state = (
-    book: book,
-    chapter: chapter,
-    verse: verse,
-    source: source,
-    serial: (state?.serial ?? 0) + 1,
-  );
-}

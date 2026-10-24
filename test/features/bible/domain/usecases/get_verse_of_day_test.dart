@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
+import 'package:lampada/features/bible/domain/entities/bible_reading_position.dart';
 import 'package:lampada/features/bible/domain/entities/daily_verse.dart';
 import 'package:lampada/features/bible/domain/repositories/bible_repository.dart';
 import 'package:lampada/features/bible/domain/usecases/get_verse_of_day.dart';
@@ -33,6 +34,15 @@ class _FakeRepository implements BibleRepository {
     int chapter,
     BibleChapterProgress progress,
   ) => throw UnimplementedError();
+
+  @override
+  Future<Result<BibleReadingPosition?>> getReadingPosition() async =>
+      const Success(null);
+
+  @override
+  Future<Result<void>> saveReadingPosition(
+    BibleReadingPosition position,
+  ) async => const Success(null);
 }
 
 void main() {

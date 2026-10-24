@@ -164,8 +164,7 @@ class DayWisdomScreen extends ConsumerWidget {
             recordsCompletion: recordRead,
             countsDay: recordProgress,
             onDone: () => Navigator.of(context).pop(),
-            // Глава открывается во вкладке «Библия», а «Мудрость дня»
-            // закрывается: вернувшись на «Главную», юзер видит день.
+            // Просмотр лежит поверх дневной сессии и возвращает к её итогу.
             links: [
               for (final link
                   in readingPages?.chapterLinks(
@@ -173,14 +172,7 @@ class DayWisdomScreen extends ConsumerWidget {
                         continueAfterDailyReading: true,
                       ) ??
                       const <ReadingLink>[])
-                (
-                  label: link.label,
-                  onPressed: () {
-                    // Сначала запрос: контекст страницы ещё жив до pop.
-                    link.onPressed();
-                    Navigator.of(context).pop();
-                  },
-                ),
+                (label: link.label, onPressed: link.onPressed),
             ],
           );
         }

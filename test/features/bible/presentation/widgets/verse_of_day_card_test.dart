@@ -9,8 +9,10 @@ import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
 import 'package:lampada/features/bible/domain/entities/daily_verse.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
+import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/bible/presentation/widgets/verse_of_day_card.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -42,6 +44,13 @@ void main() {
         analyticsProvider.overrideWithValue(FakeAnalytics()),
         verseOfDayProvider.overrideWith(
           (ref, key) => (load ?? () async => _verse)(),
+        ),
+        bibleChapterProvider.overrideWith(
+          (ref, key) async => BibleChapter(
+            book: key.$1,
+            number: key.$2,
+            verses: [BibleVerse(number: 1, text: 'Стих главы')],
+          ),
         ),
       ],
     );
@@ -143,16 +152,22 @@ void main() {
     expect(find.text('Пс. 36:5–6'), findsOneWidget);
   });
 
-  testWidgets('тап по карточке открывает Библию на стихе дня', (tester) async {
-    final container = await pump(tester);
+  testWidgets('тап по карточке открывает отдельный просмотр на стихе дня', (
+    tester,
+  ) async {
+    await pump(tester);
 
     await tester.tap(find.byType(VerseOfDayCard));
+    await tester.pumpAndSettle();
 
-    final request = container.read(bibleOpenRequestProvider);
-    expect(request?.book, 'Ps');
-    expect(request?.chapter, 22);
-    expect(request?.verse, 1);
-    expect(request?.source, BibleOpenSource.verseOfDay);
+    final reader = tester.widget<BibleReaderScreen>(
+      find.byType(BibleReaderScreen),
+    );
+    expect(reader.book.code, 'Ps');
+    expect(reader.chapter, 22);
+    expect(reader.initialVerse, 1);
+    expect(reader.sessionMode, BibleReadingSessionMode.viewer);
+    expect(reader.openSource, BibleOpenSource.verseOfDay);
   });
 
   testWidgets('стих сохраняется в копилку той же закладкой, что в Библии', (
@@ -163,7 +178,7 @@ void main() {
     await tester.tap(find.byIcon(CupertinoIcons.bookmark));
     await tester.pump();
 
-    expect(container.read(bibleOpenRequestProvider), isNull);
+    expect(find.byType(BibleReaderScreen), findsNothing);
     final saved = container.read(bookmarksProvider).value!;
     expect(saved.single.id, 'bible-Ps-22:1');
     expect(saved.single.text, _verse.text);

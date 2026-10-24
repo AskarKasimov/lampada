@@ -9,7 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/fullscreen_swipe_dismiss.dart';
-import '../../../bible/presentation/screens/bible_reader_screen.dart';
+import '../../../bible/presentation/navigation/open_bible_viewer.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/theme/card_type_style.dart';
 import '../../domain/entities/bookmark.dart';
@@ -68,15 +68,12 @@ class BookmarkDetailScreen extends StatelessWidget {
               IconButton(
                 tooltip: 'Открыть главу',
                 icon: Icon(CupertinoIcons.book, color: colors.homeSubtitle),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => BibleReaderScreen(
-                      book: chapter.book,
-                      chapter: chapter.chapter,
-                      initialVerse: chapter.verse,
-                      openSource: BibleOpenSource.bookmark,
-                    ),
-                  ),
+                onPressed: () => openBibleViewer(
+                  context,
+                  book: chapter.book,
+                  chapter: chapter.chapter,
+                  verse: chapter.verse,
+                  source: BibleOpenSource.bookmark,
                 ),
               ),
             IconButton(

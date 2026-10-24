@@ -20,11 +20,15 @@ import '../../../reading/presentation/widgets/interpretation_sheet.dart';
 import '../../../reading/presentation/widgets/verse_view.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
+import '../../domain/entities/bible_reading_position.dart';
 import '../providers/providers.dart';
 import 'bible_screen.dart';
 
+enum BibleReadingSessionMode { main, viewer }
+
 class BibleReaderScreen extends ConsumerStatefulWidget {
   const BibleReaderScreen({
+    required this.sessionMode,
     required this.book,
     required this.chapter,
     this.initialVerse = 1,
@@ -33,6 +37,8 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
     this.openSource = BibleOpenSource.tab,
     super.key,
   });
+
+  final BibleReadingSessionMode sessionMode;
 
   /// Откуда открыта глава: аналитика отличает первый вход, каталог,
   /// чтение дня и закладку.
@@ -214,6 +220,15 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         fraction: (page - first + 1) / (last - first + 1),
       ),
     );
+    if (widget.sessionMode == BibleReadingSessionMode.main) {
+      ref.read(saveBibleReadingPositionProvider)(
+        BibleReadingPosition(
+          book: position.book.code,
+          chapter: position.chapter,
+          verse: position.verse.number,
+        ),
+      );
+    }
     _markChapterReadIfFinished(page);
   }
 
@@ -363,7 +378,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       return Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          leading: widget.showClose ? _catalogAction(colors) : null,
+          leading: _hasCatalogAction ? _catalogAction(colors) : null,
           actions: [
             if (widget.showClose)
               _closeAction(colors)
@@ -378,7 +393,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       return Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          leading: widget.showClose ? _catalogAction(colors) : null,
+          leading: _hasCatalogAction ? _catalogAction(colors) : null,
           title: Text(_book.title),
           actions: [
             if (widget.showClose)
@@ -500,7 +515,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
           ],
         ),
         onClose: widget.onClose ?? () => Navigator.of(context).pop(),
-        topLeftAction: widget.showClose
+        topLeftAction: _hasCatalogAction
             ? _catalogAction(colors)
             : const SizedBox.shrink(),
         topRightAction: widget.showClose
@@ -510,6 +525,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       ),
     );
   }
+
+  bool get _hasCatalogAction =>
+      widget.showClose && widget.sessionMode == BibleReadingSessionMode.main;
 
   DayCard _cardFor(_ReadingVerse position) => DayCard(
     id: 'bible-${position.book.code}-${position.chapter}:${position.verse.number}',

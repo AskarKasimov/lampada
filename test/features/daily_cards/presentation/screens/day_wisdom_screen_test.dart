@@ -492,19 +492,25 @@ void main() {
         expect(continueReading, findsOneWidget);
         expect(find.text('Вернуться на главную'), findsOneWidget);
 
-        final container = ProviderScope.containerOf(
-          tester.element(find.byType(DayWisdomScreen)),
-        );
         await tester.tap(continueReading);
         await tester.pumpAndSettle();
-        // Глава открывается во вкладке «Библия», а не отдельным окном поверх.
-        expect(find.byType(BibleReaderScreen), findsNothing);
-        expect(find.byType(DayWisdomScreen), findsNothing);
-        final request = container.read(bibleOpenRequestProvider);
+        expect(find.byType(BibleReaderScreen), findsOneWidget);
         expect(
-          (request?.book, request?.chapter, request?.verse),
+          find.byType(DayWisdomScreen, skipOffstage: false),
+          findsOneWidget,
+        );
+        final reader = tester.widget<BibleReaderScreen>(
+          find.byType(BibleReaderScreen),
+        );
+        expect(
+          (reader.book.code, reader.chapter, reader.initialVerse),
           ('Jn', 10, 22),
         );
+        expect(reader.sessionMode, BibleReadingSessionMode.viewer);
+        await tester.tap(find.byTooltip('Закрыть'));
+        await tester.pumpAndSettle();
+        expect(find.byType(DayWisdomScreen), findsOneWidget);
+        expect(find.text('Вернуться на главную'), findsOneWidget);
       },
     );
 
@@ -527,7 +533,7 @@ void main() {
         )).isWisdomCompletedOn(today),
         isTrue,
       );
-      expect(container.read(bibleOpenRequestProvider), isNull);
+      expect(find.byType(BibleReaderScreen), findsNothing);
       await tester.tap(find.text('Вернуться на главную'));
       await tester.pumpAndSettle();
 
@@ -538,7 +544,7 @@ void main() {
       expect(find.byType(DayWisdomScreen), findsOneWidget);
       expect(find.text('Слава Богу!'), findsOneWidget);
       expect(find.text('Продолжить с Ин. 10:2'), findsOneWidget);
-      expect(container.read(bibleOpenRequestProvider), isNull);
+      expect(find.byType(BibleReaderScreen), findsNothing);
       final streak = find.byType(StreakCard);
       final counter = tester.widget<AnimatedSwitcher>(
         find.descendant(of: streak, matching: find.byType(AnimatedSwitcher)),

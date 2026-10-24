@@ -11,6 +11,7 @@ import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/daily_verse.dart';
+import '../navigation/open_bible_viewer.dart';
 import '../providers/providers.dart';
 
 /// «Стих дня» на главной. Пока стих грузится, карточка уже стоит на месте,
@@ -57,14 +58,13 @@ class VerseOfDayCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(24),
           onTap: verse == null || book == null
               ? null
-              : () => ref
-                    .read(bibleOpenRequestProvider.notifier)
-                    .open(
-                      verse.book,
-                      verse.chapter,
-                      verse: verse.verse,
-                      source: BibleOpenSource.verseOfDay,
-                    ),
+              : () => openBibleViewer(
+                  context,
+                  book: book,
+                  chapter: verse.chapter,
+                  verse: verse.verse,
+                  source: BibleOpenSource.verseOfDay,
+                ),
           child: Ink(
             padding: const EdgeInsets.fromLTRB(8, 18, 8, 8),
             decoration: BoxDecoration(

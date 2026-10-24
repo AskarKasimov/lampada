@@ -133,6 +133,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(requestedChapters, [('Jn', 10)]);
     expect(find.byType(BibleReaderScreen), findsOneWidget);
+    expect(
+      tester
+          .widget<BibleReaderScreen>(find.byType(BibleReaderScreen))
+          .sessionMode,
+      BibleReadingSessionMode.viewer,
+    );
     expect(find.text('Второй стих полной главы').hitTestable(), findsOneWidget);
     final pages = find.byType(PageView);
     await tester.drag(pages, const Offset(0, 600));

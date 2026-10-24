@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../bible/domain/entities/bible_book.dart';
-import '../../../bible/presentation/providers/providers.dart';
+import '../../../bible/presentation/navigation/open_bible_viewer.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../domain/entities/daily_reading.dart';
 import 'interpretation_sheet.dart';
@@ -98,8 +98,8 @@ class ReadingCardPages {
 
   /// Предлагает чтение главы или продолжение после дневного отрывка.
   ///
-  /// Глава открывается во вкладке «Библия», а не отдельным окном: там её
-  /// можно дочитать и листать дальше, место чтения сохраняется.
+  /// Ссылка открывает временный просмотр главы; личное место во вкладке
+  /// «Библия» остаётся отдельным.
   List<ReadingLink> chapterLinks(
     BuildContext context, {
     bool continueAfterDailyReading = false,
@@ -118,9 +118,13 @@ class ReadingCardPages {
           label:
               'Продолжить с ${book.abbreviation}. '
               '${lastVerse.chapter}:$nextVerse',
-          onPressed: () => ProviderScope.containerOf(context, listen: false)
-              .read(bibleOpenRequestProvider.notifier)
-              .open(book.code, lastVerse.chapter, verse: nextVerse),
+          onPressed: () => openBibleViewer(
+            context,
+            book: book,
+            chapter: lastVerse.chapter,
+            verse: nextVerse,
+            source: BibleOpenSource.dailyReading,
+          ),
         ),
       ];
     }
@@ -130,9 +134,13 @@ class ReadingCardPages {
           label: chapters.length == 1
               ? 'Прочитать главу полностью'
               : 'Прочитать главу $chapter',
-          onPressed: () => ProviderScope.containerOf(context, listen: false)
-              .read(bibleOpenRequestProvider.notifier)
-              .open(book.code, chapter, verse: 1),
+          onPressed: () => openBibleViewer(
+            context,
+            book: book,
+            chapter: chapter,
+            verse: 1,
+            source: BibleOpenSource.dailyReading,
+          ),
         ),
     ];
   }

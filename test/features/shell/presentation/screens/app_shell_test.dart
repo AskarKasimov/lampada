@@ -5,12 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_event.dart';
 import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/bible/domain/entities/bible_book.dart';
+import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
+import 'package:lampada/features/bible/presentation/navigation/open_bible_viewer.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
+import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_tab_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
@@ -165,6 +170,7 @@ void main() {
   Widget buildApp({
     TargetPlatform? platform,
     CourseProgressRepository? courseProgress,
+    bool stubBibleChapter = false,
   }) => ProviderScope(
     overrides: [
       if (courseProgress != null)
@@ -176,6 +182,17 @@ void main() {
       readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
       sharedPreferencesProvider.overrideWithValue(prefs),
       analyticsProvider.overrideWithValue(analytics),
+      if (stubBibleChapter)
+        bibleChapterProvider.overrideWith(
+          (ref, key) async => BibleChapter(
+            book: key.$1,
+            number: key.$2,
+            verses: [
+              BibleVerse(number: 1, text: 'Просмотр ${key.$1}.${key.$2}:1'),
+              BibleVerse(number: 2, text: 'Просмотр ${key.$1}.${key.$2}:2'),
+            ],
+          ),
+        ),
     ],
     child: MaterialApp(
       theme: AppTheme.light.copyWith(platform: platform),
@@ -327,24 +344,93 @@ void main() {
     },
   );
 
-  testWidgets('запрос главы открывает её во вкладке «Библия»', (tester) async {
-    await prefs.setString(
-      'bible_chapter_v1:Jn.10',
-      '{"book":"Jn","number":10,"verses":[{"number":1,"text":"Первый стих Иоанна 10"}]}',
+  testWidgets('внешняя ссылка открывает просмотр без переключения вкладки', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildApp(platform: TargetPlatform.iOS, stubBibleChapter: true),
     );
-    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
     await settle(tester);
-    expect(find.byType(TodayScreen), findsOneWidget);
-
-    ProviderScope.containerOf(
+    final container = ProviderScope.containerOf(
       tester.element(find.byType(AppShell)),
-    ).read(bibleOpenRequestProvider.notifier).open('Jn', 10);
+    );
+    final context = tester.element(find.byType(AppShell));
+    unawaited(
+      openBibleViewer(
+        context,
+        book: bibleBooks.firstWhere((book) => book.code == 'Jn'),
+        chapter: 10,
+        verse: 1,
+        source: BibleOpenSource.dailyReading,
+      ),
+    );
+    unawaited(
+      openBibleViewer(
+        context,
+        book: bibleBooks.firstWhere((book) => book.code == 'Jn'),
+        chapter: 10,
+        verse: 1,
+        source: BibleOpenSource.dailyReading,
+      ),
+    );
     await settle(tester);
 
-    expect(find.byType(BibleTabScreen), findsOneWidget);
-    expect(tabIcon(CupertinoIcons.book_fill), findsOneWidget);
-    expect(find.text('Первый стих Иоанна 10'), findsOneWidget);
-    expect(find.byTooltip('Закрыть'), findsNothing);
+    final reader = tester.widget<BibleReaderScreen>(
+      find.byType(BibleReaderScreen),
+    );
+    expect(reader.sessionMode, BibleReadingSessionMode.viewer);
+    expect(reader.openSource, BibleOpenSource.dailyReading);
+    expect(find.byType(BibleReaderScreen, skipOffstage: false), findsOneWidget);
+    expect(find.text('Просмотр Jn.10:1').hitTestable(), findsOneWidget);
+    expect(container.read(selectedTabProvider), ShellTab.today);
+    expect(find.byTooltip('Закрыть'), findsOneWidget);
+    expect(find.byType(FloatingNavBar).hitTestable(), findsNothing);
+    expect(analytics.single('bible_chapter_opened')['source'], 'daily_reading');
+    expect(analytics.names, isNot(contains('tab_opened')));
+  });
+
+  testWidgets('первый просмотр переносит старую позицию до общей записи', (
+    tester,
+  ) async {
+    await prefs.setString('bible_last_chapter_v1', 'Jn.3');
+    await prefs.setString('bible_progress_v1:Jn.3', '{"verse":2,"fraction":1}');
+    await tester.pumpWidget(
+      buildApp(platform: TargetPlatform.iOS, stubBibleChapter: true),
+    );
+    await settle(tester);
+
+    unawaited(
+      openBibleViewer(
+        tester.element(find.byType(AppShell)),
+        book: bibleBooks.firstWhere((book) => book.code == 'Jn'),
+        chapter: 3,
+        verse: 1,
+        source: BibleOpenSource.verseOfDay,
+      ),
+    );
+    await settle(tester);
+    expect(prefs.getString('bible_reading_position_v1'), contains('"verse":2'));
+    expect(prefs.getString('bible_progress_v1:Jn.3'), contains('"verse":1'));
+    await tester.tap(find.byTooltip('Закрыть'));
+    await settle(tester);
+
+    // Новое окно провайдеров моделирует следующий запуск приложения.
+    await tester.pumpWidget(
+      buildApp(platform: TargetPlatform.iOS, stubBibleChapter: true),
+    );
+    await settle(tester);
+    await tester.tap(tabIcon(CupertinoIcons.book));
+    await settle(tester);
+
+    final reader = tester.widget<BibleReaderScreen>(
+      find.byType(BibleReaderScreen),
+    );
+    expect(reader.sessionMode, BibleReadingSessionMode.main);
+    expect(
+      (reader.book.code, reader.chapter, reader.initialVerse),
+      ('Jn', 3, 2),
+    );
+    expect(find.text('Просмотр Jn.3:2').hitTestable(), findsOneWidget);
   });
 
   testWidgets('стартует на «Главной» с кнопкой Мудрость дня', (tester) async {
