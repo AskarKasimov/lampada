@@ -67,7 +67,19 @@ class DayStoryScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: async.when(
-          loading: () => const BrandLoadingView(),
+          loading: () => Stack(
+            fit: StackFit.expand,
+            children: [
+              const BrandLoadingView(),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: _storyCloseButton(context, () {
+                  Navigator.of(context).pop();
+                }),
+              ),
+            ],
+          ),
           error: (e, _) {
             final kind = switch (e) {
               AppFailure(kind: final k) => k,
@@ -302,11 +314,8 @@ class _StoryReaderState extends State<_StoryReader> {
       ),
       onClose: widget.onClose,
       closeColor: colors.homeSubtitle,
-      topLeftAction: IconButton(
-        tooltip: 'Закрыть рассказ',
-        icon: Icon(CupertinoIcons.xmark, size: 22, color: colors.homeSubtitle),
-        onPressed: widget.onClose,
-      ),
+      closeOnRight: true,
+      closeTooltip: 'Закрыть рассказ',
     );
   }
 }
@@ -415,19 +424,22 @@ class _StoryStatusView extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 8,
-          right: AppSpacing.of(context).horizontal.right,
-          child: IconButton(
-            tooltip: 'Закрыть рассказ',
-            onPressed: onClose,
-            icon: Icon(
-              CupertinoIcons.xmark,
-              size: 22,
-              color: colors.homeSubtitle,
-            ),
-          ),
+          top: 0,
+          right: 0,
+          child: _storyCloseButton(context, onClose),
         ),
       ],
     );
   }
+}
+
+IconButton _storyCloseButton(BuildContext context, VoidCallback onClose) {
+  final colors = AppColorsExtension.of(context);
+  return IconButton(
+    tooltip: 'Закрыть рассказ',
+    onPressed: onClose,
+    constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+    padding: EdgeInsets.zero,
+    icon: Icon(CupertinoIcons.xmark, size: 22, color: colors.homeSubtitle),
+  );
 }

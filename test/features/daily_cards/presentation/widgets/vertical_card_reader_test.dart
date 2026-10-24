@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
@@ -6,6 +7,126 @@ import 'package:lampada/features/daily_cards/presentation/widgets/card_content.d
 import 'package:lampada/features/daily_cards/presentation/widgets/vertical_card_reader.dart';
 
 void main() {
+  for (final fullscreenDialog in [false, true]) {
+    testWidgets(
+      'выход занимает ${fullscreenDialog ? 'правый крестик' : 'левую стрелку'} на реальном маршруте',
+      (tester) async {
+        final controller = PageController();
+        addTearDown(controller.dispose);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: fullscreenDialog,
+                      builder: (_) => Scaffold(
+                        body: VerticalCardReader(
+                          controller: controller,
+                          itemCount: 1,
+                          onPageChanged: (_) {},
+                          itemBuilder: (_, _) => const Text('Страница'),
+                          header: const Text('Метка'),
+                          leftRail: const SizedBox.shrink(),
+                          actions: const SizedBox.shrink(),
+                          onClose: () {},
+                          closeColor: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: const Text('Открыть'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Открыть'));
+        await tester.pumpAndSettle();
+
+        final expectedIcon = fullscreenDialog
+            ? CupertinoIcons.xmark
+            : CupertinoIcons.arrow_left;
+        final button = find.byIcon(expectedIcon);
+        expect(button, findsOneWidget);
+        expect(
+          find.byIcon(CupertinoIcons.xmark),
+          fullscreenDialog ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.byIcon(CupertinoIcons.arrow_left),
+          fullscreenDialog ? findsNothing : findsOneWidget,
+        );
+        final buttonRect = tester.getRect(
+          find.ancestor(of: button, matching: find.byType(IconButton)),
+        );
+        final rect = buttonRect;
+        expect(rect.width, greaterThanOrEqualTo(48));
+        expect(rect.height, greaterThanOrEqualTo(48));
+        expect(
+          rect.center.dx > tester.getSize(find.byType(Scaffold).last).width / 2,
+          fullscreenDialog,
+        );
+        expect(
+          find.byTooltip(fullscreenDialog ? 'Закрыть' : 'Назад'),
+          findsOneWidget,
+        );
+      },
+    );
+  }
+
+  testWidgets('действие справа не перекрывает крестик модального ридера', (
+    tester,
+  ) async {
+    final controller = PageController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  fullscreenDialog: true,
+                  builder: (_) => Scaffold(
+                    body: VerticalCardReader(
+                      controller: controller,
+                      itemCount: 1,
+                      onPageChanged: (_) {},
+                      itemBuilder: (_, _) => const Text('Страница'),
+                      header: const Text('Метка'),
+                      leftRail: const SizedBox.shrink(),
+                      actions: const SizedBox.shrink(),
+                      onClose: () {},
+                      closeColor: Colors.black,
+                      topRightAction: IconButton(
+                        tooltip: 'Помощь',
+                        onPressed: () {},
+                        icon: const Icon(CupertinoIcons.info),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('Открыть'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Открыть'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final closeRect = tester.getRect(find.byTooltip('Закрыть'));
+    final actionRect = tester.getRect(find.byTooltip('Помощь'));
+    expect(actionRect.top, greaterThanOrEqualTo(closeRect.bottom));
+    expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
+  });
+
   testWidgets('полная карточка использует место отсутствующей третьей кнопки', (
     tester,
   ) async {

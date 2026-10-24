@@ -303,6 +303,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   Widget _closeAction(AppColorsExtension colors) => IconButton(
     tooltip: 'Закрыть',
     onPressed: widget.onClose ?? () => Navigator.of(context).pop(),
+    constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+    padding: EdgeInsets.zero,
     icon: Icon(CupertinoIcons.xmark, color: colors.homeSubtitle, size: 22),
   );
 
@@ -377,6 +379,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     if (_loadingInitial) {
       return Scaffold(
         appBar: AppBar(
+          toolbarHeight: 48,
           automaticallyImplyLeading: false,
           leading: _hasCatalogAction ? _catalogAction(colors) : null,
           actions: [
@@ -392,6 +395,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     if (_initialError != null) {
       return Scaffold(
         appBar: AppBar(
+          toolbarHeight: 48,
           automaticallyImplyLeading: false,
           leading: _hasCatalogAction ? _catalogAction(colors) : null,
           title: Text(_book.title),
@@ -515,6 +519,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
           ],
         ),
         onClose: widget.onClose ?? () => Navigator.of(context).pop(),
+        showExit: false,
         topLeftAction: _hasCatalogAction
             ? _catalogAction(colors)
             : const SizedBox.shrink(),

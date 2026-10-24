@@ -38,6 +38,8 @@ class BookmarkDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final chapter = const ResolveBookmarkChapter()(bookmark);
+    final actionCount = chapter == null ? 2 : 3;
+    final actionColumnHeight = actionCount * 56.0 + (actionCount - 1) * 4.0;
     final brightness = Theme.of(context).brightness;
     final type = switch (bookmark.kind) {
       BookmarkKind.verse || BookmarkKind.interpretation => CardType.reading,
@@ -64,21 +66,11 @@ class BookmarkDetailScreen extends StatelessWidget {
             letterSpacing: 0.2,
           ),
           actions: [
-            if (chapter != null)
-              IconButton(
-                tooltip: 'Открыть главу',
-                icon: Icon(CupertinoIcons.book, color: colors.homeSubtitle),
-                onPressed: () => openBibleViewer(
-                  context,
-                  book: chapter.book,
-                  chapter: chapter.chapter,
-                  verse: chapter.verse,
-                  source: BibleOpenSource.bookmark,
-                ),
-              ),
             IconButton(
               tooltip: 'Закрыть закладку',
               onPressed: () => Navigator.of(context).pop(),
+              constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+              padding: EdgeInsets.zero,
               icon: Icon(
                 CupertinoIcons.xmark,
                 size: 22,
@@ -131,7 +123,7 @@ class BookmarkDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 144),
+                    SizedBox(height: actionColumnHeight + 28 + 16),
                   ],
                 ),
               ),
@@ -141,6 +133,29 @@ class BookmarkDetailScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (chapter != null) ...[
+                      IconButton(
+                        tooltip: 'Открыть главу',
+                        onPressed: () => openBibleViewer(
+                          context,
+                          book: chapter.book,
+                          chapter: chapter.chapter,
+                          verse: chapter.verse,
+                          source: BibleOpenSource.bookmark,
+                        ),
+                        constraints: const BoxConstraints.tightFor(
+                          width: 56,
+                          height: 56,
+                        ),
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          CupertinoIcons.book,
+                          size: 28,
+                          color: colors.homeSubtitle,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     BookmarkButton(
                       bookmark: bookmark,
                       placement: BookmarkPlacement.detail,

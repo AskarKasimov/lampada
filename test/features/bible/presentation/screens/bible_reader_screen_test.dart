@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -131,6 +134,107 @@ void main() {
 
     expect(find.byTooltip('Книги и главы'), findsNothing);
     expect(find.byTooltip('Закрыть'), findsOneWidget);
+  });
+
+  testWidgets(
+    'крестик просмотра остаётся в одном слоте при загрузке и контенте',
+    (tester) async {
+      final pending = Completer<BibleChapter>();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            bibleRepositoryProvider.overrideWithValue(repository),
+            bibleChapterProvider.overrideWith((ref, key) => pending.future),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (_) => BibleReaderScreen(
+                        sessionMode: BibleReadingSessionMode.viewer,
+                        book: bibleBooks.first,
+                        chapter: 1,
+                        showClose: true,
+                      ),
+                    ),
+                  ),
+                  child: const Text('Источник Библии'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Источник Библии'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final close = find.byTooltip('Закрыть');
+      expect(close, findsOneWidget);
+      expect(find.byTooltip('Книги и главы'), findsNothing);
+      final loadingY = tester.getCenter(close).dy;
+      expect(
+        tester.getCenter(find.byIcon(CupertinoIcons.xmark)).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold).last).width / 2),
+      );
+
+      pending.complete(
+        const BibleChapter(
+          book: 'Gen',
+          number: 1,
+          verses: [BibleVerse(number: 1, text: 'В начале')],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('В начале'), findsOneWidget);
+      expect(
+        tester.getCenter(find.byTooltip('Закрыть')).dy,
+        closeTo(loadingY, 0.5),
+      );
+    },
+  );
+
+  testWidgets('ошибка просмотра сохраняет правый крестик без каталога', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          bibleRepositoryProvider.overrideWithValue(repository),
+          bibleChapterProvider.overrideWith((ref, key) async {
+            throw Exception('offline');
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: BibleReaderScreen(
+            sessionMode: BibleReadingSessionMode.viewer,
+            book: bibleBooks.first,
+            chapter: 1,
+            showClose: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final close = find.byTooltip('Закрыть');
+    expect(find.text('Не удалось открыть чтение'), findsOneWidget);
+    expect(close, findsOneWidget);
+    expect(find.byTooltip('Книги и главы'), findsNothing);
+    expect(find.byIcon(CupertinoIcons.arrow_left), findsNothing);
+    expect(
+      tester.getCenter(close).dx,
+      greaterThan(tester.getSize(find.byType(Scaffold)).width / 2),
+    );
   });
 
   testWidgets('только основное чтение сохраняет личное место', (tester) async {

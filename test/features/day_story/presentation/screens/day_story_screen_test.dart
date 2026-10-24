@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +33,13 @@ class _FakeRepository implements DayStoryRepository {
     calls++;
     return _result;
   }
+}
+
+class _PendingRepository implements DayStoryRepository {
+  final completer = Completer<Result<DayStory>>();
+
+  @override
+  Future<Result<DayStory>> fetch(String url) => completer.future;
 }
 
 void main() {
@@ -168,6 +177,80 @@ void main() {
       greaterThan(tester.getSize(find.byType(Scaffold)).width / 2),
     );
   });
+
+  testWidgets(
+    'на обложке крестик находится справа в том же слоте, что при ошибке',
+    (tester) async {
+      final repo = _FakeRepository(
+        const Success(DayStory(paragraphs: ['Абзац первый.'])),
+      );
+
+      await tester.pumpWidget(wrap(repo));
+      await tester.pumpAndSettle();
+
+      final close = find.byTooltip('Закрыть рассказ');
+      expect(close, findsOneWidget);
+      final rect = tester.getRect(close);
+      expect(rect.width, greaterThanOrEqualTo(48));
+      expect(
+        rect.left,
+        greaterThan(tester.getSize(find.byType(Scaffold)).width / 2),
+      );
+      expect(rect.top, lessThan(80));
+    },
+  );
+
+  testWidgets(
+    'можно закрыть рассказ во время загрузки и поздний ответ не возвращает его',
+    (tester) async {
+      final repo = _PendingRepository();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            dayStoryRepositoryProvider.overrideWithValue(repo),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (_) =>
+                          const DayStoryScreen(title: _title, storyUrl: _url),
+                    ),
+                  ),
+                  child: const Text('Источник'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Источник'));
+      await tester.pumpAndSettle();
+
+      final close = find.byTooltip('Закрыть рассказ');
+      expect(close, findsOneWidget);
+      expect(
+        tester.getCenter(close).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold).last).width / 2),
+      );
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(find.text('Источник'), findsOneWidget);
+      expect(find.byType(DayStoryScreen), findsNothing);
+
+      repo.completer.complete(
+        const Success(DayStory(paragraphs: ['Поздний ответ.'])),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Источник'), findsOneWidget);
+      expect(find.text('Поздний ответ.'), findsNothing);
+    },
+  );
 
   testWidgets('без описания показывает спокойное состояние без повтора', (
     tester,

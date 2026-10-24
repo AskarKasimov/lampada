@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,124 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets(
+    'пустая мудрость в модальном маршруте закрывается крестиком справа',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (_) => DayWisdomScreen(
+                        cards: const [],
+                        startIndex: 0,
+                        date: DateTime(2026, 10, 24),
+                        recordProgress: false,
+                        recordRead: false,
+                      ),
+                    ),
+                  ),
+                  child: const Text('Открыть мудрость'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Открыть мудрость'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final close = find.byTooltip('Закрыть');
+      expect(close, findsOneWidget);
+      expect(
+        tester.getCenter(close).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold).last).width / 2),
+      );
+    },
+  );
+
+  testWidgets(
+    'загрузка мудрости в модальном маршруте сохраняет правый крестик',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final pending = Completer<DailyReading>();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            dailyReadingProvider.overrideWith(
+              (ref, reference) => pending.future,
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (_) => DayWisdomScreen(
+                        cards: const [
+                          DayCard(
+                            id: 'reading',
+                            type: CardType.reading,
+                            body: 'Ин.10:1',
+                            source: 'Источник',
+                            reference: 'Jn.10:1',
+                          ),
+                        ],
+                        startIndex: 0,
+                        date: DateTime(2026, 10, 24),
+                        recordProgress: false,
+                        recordRead: false,
+                      ),
+                    ),
+                  ),
+                  child: const Text('Открыть мудрость'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Открыть мудрость'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final close = find.byTooltip('Закрыть');
+      expect(close, findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.arrow_left), findsNothing);
+      final loadingY = tester.getCenter(close).dy;
+      expect(
+        tester.getCenter(close).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold).last).width / 2),
+      );
+      pending.complete(
+        const DailyReading(
+          label: 'Ин.10:1',
+          verses: [Verse(number: 1, chapter: 10, text: 'Стих мудрости')],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Стих мудрости'), findsOneWidget);
+      expect(
+        tester.getCenter(find.byIcon(CupertinoIcons.xmark)).dy,
+        closeTo(loadingY, 0.5),
+      );
+    },
+  );
 
   testWidgets('единая листалка ведёт от притчи к первому стиху', (
     tester,

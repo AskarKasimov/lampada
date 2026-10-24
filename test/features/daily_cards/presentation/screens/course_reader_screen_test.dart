@@ -22,6 +22,7 @@ import 'package:lampada/features/daily_cards/domain/repositories/course_progress
 import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/course_detail_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
@@ -229,6 +230,7 @@ void main() {
                 body: TextButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
+                      fullscreenDialog: true,
                       builder: (_) =>
                           CourseReaderScreen(currentTopic: currentTopic),
                     ),
@@ -245,9 +247,11 @@ void main() {
     WidgetTester tester, {
     DayCard currentTopic = _currentTopic,
   }) async {
-    await tester.pumpWidget(buildApp(currentTopic: currentTopic));
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpWidget(
+      buildApp(currentTopic: currentTopic, showLauncher: true),
+    );
+    await tester.tap(find.text('Открыть основы'));
+    await tester.pumpAndSettle();
   }
 
   testWidgets(
@@ -256,10 +260,9 @@ void main() {
       await pumpReader(tester);
       final info = find.byTooltip('О курсе');
       expect(info, findsOneWidget);
-      expect(
-        tester.getTopRight(info).dx,
-        greaterThan(tester.getSize(find.byType(CourseReaderScreen)).width - 80),
-      );
+      expect(tester.getTopLeft(info).dx, lessThan(80));
+      expect(find.byIcon(CupertinoIcons.xmark), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.arrow_left), findsNothing);
       await tester.drag(find.byType(PageView), const Offset(0, -500));
       await tester.pumpAndSettle();
       expect(find.text('Тема 4'), findsOneWidget);
@@ -267,6 +270,10 @@ void main() {
 
       await tester.tap(info);
       await tester.pumpAndSettle();
+      final detail = find.byType(CourseDetailScreen);
+      expect(detail, findsOneWidget);
+      expect(ModalRoute.of(tester.element(detail))!.fullscreenDialog, isFalse);
+      expect(find.byType(BackButton), findsOneWidget);
       expect(find.text('О курсе'), findsOneWidget);
       expect(find.text('Источник: «Азбука веры»'), findsOneWidget);
       expect(find.text('Продолжить'), findsNothing);
@@ -654,23 +661,23 @@ void main() {
     expect(find.text('Основы веры · Тема №3'), findsOneWidget);
   });
 
-  testWidgets('стрелка назад совпадает с размером и цветом действий ридера', (
+  testWidgets('крестик совпадает с размером и цветом действий ридера', (
     tester,
   ) async {
     await pumpReader(tester);
 
-    final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.arrow_left));
+    final icon = tester.widget<Icon>(find.byIcon(CupertinoIcons.xmark));
     expect(icon.size, 22);
     expect(icon.color, const Color(0xFF79695E));
     final position = tester.widget<Positioned>(
       find.ancestor(
-        of: find.byTooltip('Назад'),
+        of: find.byTooltip('Закрыть'),
         matching: find.byType(Positioned),
       ),
     );
     expect(position.top, 0);
-    expect(position.left, 0);
-    expect(position.right, isNull);
+    expect(position.left, isNull);
+    expect(position.right, 0);
   });
 
   testWidgets('показывает кнопку отправки рядом с закладкой', (tester) async {
@@ -770,7 +777,30 @@ void main() {
 
     await tester.drag(find.byType(PageView), const Offset(0, 500));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Назад'));
+    await tester.tap(find.byTooltip('Закрыть'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseReaderScreen), findsOneWidget);
+
+    courseProgress.saved.complete(const Success(null));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseReaderScreen), findsNothing);
+  });
+
+  testWidgets('краевой свайп закрывает курс после сохранения темы', (
+    tester,
+  ) async {
+    final courseProgress = _DelayedCourseProgressRepository();
+    await tester.pumpWidget(
+      buildApp(showLauncher: true, courseProgressRepository: courseProgress),
+    );
+    await tester.tap(find.text('Открыть основы'));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(1, 400), const Offset(180, 0));
     await tester.pumpAndSettle();
 
     expect(find.byType(CourseReaderScreen), findsOneWidget);

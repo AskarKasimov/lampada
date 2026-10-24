@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -59,7 +60,11 @@ class DayWisdomScreen extends ConsumerWidget {
     // затем показываем точки с окончательным количеством карточек.
     if (readingAsync?.isLoading ?? false) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          toolbarHeight: 48,
+          automaticallyImplyLeading: false,
+          actions: [_closeButton(context)],
+        ),
         body: const _ReadingStatus(isLoading: true, onRetry: null),
       );
     }
@@ -88,8 +93,13 @@ class DayWisdomScreen extends ConsumerWidget {
           ),
     ];
     if (contentCards.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('За этот день карточек нет')),
+      return Scaffold(
+        appBar: AppBar(
+          toolbarHeight: 48,
+          automaticallyImplyLeading: false,
+          actions: [_closeButton(context)],
+        ),
+        body: const Center(child: Text('За этот день карточек нет')),
       );
     }
     final completeIndex = contentCards.length;
@@ -221,6 +231,18 @@ class DayWisdomScreen extends ConsumerWidget {
     );
   }
 }
+
+IconButton _closeButton(BuildContext context) => IconButton(
+  tooltip: 'Закрыть',
+  onPressed: () => Navigator.of(context).pop(),
+  constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+  padding: EdgeInsets.zero,
+  icon: Icon(
+    CupertinoIcons.xmark,
+    size: 22,
+    color: AppColorsExtension.of(context).homeSubtitle,
+  ),
+);
 
 typedef _CardPage = ({DayCard page, DayCard card, bool isLast});
 

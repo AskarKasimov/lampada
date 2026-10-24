@@ -65,9 +65,10 @@ Future<void> openCourseReader(
     return;
   }
   ref.invalidate(hasStartedCourseProvider);
-  // Открывается внутри вкладки, а не модально: навбар остаётся виден.
+  // Модальная анимация не убирает навбар: этот Navigator принадлежит вкладке.
   await Navigator.of(context).push(
     MaterialPageRoute<void>(
+      fullscreenDialog: true,
       builder: (_) =>
           CourseReaderScreen(currentTopic: currentTopic!, initialPage: page),
     ),

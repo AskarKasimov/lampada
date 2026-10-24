@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,16 +31,17 @@ class ReadingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dailyReadingProvider(reference));
     return async.when(
-      loading: () => const Scaffold(body: BrandLoadingView()),
+      loading: () =>
+          Scaffold(body: _withExit(context, const BrandLoadingView())),
       error: (e, _) => Scaffold(
-        body: SafeArea(
-          child: _ErrorView(
+        body: _withExit(
+          context,
+          _ErrorView(
             kind: switch (e) {
               AppFailure(kind: final k) => k,
               _ => FailureKind.unknown,
             },
             onRetry: () => ref.invalidate(dailyReadingProvider(reference)),
-            onClose: () => Navigator.of(context).pop(),
           ),
         ),
       ),
@@ -59,16 +61,39 @@ class ReadingScreen extends ConsumerWidget {
   }
 }
 
+Widget _withExit(BuildContext context, Widget child) {
+  final colors = AppColorsExtension.of(context);
+  final exitsOnRight = ModalRoute.of(context)?.fullscreenDialog ?? false;
+  return SafeArea(
+    child: Stack(
+      children: [
+        Positioned.fill(child: child),
+        Positioned(
+          top: 0,
+          left: exitsOnRight ? null : 0,
+          right: exitsOnRight ? 0 : null,
+          child: IconButton(
+            tooltip: exitsOnRight ? 'Закрыть' : 'Назад',
+            onPressed: () => Navigator.of(context).pop(),
+            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+            padding: EdgeInsets.zero,
+            icon: Icon(
+              exitsOnRight ? CupertinoIcons.xmark : CupertinoIcons.arrow_left,
+              size: 22,
+              color: colors.homeSubtitle,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({
-    required this.kind,
-    required this.onRetry,
-    required this.onClose,
-  });
+  const _ErrorView({required this.kind, required this.onRetry});
 
   final FailureKind kind;
   final VoidCallback onRetry;
-  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -100,12 +125,6 @@ class _ErrorView extends StatelessWidget {
               color: colors.link,
               fontSize: 12,
               onPressed: onRetry,
-            ),
-            AppLinkButton(
-              label: 'Вернуться к карточкам',
-              color: colors.homeSubtitle,
-              fontSize: 12,
-              onPressed: onClose,
             ),
           ],
         ),

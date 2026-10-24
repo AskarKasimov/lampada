@@ -577,7 +577,7 @@ void main() {
     expect(tester.getBottomLeft(share).dy, lessThanOrEqualTo(navTop));
   });
 
-  testWidgets('Основы веры открываются внутри Главной под навбаром', (
+  testWidgets('Основы веры открываются снизу внутри Главной под навбаром', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
@@ -586,8 +586,16 @@ void main() {
     await settle(tester);
     final reader = find.byType(CourseReaderScreen);
     expect(reader, findsOneWidget);
-    expect(ModalRoute.of(tester.element(reader))!.fullscreenDialog, isFalse);
+    expect(ModalRoute.of(tester.element(reader))!.fullscreenDialog, isTrue);
     expect(find.byType(FloatingNavBar), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.arrow_left), findsNothing);
+    final close = find.byIcon(CupertinoIcons.xmark);
+    final info = find.byTooltip('О курсе');
+    expect(close, findsOneWidget);
+    expect(info, findsOneWidget);
+    final width = tester.getSize(reader).width;
+    expect(tester.getCenter(close).dx, greaterThan(width / 2));
+    expect(tester.getCenter(info).dx, lessThan(width / 2));
   });
 
   testWidgets('уход на другую вкладку сохраняет открытую Мудрость дня', (
@@ -669,7 +677,7 @@ void main() {
     await settle(tester);
     expect(find.byType(CourseReaderScreen), findsOneWidget);
     expect(find.text('О курсе'), findsNothing);
-    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
     await settle(tester);
     expect(plan, findsOneWidget);
   });
@@ -711,7 +719,7 @@ void main() {
     await settle(tester);
     expect(find.byType(CourseReaderScreen), findsOneWidget);
     expect(find.text('Тема прочитана'), findsNothing);
-    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
     await settle(tester);
     expect(find.byType(CourseProgressHeader), findsOneWidget);
   });
@@ -733,7 +741,7 @@ void main() {
     await settle(tester);
     expect(find.byType(CourseReaderScreen), findsOneWidget);
     expect(prefs.getString('course_progress_v4'), isNotNull);
-    await tester.tap(find.byIcon(CupertinoIcons.arrow_left));
+    await tester.tap(find.byIcon(CupertinoIcons.xmark));
     await settle(tester);
     expect(navbarCourse, findsNothing);
     expect(plan, findsOneWidget);
@@ -824,7 +832,7 @@ void main() {
     expect(find.byType(BookmarksScreen), findsOneWidget);
     final closeButton = find.descendant(
       of: find.byType(BookmarksScreen),
-      matching: find.byType(BackButton),
+      matching: find.byTooltip('Закрыть'),
     );
     expect(closeButton, findsOneWidget);
     await tester.tap(closeButton);
