@@ -81,6 +81,12 @@ void main() {
     );
     expect(find.text('Синодальный'), findsNothing);
     expect(find.text(_verse.text), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.book), findsNothing);
+    final card = tester.getRect(find.byType(VerseOfDayCard));
+    expect(
+      tester.getRect(find.byTooltip('Поделиться')).right,
+      greaterThan(card.center.dx),
+    );
     // Сам стих набран Lora, как всё, что читают.
     expect(
       tester.widget<Text>(find.text(_verse.text)).style?.fontFamily,
@@ -94,13 +100,13 @@ void main() {
     await pump(tester);
 
     final card = tester
-        .widgetList<Container>(
+        .widgetList<Ink>(
           find.descendant(
             of: find.byType(VerseOfDayCard),
-            matching: find.byType(Container),
+            matching: find.byType(Ink),
           ),
         )
-        .map((container) => container.decoration)
+        .map((ink) => ink.decoration)
         .whereType<BoxDecoration>()
         .first;
     expect(card.boxShadow, isNotEmpty);
@@ -137,12 +143,10 @@ void main() {
     expect(find.text('Пс. 36:5–6'), findsOneWidget);
   });
 
-  testWidgets('«Открыть главу» ведёт во вкладку Библии на этот стих', (
-    tester,
-  ) async {
+  testWidgets('тап по карточке открывает Библию на стихе дня', (tester) async {
     final container = await pump(tester);
 
-    await tester.tap(find.byTooltip('Открыть главу'));
+    await tester.tap(find.byType(VerseOfDayCard));
 
     final request = container.read(bibleOpenRequestProvider);
     expect(request?.book, 'Ps');
@@ -159,6 +163,7 @@ void main() {
     await tester.tap(find.byIcon(CupertinoIcons.bookmark));
     await tester.pump();
 
+    expect(container.read(bibleOpenRequestProvider), isNull);
     final saved = container.read(bookmarksProvider).value!;
     expect(saved.single.id, 'bible-Ps-22:1');
     expect(saved.single.text, _verse.text);
