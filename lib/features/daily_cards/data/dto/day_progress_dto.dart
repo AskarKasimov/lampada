@@ -30,7 +30,7 @@ abstract class DayProgressDto with _$DayProgressDto {
     /// за [date]. От него отсчитываются дневные напоминания.
     String? wisdomCompletedAt,
 
-    /// Рекорд серии вне ограниченной истории посещений.
+    /// Рекорд серии, в том числе из прежней ограниченной истории посещений.
     @Default(0) int bestStreak,
   }) = _DayProgressDto;
 

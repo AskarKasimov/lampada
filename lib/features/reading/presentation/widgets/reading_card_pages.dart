@@ -115,14 +115,13 @@ class ReadingCardPages {
       final nextVerse = lastVerse.number + 1;
       return [
         (
-          label:
-              'Продолжить с ${book.abbreviation}. '
-              '${lastVerse.chapter}:$nextVerse',
+          label: 'Продолжить чтение',
           onPressed: () => openBibleViewer(
             context,
             book: book,
             chapter: lastVerse.chapter,
             verse: nextVerse,
+            nextChapterOnMissingVerse: true,
             source: BibleOpenSource.dailyReading,
           ),
         ),

@@ -204,7 +204,7 @@ void main() {
     expect(p.isLit(fixedNow), isTrue);
   });
 
-  test('лучшая серия переживает обрезку посещений и перезапуск', () async {
+  test('история посещений сохраняется целиком после перезапуска', () async {
     fixedNow = DateTime(2020, 1, 1);
     final repo = await build();
     for (var day = 0; day < 100; day++) {
@@ -222,11 +222,44 @@ void main() {
     final reloaded = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
     final progress = _unwrap(await reloaded.loadToday());
 
-    expect(progress.visitedDays, hasLength(400));
+    expect(progress.visitedDays, hasLength(401));
     expect(progress.bestStreakOn(fixedNow), 100);
     final stored =
         jsonDecode(prefs.getString('day_progress')!) as Map<String, dynamic>;
     expect(stored['bestStreak'], 100);
+  });
+
+  test('серия и история прочтений растут после 400 дней', () async {
+    final repo = await build();
+    for (var day = 0; day < 402; day++) {
+      fixedNow = DateTime(2020, 1, 1).add(Duration(days: day));
+      await repo.markRead(CardType.quote);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final reloaded = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
+    final progress = _unwrap(await reloaded.loadToday());
+
+    expect(progress.visitedDays, hasLength(402));
+    expect(progress.readTypesByDate, hasLength(402));
+    expect(progress.isReadOn(DateTime(2020, 1, 1), CardType.quote), isTrue);
+    expect(progress.streakOn(fixedNow), 402);
+    expect(progress.bestStreakOn(fixedNow), 402);
+  });
+
+  test('история завершений мудрости сохраняет больше 400 дней', () async {
+    final repo = await build();
+    for (var day = 0; day < 402; day++) {
+      fixedNow = DateTime(2020, 1, 1).add(Duration(days: day));
+      await repo.completeWisdom();
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final reloaded = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
+    final progress = _unwrap(await reloaded.loadToday());
+
+    expect(progress.wisdomCompletedDays, hasLength(402));
+    expect(progress.isWisdomCompletedOn(DateTime(2020, 1, 1)), isTrue);
+    expect(progress.visitedDays, hasLength(402));
+    expect(progress.bestStreakOn(fixedNow), 402);
   });
 
   test('старый JSON восстанавливает рекорд из оставшейся истории', () async {

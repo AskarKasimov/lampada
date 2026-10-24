@@ -24,7 +24,7 @@ mixin _$DayProgressDto {
  List<String> get visitedDays;/// Даты (yyyy-MM-dd), в которые «Мудрость дня» дочитана до экрана итога.
  List<String> get wisdomCompletedDays;/// Момент (ISO 8601, локальное время) первого завершения «Мудрости дня»
 /// за [date]. От него отсчитываются дневные напоминания.
- String? get wisdomCompletedAt;/// Рекорд серии вне ограниченной истории посещений.
+ String? get wisdomCompletedAt;/// Рекорд серии, в том числе из прежней ограниченной истории посещений.
  int get bestStreak;
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
@@ -273,7 +273,7 @@ class _DayProgressDto implements DayProgressDto {
 /// Момент (ISO 8601, локальное время) первого завершения «Мудрости дня»
 /// за [date]. От него отсчитываются дневные напоминания.
 @override final  String? wisdomCompletedAt;
-/// Рекорд серии вне ограниченной истории посещений.
+/// Рекорд серии, в том числе из прежней ограниченной истории посещений.
 @override@JsonKey() final  int bestStreak;
 
 /// Create a copy of DayProgressDto

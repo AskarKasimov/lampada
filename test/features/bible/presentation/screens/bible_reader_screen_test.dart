@@ -134,6 +134,18 @@ void main() {
     });
   }
 
+  testWidgets('обычное восстановление отсутствующего стиха остаётся в главе', (
+    tester,
+  ) async {
+    await open(tester, verse: 99, mode: BibleReadingSessionMode.main);
+
+    expect(find.text('В начале').hitTestable(), findsOneWidget);
+    expect(
+      repository.positions.last,
+      const BibleReadingPosition(book: 'Gen', chapter: 1, verse: 1),
+    );
+  });
+
   testWidgets('стих без толкования не обещает его кнопкой', (tester) async {
     await open(tester, verse: 1);
 

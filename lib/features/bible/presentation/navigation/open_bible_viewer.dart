@@ -14,6 +14,7 @@ Future<void> openBibleViewer(
   required int chapter,
   required int verse,
   required BibleOpenSource source,
+  bool nextChapterOnMissingVerse = false,
 }) async {
   final navigator = Navigator.of(context, rootNavigator: false);
   if (_viewerOpening[navigator] == true) return;
@@ -26,6 +27,7 @@ Future<void> openBibleViewer(
           book: book,
           chapter: chapter,
           initialVerse: verse,
+          nextChapterOnMissingVerse: nextChapterOnMissingVerse,
           openSource: source,
         ),
       ),

@@ -619,7 +619,7 @@ void main() {
         await next(tester);
         await next(tester);
 
-        final continueReading = find.text('Продолжить с Ин. 10:22');
+        final continueReading = find.text('Продолжить чтение');
         expect(continueReading, findsOneWidget);
         expect(find.text('Вернуться на главную'), findsOneWidget);
 
@@ -674,7 +674,7 @@ void main() {
 
       expect(find.byType(DayWisdomScreen), findsOneWidget);
       expect(find.text('Слава Богу!'), findsOneWidget);
-      expect(find.text('Продолжить с Ин. 10:2'), findsOneWidget);
+      expect(find.text('Продолжить чтение'), findsOneWidget);
       expect(find.byType(BibleReaderScreen), findsNothing);
       final streak = find.byType(StreakCard);
       final counter = tester.widget<AnimatedSwitcher>(
@@ -701,7 +701,7 @@ void main() {
       await next(tester);
 
       expect(find.text('Слава Богу!'), findsOneWidget);
-      expect(find.text('Продолжить с Ин. 10:2'), findsNothing);
+      expect(find.text('Продолжить чтение'), findsNothing);
       expect(find.text('Вернуться на главную'), findsOneWidget);
     });
 
@@ -811,7 +811,7 @@ void main() {
       );
       expect(todayLabel, findsOneWidget);
       expect(find.text('Вернуться на главную').hitTestable(), findsOneWidget);
-      expect(find.text('Продолжить с Ин. 10:2').hitTestable(), findsOneWidget);
+      expect(find.text('Продолжить чтение').hitTestable(), findsOneWidget);
     });
 
     testWidgets('при уменьшении движения итог виден сразу', (tester) async {

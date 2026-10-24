@@ -32,6 +32,7 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
     required this.book,
     required this.chapter,
     this.initialVerse = 1,
+    this.nextChapterOnMissingVerse = false,
     this.onClose,
     this.showClose = true,
     this.openSource = BibleOpenSource.tab,
@@ -53,6 +54,10 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
 
   /// Сохранённый стих открывается в контексте всей главы, без обрезки начала.
   final int initialVerse;
+
+  /// Продолжение дневного отрывка: отсутствующий стих открывает следующую главу.
+  /// Обычное восстановление позиции сохраняет возврат к началу текущей главы.
+  final bool nextChapterOnMissingVerse;
 
   @override
   ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
@@ -110,6 +115,18 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       final startIndex = chapter.verses.indexWhere(
         (verse) => verse.number == _initialVerse,
       );
+      if (startIndex < 0 &&
+          _initialVerse > 1 &&
+          widget.nextChapterOnMissingVerse) {
+        final next = _chapterAfter(_book, _chapter);
+        if (next != null) {
+          _book = next.$1;
+          _chapter = next.$2;
+          _initialVerse = 1;
+          await _loadInitial();
+          return;
+        }
+      }
       _controller?.dispose();
       setState(() {
         // Ищем номер стиха, а не индекс: в тексте могут быть пропуски номеров.
@@ -145,6 +162,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     final book = _lastBook;
     final chapter = _lastChapter;
     if (book == null || chapter == null) return null;
+    return _chapterAfter(book, chapter);
+  }
+
+  (BibleBook, int)? _chapterAfter(BibleBook book, int chapter) {
     if (chapter < book.chapterCount) return (book, chapter + 1);
     final index = bibleBooks.indexWhere((item) => item.code == book.code);
     if (index < 0 || index + 1 == bibleBooks.length) return null;

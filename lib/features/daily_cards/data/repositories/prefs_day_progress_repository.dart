@@ -22,10 +22,6 @@ class PrefsDayProgressRepository implements DayProgressRepository {
 
   static const _key = 'day_progress';
 
-  /// Сколько дней активности держим. Шторке серии нужен текущий год целиком,
-  /// а prefs — не база: неограниченный список рос бы вечно.
-  static const _maxVisitedDays = 400;
-
   String get _today => dateKey(_clock());
 
   DayProgressDto _read() {
@@ -84,24 +80,16 @@ class PrefsDayProgressRepository implements DayProgressRepository {
       final day = dateKey(date ?? _clock());
       final allVisited = {...dto.visitedDays, if (markVisited) day};
       final bestStreak = _bestStreak(dto, allVisited);
-      final retainedVisited = _retainVisited(allVisited);
+      final visited = allVisited.toList()..sort();
       final readTypes = {
         ...dto.readTypesByDate[day] ?? const <String>[],
         type.name,
       }.toList();
       final byDate = {...dto.readTypesByDate, day: readTypes};
-      final retainedReadDates = byDate.keys.toList()..sort();
-      if (retainedReadDates.length > _maxVisitedDays) {
-        for (final expired in retainedReadDates.take(
-          retainedReadDates.length - _maxVisitedDays,
-        )) {
-          byDate.remove(expired);
-        }
-      }
       final updated = dto.copyWith(
         readTypes: day == _today ? readTypes : dto.readTypes,
         readTypesByDate: byDate,
-        visitedDays: retainedVisited,
+        visitedDays: visited,
         bestStreak: bestStreak,
       );
       await _write(updated);
@@ -128,11 +116,9 @@ class PrefsDayProgressRepository implements DayProgressRepository {
       final completed = {...dto.wisdomCompletedDays, day}.toList()..sort();
       final allVisited = {...dto.visitedDays, if (markVisited) day};
       final updated = dto.copyWith(
-        visitedDays: _retainVisited(allVisited),
+        visitedDays: allVisited.toList()..sort(),
         bestStreak: _bestStreak(dto, allVisited),
-        wisdomCompletedDays: completed.length > _maxVisitedDays
-            ? completed.sublist(completed.length - _maxVisitedDays)
-            : completed,
+        wisdomCompletedDays: completed,
         // Запоминаем только первое сегодняшнее завершение: повторное
         // прохождение не должно сдвигать дневные напоминания.
         wisdomCompletedAt:
@@ -156,14 +142,5 @@ class PrefsDayProgressRepository implements DayProgressRepository {
   int _bestStreak(DayProgressDto dto, Set<String> visitedDays) {
     final progress = dto.copyWith(visitedDays: visitedDays.toList()).toEntity();
     return progress.bestStreakOn(_clock());
-  }
-
-  /// Посещённые дни обрезаются только после вычисления рекорда на полной
-  /// истории, чтобы эта граница хранения не уменьшала максимум.
-  List<String> _retainVisited(Set<String> visitedDays) {
-    final sorted = visitedDays.toList()..sort();
-    return sorted.length > _maxVisitedDays
-        ? sorted.sublist(sorted.length - _maxVisitedDays)
-        : sorted;
   }
 }
