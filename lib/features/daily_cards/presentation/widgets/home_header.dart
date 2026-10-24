@@ -116,6 +116,10 @@ class _StreakButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Лампадка: $streak ${streakDaysLabel(streak)}',
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       excludeSemantics: true,
       child: InkWell(
         onTap: () {

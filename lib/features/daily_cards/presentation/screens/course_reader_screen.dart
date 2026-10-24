@@ -427,11 +427,16 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
             leftRail: ReaderProgressRail(
               key: ValueKey(card.id),
               count: visible.count,
-              currentIndex: visible.index,
+              currentIndex: _isBoundary ? -1 : visible.index,
               accent: style.accent,
-              // Точки показывают страницы текущей темы, а они идут подряд.
-              onSelect: (index) =>
-                  _controller.jumpToPage(_index - visible.index + index),
+              // Граница PageView может показывать заглушку, но точки всё ещё
+              // принадлежат последней настоящей теме в _pages.
+              onSelect: (index) {
+                final topicStart =
+                    _pages.indexWhere((page) => page.topic.id == card.id) +
+                    _leading;
+                _controller.jumpToPage(topicStart + index);
+              },
             ),
             actions: _isBoundary
                 ? const SizedBox.shrink()

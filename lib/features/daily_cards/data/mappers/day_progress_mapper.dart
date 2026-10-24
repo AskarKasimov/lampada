@@ -27,6 +27,7 @@ extension DayProgressDtoMapper on DayProgressDto {
     visitedDays: visitedDays.toSet(),
     wisdomCompletedDays: wisdomCompletedDays.toSet(),
     wisdomCompletedAt: _completedAtOf(date),
+    bestStreak: bestStreak,
   );
 
   /// Момент завершения имеет смысл только для своего дня: вчерашний

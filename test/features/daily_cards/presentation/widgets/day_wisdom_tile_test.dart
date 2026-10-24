@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsAction;
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -160,6 +162,31 @@ void main() {
 
     expect(opened, isTrue);
     expect(haptics, ['HapticFeedbackType.lightImpact']);
+  });
+
+  testWidgets('семантическая активация открывает плитку один раз', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final haptics = recordHaptics(tester);
+    var taps = 0;
+    await tester.pumpWidget(
+      _app(DayWisdomTile(isUnread: true, onTap: () => taps++)),
+    );
+
+    final node = tester.getSemantics(find.bySemanticsLabel('Мудрость дня'));
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    // The test binding owns this widget tree's semantics owner.
+    // ignore: deprecated_member_use
+    tester.binding.pipelineOwner.semanticsOwner!.performAction(
+      node.id,
+      SemanticsAction.tap,
+    );
+    await tester.pump();
+
+    expect(taps, 1);
+    expect(haptics, ['HapticFeedbackType.lightImpact']);
+    semantics.dispose();
   });
 
   testWidgets('под плиткой лёгкая тень', (tester) async {

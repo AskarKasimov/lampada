@@ -65,6 +65,7 @@ class HomeGridTile extends StatelessWidget {
       button: true,
       enabled: onTap != null,
       label: semanticsLabel,
+      onTap: _withHaptic(onTap),
       // Тень снаружи обрезки: внутри ClipRRect её бы срезало.
       child: DecoratedBox(
         decoration: BoxDecoration(

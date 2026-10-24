@@ -285,6 +285,68 @@ void main() {
     expect(find.byType(RailScrubber), findsOneWidget);
   });
 
+  testWidgets('scrub после ошибки следующей темы возвращает к чанкам текущей', (
+    tester,
+  ) async {
+    cards = _CourseCardsRepository(failuresRemaining: {4: 1});
+    await pumpReader(
+      tester,
+      currentTopic: _currentTopic.copyWith(body: 'Первая мысль. Вторая мысль.'),
+    );
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('Тема недоступна'), findsOneWidget);
+
+    final rail = tester.getRect(find.byType(RailScrubber));
+    await tester.tapAt(Offset(rail.center.dx, rail.top + 2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Первая мысль.'), findsOneWidget);
+  });
+
+  testWidgets('scrub после ошибки предыдущей темы сохраняет индекс чанка', (
+    tester,
+  ) async {
+    cards = _CourseCardsRepository(failuresRemaining: {2: 1});
+    await pumpReader(
+      tester,
+      currentTopic: _currentTopic.copyWith(body: 'Первая мысль. Вторая мысль.'),
+    );
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    expect(find.text('Тема недоступна'), findsOneWidget);
+
+    final rail = tester.getRect(find.byType(RailScrubber));
+    await tester.tapAt(Offset(rail.center.dx, rail.top + 2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Первая мысль.'), findsOneWidget);
+  });
+
+  testWidgets('scrub во время загрузки следующей темы открывает нужный чанк', (
+    tester,
+  ) async {
+    final delayed = _DelayedNextCards();
+    cards = delayed;
+    await pumpReader(
+      tester,
+      currentTopic: _currentTopic.copyWith(body: 'Первая мысль. Вторая мысль.'),
+    );
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    final rail = tester.getRect(find.byType(RailScrubber));
+    await tester.tapAt(Offset(rail.center.dx, rail.top + 2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Первая мысль.'), findsOneWidget);
+  });
+
   testWidgets('закладки страниц одной темы сохраняются независимо', (
     tester,
   ) async {

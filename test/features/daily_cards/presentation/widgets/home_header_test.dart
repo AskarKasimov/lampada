@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsAction;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
@@ -94,6 +96,31 @@ void main() {
 
     expect(taps, 1);
     expect(haptics, ['HapticFeedbackType.lightImpact']);
+  });
+
+  testWidgets('семантическая активация лампадки вызывает обработчик один раз', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    var taps = 0;
+    final haptics = recordHaptics(tester);
+    await tester.pumpWidget(app(streak: 2, onStreakTap: () => taps++));
+
+    final node = tester.getSemantics(
+      find.bySemanticsLabel('Лампадка: 2 дня подряд'),
+    );
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    // The test binding owns this widget tree's semantics owner.
+    // ignore: deprecated_member_use
+    tester.binding.pipelineOwner.semanticsOwner!.performAction(
+      node.id,
+      SemanticsAction.tap,
+    );
+    await tester.pump();
+
+    expect(taps, 1);
+    expect(haptics, ['HapticFeedbackType.lightImpact']);
+    semantics.dispose();
   });
 
   testWidgets('кнопка серии не меньше 44 pt по высоте', (tester) async {

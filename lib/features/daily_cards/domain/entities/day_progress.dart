@@ -9,10 +9,8 @@ part 'day_progress.freezed.dart';
 /// юзер заходил. [readTypes] — срез сегодняшнего дня для сессии и напоминаний.
 /// Domain-модель, без JSON.
 ///
-/// Серия («Лампадка») здесь не хранится, а выводится из [visitedDays]. Так
-/// требует §«Key Entities» спеки — «производное от посещений». Раньше это был
-/// самостоятельный счётчик, который только рос: вернувшись через месяц, юзер
-/// видел «14 дней подряд», потому что сбрасывать его было негде.
+/// Текущая серия выводится из [visitedDays]; рекорд хранится отдельно, потому
+/// что ограниченная история посещений со временем обрезает старые серии.
 @freezed
 abstract class DayProgress with _$DayProgress {
   const DayProgress._();
@@ -35,6 +33,10 @@ abstract class DayProgress with _$DayProgress {
     /// Когда сегодня впервые дочитана «Мудрость дня»; null, если ещё нет.
     /// От этого момента отсчитываются напоминания о святом и курсе.
     DateTime? wisdomCompletedAt,
+
+    /// Рекорд до ограничения истории посещений. По умолчанию совместим со
+    /// старыми сохранениями, в которых история ещё содержит весь рекорд.
+    @Default(0) int bestStreak,
   }) = _DayProgress;
 
   bool isRead(CardType type) => readTypes.contains(type);
@@ -108,7 +110,7 @@ abstract class DayProgress with _$DayProgress {
       if (run > best) best = run;
       previous = day;
     }
-    return best;
+    return bestStreak > best ? bestStreak : best;
   }
 
   /// Сколько дней лампада горела в календарном [year].

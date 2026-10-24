@@ -297,11 +297,13 @@ void main() {
     DaySection? requestedSection,
     DailyVerse? verse,
     void Function()? onVerseRequested,
+    Future<DailyVerse> Function()? loadVerse,
   }) => ProviderScope(
     overrides: [
       // Стих дня ходит в сеть за главой Библии; без стиха карточки нет.
       verseOfDayProvider.overrideWith((ref, key) async {
         onVerseRequested?.call();
+        if (loadVerse != null) return loadVerse();
         return verse ??
             (throw const AppFailure('Нет сети', kind: FailureKind.network));
       }),
@@ -812,6 +814,121 @@ void main() {
       await settle(tester);
 
       expect(requests, 2);
+    });
+
+    testWidgets('обновление жестом повторяет стих при ошибке дня', (
+      tester,
+    ) async {
+      var verseRequests = 0;
+      final verse = const DailyVerse(
+        book: 'Jn',
+        chapter: 3,
+        verse: 16,
+        text: 'Ибо так возлюбил Бог мир.',
+      );
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            failedDates: {dateKey(DateTime.now())},
+          ),
+          loadVerse: () async {
+            if (++verseRequests == 1) {
+              throw const AppFailure(
+                'Стих недоступен',
+                kind: FailureKind.network,
+              );
+            }
+            return verse;
+          },
+        ),
+      );
+      await settle(tester);
+      expect(find.textContaining('не загружены'), findsOneWidget);
+      expect(find.byType(VerseOfDayCard), findsNothing);
+
+      await tester.fling(find.byType(ListView), const Offset(0, 300), 1000);
+      await settle(tester);
+
+      expect(find.textContaining('не загружены'), findsOneWidget);
+      expect(find.byType(VerseOfDayCard), findsOneWidget);
+      expect(verseRequests, 2);
+    });
+
+    testWidgets('кнопка повтора ошибки дня обновляет независимый стих', (
+      tester,
+    ) async {
+      var verseRequests = 0;
+      final verse = const DailyVerse(
+        book: 'Jn',
+        chapter: 3,
+        verse: 16,
+        text: 'Ибо так возлюбил Бог мир.',
+      );
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            failedDates: {dateKey(DateTime.now())},
+          ),
+          loadVerse: () async {
+            if (++verseRequests == 1) {
+              throw const AppFailure(
+                'Стих недоступен',
+                kind: FailureKind.network,
+              );
+            }
+            return verse;
+          },
+        ),
+      );
+      await settle(tester);
+      expect(find.textContaining('не загружены'), findsOneWidget);
+      expect(verseRequests, 1);
+
+      await tester.tap(find.text('Повторить').first);
+      await settle(tester);
+
+      expect(find.textContaining('не загружены'), findsOneWidget);
+      expect(find.byType(VerseOfDayCard), findsOneWidget);
+      expect(verseRequests, 2);
+    });
+
+    testWidgets('обновление во время загрузки дня повторяет стих', (
+      tester,
+    ) async {
+      final pending = Completer<Result<TodayCards>>();
+      var verseRequests = 0;
+      final verse = const DailyVerse(
+        book: 'Jn',
+        chapter: 3,
+        verse: 16,
+        text: 'Ибо так возлюбил Бог мир.',
+      );
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            pendingDates: {dateKey(DateTime.now()): pending.future},
+          ),
+          loadVerse: () async {
+            if (++verseRequests == 1) {
+              throw const AppFailure(
+                'Стих недоступен',
+                kind: FailureKind.network,
+              );
+            }
+            return verse;
+          },
+        ),
+      );
+      await tester.pump();
+      expect(verseRequests, 1);
+
+      await tester.drag(find.byType(ListView), const Offset(0, 300));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(verseRequests, 2);
+      pending.complete(const Success(TodayCards(cards: [])));
+      await settle(tester);
     });
 
     testWidgets('день отделён от планов заголовками разделов', (tester) async {

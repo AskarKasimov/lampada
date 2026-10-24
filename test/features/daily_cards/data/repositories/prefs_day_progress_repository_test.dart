@@ -50,6 +50,7 @@ void main() {
 
     expect(p.isLit(fixedNow), isTrue);
     expect(p.streakOn(fixedNow), 1);
+    expect(p.bestStreakOn(fixedNow), 1);
   });
 
   test('повторное чтение в тот же день день не удваивает', () async {
@@ -59,6 +60,7 @@ void main() {
     final p = _unwrap(await repo.markRead(CardType.advice));
 
     expect(p.visitedDays, hasLength(1));
+    expect(p.bestStreakOn(fixedNow), 1);
   });
 
   test(
@@ -103,6 +105,7 @@ void main() {
 
     expect(progress.isReadOn(yesterday, CardType.quote), isTrue);
     expect(progress.isLit(yesterday), isFalse);
+    expect(progress.bestStreakOn(fixedNow), 0);
   });
 
   test('completeWisdom отмечает завершение и зажигает день', () async {
@@ -113,6 +116,7 @@ void main() {
     expect(p.isWisdomCompletedOn(fixedNow), isTrue);
     expect(p.isLit(fixedNow), isTrue);
     expect(p.streakOn(fixedNow), 1);
+    expect(p.bestStreakOn(fixedNow), 1);
     expect(p.readTypes, isEmpty);
     expect(p.readTypesByDate, isEmpty);
     final reloaded = _unwrap(await repo.loadToday());
@@ -198,6 +202,65 @@ void main() {
 
     expect(p.readTypes, {CardType.quote});
     expect(p.isLit(fixedNow), isTrue);
+  });
+
+  test('лучшая серия переживает обрезку посещений и перезапуск', () async {
+    fixedNow = DateTime(2020, 1, 1);
+    final repo = await build();
+    for (var day = 0; day < 100; day++) {
+      fixedNow = DateTime(2020, 1, 1).add(Duration(days: day));
+      await repo.markRead(CardType.quote);
+    }
+    for (var visit = 0; visit < 300; visit++) {
+      fixedNow = DateTime(2020, 1, 1).add(Duration(days: 102 + visit * 3));
+      await repo.markRead(CardType.quote);
+    }
+
+    fixedNow = DateTime(2020, 1, 1).add(const Duration(days: 1002));
+    await repo.markRead(CardType.quote);
+    final prefs = await SharedPreferences.getInstance();
+    final reloaded = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
+    final progress = _unwrap(await reloaded.loadToday());
+
+    expect(progress.visitedDays, hasLength(400));
+    expect(progress.bestStreakOn(fixedNow), 100);
+    final stored =
+        jsonDecode(prefs.getString('day_progress')!) as Map<String, dynamic>;
+    expect(stored['bestStreak'], 100);
+  });
+
+  test('старый JSON восстанавливает рекорд из оставшейся истории', () async {
+    SharedPreferences.setMockInitialValues({
+      'flutter.day_progress': jsonEncode({
+        'date': '2026-07-14',
+        'readTypes': <String>[],
+        'visitedDays': ['2026-07-12', '2026-07-13', '2026-07-14'],
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    fixedNow = DateTime(2026, 7, 14);
+    final repo = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
+
+    final progress = _unwrap(await repo.loadToday());
+
+    expect(progress.bestStreak, 3);
+    expect(progress.bestStreakOn(fixedNow), 3);
+  });
+
+  test('будущие посещения не увеличивают сохранённый рекорд', () async {
+    SharedPreferences.setMockInitialValues({
+      'flutter.day_progress': jsonEncode({
+        'date': '2026-07-17',
+        'readTypes': <String>[],
+        'visitedDays': ['2026-07-18', '2026-07-19', '2026-07-20', '2026-07-21'],
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final repo = PrefsDayProgressRepository(prefs, clock: () => fixedNow);
+
+    final progress = _unwrap(await repo.markRead(CardType.quote));
+
+    expect(progress.bestStreakOn(fixedNow), 1);
   });
 
   test('прогресс с неизвестным типом карточки читается, а не падает', () async {

@@ -107,6 +107,33 @@ class _HeightReporter extends SingleChildRenderObjectWidget {
   ) => renderObject.onHeight = onHeight;
 }
 
+Future<void> _refreshDay(WidgetRef ref, DateTime date) async {
+  final key = dateKey(date);
+  ref.invalidate(verseOfDayProvider(key));
+  final courseRefresh = ref.read(getCourseTopicProvider)(forceRefresh: true);
+  final result = await ref.read(getTodayCardsProvider)(
+    date,
+    forceRefresh: true,
+  );
+  if (result is Success<TodayCards>) {
+    ref.invalidate(dayCardsProvider(key));
+    final reading = result.value.cards
+        .where((card) => card.type == CardType.reading)
+        .firstOrNull;
+    if (reading?.reference case final reference?) {
+      final readingRefresh = await ref.read(getDailyReadingProvider)(
+        reference,
+        forceRefresh: true,
+      );
+      if (readingRefresh is Success) {
+        ref.invalidate(dailyReadingProvider(reference));
+      }
+    }
+  }
+  final courseResult = await courseRefresh;
+  if (courseResult is Success) ref.invalidate(courseTopicProvider);
+}
+
 class _RenderHeightReporter extends RenderProxyBox {
   _RenderHeightReporter(this.onHeight);
 
@@ -165,54 +192,65 @@ class _DayContent extends ConsumerWidget {
         AppFailure(kind: final k) => k,
         _ => FailureKind.unknown,
       };
-      return ListView(
+      return RefreshIndicator(
+        edgeOffset: topInset,
+        onRefresh: () => _refreshDay(ref, date),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            top: topInset,
+            bottom: FloatingNavInset.of(context) + 32,
+          ),
+          children: [
+            // Стих дня не зависит от материалов дня и виден и без них.
+            _dayHeader(date),
+            VerseOfDaySection(date: date),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: AnalyticsOnShow(
+                event: AnalyticsEvent.contentLoadFailed(
+                  content: LoadedContent.day,
+                  kind: kind.name,
+                ),
+                child: TodayOfflineView(
+                  date: date,
+                  kind: kind,
+                  onRetry: () {
+                    ref
+                        .read(analyticsProvider)
+                        .log(
+                          AnalyticsEvent.contentRetryTapped(LoadedContent.day),
+                        );
+                    unawaited(_refreshDay(ref, date));
+                    ref.invalidate(dayCardsProvider(key));
+                    ref.invalidate(dayProgressProvider);
+                  },
+                ),
+              ),
+            ),
+            _plansHeader,
+            const _CourseHomeSection(),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      edgeOffset: topInset,
+      onRefresh: () => _refreshDay(ref, date),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(
           top: topInset,
           bottom: FloatingNavInset.of(context) + 32,
         ),
         children: [
-          // Стих дня не зависит от материалов дня и виден и без них.
           _dayHeader(date),
           VerseOfDaySection(date: date),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: AnalyticsOnShow(
-              event: AnalyticsEvent.contentLoadFailed(
-                content: LoadedContent.day,
-                kind: kind.name,
-              ),
-              child: TodayOfflineView(
-                date: date,
-                kind: kind,
-                onRetry: () {
-                  ref
-                      .read(analyticsProvider)
-                      .log(
-                        AnalyticsEvent.contentRetryTapped(LoadedContent.day),
-                      );
-                  ref.invalidate(dayCardsProvider(key));
-                  ref.invalidate(dayProgressProvider);
-                },
-              ),
-            ),
-          ),
           _plansHeader,
           const _CourseHomeSection(),
         ],
-      );
-    }
-
-    return ListView(
-      padding: EdgeInsets.only(
-        top: topInset,
-        bottom: FloatingNavInset.of(context) + 32,
       ),
-      children: [
-        _dayHeader(date),
-        VerseOfDaySection(date: date),
-        _plansHeader,
-        const _CourseHomeSection(),
-      ],
     );
   }
 }
@@ -329,35 +367,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   bool _isRead(DayCard card) => progress.isReadOn(date, card.type);
 
   /// Обновляет кэш, не скрывая прежний контент при ошибке.
-  Future<void> _refresh() async {
-    // Стих дня без сети не показывается; обновление даёт ему второй шанс.
-    ref.invalidate(verseOfDayProvider(dateKey(date)));
-    final courseRefresh = ref.read(getCourseTopicProvider)(forceRefresh: true);
-    final result = await ref.read(getTodayCardsProvider)(
-      date,
-      forceRefresh: true,
-    );
-    if (result is Success<TodayCards>) {
-      ref.invalidate(dayCardsProvider(dateKey(date)));
-      final reading = result.value.cards
-          .where((card) => card.type == CardType.reading)
-          .firstOrNull;
-      if (reading?.reference case final reference?) {
-        final readingRefresh = await ref.read(getDailyReadingProvider)(
-          reference,
-          forceRefresh: true,
-        );
-        if (readingRefresh is Success) {
-          ref.invalidate(dailyReadingProvider(reference));
-        }
-      }
-    }
-    final courseResult = await courseRefresh;
-    if (courseResult is Success) {
-      ref.invalidate(courseTopicProvider);
-    }
-  }
-
   /// Открывает раздел по просьбе приветствия или напоминания, когда
   /// сегодняшний день загружен. «Мудрость» ждёт и Евангелие, как и тап по
   /// плитке. Если раздела у дня нет, просьбу просто снимаем.
@@ -464,7 +473,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     return RefreshIndicator(
       // Индикатор выезжает из-под шапки, а не прячется за ней.
       edgeOffset: widget.topInset,
-      onRefresh: _refresh,
+      onRefresh: () => _refreshDay(ref, date),
       child: blocks,
     );
   }

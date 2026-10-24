@@ -24,7 +24,8 @@ mixin _$DayProgressDto {
  List<String> get visitedDays;/// Даты (yyyy-MM-dd), в которые «Мудрость дня» дочитана до экрана итога.
  List<String> get wisdomCompletedDays;/// Момент (ISO 8601, локальное время) первого завершения «Мудрости дня»
 /// за [date]. От него отсчитываются дневные напоминания.
- String? get wisdomCompletedAt;
+ String? get wisdomCompletedAt;/// Рекорд серии вне ограниченной истории посещений.
+ int get bestStreak;
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -37,16 +38,16 @@ $DayProgressDtoCopyWith<DayProgressDto> get copyWith => _$DayProgressDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayProgressDto&&(identical(other.date, date) || other.date == date)&&const DeepCollectionEquality().equals(other.readTypes, readTypes)&&const DeepCollectionEquality().equals(other.readTypesByDate, readTypesByDate)&&const DeepCollectionEquality().equals(other.visitedDays, visitedDays)&&const DeepCollectionEquality().equals(other.wisdomCompletedDays, wisdomCompletedDays)&&(identical(other.wisdomCompletedAt, wisdomCompletedAt) || other.wisdomCompletedAt == wisdomCompletedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DayProgressDto&&(identical(other.date, date) || other.date == date)&&const DeepCollectionEquality().equals(other.readTypes, readTypes)&&const DeepCollectionEquality().equals(other.readTypesByDate, readTypesByDate)&&const DeepCollectionEquality().equals(other.visitedDays, visitedDays)&&const DeepCollectionEquality().equals(other.wisdomCompletedDays, wisdomCompletedDays)&&(identical(other.wisdomCompletedAt, wisdomCompletedAt) || other.wisdomCompletedAt == wisdomCompletedAt)&&(identical(other.bestStreak, bestStreak) || other.bestStreak == bestStreak));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,date,const DeepCollectionEquality().hash(readTypes),const DeepCollectionEquality().hash(readTypesByDate),const DeepCollectionEquality().hash(visitedDays),const DeepCollectionEquality().hash(wisdomCompletedDays),wisdomCompletedAt);
+int get hashCode => Object.hash(runtimeType,date,const DeepCollectionEquality().hash(readTypes),const DeepCollectionEquality().hash(readTypesByDate),const DeepCollectionEquality().hash(visitedDays),const DeepCollectionEquality().hash(wisdomCompletedDays),wisdomCompletedAt,bestStreak);
 
 @override
 String toString() {
-  return 'DayProgressDto(date: $date, readTypes: $readTypes, readTypesByDate: $readTypesByDate, visitedDays: $visitedDays, wisdomCompletedDays: $wisdomCompletedDays, wisdomCompletedAt: $wisdomCompletedAt)';
+  return 'DayProgressDto(date: $date, readTypes: $readTypes, readTypesByDate: $readTypesByDate, visitedDays: $visitedDays, wisdomCompletedDays: $wisdomCompletedDays, wisdomCompletedAt: $wisdomCompletedAt, bestStreak: $bestStreak)';
 }
 
 
@@ -57,7 +58,7 @@ abstract mixin class $DayProgressDtoCopyWith<$Res>  {
   factory $DayProgressDtoCopyWith(DayProgressDto value, $Res Function(DayProgressDto) _then) = _$DayProgressDtoCopyWithImpl;
 @useResult
 $Res call({
- String date, List<String> readTypes, Map<String, List<String>> readTypesByDate, List<String> visitedDays, List<String> wisdomCompletedDays, String? wisdomCompletedAt
+ String date, List<String> readTypes, Map<String, List<String>> readTypesByDate, List<String> visitedDays, List<String> wisdomCompletedDays, String? wisdomCompletedAt, int bestStreak
 });
 
 
@@ -74,7 +75,7 @@ class _$DayProgressDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? date = null,Object? readTypes = null,Object? readTypesByDate = null,Object? visitedDays = null,Object? wisdomCompletedDays = null,Object? wisdomCompletedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? date = null,Object? readTypes = null,Object? readTypesByDate = null,Object? visitedDays = null,Object? wisdomCompletedDays = null,Object? wisdomCompletedAt = freezed,Object? bestStreak = null,}) {
   return _then(_self.copyWith(
 date: null == date ? _self.date : date // ignore: cast_nullable_to_non_nullable
 as String,readTypes: null == readTypes ? _self.readTypes : readTypes // ignore: cast_nullable_to_non_nullable
@@ -82,7 +83,8 @@ as List<String>,readTypesByDate: null == readTypesByDate ? _self.readTypesByDate
 as Map<String, List<String>>,visitedDays: null == visitedDays ? _self.visitedDays : visitedDays // ignore: cast_nullable_to_non_nullable
 as List<String>,wisdomCompletedDays: null == wisdomCompletedDays ? _self.wisdomCompletedDays : wisdomCompletedDays // ignore: cast_nullable_to_non_nullable
 as List<String>,wisdomCompletedAt: freezed == wisdomCompletedAt ? _self.wisdomCompletedAt : wisdomCompletedAt // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,bestStreak: null == bestStreak ? _self.bestStreak : bestStreak // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -167,10 +169,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String date,  List<String> readTypes,  Map<String, List<String>> readTypesByDate,  List<String> visitedDays,  List<String> wisdomCompletedDays,  String? wisdomCompletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String date,  List<String> readTypes,  Map<String, List<String>> readTypesByDate,  List<String> visitedDays,  List<String> wisdomCompletedDays,  String? wisdomCompletedAt,  int bestStreak)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DayProgressDto() when $default != null:
-return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDays,_that.wisdomCompletedDays,_that.wisdomCompletedAt);case _:
+return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDays,_that.wisdomCompletedDays,_that.wisdomCompletedAt,_that.bestStreak);case _:
   return orElse();
 
 }
@@ -188,10 +190,10 @@ return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDa
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String date,  List<String> readTypes,  Map<String, List<String>> readTypesByDate,  List<String> visitedDays,  List<String> wisdomCompletedDays,  String? wisdomCompletedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String date,  List<String> readTypes,  Map<String, List<String>> readTypesByDate,  List<String> visitedDays,  List<String> wisdomCompletedDays,  String? wisdomCompletedAt,  int bestStreak)  $default,) {final _that = this;
 switch (_that) {
 case _DayProgressDto():
-return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDays,_that.wisdomCompletedDays,_that.wisdomCompletedAt);case _:
+return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDays,_that.wisdomCompletedDays,_that.wisdomCompletedAt,_that.bestStreak);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +210,10 @@ return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDa
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String date,  List<String> readTypes,  Map<String, List<String>> readTypesByDate,  List<String> visitedDays,  List<String> wisdomCompletedDays,  String? wisdomCompletedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String date,  List<String> readTypes,  Map<String, List<String>> readTypesByDate,  List<String> visitedDays,  List<String> wisdomCompletedDays,  String? wisdomCompletedAt,  int bestStreak)?  $default,) {final _that = this;
 switch (_that) {
 case _DayProgressDto() when $default != null:
-return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDays,_that.wisdomCompletedDays,_that.wisdomCompletedAt);case _:
+return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDays,_that.wisdomCompletedDays,_that.wisdomCompletedAt,_that.bestStreak);case _:
   return null;
 
 }
@@ -223,7 +225,7 @@ return $default(_that.date,_that.readTypes,_that.readTypesByDate,_that.visitedDa
 @JsonSerializable()
 
 class _DayProgressDto implements DayProgressDto {
-  const _DayProgressDto({required this.date, required final  List<String> readTypes, final  Map<String, List<String>> readTypesByDate = const <String, List<String>>{}, final  List<String> visitedDays = const <String>[], final  List<String> wisdomCompletedDays = const <String>[], this.wisdomCompletedAt}): _readTypes = readTypes,_readTypesByDate = readTypesByDate,_visitedDays = visitedDays,_wisdomCompletedDays = wisdomCompletedDays;
+  const _DayProgressDto({required this.date, required final  List<String> readTypes, final  Map<String, List<String>> readTypesByDate = const <String, List<String>>{}, final  List<String> visitedDays = const <String>[], final  List<String> wisdomCompletedDays = const <String>[], this.wisdomCompletedAt, this.bestStreak = 0}): _readTypes = readTypes,_readTypesByDate = readTypesByDate,_visitedDays = visitedDays,_wisdomCompletedDays = wisdomCompletedDays;
   factory _DayProgressDto.fromJson(Map<String, dynamic> json) => _$DayProgressDtoFromJson(json);
 
 /// Дата (yyyy-MM-dd), к которой относится [readTypes].
@@ -271,6 +273,8 @@ class _DayProgressDto implements DayProgressDto {
 /// Момент (ISO 8601, локальное время) первого завершения «Мудрости дня»
 /// за [date]. От него отсчитываются дневные напоминания.
 @override final  String? wisdomCompletedAt;
+/// Рекорд серии вне ограниченной истории посещений.
+@override@JsonKey() final  int bestStreak;
 
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
@@ -285,16 +289,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayProgressDto&&(identical(other.date, date) || other.date == date)&&const DeepCollectionEquality().equals(other._readTypes, _readTypes)&&const DeepCollectionEquality().equals(other._readTypesByDate, _readTypesByDate)&&const DeepCollectionEquality().equals(other._visitedDays, _visitedDays)&&const DeepCollectionEquality().equals(other._wisdomCompletedDays, _wisdomCompletedDays)&&(identical(other.wisdomCompletedAt, wisdomCompletedAt) || other.wisdomCompletedAt == wisdomCompletedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DayProgressDto&&(identical(other.date, date) || other.date == date)&&const DeepCollectionEquality().equals(other._readTypes, _readTypes)&&const DeepCollectionEquality().equals(other._readTypesByDate, _readTypesByDate)&&const DeepCollectionEquality().equals(other._visitedDays, _visitedDays)&&const DeepCollectionEquality().equals(other._wisdomCompletedDays, _wisdomCompletedDays)&&(identical(other.wisdomCompletedAt, wisdomCompletedAt) || other.wisdomCompletedAt == wisdomCompletedAt)&&(identical(other.bestStreak, bestStreak) || other.bestStreak == bestStreak));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,date,const DeepCollectionEquality().hash(_readTypes),const DeepCollectionEquality().hash(_readTypesByDate),const DeepCollectionEquality().hash(_visitedDays),const DeepCollectionEquality().hash(_wisdomCompletedDays),wisdomCompletedAt);
+int get hashCode => Object.hash(runtimeType,date,const DeepCollectionEquality().hash(_readTypes),const DeepCollectionEquality().hash(_readTypesByDate),const DeepCollectionEquality().hash(_visitedDays),const DeepCollectionEquality().hash(_wisdomCompletedDays),wisdomCompletedAt,bestStreak);
 
 @override
 String toString() {
-  return 'DayProgressDto(date: $date, readTypes: $readTypes, readTypesByDate: $readTypesByDate, visitedDays: $visitedDays, wisdomCompletedDays: $wisdomCompletedDays, wisdomCompletedAt: $wisdomCompletedAt)';
+  return 'DayProgressDto(date: $date, readTypes: $readTypes, readTypesByDate: $readTypesByDate, visitedDays: $visitedDays, wisdomCompletedDays: $wisdomCompletedDays, wisdomCompletedAt: $wisdomCompletedAt, bestStreak: $bestStreak)';
 }
 
 
@@ -305,7 +309,7 @@ abstract mixin class _$DayProgressDtoCopyWith<$Res> implements $DayProgressDtoCo
   factory _$DayProgressDtoCopyWith(_DayProgressDto value, $Res Function(_DayProgressDto) _then) = __$DayProgressDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String date, List<String> readTypes, Map<String, List<String>> readTypesByDate, List<String> visitedDays, List<String> wisdomCompletedDays, String? wisdomCompletedAt
+ String date, List<String> readTypes, Map<String, List<String>> readTypesByDate, List<String> visitedDays, List<String> wisdomCompletedDays, String? wisdomCompletedAt, int bestStreak
 });
 
 
@@ -322,7 +326,7 @@ class __$DayProgressDtoCopyWithImpl<$Res>
 
 /// Create a copy of DayProgressDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? date = null,Object? readTypes = null,Object? readTypesByDate = null,Object? visitedDays = null,Object? wisdomCompletedDays = null,Object? wisdomCompletedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? date = null,Object? readTypes = null,Object? readTypesByDate = null,Object? visitedDays = null,Object? wisdomCompletedDays = null,Object? wisdomCompletedAt = freezed,Object? bestStreak = null,}) {
   return _then(_DayProgressDto(
 date: null == date ? _self.date : date // ignore: cast_nullable_to_non_nullable
 as String,readTypes: null == readTypes ? _self._readTypes : readTypes // ignore: cast_nullable_to_non_nullable
@@ -330,7 +334,8 @@ as List<String>,readTypesByDate: null == readTypesByDate ? _self._readTypesByDat
 as Map<String, List<String>>,visitedDays: null == visitedDays ? _self._visitedDays : visitedDays // ignore: cast_nullable_to_non_nullable
 as List<String>,wisdomCompletedDays: null == wisdomCompletedDays ? _self._wisdomCompletedDays : wisdomCompletedDays // ignore: cast_nullable_to_non_nullable
 as List<String>,wisdomCompletedAt: freezed == wisdomCompletedAt ? _self.wisdomCompletedAt : wisdomCompletedAt // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,bestStreak: null == bestStreak ? _self.bestStreak : bestStreak // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
