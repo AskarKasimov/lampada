@@ -6,7 +6,7 @@ import '../screens/bible_reader_screen.dart';
 
 final Expando<bool> _viewerOpening = Expando<bool>();
 
-/// Открывает временное чтение по ссылке поверх корневого маршрута вкладок.
+/// Открывает временное чтение по ссылке внутри текущей вкладки.
 Future<void> openBibleViewer(
   BuildContext context, {
   required BibleBook book,
@@ -14,7 +14,7 @@ Future<void> openBibleViewer(
   required int verse,
   required BibleOpenSource source,
 }) async {
-  final navigator = Navigator.of(context, rootNavigator: true);
+  final navigator = Navigator.of(context, rootNavigator: false);
   if (_viewerOpening[navigator] == true) return;
   _viewerOpening[navigator] = true;
   try {

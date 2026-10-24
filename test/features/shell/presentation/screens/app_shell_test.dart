@@ -907,7 +907,7 @@ void main() {
           expect(find.byType(BibleReaderScreen), findsOneWidget);
           expect(
             tabIcon(CupertinoIcons.person_fill).hitTestable(),
-            findsNothing,
+            findsOneWidget,
           );
           await tester.tap(find.byTooltip('Закрыть'));
           await settle(tester);

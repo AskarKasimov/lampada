@@ -354,7 +354,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             hasIcon: widget.content.iconUrl != null,
           ),
         );
-    return Navigator.of(context, rootNavigator: true).push(
+    return Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
         builder: (_) => DayStoryScreen(
