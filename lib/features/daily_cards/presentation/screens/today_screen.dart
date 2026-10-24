@@ -8,6 +8,7 @@ import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
+import '../../../../core/format/russian_date.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -171,6 +172,7 @@ class _DayContent extends ConsumerWidget {
         ),
         children: [
           // Стих дня не зависит от материалов дня и виден и без них.
+          _dayHeader(date),
           VerseOfDaySection(date: date),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
@@ -206,6 +208,7 @@ class _DayContent extends ConsumerWidget {
         bottom: FloatingNavInset.of(context) + 32,
       ),
       children: [
+        _dayHeader(date),
         VerseOfDaySection(date: date),
         _plansHeader,
         const _CourseHomeSection(),
@@ -441,6 +444,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         bottom: FloatingNavInset.of(context) + 32,
       ),
       children: [
+        _dayHeader(date, isFast: day.isFast),
         VerseOfDaySection(date: date),
         _dayTiles(context, pages),
         if (pages.isEmpty)
@@ -561,6 +565,15 @@ Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
     ),
   );
 }
+
+/// Раздел того, что меняется каждый день: стих, память и «Мудрость дня».
+/// Называется сегодняшней датой; пост относится ко всему дню и подписан
+/// под ней, а не на плитке.
+Widget _dayHeader(DateTime date, {bool isFast = false}) => HomeSectionHeader(
+  title: russianDayMonth(date),
+  caption: isFast ? 'Постный день' : null,
+  first: true,
+);
 
 /// Раздел планов без привязки к дню: курс и будущие планы чтения.
 const _plansHeader = HomeSectionHeader(title: 'Планы');

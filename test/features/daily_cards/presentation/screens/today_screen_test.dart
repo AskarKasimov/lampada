@@ -33,6 +33,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/day_memory_til
 import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/home_grid_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/home_header.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/home_section_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/read_status_checks.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_sheet.dart';
@@ -840,7 +841,7 @@ void main() {
       expect(plans.top - tile(DayWisdomTile).bottom, greaterThan(16));
     });
 
-    testWidgets('седмица и пост не показываются, память остаётся', (
+    testWidgets('над стихом заголовок с датой, в пост подпись под ней', (
       tester,
     ) async {
       // Строка седмицы почти ничего не сообщала, а шапку перегружала.
@@ -848,6 +849,12 @@ void main() {
         ..seedRead(_cards.map((card) => card.type).toSet());
       await tester.pumpWidget(
         buildApp(
+          verse: const DailyVerse(
+            book: 'Jn',
+            chapter: 3,
+            verse: 16,
+            text: 'Ибо так возлюбил Бог мир.',
+          ),
           cardsRepository: _FakeCardsRepository(
             week: 'Седмица 10-я по Пятидесятнице',
             title: 'Мц. Христи́ны Тирской',
@@ -858,21 +865,45 @@ void main() {
       );
       await settle(tester);
 
-      expect(find.textContaining('СЕДМИЦА'), findsNothing);
       expect(find.textContaining('Седмица'), findsNothing);
-      final headerBottom = tester.getBottomLeft(find.byType(HomeHeader)).dy;
-
-      // Память остаётся плиткой дня; ни даты, ни поста в шапке нет.
-      final nameTop = tester.getTopLeft(find.text('Память дня')).dy;
-      expect(nameTop, greaterThan(headerBottom));
-      expect(find.textContaining('Постный', findRichText: true), findsNothing);
+      final greeting = tester.getRect(find.text(greetingFor(DateTime.now())));
+      final date = find.text(russianDayMonth(DateTime.now()));
+      final fast = find.text('Постный день');
+      final verse = tester.getRect(find.byType(VerseOfDayCard));
+      // Дата заголовком раздела, тем же кеглем, что «Планы».
       expect(
-        find.textContaining(
-          russianDayMonth(DateTime.now()),
-          findRichText: true,
-        ),
-        findsNothing,
+        tester.widget<Text>(date).style?.fontSize,
+        HomeSectionHeader.titleSize,
       );
+      expect(
+        tester.widget<Text>(date).style?.fontSize,
+        tester.widget<Text>(find.text('Планы')).style?.fontSize,
+      );
+      expect(tester.getRect(date).top, greaterThanOrEqualTo(greeting.bottom));
+      expect(
+        tester.getRect(date).left,
+        tester.getRect(find.text('Планы')).left,
+      );
+      // Пост подписан под датой, а не на плитке и не в шапке.
+      expect(fast, findsOneWidget);
+      expect(
+        tester.getRect(fast).top,
+        greaterThanOrEqualTo(tester.getRect(date).bottom),
+      );
+      expect(tester.getRect(fast).left, tester.getRect(date).left);
+      expect(tester.getRect(fast).bottom, lessThanOrEqualTo(verse.top));
+    });
+
+    testWidgets('в непостный день подписи «Постный день» нет', (tester) async {
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(title: 'Мц. Христи́ны Тирской'),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text(russianDayMonth(DateTime.now())), findsOneWidget);
+      expect(find.textContaining('Постный'), findsNothing);
     });
 
     testWidgets('напоминание о святом открывает рассказ дня', (tester) async {

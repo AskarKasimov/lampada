@@ -8,9 +8,10 @@ import '../../domain/entities/day_card.dart';
 import '../theme/card_type_style.dart';
 import 'frosted_fade.dart';
 
-/// Плитка дня в ряду из двух на главной: иллюстрация на всю плитку и
-/// небольшое название внизу на полосе матового стекла от края до края.
-/// Стекло держит название читаемым поверх иконы и всё же даёт её видеть.
+/// Плитка главной: иллюстрация на всю плитку и небольшое название внизу на
+/// полосе матового стекла от края до края. Стекло держит название читаемым
+/// поверх иконы и всё же даёт её видеть. Плитки дня стоят по две в ряд,
+/// курс той же анатомии, но широкий и ниже ([minimumHeight]).
 class HomeGridTile extends StatelessWidget {
   const HomeGridTile({
     required this.title,
@@ -19,6 +20,7 @@ class HomeGridTile extends StatelessWidget {
     required this.onTap,
     required this.background,
     this.titleTrailing,
+    this.minimumHeight = minHeight,
     super.key,
   });
 
@@ -33,13 +35,16 @@ class HomeGridTile extends StatelessWidget {
   /// Отметка прочтения или индикатор загрузки справа от названия.
   final Widget? titleTrailing;
 
+  /// Нижняя граница высоты; крупный текст может сделать плитку выше.
+  final double minimumHeight;
+
   final String semanticsLabel;
 
   /// `null` выключает нажатие, например пока материалы дня грузятся.
   final VoidCallback? onTap;
 
-  /// В половину ширины телефона плитка почти квадратная: иллюстрации нужно
-  /// место. Крупный текст может сделать её выше.
+  /// В половину ширины телефона плитка дня почти квадратная: иллюстрации
+  /// нужно место.
   static const minHeight = 176.0;
 
   static const _radius = 24.0;
@@ -48,6 +53,9 @@ class HomeGridTile extends StatelessWidget {
   /// размыты, как у стекла «glossiness 0.8» из референса.
   static const _frostBlur = 10.0;
   static const _frostTint = 0.5;
+
+  /// Потолок ширины для отметки справа (у курса вместе со счётчиком).
+  static const _trailingMaxWidth = 120.0;
 
   @override
   Widget build(BuildContext context) {
@@ -68,9 +76,9 @@ class HomeGridTile extends StatelessWidget {
           child: ColoredBox(
             color: style.tagBackground,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(
+              constraints: BoxConstraints(
                 minWidth: double.infinity,
-                minHeight: minHeight,
+                minHeight: minimumHeight,
               ),
               // Всё нужное скринридеру уже в подписи плитки.
               child: ExcludeSemantics(
@@ -150,7 +158,20 @@ class HomeGridTile extends StatelessWidget {
                 ),
                 if (titleTrailing case final trailing?) ...[
                   const SizedBox(width: 6),
-                  trailing,
+                  // Правая часть не шире потолка: при крупном тексте на
+                  // узкой плитке она уменьшается, а не вылезает. Доля от
+                  // ширины через LayoutBuilder не подходит: ряд плиток дня
+                  // меряет высоту заранее (IntrinsicHeight).
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: _trailingMaxWidth,
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: trailing,
+                    ),
+                  ),
                 ],
               ],
             ),
