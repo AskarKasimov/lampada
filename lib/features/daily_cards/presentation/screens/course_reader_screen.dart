@@ -429,6 +429,9 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
               count: visible.count,
               currentIndex: visible.index,
               accent: style.accent,
+              // Точки показывают страницы текущей темы, а они идут подряд.
+              onSelect: (index) =>
+                  _controller.jumpToPage(_index - visible.index + index),
             ),
             actions: _isBoundary
                 ? const SizedBox.shrink()

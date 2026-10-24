@@ -1,8 +1,14 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/theme/app_colors.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/frosted_fade.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/home_grid_tile.dart';
+
+import '../../../../support/haptics.dart';
 
 const _topic = DayCard(
   id: 'basics-topic-3',
@@ -14,11 +20,50 @@ const _topic = DayCard(
 
 Widget _app(Widget child) => MaterialApp(
   theme: AppTheme.light,
-  home: Scaffold(body: child),
+  home: Scaffold(body: ListView(children: [child])),
+);
+
+Finder _cover() => find.byWidgetPredicate(
+  (widget) =>
+      widget is Image &&
+      widget.image is AssetImage &&
+      (widget.image as AssetImage).assetName == CourseProgressHeader.coverAsset,
 );
 
 void main() {
-  testWidgets('курс показывает только заголовок и полосу прогресса', (
+  testWidgets('плитка курса собрана как плитки дня, только широкая', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        CourseProgressHeader(
+          topic: _topic,
+          completedTopicCount: 73,
+          onTap: () {},
+        ),
+      ),
+    );
+
+    final tile = tester.getRect(find.byType(HomeGridTile));
+    // Горизонтальная, во всю ширину с общими полями.
+    expect(tile.left, 16);
+    expect(tile.right, 800 - 16);
+    expect(tile.width, greaterThan(tile.height * 2));
+    // Картина на всю плитку, как икона и «Картина дня» у плиток дня.
+    expect(tester.getRect(_cover()), tile);
+    expect(tester.widget<Image>(_cover()).fit, BoxFit.cover);
+    // Снизу то же матовое стекло с мягким краем.
+    expect(
+      find.descendant(
+        of: find.byType(HomeGridTile),
+        matching: find.byType(FrostedFade),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byIcon(CupertinoIcons.book), findsNothing);
+  });
+
+  testWidgets('в стекле название, справа счётчик тем и галочки', (
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
@@ -31,18 +76,24 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Основы веры'), findsOneWidget);
-    expect(find.text('Тема курса'), findsNothing);
-    expect(find.textContaining('Прочитано'), findsNothing);
-    // Счётчик тем стоит справа от полосы, на одной с ней линии.
+
+    final tile = tester.getRect(find.byType(HomeGridTile));
+    final title = tester.getRect(find.text('Основы веры'));
     final counter = tester.getRect(find.text('73/365'));
-    final barRect = tester.getRect(find.byType(LinearProgressIndicator));
-    expect(counter.left, greaterThan(barRect.right));
-    expect(counter.center.dy, closeTo(barRect.center.dy, 2));
-    final bar = tester.widget<LinearProgressIndicator>(
-      find.byType(LinearProgressIndicator),
+    final checks = tester.getRect(
+      find.byIcon(CupertinoIcons.checkmark_alt).first,
     );
-    expect(bar.value, closeTo(73 / 365, 1e-9));
+    expect(tile.bottom - title.bottom, lessThan(tile.height / 3));
+    expect(counter.left, greaterThan(title.right));
+    expect(counter.center.dy, closeTo(title.center.dy, 4));
+    expect(checks.left, greaterThan(counter.right));
+    // Счётчик на стекле поверх картины должен хорошо читаться: тёмный, как
+    // название, и не мельче обычной подписи.
+    final counterStyle = tester.widget<Text>(find.text('73/365')).style!;
+    expect(counterStyle.color, AppColorsExtension.light.ink);
+    expect(counterStyle.fontSize, greaterThanOrEqualTo(16));
+    expect(find.text('Тема курса'), findsNothing);
+    expect(find.byTooltip('О курсе'), findsNothing);
     expect(
       find.bySemanticsLabel(RegExp('Прочитано 73 из 365')),
       findsOneWidget,
@@ -64,23 +115,25 @@ void main() {
           child: child!,
         ),
         home: Scaffold(
-          body: CourseProgressHeader(
-            topic: _topic,
-            completedTopicCount: 365,
-            onTap: () {},
+          body: ListView(
+            children: [
+              CourseProgressHeader(
+                topic: _topic,
+                completedTopicCount: 365,
+                onTap: () {},
+              ),
+            ],
           ),
         ),
       ),
     );
     expect(tester.takeException(), isNull);
-    final counter = tester.getRect(find.text('365/365'));
-    final bar = tester.getRect(find.byType(LinearProgressIndicator));
-    expect(counter.right, lessThanOrEqualTo(304));
-    expect(bar.width, greaterThan(0));
-    expect(bar.right, lessThan(counter.left));
+    expect(tester.getRect(find.text('365/365')).right, lessThanOrEqualTo(304));
   });
 
-  testWidgets('без счётчика прочитанного полосы прогресса нет', (tester) async {
+  testWidgets('без счётчика прочитанного у заголовка нет числа', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _app(
         CourseProgressHeader(
@@ -90,12 +143,13 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.textContaining('/365'), findsNothing);
   });
 
-  testWidgets('справка о курсе открывается кнопкой на плитке', (tester) async {
-    var info = false;
+  testWidgets('тап по плитке открывает курс с лёгкой вибрацией', (
+    tester,
+  ) async {
+    final haptics = recordHaptics(tester);
     var opened = false;
     await tester.pumpWidget(
       _app(
@@ -103,12 +157,11 @@ void main() {
           topic: _topic,
           completedTopicCount: 0,
           onTap: () => opened = true,
-          onInfo: () => info = true,
         ),
       ),
     );
-    await tester.tap(find.byTooltip('О курсе'));
-    expect(info, isTrue);
-    expect(opened, isFalse);
+    await tester.tap(find.byType(CourseProgressHeader));
+    expect(opened, isTrue);
+    expect(haptics, ['HapticFeedbackType.lightImpact']);
   });
 }

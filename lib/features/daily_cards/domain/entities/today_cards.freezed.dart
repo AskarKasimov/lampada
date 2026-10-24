@@ -19,7 +19,8 @@ mixin _$TodayCards {
  String? get title;/// Постный ли день.
  bool get isFast;/// Ссылка на страницу праздника/святого — рассказ о дне грузится оттуда
 /// лениво, при открытии заголовка, а не вместе с самим днём.
- String? get storyUrl;
+ String? get storyUrl;/// Адрес «Картины дня» Азбуки: иллюстрация плитки «Мудрость дня».
+ String? get pictureUrl;
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +31,16 @@ $TodayCardsCopyWith<TodayCards> get copyWith => _$TodayCardsCopyWithImpl<TodayCa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TodayCards&&const DeepCollectionEquality().equals(other.cards, cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&(identical(other.storyUrl, storyUrl) || other.storyUrl == storyUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TodayCards&&const DeepCollectionEquality().equals(other.cards, cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&(identical(other.storyUrl, storyUrl) || other.storyUrl == storyUrl)&&(identical(other.pictureUrl, pictureUrl) || other.pictureUrl == pictureUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cards),week,title,isFast,storyUrl);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cards),week,title,isFast,storyUrl,pictureUrl);
 
 @override
 String toString() {
-  return 'TodayCards(cards: $cards, week: $week, title: $title, isFast: $isFast, storyUrl: $storyUrl)';
+  return 'TodayCards(cards: $cards, week: $week, title: $title, isFast: $isFast, storyUrl: $storyUrl, pictureUrl: $pictureUrl)';
 }
 
 
@@ -50,7 +51,7 @@ abstract mixin class $TodayCardsCopyWith<$Res>  {
   factory $TodayCardsCopyWith(TodayCards value, $Res Function(TodayCards) _then) = _$TodayCardsCopyWithImpl;
 @useResult
 $Res call({
- List<DayCard> cards, String? week, String? title, bool isFast, String? storyUrl
+ List<DayCard> cards, String? week, String? title, bool isFast, String? storyUrl, String? pictureUrl
 });
 
 
@@ -67,13 +68,14 @@ class _$TodayCardsCopyWithImpl<$Res>
 
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? storyUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? storyUrl = freezed,Object? pictureUrl = freezed,}) {
   return _then(_self.copyWith(
 cards: null == cards ? _self.cards : cards // ignore: cast_nullable_to_non_nullable
 as List<DayCard>,week: freezed == week ? _self.week : week // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,isFast: null == isFast ? _self.isFast : isFast // ignore: cast_nullable_to_non_nullable
 as bool,storyUrl: freezed == storyUrl ? _self.storyUrl : storyUrl // ignore: cast_nullable_to_non_nullable
+as String?,pictureUrl: freezed == pictureUrl ? _self.pictureUrl : pictureUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -159,10 +161,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl,  String? pictureUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TodayCards() when $default != null:
-return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_that.pictureUrl);case _:
   return orElse();
 
 }
@@ -180,10 +182,10 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl,  String? pictureUrl)  $default,) {final _that = this;
 switch (_that) {
 case _TodayCards():
-return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_that.pictureUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -200,10 +202,10 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl,  String? pictureUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _TodayCards() when $default != null:
-return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_that.pictureUrl);case _:
   return null;
 
 }
@@ -215,7 +217,7 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl);
 
 
 class _TodayCards extends TodayCards {
-  const _TodayCards({required final  List<DayCard> cards, this.week, this.title, this.isFast = false, this.storyUrl}): _cards = cards,super._();
+  const _TodayCards({required final  List<DayCard> cards, this.week, this.title, this.isFast = false, this.storyUrl, this.pictureUrl}): _cards = cards,super._();
   
 
  final  List<DayCard> _cards;
@@ -234,6 +236,8 @@ class _TodayCards extends TodayCards {
 /// Ссылка на страницу праздника/святого — рассказ о дне грузится оттуда
 /// лениво, при открытии заголовка, а не вместе с самим днём.
 @override final  String? storyUrl;
+/// Адрес «Картины дня» Азбуки: иллюстрация плитки «Мудрость дня».
+@override final  String? pictureUrl;
 
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +249,16 @@ _$TodayCardsCopyWith<_TodayCards> get copyWith => __$TodayCardsCopyWithImpl<_Tod
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TodayCards&&const DeepCollectionEquality().equals(other._cards, _cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&(identical(other.storyUrl, storyUrl) || other.storyUrl == storyUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TodayCards&&const DeepCollectionEquality().equals(other._cards, _cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&(identical(other.storyUrl, storyUrl) || other.storyUrl == storyUrl)&&(identical(other.pictureUrl, pictureUrl) || other.pictureUrl == pictureUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_cards),week,title,isFast,storyUrl);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_cards),week,title,isFast,storyUrl,pictureUrl);
 
 @override
 String toString() {
-  return 'TodayCards(cards: $cards, week: $week, title: $title, isFast: $isFast, storyUrl: $storyUrl)';
+  return 'TodayCards(cards: $cards, week: $week, title: $title, isFast: $isFast, storyUrl: $storyUrl, pictureUrl: $pictureUrl)';
 }
 
 
@@ -265,7 +269,7 @@ abstract mixin class _$TodayCardsCopyWith<$Res> implements $TodayCardsCopyWith<$
   factory _$TodayCardsCopyWith(_TodayCards value, $Res Function(_TodayCards) _then) = __$TodayCardsCopyWithImpl;
 @override @useResult
 $Res call({
- List<DayCard> cards, String? week, String? title, bool isFast, String? storyUrl
+ List<DayCard> cards, String? week, String? title, bool isFast, String? storyUrl, String? pictureUrl
 });
 
 
@@ -282,13 +286,14 @@ class __$TodayCardsCopyWithImpl<$Res>
 
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? storyUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? storyUrl = freezed,Object? pictureUrl = freezed,}) {
   return _then(_TodayCards(
 cards: null == cards ? _self._cards : cards // ignore: cast_nullable_to_non_nullable
 as List<DayCard>,week: freezed == week ? _self.week : week // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,isFast: null == isFast ? _self.isFast : isFast // ignore: cast_nullable_to_non_nullable
 as bool,storyUrl: freezed == storyUrl ? _self.storyUrl : storyUrl // ignore: cast_nullable_to_non_nullable
+as String?,pictureUrl: freezed == pictureUrl ? _self.pictureUrl : pictureUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

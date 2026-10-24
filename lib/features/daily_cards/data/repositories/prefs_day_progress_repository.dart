@@ -22,7 +22,7 @@ class PrefsDayProgressRepository implements DayProgressRepository {
 
   static const _key = 'day_progress';
 
-  /// Сколько дней активности держим. Календарь листают на месяцы, не на годы,
+  /// Сколько дней активности держим. Шторке серии нужен текущий год целиком,
   /// а prefs — не база: неограниченный список рос бы вечно.
   static const _maxVisitedDays = 400;
 

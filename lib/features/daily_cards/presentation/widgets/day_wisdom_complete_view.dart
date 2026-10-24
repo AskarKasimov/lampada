@@ -12,6 +12,7 @@ import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../domain/entities/day_progress.dart';
 import '../providers/providers.dart';
@@ -243,11 +244,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                   child: Text(
                     'Слава Богу!',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700,
-                      color: colors.ink,
-                    ),
+                    style: AppTheme.headingStyle(context, fontSize: 32),
                   ),
                 ),
                 const SizedBox(height: 8),

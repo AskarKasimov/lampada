@@ -1,16 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
+import '../../../../core/format/russian_date.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../bible/presentation/providers/providers.dart'
+    show verseOfDayProvider;
+import '../../../bible/presentation/widgets/verse_of_day_card.dart';
 import '../../../day_story/presentation/providers/providers.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
 import '../../../profile/presentation/providers/providers.dart';
@@ -27,14 +31,18 @@ import '../providers/providers.dart';
 import '../widgets/course_progress_header.dart';
 import '../widgets/day_memory_tile.dart';
 import '../widgets/day_wisdom_tile.dart';
-import '../widgets/streak_card.dart';
+import '../widgets/home_header.dart';
+import '../widgets/home_section_header.dart';
+import '../widgets/streak_sheet.dart';
 import '../widgets/today_offline_view.dart';
-import '../widgets/week_strip.dart';
 import 'course_reader_route.dart';
 import 'day_wisdom_screen.dart';
-import 'plans_info_screen.dart';
 
-/// Дневная сессия и навигация по календарным дням.
+/// Дневная сессия: всегда сегодняшний день, без выбора даты.
+///
+/// Список уходит под закреплённую шапку: она матовая и растворяется книзу,
+/// поэтому контент скрывается под ней мягко, без чёткой границы. Высоту
+/// шапки меряем, чтобы в покое список начинался сразу под ней.
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
 
@@ -42,172 +50,37 @@ class TodayScreen extends ConsumerStatefulWidget {
   ConsumerState<TodayScreen> createState() => _TodayScreenState();
 }
 
-/// Преобразует страницы [PageView] в даты без арифметики длительностей.
-class CalendarPageMapper {
-  const CalendarPageMapper(this.initialDate, {this.initialPage = 10000});
-
-  final DateTime initialDate;
-  final int initialPage;
-
-  DateTime dateForPage(int page) => DateTime(
-    initialDate.year,
-    initialDate.month,
-    initialDate.day + page - initialPage,
-  );
-
-  int pageForDate(DateTime date) => initialPage + dayOffset(initialDate, date);
-
-  static CalendarPageTransition transitionFor({
-    required int currentPage,
-    required int targetPage,
-  }) => (currentPage - targetPage).abs() <= 1
-      ? CalendarPageTransition.animate
-      : CalendarPageTransition.fade;
-
-  static int dayOffset(DateTime from, DateTime to) =>
-      _dayNumber(to) - _dayNumber(from);
-
-  static int _dayNumber(DateTime date) =>
-      DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
-      Duration.millisecondsPerDay;
-}
-
-enum CalendarPageTransition { animate, fade }
-
-class _TodayScreenState extends ConsumerState<TodayScreen>
-    with SingleTickerProviderStateMixin {
-  late final CalendarPageMapper _pageMapper;
-  late final PageController _pageController;
-  Object? _pageAnimation;
-  late final AnimationController _fadeController;
-  final _prefetchedIconUrls = <String>{};
-
-  @override
-  void initState() {
-    super.initState();
-    _pageMapper = CalendarPageMapper(ref.read(selectedDateProvider));
-    _pageController = PageController(initialPage: _pageMapper.initialPage);
-    _fadeController = AnimationController(
-      vsync: this,
-      value: 1,
-      duration: const Duration(milliseconds: 125),
-    );
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _syncPage(DateTime date) async {
-    if (!_pageController.hasClients) return;
-    final target = _pageMapper.pageForDate(date);
-    final page = _pageController.page;
-    final current = page?.round();
-    if (_pageAnimation == null && current == target) return;
-    final animation = Object();
-    _pageAnimation = animation;
-    try {
-      if (current != null &&
-          CalendarPageMapper.transitionFor(
-                currentPage: current,
-                targetPage: target,
-              ) ==
-              CalendarPageTransition.fade) {
-        await _fadeController.reverse().orCancel;
-        // Новое нажатие отменяет прежнюю цель, даже пока экран гаснет.
-        if (!mounted || !identical(_pageAnimation, animation)) return;
-        _pageController.jumpToPage(target);
-        // Показываем из пустоты только готовый материал или ошибку загрузки.
-        await Future.wait([
-          _waitForResult(dayCardsProvider(dateKey(date))),
-          _waitForResult(dayProgressProvider),
-        ]);
-        if (!mounted || !identical(_pageAnimation, animation)) return;
-        await _fadeController.forward().orCancel;
-      } else {
-        _fadeController.forward();
-        await _pageController.animateToPage(
-          target,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
-    } on TickerCanceled {
-      // Смена даты или закрытие экрана прерывает фэйд.
-    } finally {
-      if (identical(_pageAnimation, animation)) _pageAnimation = null;
-    }
-  }
-
-  Future<void> _waitForResult<T>(
-    ProviderListenable<AsyncValue<T>> provider,
-  ) async {
-    final ready = Completer<void>();
-    final subscription = ref.listenManual(provider, (_, value) {
-      // Ошибка уже доступна UI, даже если Riverpod планирует повтор запроса.
-      if ((value.hasValue || value.hasError) && !ready.isCompleted) {
-        ready.complete();
-      }
-    }, fireImmediately: true);
-    try {
-      await ready.future;
-    } finally {
-      subscription.close();
-    }
-  }
-
-  /// Прогрев изображений остаётся в presentation: он требует контекст
-  /// Flutter и использует тот же ImageCache, что плитка и обложка рассказа.
-  void _precacheIcon(String? iconUrl) {
-    if (iconUrl == null || !_prefetchedIconUrls.add(iconUrl)) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      unawaited(
-        precacheImage(
-          NetworkImage(iconUrl),
-          context,
-          // Ошибка иконы не блокирует текст; следующая перестройка
-          // позволяет повторить загрузку изображения.
-          onError: (_, _) => _prefetchedIconUrls.remove(iconUrl),
-        ),
-      );
-    });
-  }
+class _TodayScreenState extends ConsumerState<TodayScreen> {
+  double _headerHeight = 0;
 
   @override
   Widget build(BuildContext context) {
-    final selected = ref.watch(selectedDateProvider);
+    // «Сегодня» берём при каждой перестройке: при возврате в приложение
+    // прогресс перечитывается, и после полуночи экран сам переходит на
+    // новый день.
+    final now = DateTime.now();
     final progress = ref.watch(dayProgressProvider).value;
-    final selectedPage = _pageMapper.pageForDate(selected);
-    for (var offset = -1; offset <= 1; offset++) {
-      final date = _pageMapper.dateForPage(selectedPage + offset);
-      final content = ref.watch(dayContentProvider(dateKey(date)));
-      _precacheIcon(content.iconUrl);
-    }
-    ref.listen<DateTime>(selectedDateProvider, (_, selected) {
-      _syncPage(selected);
-    });
-
-    return Column(
+    return Stack(
       children: [
-        _Header(selected: selected, progress: progress),
-        Expanded(
-          child: FadeTransition(
-            opacity: _fadeController,
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (page) {
-                // При выборе даты промежуточные страницы не меняют календарь.
-                if (_pageAnimation != null) return;
-                final day = _pageMapper.dateForPage(page);
-                _logDateSelected(ref, day, DateSelectSource.swipe);
-                ref.read(selectedDateProvider.notifier).select(day);
-              },
-              itemBuilder: (context, page) =>
-                  _TodayDayPage(date: _pageMapper.dateForPage(page)),
+        Positioned.fill(
+          child: _DayContent(date: now, topInset: _headerHeight),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: _HeightReporter(
+            onHeight: (height) {
+              if (height != _headerHeight) {
+                setState(() => _headerHeight = height);
+              }
+            },
+            child: FrostedHomeHeader(
+              child: HomeHeader(
+                now: now,
+                streak: progress?.streakOn(now),
+                onStreakTap: () => showStreakSheet(context),
+              ),
             ),
           ),
         ),
@@ -216,22 +89,48 @@ class _TodayScreenState extends ConsumerState<TodayScreen>
   }
 }
 
-class _TodayDayPage extends ConsumerWidget {
-  const _TodayDayPage({required this.date});
+/// Сообщает высоту ребёнка после раскладки. Шапка меняет высоту с
+/// системным масштабом текста, а список должен отступать ровно на неё.
+class _HeightReporter extends SingleChildRenderObjectWidget {
+  const _HeightReporter({required this.onHeight, required super.child});
 
-  final DateTime date;
+  final ValueChanged<double> onHeight;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Исходящий день остаётся видимым до полного исчезновения при фэйде.
-    return _SelectedDayContent(date: date);
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderHeightReporter(onHeight);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderHeightReporter renderObject,
+  ) => renderObject.onHeight = onHeight;
+}
+
+class _RenderHeightReporter extends RenderProxyBox {
+  _RenderHeightReporter(this.onHeight);
+
+  ValueChanged<double> onHeight;
+  double? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final height = size.height;
+    if (height == _reported) return;
+    _reported = height;
+    // Менять состояние во время раскладки нельзя: сообщаем после кадра.
+    WidgetsBinding.instance.addPostFrameCallback((_) => onHeight(height));
   }
 }
 
-class _SelectedDayContent extends ConsumerWidget {
-  const _SelectedDayContent({required this.date});
+class _DayContent extends ConsumerWidget {
+  const _DayContent({required this.date, required this.topInset});
 
   final DateTime date;
+
+  /// Высота шапки над списком.
+  final double topInset;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -244,7 +143,7 @@ class _SelectedDayContent extends ConsumerWidget {
   Widget _body(
     BuildContext context,
     WidgetRef ref,
-    DateTime selected,
+    DateTime date,
     String key,
     DayContentState content,
     DayProgress? progress,
@@ -253,7 +152,12 @@ class _SelectedDayContent extends ConsumerWidget {
     final day = cardsAsync.value;
     // Готовый день остаётся полезнее последней ошибки обновления.
     if (day != null && progress != null) {
-      return _DayBlocks(date: selected, content: content, progress: progress);
+      return _DayBlocks(
+        date: date,
+        content: content,
+        progress: progress,
+        topInset: topInset,
+      );
     }
 
     if (cardsAsync.hasError || progress == null && !cardsAsync.isLoading) {
@@ -262,8 +166,14 @@ class _SelectedDayContent extends ConsumerWidget {
         _ => FailureKind.unknown,
       };
       return ListView(
-        padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
+        padding: EdgeInsets.only(
+          top: topInset,
+          bottom: FloatingNavInset.of(context) + 32,
+        ),
         children: [
+          // Стих дня не зависит от материалов дня и виден и без них.
+          _dayHeader(date),
+          VerseOfDaySection(date: date),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: AnalyticsOnShow(
@@ -272,7 +182,7 @@ class _SelectedDayContent extends ConsumerWidget {
                 kind: kind.name,
               ),
               child: TodayOfflineView(
-                date: selected,
+                date: date,
                 kind: kind,
                 onRetry: () {
                   ref
@@ -286,46 +196,23 @@ class _SelectedDayContent extends ConsumerWidget {
               ),
             ),
           ),
+          _plansHeader,
           const _CourseHomeSection(),
         ],
       );
     }
 
     return ListView(
-      padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
-      children: const [_CourseHomeSection()],
-    );
-  }
-}
-
-/// Полоска недели над выбранным днём.
-class _Header extends ConsumerWidget {
-  const _Header({required this.selected, required this.progress});
-
-  final DateTime selected;
-  final DayProgress? progress;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Строку седмицы над полоской убрали: она почти ничего не сообщала,
-    // а шапку перегружала.
-    return Padding(
-      padding:
-          AppSpacing.of(context).horizontal +
-          const EdgeInsets.only(top: 6, bottom: 4),
-      child: Column(
-        children: [
-          WeekStrip(
-            selected: selected,
-            today: DateTime.now(),
-            litDays: progress?.visitedDays ?? const {},
-            onSelect: (day, source) {
-              _logDateSelected(ref, day, source);
-              ref.read(selectedDateProvider.notifier).select(day);
-            },
-          ),
-        ],
+      padding: EdgeInsets.only(
+        top: topInset,
+        bottom: FloatingNavInset.of(context) + 32,
       ),
+      children: [
+        _dayHeader(date),
+        VerseOfDaySection(date: date),
+        _plansHeader,
+        const _CourseHomeSection(),
+      ],
     );
   }
 }
@@ -335,11 +222,13 @@ class _DayBlocks extends ConsumerStatefulWidget {
     required this.date,
     required this.content,
     required this.progress,
+    required this.topInset,
   });
 
   final DateTime date;
   final DayContentState content;
   final DayProgress progress;
+  final double topInset;
 
   @override
   ConsumerState<_DayBlocks> createState() => _DayBlocksState();
@@ -350,14 +239,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   TodayCards get day => widget.content.cards.requireValue;
   DayProgress get progress => widget.progress;
 
+  /// Главная всегда показывает сегодня, но экран, открытый до полуночи,
+  /// не должен засчитывать серию за уже прошедший день.
   bool get _isToday => dateKey(date) == dateKey(DateTime.now());
 
-  bool get _isFuture => dateKey(date).compareTo(dateKey(DateTime.now())) > 0;
-
   bool get _recordProgress => _isToday;
-
-  // Будущий контент можно открыть заранее, но это не должно менять прогресс.
-  bool get _recordRead => !_isFuture;
 
   List<DayCard> get _pages =>
       day.cards.where((c) => c.type != CardType.basics).toList()
@@ -379,15 +265,17 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             alreadyCompleted: progress.isWisdomCompletedOn(date),
           ),
         );
-    // Открывается внутри вкладки, а не модально: навбар остаётся виден.
+    // Выезжает снизу, как рассказ «Памяти дня», но в навигаторе вкладки, а
+    // не корневом: навбар остаётся виден.
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
+        fullscreenDialog: true,
         builder: (_) => DayWisdomScreen(
           cards: pages,
           startIndex: firstUnread < 0 ? 0 : firstUnread,
           date: date,
           recordProgress: _recordProgress,
-          recordRead: _recordRead,
+          recordRead: true,
         ),
       ),
     );
@@ -442,6 +330,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
 
   /// Обновляет кэш, не скрывая прежний контент при ошибке.
   Future<void> _refresh() async {
+    // Стих дня без сети не показывается; обновление даёт ему второй шанс.
+    ref.invalidate(verseOfDayProvider(dateKey(date)));
     final courseRefresh = ref.read(getCourseTopicProvider)(forceRefresh: true);
     final result = await ref.read(getTodayCardsProvider)(
       date,
@@ -498,6 +388,50 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
 
   bool get _hasStory => (day.title ?? '').isNotEmpty && day.storyUrl != null;
 
+  /// Память и «Мудрость дня» в один ряд, двумя столбцами одной высоты:
+  /// главное на плитках иллюстрации. Если плитка одна, она во всю ширину.
+  Widget _dayTiles(BuildContext context, List<DayCard> pages) {
+    final tiles = [
+      if ((day.title ?? '').isNotEmpty)
+        DayMemoryTile(
+          day: day,
+          iconUrl: widget.content.iconUrl,
+          isRead:
+              ref.watch(readStoryDaysProvider).value?.contains(dateKey(date)) ??
+              false,
+          onTap: () => _openStory(context, day.title!, day.storyUrl!),
+        ),
+      if (pages.isNotEmpty)
+        DayWisdomTile(
+          isLoading: widget.content.readingIsLoading,
+          isUnread: pages.any((card) => !_isRead(card)),
+          pictureUrl: day.pictureUrl,
+          onTap: _openWisdom,
+        ),
+    ];
+    if (tiles.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding:
+          AppSpacing.of(context).horizontal +
+          const EdgeInsets.symmetric(vertical: 6),
+      // Крупный текст может сделать одну плитку выше: соседняя тянется
+      // следом, чтобы ряд оставался ровным.
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (index, tile) in tiles.indexed) ...[
+              if (index > 0) const SizedBox(width: _tileGap),
+              Expanded(child: tile),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  static const _tileGap = 12.0;
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
@@ -505,31 +439,14 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     _openRequestedSection(pages);
     final blocks = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(bottom: FloatingNavInset.of(context) + 32),
+      padding: EdgeInsets.only(
+        top: widget.topInset,
+        bottom: FloatingNavInset.of(context) + 32,
+      ),
       children: [
-        if ((day.title ?? '').isNotEmpty)
-          DayMemoryTile(
-            day: day,
-            iconUrl: widget.content.iconUrl,
-            onTap: () => _openStory(context, day.title!, day.storyUrl!),
-          )
-        else if (day.isFast)
-          // Без памяти дня пост всё равно отмечаем, но без плитки.
-          Padding(
-            padding:
-                AppSpacing.of(context).horizontal +
-                const EdgeInsets.only(top: 4, bottom: 8),
-            child: Text(
-              'Постный день',
-              style: TextStyle(fontSize: 13, color: colors.accent),
-            ),
-          ),
-        if (pages.isNotEmpty)
-          DayWisdomTile(
-            isLoading: widget.content.readingIsLoading,
-            isUnread: pages.any((card) => !_isRead(card)),
-            onTap: _openWisdom,
-          ),
+        _dayHeader(date, isFast: day.isFast),
+        VerseOfDaySection(date: date),
+        _dayTiles(context, pages),
         if (pages.isEmpty)
           Padding(
             padding:
@@ -540,17 +457,20 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
               style: TextStyle(fontSize: 14, color: colors.homeSubtitle),
             ),
           ),
+        _plansHeader,
         const _CourseHomeSection(),
-        // Серия относится к сегодняшнему дню, а не к выбранному в полоске.
-        if (ref.watch(dayProgressProvider).value case final progress?)
-          StreakCard(progress: progress, today: DateTime.now()),
       ],
     );
-    return RefreshIndicator(onRefresh: _refresh, child: blocks);
+    return RefreshIndicator(
+      // Индикатор выезжает из-под шапки, а не прячется за ней.
+      edgeOffset: widget.topInset,
+      onRefresh: _refresh,
+      child: blocks,
+    );
   }
 }
 
-/// Курс не зависит от выбранного дня и остаётся доступным при ошибке дня.
+/// Курс не зависит от дня и остаётся доступным при ошибке загрузки дня.
 class _CourseHomeSection extends ConsumerWidget {
   const _CourseHomeSection();
 
@@ -577,83 +497,56 @@ class _CourseHomeSection extends ConsumerWidget {
         }
       });
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (topic.value case final currentTopic?)
-          CourseProgressHeader(
-            topic: currentTopic,
-            isUnread:
-                !(ref
-                        .watch(dayProgressProvider)
-                        .value
-                        ?.isReadOn(DateTime.now(), CardType.basics) ??
-                    false),
-            completedTopicCount: ref
-                .watch(completedCourseTopicsProvider)
-                .value
-                ?.length,
-            onTap: () => openCourseReader(context, ref),
-            onInfo: () {
-              ref
-                  .read(analyticsProvider)
-                  .log(
-                    AnalyticsEvent.courseInfoOpened(CourseInfoScreen.plansInfo),
-                  );
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const PlansInfoScreen(),
-                ),
-              );
-            },
-          )
-        else
-          Padding(
-            padding: AppSpacing.of(context).horizontal,
-            child: topic.isLoading
-                ? Text(
-                    'Загружаем «Основы веры»',
-                    style: TextStyle(color: colors.homeSubtitle),
-                  )
-                : AnalyticsOnShow(
-                    event: AnalyticsEvent.contentLoadFailed(
-                      content: LoadedContent.courseTopic,
-                      kind: failureKindOf(topic.error),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text('Не удалось загрузить «Основы веры»'),
-                        TextButton(
-                          onPressed: () {
-                            ref
-                                .read(analyticsProvider)
-                                .log(
-                                  AnalyticsEvent.contentRetryTapped(
-                                    LoadedContent.courseTopic,
-                                  ),
-                                );
-                            ref.invalidate(courseTopicProvider);
-                          },
-                          child: const Text('Повторить'),
-                        ),
-                      ],
-                    ),
+    if (topic.value case final currentTopic?) {
+      return CourseProgressHeader(
+        topic: currentTopic,
+        isUnread:
+            !(ref
+                    .watch(dayProgressProvider)
+                    .value
+                    ?.isReadOn(DateTime.now(), CardType.basics) ??
+                false),
+        completedTopicCount: ref
+            .watch(completedCourseTopicsProvider)
+            .value
+            ?.length,
+        onTap: () => openCourseReader(context, ref),
+      );
+    }
+    return Padding(
+      padding: AppSpacing.of(context).horizontal,
+      child: topic.isLoading
+          ? Text(
+              'Загружаем «Основы веры»',
+              style: TextStyle(color: colors.homeSubtitle),
+            )
+          : AnalyticsOnShow(
+              event: AnalyticsEvent.contentLoadFailed(
+                content: LoadedContent.courseTopic,
+                kind: failureKindOf(topic.error),
+              ),
+              child: Column(
+                children: [
+                  const Text('Не удалось загрузить «Основы веры»'),
+                  TextButton(
+                    onPressed: () {
+                      ref
+                          .read(analyticsProvider)
+                          .log(
+                            AnalyticsEvent.contentRetryTapped(
+                              LoadedContent.courseTopic,
+                            ),
+                          );
+                      ref.invalidate(courseTopicProvider);
+                    },
+                    child: const Text('Повторить'),
                   ),
-          ),
-      ],
+                ],
+              ),
+            ),
     );
   }
 }
-
-void _logDateSelected(WidgetRef ref, DateTime day, DateSelectSource source) =>
-    ref
-        .read(analyticsProvider)
-        .log(
-          AnalyticsEvent.dateSelected(
-            source: source,
-            dayOffset: dayOffset(day),
-          ),
-        );
 
 Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
   final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
@@ -672,3 +565,15 @@ Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
     ),
   );
 }
+
+/// Раздел того, что меняется каждый день: стих, память и «Мудрость дня».
+/// Называется сегодняшней датой; пост относится ко всему дню и подписан
+/// под ней, а не на плитке.
+Widget _dayHeader(DateTime date, {bool isFast = false}) => HomeSectionHeader(
+  title: russianDayMonth(date),
+  caption: isFast ? 'Постный день' : null,
+  first: true,
+);
+
+/// Раздел планов без привязки к дню: курс и будущие планы чтения.
+const _plansHeader = HomeSectionHeader(title: 'Планы');

@@ -126,13 +126,6 @@ class AnalyticsEvent {
   });
 
   // Главная и навигация.
-  factory AnalyticsEvent.dateSelected({
-    required DateSelectSource source,
-    required int dayOffset,
-  }) => AnalyticsEvent._('date_selected', {
-    'source': source,
-    'day_offset': dayOffset,
-  });
   factory AnalyticsEvent.tabOpened(AnalyticsTab tab) =>
       AnalyticsEvent._('tab_opened', {'tab': tab});
 
@@ -260,11 +253,17 @@ enum ReminderPromptTrigger { wisdom, course }
 
 enum ReminderPromptChoice { allow, later, dismissed }
 
-enum DateSelectSource { weekTap, calendar, todayButton, swipe }
-
 enum AnalyticsTab { home, bible, profile }
 
-enum BibleOpenSource { firstOpen, tab, catalog, next, dailyReading, bookmark }
+enum BibleOpenSource {
+  firstOpen,
+  tab,
+  catalog,
+  next,
+  dailyReading,
+  bookmark,
+  verseOfDay,
+}
 
 enum BookmarkPlacement { reader, listSwipe, detail }
 
@@ -287,6 +286,6 @@ enum ShareOutcome { success, dismissed, unavailable }
 
 enum ReviewTrigger { profile, firstCompletion }
 
-enum CourseInfoScreen { courseDetail, plansInfo }
+enum CourseInfoScreen { courseDetail }
 
 enum LoadedContent { day, gospel, story, courseTopic, bibleChapter }

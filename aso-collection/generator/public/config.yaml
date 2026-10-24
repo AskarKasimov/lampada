@@ -5,17 +5,39 @@ formats:
     label: App Store · 6.9"
     width: 1320
     height: 2868
-    phone_width_ratio: 0.90
-    phone_translate_y: 13
+    phone_width_ratio: 0.86
+    phone_translate_y: -2
+  # Слот iPhone 6.1"/6.3" в App Store Connect, принимает и 1179 × 2556.
+  - id: app-store-6-3
+    label: App Store · 6.3"
+    width: 1206
+    height: 2622
+    phone_width_ratio: 0.86
+    phone_translate_y: -2
   - id: app-store-6-5
     label: App Store · 6.5"
     width: 1284
     height: 2778
-    phone_width_ratio: 0.90
-    phone_translate_y: 13
+    phone_width_ratio: 0.86
+    phone_translate_y: -2
   - id: rustore
     label: RuStore
     width: 1080
     height: 1920
-    phone_width_ratio: 0.90
-    phone_translate_y: 30
+    phone_width_ratio: 0.68
+    phone_translate_y: -2
+# Креативы App Store (iOS 27+). Безопасные зоны — Art Safe Area из
+# официальных шаблонов Apple; размеры — максимальные из спецификации.
+placements:
+  - id: header
+    label: Product page header · 21:9
+    layout: title
+    width: 3840
+    height: 1646
+    safe_area: { x: 1097, y: 493, width: 1646, height: 661 }
+  - id: search-results
+    label: Search results · 3:2
+    layout: phones
+    width: 3840
+    height: 2560
+    safe_area: { x: 836, y: 765, width: 2168, height: 1030 }

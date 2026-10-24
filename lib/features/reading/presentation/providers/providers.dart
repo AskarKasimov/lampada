@@ -22,8 +22,8 @@ final getDailyReadingProvider = Provider<GetDailyReading>(
   (ref) => GetDailyReading(ref.watch(readingRepositoryProvider)),
 );
 
-/// Чтение по ссылке отрывка. Family, а не единичный провайдер: календарь
-/// открывает чужие дни, и отрывок там свой. Повторы сети ограничены бюджетом
+/// Чтение по ссылке отрывка. Family, а не единичный провайдер: у каждого
+/// дня свой отрывок, а закладки открывают и чужие. Повторы сети ограничены бюджетом
 /// репозитория; после ошибки пользователь может повторить загрузку сам.
 final dailyReadingProvider = FutureProvider.family<DailyReading, String>((
   ref,

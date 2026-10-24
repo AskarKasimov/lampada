@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +18,7 @@ import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
 import '../widgets/card_swipe_nudge.dart';
 import '../widgets/progress_dots.dart';
+import '../widgets/rail_scrubber.dart';
 import '../widgets/vertical_card_reader.dart';
 import 'full_card_text_screen.dart';
 
@@ -39,6 +42,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     this.headerBuilder,
     this.wholeCardOf,
     this.onExit,
+    this.lastScrubbablePage,
     super.key,
   });
 
@@ -57,6 +61,10 @@ class CardViewerScreen extends ConsumerStatefulWidget {
 
   /// Заглушка загрузки не считается прочитанным Евангелием.
   final bool Function(int index)? canMarkRead;
+
+  /// Дальше этой страницы по точкам не долистать: за ней экран итога,
+  /// который нужно заслужить чтением, а не прыжком. null: без ограничения.
+  final int? lastScrubbablePage;
 
   /// Дополнительное содержимое страницы. Рамка, жесты, шапка и действия
   /// остаются общими для всех карточек; меняется только центральный материал.
@@ -166,14 +174,21 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
               foreground: cardStyle.tagForeground,
               letterSpacing: 0.2,
             ),
-        leftRail: ProgressDots(
+        leftRail: RailScrubber(
           count: _pageCount,
           currentIndex: _index,
-          axis: Axis.vertical,
-          accentColors: [
-            for (final card in widget.cards)
-              card.type.styleFor(brightness).accent,
-          ],
+          onSelect: (page) => _controller.jumpToPage(
+            math.min(page, widget.lastScrubbablePage ?? page),
+          ),
+          child: ProgressDots(
+            count: _pageCount,
+            currentIndex: _index,
+            axis: Axis.vertical,
+            accentColors: [
+              for (final card in widget.cards)
+                card.type.styleFor(brightness).accent,
+            ],
+          ),
         ),
         actions:
             widget.actionsBuilder?.call(context, _index) ??

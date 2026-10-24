@@ -9,6 +9,7 @@ import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart'
     show bookmarksProvider;
+import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
@@ -71,6 +72,20 @@ void main() {
     await next(tester);
     expect(find.text('Абзац первый.\n\nАбзац второй.'), findsOneWidget);
     expect(find.text('— Азбука веры'), findsOneWidget);
+  });
+
+  testWidgets('по столбику точек страницы листаются пальцем', (tester) async {
+    final repo = _FakeRepository(
+      const Success(DayStory(paragraphs: ['Абзац первый.', 'Абзац второй.'])),
+    );
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    final rail = tester.getRect(find.byType(RailScrubber));
+    await tester.tapAt(rail.bottomCenter - const Offset(0, 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Абзац первый.\n\nАбзац второй.'), findsOneWidget);
   });
 
   testWidgets('длинный рассказ делится на страницы, подпись в конце', (

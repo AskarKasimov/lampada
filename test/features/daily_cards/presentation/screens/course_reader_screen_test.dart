@@ -24,6 +24,7 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_progress_re
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/fake_analytics.dart';
@@ -275,6 +276,14 @@ void main() {
       expect(find.text('Тема 4'), findsOneWidget);
     },
   );
+
+  testWidgets('по столбику точек страницы темы листаются пальцем', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    expect(find.byType(RailScrubber), findsOneWidget);
+  });
 
   testWidgets('закладки страниц одной темы сохраняются независимо', (
     tester,

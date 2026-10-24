@@ -101,6 +101,50 @@ void main() {
     });
   });
 
+  group('лучшая серия', () {
+    test('без активности лучшей серии нет', () {
+      expect(_progressDaysAgo([]).bestStreakOn(_today), 0);
+    });
+
+    test('прошлая серия длиннее текущей остаётся лучшей', () {
+      // Сейчас два дня, а месяц назад было четыре подряд.
+      expect(_progressDaysAgo([0, 1, 30, 31, 32, 33]).bestStreakOn(_today), 4);
+    });
+
+    test('погасшая серия не отменяет лучшую', () {
+      expect(_progressDaysAgo([10, 11, 12]).bestStreakOn(_today), 3);
+    });
+
+    test('лучшая серия прощает тот же одиночный пропуск', () {
+      expect(_progressDaysAgo([0, 2, 4, 10]).bestStreakOn(_today), 3);
+    });
+
+    test('будущие даты в лучшую серию не берутся', () {
+      final progress = DayProgress(
+        readTypes: const {},
+        visitedDays: {
+          dateKey(_today),
+          for (var d = 1; d <= 5; d++) dateKey(_today.add(Duration(days: d))),
+        },
+      );
+
+      expect(progress.bestStreakOn(_today), 1);
+    });
+  });
+
+  group('дни с лампадой за год', () {
+    test('считает только дни активности указанного года', () {
+      const progress = DayProgress(
+        readTypes: {},
+        visitedDays: {'2025-12-31', '2026-01-01', '2026-07-27', '2026-07-28'},
+      );
+
+      expect(progress.litDaysInYear(2026), 3);
+      expect(progress.litDaysInYear(2025), 1);
+      expect(progress.litDaysInYear(2024), 0);
+    });
+  });
+
   group('прочитанность дня', () {
     test('allReadOf считает от карточек этого дня, а не от всех типов', () {
       // Неполный день (Азбука отдала не все секции) обязан закрываться.

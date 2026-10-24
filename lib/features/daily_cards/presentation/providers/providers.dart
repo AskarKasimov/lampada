@@ -65,22 +65,6 @@ final todayCardsProvider = FutureProvider<TodayCards>(
   (ref) => ref.watch(dayCardsProvider(dateKey(DateTime.now())).future),
 );
 
-/// Дата, открытая на вкладке «Сегодня». Полоска недели переключает её,
-/// вкладка целиком следует за ней. Нормализована до полуночи, чтобы
-/// сравнения дат не зависели от времени суток.
-final selectedDateProvider = NotifierProvider<SelectedDateNotifier, DateTime>(
-  SelectedDateNotifier.new,
-);
-
-class SelectedDateNotifier extends Notifier<DateTime> {
-  static DateTime _atMidnight(DateTime d) => DateTime(d.year, d.month, d.day);
-
-  @override
-  DateTime build() => _atMidnight(DateTime.now());
-
-  void select(DateTime date) => state = _atMidnight(date);
-}
-
 /// Разовая просьба открыть раздел сегодняшнего дня, как только он готов.
 /// Её оставляют приветствие («Открыть сегодняшний день» обещает чтение, а
 /// не главную) и нажатие на напоминание (оно зовёт в конкретный раздел).

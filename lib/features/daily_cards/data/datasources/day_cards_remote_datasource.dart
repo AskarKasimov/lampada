@@ -89,6 +89,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         title: _titleOf(doc),
         isFast: _isFastDay(doc),
         storyUrl: _storyUrlOf(doc),
+        pictureUrl: _pictureUrlOf(doc),
       );
 
       netLog(
@@ -248,6 +249,35 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
       return uri.replace(scheme: 'https').toString();
     }
     return Uri.parse('https://azbyka.ru').resolveUri(uri).toString();
+  }
+
+  /// «Картина дня» из боковой колонки.
+  ///
+  /// «Фото дня» свёрстано тем же `.widget.dayfoto`, поэтому виджет узнаём по
+  /// заголовку. Берём вариант 600×480 из srcset: плитка в половину ширины
+  /// на экране 3x шире 300 точек превью. Картинка необязательна, и её
+  /// отсутствие день не роняет.
+  static String? _pictureUrlOf(Document doc) {
+    final widget = doc
+        .querySelectorAll('.widget.dayfoto')
+        .where(
+          (w) => (_cleaned(w.querySelector('.widget-title')) ?? '').startsWith(
+            'Картина дня',
+          ),
+        )
+        .firstOrNull;
+    final img = widget?.querySelector('img');
+    if (img == null) {
+      netLog('нет «Картины дня» — плитка останется с крестом');
+      return null;
+    }
+    final srcset = img.attributes['srcset']?.trim().split(RegExp(r'\s+'));
+    final candidate = srcset?.firstOrNull ?? img.attributes['src'];
+    final uri = candidate == null ? null : Uri.tryParse(candidate);
+    if (uri == null || uri.scheme != 'https' || uri.host != 'azbyka.ru') {
+      return null;
+    }
+    return uri.toString();
   }
 
   /// Постный ли день. Пометка стоит ссылкой на календарь постов в первом

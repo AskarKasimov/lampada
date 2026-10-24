@@ -3,13 +3,18 @@ import 'package:lampada/core/analytics/analytics_event.dart';
 
 void main() {
   test('значения перечислений уходят в snake_case', () {
-    final event = AnalyticsEvent.dateSelected(
-      source: DateSelectSource.todayButton,
-      dayOffset: -2,
+    final event = AnalyticsEvent.bibleChapterOpened(
+      book: 'Jn',
+      chapter: 1,
+      source: BibleOpenSource.dailyReading,
     );
 
-    expect(event.name, 'date_selected');
-    expect(event.params, {'source': 'today_button', 'day_offset': -2});
+    expect(event.name, 'bible_chapter_opened');
+    expect(event.params, {
+      'book': 'Jn',
+      'chapter': 1,
+      'source': 'daily_reading',
+    });
   });
 
   test('необязательные параметры без значения не отправляются', () {

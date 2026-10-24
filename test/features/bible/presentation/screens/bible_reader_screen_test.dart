@@ -8,10 +8,12 @@ import 'package:lampada/features/bible/domain/entities/bible_book.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/fake_analytics.dart';
+import '../../../../support/haptics.dart';
 
 void main() {
   late SharedPreferences prefs;
@@ -78,5 +80,27 @@ void main() {
     expect(find.text('на Быт.1:2'), findsOneWidget);
     expect(find.text('— Толковая Библия А.П. Лопухина'), findsOneWidget);
     expect(analytics.names, contains('interpretation_opened'));
+  });
+
+  testWidgets('под стихом сокращение книги, глава и стих', (tester) async {
+    await open(tester, verse: 1);
+
+    expect(find.text('Быт. 1:1').hitTestable(), findsOneWidget);
+    expect(find.text('1:1'), findsNothing);
+  });
+
+  testWidgets('по столбику точек стихи листаются пальцем со щелчком', (
+    tester,
+  ) async {
+    final haptics = recordHaptics(tester);
+    await open(tester, verse: 1);
+
+    final rail = tester.getRect(find.byType(RailScrubber));
+    await tester.tapAt(rail.bottomCenter - const Offset(0, 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Земля же была безвидна').hitTestable(), findsOneWidget);
+    expect(find.text('Быт. 1:2').hitTestable(), findsOneWidget);
+    expect(haptics, ['HapticFeedbackType.selectionClick']);
   });
 }

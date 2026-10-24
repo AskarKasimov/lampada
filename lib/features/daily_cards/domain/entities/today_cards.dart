@@ -22,6 +22,9 @@ abstract class TodayCards with _$TodayCards {
     /// Ссылка на страницу праздника/святого — рассказ о дне грузится оттуда
     /// лениво, при открытии заголовка, а не вместе с самим днём.
     String? storyUrl,
+
+    /// Адрес «Картины дня» Азбуки: иллюстрация плитки «Мудрость дня».
+    String? pictureUrl,
   }) = _TodayCards;
 
   const TodayCards._();

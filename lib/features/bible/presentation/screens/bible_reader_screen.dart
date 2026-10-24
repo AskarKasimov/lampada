@@ -456,6 +456,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             // кнопкой под стихом, к которому написано.
             child: VerseView(
               verse: verse,
+              bookAbbreviation: item.book.abbreviation,
               shareContent: SharedContent.bibleVerse,
               onOpenInterpretation: verse.hasInterpretation
                   ? () => InterpretationSheet.show(
@@ -543,6 +544,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       count: count,
       currentIndex: current,
       accent: colors.accent,
+      // Точки показывают стихи текущей главы, а они идут подряд.
+      onSelect: (index) => _controller!.jumpToPage(first + index),
     );
   }
 

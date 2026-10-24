@@ -256,6 +256,7 @@ class _StoryReaderState extends State<_StoryReader> {
         count: _pages.length,
         currentIndex: _index,
         accent: colors.accent,
+        onSelect: _controller.jumpToPage,
       ),
       actions: Column(
         mainAxisSize: MainAxisSize.min,

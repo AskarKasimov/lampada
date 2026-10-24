@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/theme/app_theme.dart';
-import 'package:lampada/core/widgets/streak_flame.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_card.dart';
 
@@ -34,7 +33,7 @@ void main() {
     expect(find.text('3'), findsOneWidget);
     expect(find.text('дня подряд'), findsOneWidget);
     expect(_lamp('on'), findsOneWidget);
-    // Неделя уже есть в полоске наверху, второго ряда дней нет.
+    // Неделя раскрывается только по просьбе экрана итога.
     expect(find.text('пн'), findsNothing);
   });
 
@@ -109,7 +108,6 @@ void main() {
     // в неделю не входит.
     expect(_lamp('on'), findsNWidgets(4));
     expect(_lamp('off'), findsNWidgets(4));
-    expect(find.byType(StreakFlame), findsNothing);
   });
 
   test('подпись к числу дней согласована по падежу', () {

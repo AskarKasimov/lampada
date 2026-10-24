@@ -1,7 +1,9 @@
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
+import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -262,13 +264,18 @@ class _FloatingNavBarState extends State<FloatingNavBar> {
       FloatingNavBar._items.length - 1,
     );
     setState(() => _dragLeft = null);
-    widget.onSelect(FloatingNavBar._items[index].tab);
+    final tab = FloatingNavBar._items[index].tab;
+    if (tab != widget.current) HapticFeedback.selectionClick();
+    widget.onSelect(tab);
   }
 
   void _cancelDrag() => setState(() => _dragLeft = null);
 }
 
-class _NavItem extends StatelessWidget {
+/// Вкладка навбара. Нажатие как у таббара iOS: вкладка сжимается под
+/// пальцем и отпружинивает, без материальной «волны»; выбор сопровождает
+/// лёгкий щелчок.
+class _NavItem extends StatefulWidget {
   const _NavItem({
     required this.icon,
     required this.label,
@@ -282,21 +289,66 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  static const _pressedScale = 0.86;
+
+  bool _pressed = false;
+  Offset? _downAt;
+
+  void _press(PointerDownEvent event) {
+    _downAt = event.position;
+    setState(() => _pressed = true);
+  }
+
+  /// Палец ушёл в сторону: это перетаскивание рамки по навбару, а не тап.
+  void _move(PointerMoveEvent event) {
+    final downAt = _downAt;
+    if (!_pressed || downAt == null) return;
+    if ((event.position - downAt).distance > kTouchSlop) _release();
+  }
+
+  void _release() {
+    _downAt = null;
+    if (_pressed) setState(() => _pressed = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
 
     return Semantics(
-      selected: isSelected,
+      selected: widget.isSelected,
       button: true,
-      label: label,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const StadiumBorder(),
-        child: _NavItemContent(
-          icon: (color) => icon(isSelected, color),
-          label: label,
-          color: isSelected ? colors.accent : colors.homeIcon,
-          isSelected: isSelected,
+      label: widget.label,
+      // Нажатие видно сразу, по касанию: распознаватель тапа ждёт, не
+      // перетаскивание ли это, и сжатие опаздывало бы.
+      child: Listener(
+        onPointerDown: _press,
+        onPointerMove: _move,
+        onPointerUp: (_) => _release(),
+        onPointerCancel: (_) => _release(),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            widget.onTap();
+          },
+          child: AnimatedScale(
+            scale: _pressed ? _pressedScale : 1,
+            // Сжимается быстро, а отпускается с небольшим перелётом, как
+            // пружина в iOS.
+            duration: Duration(milliseconds: _pressed ? 90 : 320),
+            curve: _pressed ? Curves.easeOut : Curves.easeOutBack,
+            child: _NavItemContent(
+              icon: (color) => widget.icon(widget.isSelected, color),
+              label: widget.label,
+              color: widget.isSelected ? colors.accent : colors.homeIcon,
+              isSelected: widget.isSelected,
+            ),
+          ),
         ),
       ),
     );
