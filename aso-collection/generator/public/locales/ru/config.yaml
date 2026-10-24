@@ -1,47 +1,48 @@
 locale: ru
 slides:
-  - id: gospel
-    label: Евангелие
+  - id: today
+    label: Главная
     title:
-      - "Изучай Библию"
-      - "вместо"
-      - "думскроллинга"
+      - "Тихая встреча"
+      - "с Богом каждый день"
     theme: light
-    screenshot: gospel.png
-    zoom:
-      # Стих «В начале было Слово…» вместе со ссылкой 1:1.
-      - { x: 0.06, y: 0.405, width: 0.905, height: 0.205, scale: 1.35 }
-      # Плашка «От Иоанна 1»: края на 2 px внутри плашки (580–892 × 151–235
-      # в исходнике), чтобы овал не захватил фон экрана.
-      - { x: 0.6326, y: 0.0767, width: 0.3348, height: 0.0401, scale: 1.7, shape: pill }
+    screenshot: 01-today.png
   - id: wisdom
     label: Мудрость дня
     title:
-      - "Святые отвечают"
-      - "на твои вопросы"
+      - "Одна мысль"
+      - "для твоего дня"
     theme: light
-    screenshot: wisdom.png
-  - id: daily
-    label: Каждый день
-    title:
-      - "Ближе к Богу"
-      - "с каждым днём"
-    theme: light
-    screenshot: daily.png
-  - id: course
-    label: Основы веры
-    title:
-      - "Основы веры"
-      - "простыми словами"
-    theme: light
-    screenshot: course.png
+    screenshot: 02-card.png
   - id: bible
     label: Библия
     title:
-      - "Вся Библия"
-      - "всегда с тобой"
+      - "Выбирай главу Библии"
+      - "и читай даже без связи"
     theme: light
-    screenshot: bible.png
+    screenshot: 03-bible.png
+  - id: gospel
+    label: Евангелие с толкованием
+    title:
+      - "Изучай толкования"
+      - "к прочтенным стихам"
+    theme: light
+    screenshot: 04-gospel.png
+    status_bar_background: "#736e68"
+  - id: story
+    label: Память дня
+    title:
+      - "Святые и праздники"
+      - "каждый день"
+    theme: light
+    screenshot: 05-story.png
+  - id: course
+    label: Основы веры
+    title:
+      - "Курс из 365 тем о вере"
+      - "в своем темпе"
+    theme: light
+    screenshot: 06-course.png
 placements:
   header:
     title:
@@ -51,4 +52,4 @@ placements:
     title:
       - "Православие"
       - "на каждый день"
-    screenshots: [course.png, wisdom.png, gospel.png, daily.png, bible.png]
+    screenshots: [01-today.png, 02-card.png, 03-bible.png, 04-gospel.png, 05-story.png]
