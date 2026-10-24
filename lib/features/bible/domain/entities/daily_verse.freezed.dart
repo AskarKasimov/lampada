@@ -15,7 +15,9 @@ T _$identity<T>(T value) => value;
 mixin _$DailyVerse {
 
 /// Код книги из каталога `bibleBooks`.
- String get book; int get chapter; int get verse; String get text;
+ String get book; int get chapter;/// Первый стих.
+ int get verse; String get text;/// Последний стих отрывка; null у одиночного стиха.
+ int? get endVerse;
 /// Create a copy of DailyVerse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +28,16 @@ $DailyVerseCopyWith<DailyVerse> get copyWith => _$DailyVerseCopyWithImpl<DailyVe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DailyVerse&&(identical(other.book, book) || other.book == book)&&(identical(other.chapter, chapter) || other.chapter == chapter)&&(identical(other.verse, verse) || other.verse == verse)&&(identical(other.text, text) || other.text == text));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DailyVerse&&(identical(other.book, book) || other.book == book)&&(identical(other.chapter, chapter) || other.chapter == chapter)&&(identical(other.verse, verse) || other.verse == verse)&&(identical(other.text, text) || other.text == text)&&(identical(other.endVerse, endVerse) || other.endVerse == endVerse));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,book,chapter,verse,text);
+int get hashCode => Object.hash(runtimeType,book,chapter,verse,text,endVerse);
 
 @override
 String toString() {
-  return 'DailyVerse(book: $book, chapter: $chapter, verse: $verse, text: $text)';
+  return 'DailyVerse(book: $book, chapter: $chapter, verse: $verse, text: $text, endVerse: $endVerse)';
 }
 
 
@@ -46,7 +48,7 @@ abstract mixin class $DailyVerseCopyWith<$Res>  {
   factory $DailyVerseCopyWith(DailyVerse value, $Res Function(DailyVerse) _then) = _$DailyVerseCopyWithImpl;
 @useResult
 $Res call({
- String book, int chapter, int verse, String text
+ String book, int chapter, int verse, String text, int? endVerse
 });
 
 
@@ -63,13 +65,14 @@ class _$DailyVerseCopyWithImpl<$Res>
 
 /// Create a copy of DailyVerse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? book = null,Object? chapter = null,Object? verse = null,Object? text = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? book = null,Object? chapter = null,Object? verse = null,Object? text = null,Object? endVerse = freezed,}) {
   return _then(_self.copyWith(
 book: null == book ? _self.book : book // ignore: cast_nullable_to_non_nullable
 as String,chapter: null == chapter ? _self.chapter : chapter // ignore: cast_nullable_to_non_nullable
 as int,verse: null == verse ? _self.verse : verse // ignore: cast_nullable_to_non_nullable
 as int,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String,
+as String,endVerse: freezed == endVerse ? _self.endVerse : endVerse // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -154,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String book,  int chapter,  int verse,  String text)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String book,  int chapter,  int verse,  String text,  int? endVerse)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DailyVerse() when $default != null:
-return $default(_that.book,_that.chapter,_that.verse,_that.text);case _:
+return $default(_that.book,_that.chapter,_that.verse,_that.text,_that.endVerse);case _:
   return orElse();
 
 }
@@ -175,10 +178,10 @@ return $default(_that.book,_that.chapter,_that.verse,_that.text);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String book,  int chapter,  int verse,  String text)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String book,  int chapter,  int verse,  String text,  int? endVerse)  $default,) {final _that = this;
 switch (_that) {
 case _DailyVerse():
-return $default(_that.book,_that.chapter,_that.verse,_that.text);case _:
+return $default(_that.book,_that.chapter,_that.verse,_that.text,_that.endVerse);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +198,10 @@ return $default(_that.book,_that.chapter,_that.verse,_that.text);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String book,  int chapter,  int verse,  String text)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String book,  int chapter,  int verse,  String text,  int? endVerse)?  $default,) {final _that = this;
 switch (_that) {
 case _DailyVerse() when $default != null:
-return $default(_that.book,_that.chapter,_that.verse,_that.text);case _:
+return $default(_that.book,_that.chapter,_that.verse,_that.text,_that.endVerse);case _:
   return null;
 
 }
@@ -209,15 +212,18 @@ return $default(_that.book,_that.chapter,_that.verse,_that.text);case _:
 /// @nodoc
 
 
-class _DailyVerse implements DailyVerse {
-  const _DailyVerse({required this.book, required this.chapter, required this.verse, required this.text});
+class _DailyVerse extends DailyVerse {
+  const _DailyVerse({required this.book, required this.chapter, required this.verse, required this.text, this.endVerse}): super._();
   
 
 /// Код книги из каталога `bibleBooks`.
 @override final  String book;
 @override final  int chapter;
+/// Первый стих.
 @override final  int verse;
 @override final  String text;
+/// Последний стих отрывка; null у одиночного стиха.
+@override final  int? endVerse;
 
 /// Create a copy of DailyVerse
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +235,16 @@ _$DailyVerseCopyWith<_DailyVerse> get copyWith => __$DailyVerseCopyWithImpl<_Dai
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DailyVerse&&(identical(other.book, book) || other.book == book)&&(identical(other.chapter, chapter) || other.chapter == chapter)&&(identical(other.verse, verse) || other.verse == verse)&&(identical(other.text, text) || other.text == text));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DailyVerse&&(identical(other.book, book) || other.book == book)&&(identical(other.chapter, chapter) || other.chapter == chapter)&&(identical(other.verse, verse) || other.verse == verse)&&(identical(other.text, text) || other.text == text)&&(identical(other.endVerse, endVerse) || other.endVerse == endVerse));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,book,chapter,verse,text);
+int get hashCode => Object.hash(runtimeType,book,chapter,verse,text,endVerse);
 
 @override
 String toString() {
-  return 'DailyVerse(book: $book, chapter: $chapter, verse: $verse, text: $text)';
+  return 'DailyVerse(book: $book, chapter: $chapter, verse: $verse, text: $text, endVerse: $endVerse)';
 }
 
 
@@ -249,7 +255,7 @@ abstract mixin class _$DailyVerseCopyWith<$Res> implements $DailyVerseCopyWith<$
   factory _$DailyVerseCopyWith(_DailyVerse value, $Res Function(_DailyVerse) _then) = __$DailyVerseCopyWithImpl;
 @override @useResult
 $Res call({
- String book, int chapter, int verse, String text
+ String book, int chapter, int verse, String text, int? endVerse
 });
 
 
@@ -266,13 +272,14 @@ class __$DailyVerseCopyWithImpl<$Res>
 
 /// Create a copy of DailyVerse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? book = null,Object? chapter = null,Object? verse = null,Object? text = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? book = null,Object? chapter = null,Object? verse = null,Object? text = null,Object? endVerse = freezed,}) {
   return _then(_DailyVerse(
 book: null == book ? _self.book : book // ignore: cast_nullable_to_non_nullable
 as String,chapter: null == chapter ? _self.chapter : chapter // ignore: cast_nullable_to_non_nullable
 as int,verse: null == verse ? _self.verse : verse // ignore: cast_nullable_to_non_nullable
 as int,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String,
+as String,endVerse: freezed == endVerse ? _self.endVerse : endVerse // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

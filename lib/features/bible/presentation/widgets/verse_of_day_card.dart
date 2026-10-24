@@ -81,7 +81,7 @@ class VerseOfDayCard extends ConsumerWidget {
                   if (verse != null && book != null) ...[
                     const SizedBox(height: 3),
                     Text(
-                      '${book.abbreviation}. ${verse.chapter}:${verse.verse}',
+                      '${book.abbreviation}. ${verse.reference}',
                       style: AppTheme.cardCaptionStyle(context),
                     ),
                   ],
@@ -124,9 +124,13 @@ class _Actions extends ConsumerWidget {
     final colors = AppColorsExtension.of(context);
     // Подпись и id как у стиха в читалке Библии: сохранённый здесь стих
     // отмечен сохранённым и там, и наоборот.
-    final source = '${book.title} ${verse.chapter}:${verse.verse}';
+    final source = '${book.title} ${verse.reference}';
     final bookmark = Bookmark(
-      id: 'bible-${verse.book}-${verse.chapter}:${verse.verse}',
+      // Одиночный стих совпадает с закладкой этого стиха в читалке Библии;
+      // у отрывка своя закладка.
+      id:
+          'bible-${verse.book}-${verse.chapter}:${verse.verse}'
+          '${verse.endVerse == null ? '' : '-${verse.endVerse}'}',
       kind: BookmarkKind.verse,
       text: verse.text,
       source: source,

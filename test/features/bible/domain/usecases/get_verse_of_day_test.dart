@@ -46,7 +46,7 @@ void main() {
           book: ref.book,
           number: ref.chapter,
           verses: [
-            for (var n = 1; n <= ref.verse + 1; n++)
+            for (var n = 1; n <= ref.to + 1; n++)
               BibleVerse(number: n, text: '  Стих $n  '),
           ],
         ),
@@ -60,7 +60,10 @@ void main() {
     expect(verse.book, ref.book);
     expect(verse.chapter, ref.chapter);
     expect(verse.verse, ref.verse);
-    expect(verse.text, 'Стих ${ref.verse}');
+    expect(
+      verse.text,
+      [for (var n = ref.verse; n <= ref.to; n++) 'Стих $n'].join(' '),
+    );
   });
 
   test('ошибка загрузки главы уходит наружу как есть', () async {
@@ -86,5 +89,76 @@ void main() {
     )(date);
 
     expect(result, isA<Failure<DailyVerse>>());
+  });
+
+  test('отрывок из нескольких стихов склеивается в одну мысль', () async {
+    final repository = _FakeRepository(
+      const Success(
+        BibleChapter(
+          book: 'Ps',
+          number: 36,
+          verses: [
+            BibleVerse(number: 4, text: 'Утешайся Господом.'),
+            BibleVerse(
+              number: 5,
+              text: 'Предай Господу путь твой и уповай на Него, и Он совершит,',
+            ),
+            BibleVerse(number: 6, text: ' и выведет, как свет, правду твою '),
+            BibleVerse(number: 7, text: 'Покорись Господу.'),
+          ],
+        ),
+      ),
+    );
+
+    final result = await GetVerseOfDay(
+      repository,
+      refFor: (_) => const VerseRef('Ps', 36, 5, to: 6),
+    )(date);
+
+    final verse = (result as Success<DailyVerse>).value;
+    expect(verse.verse, 5);
+    expect(verse.endVerse, 6);
+    expect(
+      verse.text,
+      'Предай Господу путь твой и уповай на Него, и Он совершит, '
+      'и выведет, как свет, правду твою',
+    );
+  });
+
+  test('если стиха из отрывка нет, это сбой, а не обрывок', () async {
+    final result = await GetVerseOfDay(
+      _FakeRepository(
+        const Success(
+          BibleChapter(
+            book: 'Ps',
+            number: 36,
+            verses: [BibleVerse(number: 5, text: 'Предай Господу путь твой,')],
+          ),
+        ),
+      ),
+      refFor: (_) => const VerseRef('Ps', 36, 5, to: 6),
+    )(date);
+
+    expect(result, isA<Failure<DailyVerse>>());
+  });
+
+  test('стих с середины фразы начинается с заглавной буквы', () async {
+    final result = await GetVerseOfDay(
+      _FakeRepository(
+        const Success(
+          BibleChapter(
+            book: 'Is',
+            number: 41,
+            verses: [BibleVerse(number: 10, text: 'не бойся, ибо Я с тобою.')],
+          ),
+        ),
+      ),
+      refFor: (_) => const VerseRef('Is', 41, 10),
+    )(date);
+
+    expect(
+      (result as Success<DailyVerse>).value.text,
+      'Не бойся, ибо Я с тобою.',
+    );
   });
 }

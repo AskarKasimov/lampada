@@ -109,6 +109,34 @@ void main() {
     expect(card.color!.a, 1);
   });
 
+  testWidgets('отрывок подписан диапазоном стихов', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          analyticsProvider.overrideWithValue(FakeAnalytics()),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const Scaffold(
+            body: VerseOfDayCard(
+              verse: DailyVerse(
+                book: 'Ps',
+                chapter: 36,
+                verse: 5,
+                endVerse: 6,
+                text: 'Предай Господу путь твой, и выведет, как свет, правду',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Пс. 36:5–6'), findsOneWidget);
+  });
+
   testWidgets('«Открыть главу» ведёт во вкладку Библии на этот стих', (
     tester,
   ) async {

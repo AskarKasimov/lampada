@@ -10,6 +10,8 @@ void main() {
       expect(book, isNotNull, reason: '${ref.book} нет в каталоге');
       expect(ref.chapter, inInclusiveRange(1, book!.chapterCount));
       expect(ref.verse, greaterThan(0));
+      // Отрывок держит одну законченную мысль и остаётся коротким.
+      expect(ref.to, inInclusiveRange(ref.verse, ref.verse + 2));
     }
   });
 
@@ -59,5 +61,23 @@ void main() {
       verseOfDayRefFor(DateTime(2026, 3, 30, 1)),
       isNot(verseOfDayRefFor(DateTime(2026, 3, 29, 23))),
     );
+  });
+
+  test('отрывки подборки не пересекаются', () {
+    final taken = <String>{};
+    for (final ref in verseOfDayRefs) {
+      for (var n = ref.verse; n <= ref.to; n++) {
+        expect(
+          taken.add('${ref.book}.${ref.chapter}:$n'),
+          isTrue,
+          reason: '${ref.book}.${ref.chapter}:$n встречается дважды',
+        );
+      }
+    }
+  });
+
+  test('Пс. 36:5 идёт вместе с 36:6: стих обрывается на запятой', () {
+    expect(verseOfDayRefs, contains(const VerseRef('Ps', 36, 5, to: 6)));
+    expect(verseOfDayRefs, isNot(contains(const VerseRef('Ps', 36, 5))));
   });
 }
