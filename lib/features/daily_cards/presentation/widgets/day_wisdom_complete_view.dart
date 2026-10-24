@@ -47,7 +47,7 @@ class DayWisdomCompleteView extends ConsumerStatefulWidget {
 
   final VoidCallback onDone;
 
-  /// Второстепенные переходы под основной кнопкой, например полная глава.
+  /// Доступные продолжения чтения, например полные главы.
   final List<({String label, VoidCallback onPressed})> links;
 
   @override
@@ -287,19 +287,33 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                   ),
                 ],
                 const SizedBox(height: 32),
+                if (widget.links.isNotEmpty) ...[
+                  _Rise(
+                    animation: _actionStep(0, 0.75),
+                    enabled: _weekShown,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: AppPrimaryButton(
+                        label: widget.links.first.label,
+                        color: colors.accent,
+                        onPressed: () => _openChapter(widget.links.first),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
                 _Rise(
-                  animation: _actionStep(0, 0.75),
+                  animation: _actionStep(0.2, 1),
                   enabled: _weekShown,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: AppPrimaryButton(
-                      label: 'Готово',
-                      color: colors.accent,
-                      onPressed: widget.onDone,
+                  child: TextButton(
+                    onPressed: widget.onDone,
+                    child: Text(
+                      'Вернуться на главную',
+                      style: TextStyle(color: colors.ink),
                     ),
                   ),
                 ),
-                for (final link in widget.links) ...[
+                for (final link in widget.links.skip(1)) ...[
                   const SizedBox(height: 8),
                   _Rise(
                     animation: _actionStep(0.2, 1),

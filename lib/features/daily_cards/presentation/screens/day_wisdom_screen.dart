@@ -168,7 +168,10 @@ class DayWisdomScreen extends ConsumerWidget {
             // закрывается: вернувшись на «Главную», юзер видит день.
             links: [
               for (final link
-                  in readingPages?.chapterLinks(context) ??
+                  in readingPages?.chapterLinks(
+                        context,
+                        continueAfterDailyReading: true,
+                      ) ??
                       const <ReadingLink>[])
                 (
                   label: link.label,

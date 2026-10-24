@@ -96,24 +96,43 @@ class ReadingCardPages {
     );
   }
 
-  /// Полные главы отрывка с первого стиха. Пусто, если книгу не узнали.
+  /// Предлагает чтение главы или продолжение после дневного отрывка.
   ///
   /// Глава открывается во вкладке «Библия», а не отдельным окном: там её
   /// можно дочитать и листать дальше, место чтения сохраняется.
-  List<ReadingLink> chapterLinks(BuildContext context) {
+  List<ReadingLink> chapterLinks(
+    BuildContext context, {
+    bool continueAfterDailyReading = false,
+  }) {
     final chapters = _chapters;
     final book = _book;
     if (book == null) return const [];
+    if (continueAfterDailyReading) {
+      final lastVerse = reading.verses.lastOrNull;
+      if (lastVerse == null || !chapters.contains(lastVerse.chapter)) {
+        return const [];
+      }
+      final nextVerse = lastVerse.number + 1;
+      return [
+        (
+          label:
+              'Продолжить с ${book.abbreviation}. '
+              '${lastVerse.chapter}:$nextVerse',
+          onPressed: () => ProviderScope.containerOf(context, listen: false)
+              .read(bibleOpenRequestProvider.notifier)
+              .open(book.code, lastVerse.chapter, verse: nextVerse),
+        ),
+      ];
+    }
     return [
       for (final chapter in chapters)
         (
           label: chapters.length == 1
               ? 'Прочитать главу полностью'
               : 'Прочитать главу $chapter',
-          onPressed: () => ProviderScope.containerOf(
-            context,
-            listen: false,
-          ).read(bibleOpenRequestProvider.notifier).open(book.code, chapter),
+          onPressed: () => ProviderScope.containerOf(context, listen: false)
+              .read(bibleOpenRequestProvider.notifier)
+              .open(book.code, chapter, verse: 1),
         ),
     ];
   }

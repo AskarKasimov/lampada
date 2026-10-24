@@ -375,6 +375,7 @@ void main() {
       required bool recordProgress,
       List<DayCard> cards = const [quote, reading],
       bool reduceMotion = true,
+      int lastVerse = 1,
     }) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -383,9 +384,17 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
             dailyReadingProvider.overrideWith(
-              (ref, reference) async => const DailyReading(
-                label: 'Ин.10:1',
-                verses: [Verse(number: 1, chapter: 10, text: 'Стих дня')],
+              (ref, reference) async => DailyReading(
+                label: 'Ин.10:1–$lastVerse',
+                verses: [
+                  const Verse(number: 1, chapter: 10, text: 'Стих дня 1'),
+                  if (lastVerse > 1)
+                    Verse(
+                      number: lastVerse,
+                      chapter: 10,
+                      text: 'Стих дня $lastVerse',
+                    ),
+                ],
               ),
             ),
             bibleChapterProvider.overrideWith(
@@ -446,7 +455,7 @@ void main() {
       expect(find.text('Цитата'), findsOneWidget);
       expect(await lit(), isFalse);
       await next(tester);
-      expect(find.text('Стих дня'), findsOneWidget);
+      expect(find.text('Стих дня 1'), findsOneWidget);
       final progress = await container.read(dayProgressProvider.future);
       expect(progress.isReadOn(today, CardType.quote), isTrue);
       expect(progress.isReadOn(today, CardType.reading), isTrue);
@@ -466,32 +475,38 @@ void main() {
       );
     });
 
-    testWidgets('предложение главы стоит под основной кнопкой', (tester) async {
-      await open(tester, date: DateTime.now(), recordProgress: true);
-      await next(tester);
-      await next(tester);
+    testWidgets(
+      'главная кнопка продолжает чтение после последнего стиха отрывка',
+      (tester) async {
+        await open(
+          tester,
+          date: DateTime.now(),
+          recordProgress: true,
+          lastVerse: 21,
+        );
+        await next(tester);
+        await next(tester);
+        await next(tester);
 
-      expect(find.text('Хотите прочесть главу полностью?'), findsNothing);
-      final done = find.text('Готово');
-      final chapter = find.text('Прочитать главу полностью');
-      expect(done, findsOneWidget);
-      expect(chapter, findsOneWidget);
-      expect(
-        tester.getTopLeft(chapter).dy,
-        greaterThan(tester.getBottomLeft(done).dy),
-      );
+        final continueReading = find.text('Продолжить с Ин. 10:22');
+        expect(continueReading, findsOneWidget);
+        expect(find.text('Вернуться на главную'), findsOneWidget);
 
-      final container = ProviderScope.containerOf(
-        tester.element(find.byType(DayWisdomScreen)),
-      );
-      await tester.tap(chapter);
-      await tester.pumpAndSettle();
-      // Глава открывается во вкладке «Библия», а не отдельным окном поверх.
-      expect(find.byType(BibleReaderScreen), findsNothing);
-      expect(find.byType(DayWisdomScreen), findsNothing);
-      final request = container.read(bibleOpenRequestProvider);
-      expect((request?.book, request?.chapter), ('Jn', 10));
-    });
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(DayWisdomScreen)),
+        );
+        await tester.tap(continueReading);
+        await tester.pumpAndSettle();
+        // Глава открывается во вкладке «Библия», а не отдельным окном поверх.
+        expect(find.byType(BibleReaderScreen), findsNothing);
+        expect(find.byType(DayWisdomScreen), findsNothing);
+        final request = container.read(bibleOpenRequestProvider);
+        expect(
+          (request?.book, request?.chapter, request?.verse),
+          ('Jn', 10, 22),
+        );
+      },
+    );
 
     testWidgets('повторное завершение оставляет экран итога открытым', (
       tester,
@@ -513,7 +528,7 @@ void main() {
         isTrue,
       );
       expect(container.read(bibleOpenRequestProvider), isNull);
-      await tester.tap(find.text('Готово'));
+      await tester.tap(find.text('Вернуться на главную'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Открыть'));
@@ -522,7 +537,7 @@ void main() {
 
       expect(find.byType(DayWisdomScreen), findsOneWidget);
       expect(find.text('Слава Богу!'), findsOneWidget);
-      expect(find.text('Прочитать главу полностью'), findsOneWidget);
+      expect(find.text('Продолжить с Ин. 10:2'), findsOneWidget);
       expect(container.read(bibleOpenRequestProvider), isNull);
       final streak = find.byType(StreakCard);
       final counter = tester.widget<AnimatedSwitcher>(
@@ -541,7 +556,7 @@ void main() {
         cards: const [quote],
       );
       await next(tester);
-      await tester.tap(find.text('Готово'));
+      await tester.tap(find.text('Вернуться на главную'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Открыть'));
@@ -549,14 +564,18 @@ void main() {
       await next(tester);
 
       expect(find.text('Слава Богу!'), findsOneWidget);
+      expect(find.text('Продолжить с Ин. 10:2'), findsNothing);
+      expect(find.text('Вернуться на главную'), findsOneWidget);
     });
 
-    testWidgets('«Готово» закрывает «Мудрость дня»', (tester) async {
+    testWidgets('«Вернуться на главную» закрывает «Мудрость дня»', (
+      tester,
+    ) async {
       await open(tester, date: DateTime.now(), recordProgress: true);
       await next(tester);
       await next(tester);
 
-      await tester.tap(find.text('Готово'));
+      await tester.tap(find.text('Вернуться на главную'));
       await tester.pumpAndSettle();
 
       expect(find.byType(DayWisdomScreen), findsNothing);
@@ -640,7 +659,7 @@ void main() {
       expect(haptics.length, greaterThan(beforeLighting));
       expect(todayLabel, findsNothing, reason: 'лампада ещё разгорается');
       expect(
-        find.text('Готово').hitTestable(),
+        find.text('Вернуться на главную').hitTestable(),
         findsNothing,
         reason: 'кнопки появляются вместе с неделей',
       );
@@ -654,11 +673,8 @@ void main() {
         findsNothing,
       );
       expect(todayLabel, findsOneWidget);
-      expect(find.text('Готово').hitTestable(), findsOneWidget);
-      expect(
-        find.text('Прочитать главу полностью').hitTestable(),
-        findsOneWidget,
-      );
+      expect(find.text('Вернуться на главную').hitTestable(), findsOneWidget);
+      expect(find.text('Продолжить с Ин. 10:2').hitTestable(), findsOneWidget);
     });
 
     testWidgets('при уменьшении движения итог виден сразу', (tester) async {

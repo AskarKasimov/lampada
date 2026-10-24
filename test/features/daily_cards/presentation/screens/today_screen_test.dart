@@ -1655,7 +1655,11 @@ void main() {
     Future<void> reachSummary(WidgetTester tester) async {
       await tester.tap(entry('Мудрость дня'));
       await settle(tester);
-      for (var i = 0; i < 8 && find.text('Готово').evaluate().isEmpty; i++) {
+      for (
+        var i = 0;
+        i < 8 && find.text('Вернуться на главную').evaluate().isEmpty;
+        i++
+      ) {
         await tester.drag(
           find.descendant(
             of: find.byType(CardViewerScreen),
@@ -1669,7 +1673,7 @@ void main() {
       for (var i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 500));
       }
-      expect(find.text('Готово').hitTestable(), findsOneWidget);
+      expect(find.text('Вернуться на главную').hitTestable(), findsOneWidget);
     }
 
     group('аналитика', () {
@@ -1757,7 +1761,7 @@ void main() {
       // Пока юзер смотрит на лампаду, системный диалог не перебивает итог.
       expect(actions.reviewRequests, 0);
 
-      await tester.tap(find.text('Готово'));
+      await tester.tap(find.text('Вернуться на главную'));
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
@@ -1775,7 +1779,7 @@ void main() {
       await settle(tester);
 
       await reachSummary(tester);
-      await tester.tap(find.text('Готово'));
+      await tester.tap(find.text('Вернуться на главную'));
       await settle(tester);
 
       expect(actions.reviewRequests, 0);
