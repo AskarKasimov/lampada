@@ -9,6 +9,7 @@ import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/format/russian_date.dart';
+import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -306,8 +307,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     // Выезжает снизу, как рассказ «Памяти дня», но в навигаторе вкладки, а
     // не корневом: навбар остаётся виден.
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
+      BottomUpModalRoute<void>(
         builder: (_) => DayWisdomScreen(
           cards: pages,
           startIndex: firstUnread < 0 ? 0 : firstUnread,
@@ -355,8 +355,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           ),
         );
     return Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
+      BottomUpModalRoute<void>(
         builder: (_) => DayStoryScreen(
           title: title,
           storyUrl: storyUrl,
@@ -571,8 +570,7 @@ Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
 
   // Вопрос о разрешении накрывает весь шелл, вместе с навбаром.
   await Navigator.of(context, rootNavigator: true).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
+    BottomUpModalRoute<void>(
       builder: (_) =>
           const ReminderPermissionScreen(trigger: ReminderPromptTrigger.wisdom),
     ),

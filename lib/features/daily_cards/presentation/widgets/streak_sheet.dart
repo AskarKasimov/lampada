@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../bible/domain/entities/bible_book.dart';
@@ -29,6 +30,10 @@ Future<void> showStreakSheet(BuildContext context) =>
       // Шторка открывается из вкладки со своим навигатором; без корневого
       // навигатора её низ ушёл бы под капсулу навбара.
       useRootNavigator: true,
+      sheetAnimationStyle: const AnimationStyle(
+        duration: AppMotion.modalEnter,
+        reverseDuration: AppMotion.modalExit,
+      ),
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: AppColorsExtension.of(context).background,

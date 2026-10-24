@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../../../core/result/result.dart';
 import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
@@ -67,8 +68,7 @@ Future<void> openCourseReader(
   ref.invalidate(hasStartedCourseProvider);
   // Модальная анимация не убирает навбар: этот Navigator принадлежит вкладке.
   await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
+    BottomUpModalRoute<void>(
       builder: (_) =>
           CourseReaderScreen(currentTopic: currentTopic!, initialPage: page),
     ),
@@ -80,8 +80,7 @@ Future<void> openCourseReader(
   final settings = await ref.read(reminderSettingsProvider.future);
   if (settings.asked || !context.mounted) return;
   await Navigator.of(context, rootNavigator: true).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
+    BottomUpModalRoute<void>(
       builder: (_) =>
           const ReminderPermissionScreen(trigger: ReminderPromptTrigger.course),
     ),

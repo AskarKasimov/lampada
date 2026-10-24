@@ -6,6 +6,7 @@ import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/bookmark.dart';
@@ -89,8 +90,8 @@ class BookmarkTile extends StatelessWidget {
         fullscreenDialog: true,
         // При свайпе закрытия под карточкой остаётся виден список копилки.
         opaque: false,
-        transitionDuration: const Duration(milliseconds: 280),
-        reverseTransitionDuration: const Duration(milliseconds: 220),
+        transitionDuration: AppMotion.modalEnter,
+        reverseTransitionDuration: AppMotion.modalExit,
         pageBuilder: (_, animation, secondaryAnimation) =>
             BookmarkDetailScreen(bookmark: bookmark),
         transitionsBuilder: (_, animation, secondaryAnimation, child) =>

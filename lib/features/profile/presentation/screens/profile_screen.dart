@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../bookmarks/presentation/providers/providers.dart';
@@ -68,8 +69,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   );
                   Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      fullscreenDialog: true,
+                    BottomUpModalRoute<void>(
                       builder: (context) => BookmarksScreen(
                         onClose: () => Navigator.of(context).pop(),
                       ),

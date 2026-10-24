@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../domain/entities/bible_book.dart';
 import '../screens/bible_reader_screen.dart';
 
@@ -19,8 +20,7 @@ Future<void> openBibleViewer(
   _viewerOpening[navigator] = true;
   try {
     await navigator.push<void>(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
+      BottomUpModalRoute<void>(
         builder: (_) => BibleReaderScreen(
           sessionMode: BibleReadingSessionMode.viewer,
           book: book,
