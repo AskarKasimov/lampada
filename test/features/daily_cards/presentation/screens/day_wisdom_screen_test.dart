@@ -107,6 +107,73 @@ void main() {
     expect(find.byType(VerseView), findsNothing);
   });
 
+  testWidgets(
+    'сегодняшняя мудрость открывается на последней просмотренной странице',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final today = DateTime.now();
+      var openedDate = today;
+      const cards = [
+        DayCard(
+          id: 'quote',
+          type: CardType.quote,
+          body: 'Первая страница',
+          source: 'Источник',
+        ),
+        DayCard(
+          id: 'advice',
+          type: CardType.advice,
+          body: 'Последняя просмотренная страница',
+          source: 'Источник',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DayWisdomScreen(
+                      cards: cards,
+                      startIndex: 0,
+                      date: openedDate,
+                      recordProgress: false,
+                      recordRead: false,
+                    ),
+                  ),
+                ),
+                child: const Text('Открыть'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Открыть'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(PageView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(find.text('Последняя просмотренная страница'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Назад'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Открыть'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Последняя просмотренная страница'), findsOneWidget);
+      await tester.tap(find.byTooltip('Назад'));
+      await tester.pumpAndSettle();
+      openedDate = today.subtract(const Duration(days: 1));
+      await tester.tap(find.text('Открыть'));
+      await tester.pumpAndSettle();
+      expect(find.text('Первая страница'), findsOneWidget);
+    },
+  );
+
   testWidgets('загрузка не засчитывает Евангелие до первого стиха', (
     tester,
   ) async {
@@ -446,7 +513,6 @@ void main() {
 
       await tester.tap(find.text('Открыть'));
       await tester.pumpAndSettle();
-      await next(tester);
       await next(tester);
 
       expect(find.byType(DayWisdomScreen), findsNothing);

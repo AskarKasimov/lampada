@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
+import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../reading/domain/entities/daily_reading.dart';
@@ -14,6 +16,7 @@ import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/widgets/reading_card_pages.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/split_day_card_text.dart';
+import '../providers/providers.dart';
 import '../widgets/card_content.dart';
 import '../widgets/day_wisdom_complete_view.dart';
 import 'card_viewer_screen.dart';
@@ -104,6 +107,22 @@ class DayWisdomScreen extends ConsumerWidget {
 
     // Экземпляр берём сейчас: при закрытии ref этого виджета уже недоступен.
     final analytics = ref.read(analyticsProvider);
+    final requestedStart = _viewerStart(
+      startIndex,
+      ordinary,
+      ordinaryPages,
+      contentCards.length,
+    );
+    final savedPosition = switch (ref.read(loadDayWisdomPositionProvider)(
+      date,
+    )) {
+      Success(value: final page) => page,
+      Failure() => null,
+    };
+    final viewerStart = (savedPosition ?? requestedStart).clamp(
+      0,
+      contentCards.length - 1,
+    );
     return CardViewerScreen(
       cards: viewerCards,
       onExit: (furthest) => analytics.log(
@@ -116,17 +135,18 @@ class DayWisdomScreen extends ConsumerWidget {
       ),
       // Итог зажигает лампаду: до него доходят чтением, а не по точкам.
       lastScrubbablePage: completeIndex - 1,
-      startIndex: _viewerStart(
-        startIndex,
-        ordinary,
-        ordinaryPages,
-        contentCards.length,
-      ),
+      startIndex: viewerStart,
       date: date,
       // Карточки отмечаются прочитанными, но день зажигает только
       // экран завершения, см. DayWisdomCompleteView.countsDay.
       recordProgress: false,
       recordRead: recordRead,
+      onPageChanged: (page) {
+        // Итог не является страницей чтения и не должен сохранять позицию.
+        if (page < completeIndex) {
+          unawaited(ref.read(saveDayWisdomPositionProvider)(date, page));
+        }
+      },
       canMarkRead: (index) =>
           index < ordinaryPages.length ||
           (readingPages != null &&

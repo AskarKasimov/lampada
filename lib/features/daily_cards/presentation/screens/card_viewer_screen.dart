@@ -42,6 +42,7 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     this.headerBuilder,
     this.wholeCardOf,
     this.onExit,
+    this.onPageChanged,
     this.lastScrubbablePage,
     super.key,
   });
@@ -85,6 +86,9 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// аналитика видит, на какой карточке бросают чтение.
   final void Function(int furthestIndex)? onExit;
 
+  /// Вызывается при показе страницы, включая исходную при открытии.
+  final ValueChanged<int>? onPageChanged;
+
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
 }
@@ -106,6 +110,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   void initState() {
     super.initState();
     _markCurrentAsRead(widget.startIndex);
+    widget.onPageChanged?.call(widget.startIndex);
   }
 
   @override
@@ -164,6 +169,7 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
             if (page > _furthest) _furthest = page;
           });
           _markCurrentAsRead(page);
+          widget.onPageChanged?.call(page);
         },
         itemBuilder: (context, index) => _cardPage(index),
         header:
