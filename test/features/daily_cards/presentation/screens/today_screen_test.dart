@@ -694,12 +694,7 @@ void main() {
           tester.element(find.byType(CourseProgressHeader)),
         );
         for (final icon in tester.widgetList<Icon>(checks)) {
-          expect(
-            icon.color,
-            readToday
-                ? colors.accent
-                : colors.textTertiary.withValues(alpha: 0.4),
-          );
+          expect(icon.color, readToday ? colors.accent : colors.textTertiary);
         }
       },
     );
