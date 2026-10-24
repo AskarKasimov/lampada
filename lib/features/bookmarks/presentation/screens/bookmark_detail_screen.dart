@@ -9,6 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/fullscreen_swipe_dismiss.dart';
+import '../../../../core/widgets/selectable_share_area.dart';
 import '../../../bible/presentation/navigation/open_bible_viewer.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/theme/card_type_style.dart';
@@ -93,21 +94,32 @@ class BookmarkDetailScreen extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                bookmark.text,
-                                textAlign: TextAlign.center,
-                                style: AppTheme.quoteStyle(context).copyWith(
-                                  fontSize: _fontSizeFor(bookmark.text.length),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                '— ${bookmark.source}',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  letterSpacing: 0.2,
-                                  color: colors.textSecondary,
+                              SelectableShareArea(
+                                content: SharedContent.bookmark,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      bookmark.text,
+                                      textAlign: TextAlign.center,
+                                      style: AppTheme.quoteStyle(context)
+                                          .copyWith(
+                                            fontSize: _fontSizeFor(
+                                              bookmark.text.length,
+                                            ),
+                                          ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      bookmark.source,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        letterSpacing: 0.2,
+                                        color: colors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(height: 6),

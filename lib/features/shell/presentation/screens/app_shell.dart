@@ -24,8 +24,9 @@ import '../widgets/floating_nav_bar.dart';
 /// глухая полоса снизу отрезала у экрана заметный кусок. Контент уходит под
 /// капсулу, поэтому скроллящиеся вкладки оставляют снизу [kFloatingNavInset].
 ///
-/// «Главная» и «Библия» — вкладки со своим [Navigator]: «Мудрость дня» и
-/// «Основы веры» открываются внутри вкладки, и навбар остаётся виден.
+/// У каждой вкладки свой [Navigator]: дневные читалки и экраны копилки
+/// открываются внутри вкладки, поэтому навбар остаётся доступен, а смена
+/// вкладки сохраняет открытый материал.
 /// Каталог и справка открываются сдвигом вправо. Просмотр главы по ссылке и
 /// полноэкранные системные экраны уходят в корневой навигатор.
 class AppShell extends ConsumerStatefulWidget {
@@ -40,6 +41,7 @@ class _AppShellState extends ConsumerState<AppShell>
   Timer? _dayTimer;
   final _homeNavigatorKey = GlobalKey<NavigatorState>();
   final _bibleNavigatorKey = GlobalKey<NavigatorState>();
+  final _profileNavigatorKey = GlobalKey<NavigatorState>();
 
   /// Читалка Библии грузит главу при построении, поэтому вкладку строим
   /// только после первого входа, а не на старте приложения.
@@ -143,7 +145,7 @@ class _AppShellState extends ConsumerState<AppShell>
       final navigator = switch (selected) {
         ShellTab.today => _homeNavigatorKey.currentState,
         ShellTab.bible => _bibleNavigatorKey.currentState,
-        ShellTab.profile => null,
+        ShellTab.profile => _profileNavigatorKey.currentState,
       };
       if (navigator != null) unawaited(_returnToRoot(navigator));
       return;
@@ -190,7 +192,11 @@ class _AppShellState extends ConsumerState<AppShell>
                         )
                       else
                         const SizedBox.shrink(),
-                      const ProfileScreen(),
+                      _tabNavigator(
+                        navigatorKey: _profileNavigatorKey,
+                        active: tab == ShellTab.profile,
+                        root: const ProfileScreen(),
+                      ),
                     ],
                   ),
                 ),

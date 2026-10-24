@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'text_selection_activity.dart';
+
 /// Общая траектория закрытия полного текста и сохранённой карточки.
 /// Вертикальные жесты остаются у прокрутки вложенного материала.
 class FullscreenSwipeDismiss extends StatefulWidget {
@@ -23,6 +25,22 @@ class _FullscreenSwipeDismissState extends State<FullscreenSwipeDismiss>
   Offset? _dragStart;
   double _dragX = 0;
   Animation<double>? _settleX;
+  bool _selectionActive = false;
+
+  bool _onSelectionActivity(TextSelectionActivity activity) {
+    _selectionActive = activity.active;
+    if (activity.active) {
+      // Listener получает сырые движения даже после распознавания long press:
+      // продолжение выделения не должно превратиться в закрытие карточки.
+      _settleController.stop();
+      setState(() {
+        _dragStart = null;
+        _dragX = 0;
+        _settleX = null;
+      });
+    }
+    return false;
+  }
 
   @override
   void dispose() {
@@ -31,6 +49,7 @@ class _FullscreenSwipeDismissState extends State<FullscreenSwipeDismiss>
   }
 
   void _onPointerDown(PointerDownEvent event) {
+    if (_selectionActive) return;
     final x = _visibleX;
     _settleController.stop();
     setState(() {
@@ -49,6 +68,7 @@ class _FullscreenSwipeDismissState extends State<FullscreenSwipeDismiss>
   }
 
   void _onPointerUp(PointerUpEvent event) {
+    if (_dragStart == null) return;
     _dragStart = null;
     if (_dragX.abs() < _dismissDistance) {
       unawaited(_settleTo(0));
@@ -105,11 +125,14 @@ class _FullscreenSwipeDismissState extends State<FullscreenSwipeDismiss>
         ),
       );
     },
-    child: Listener(
-      onPointerDown: _onPointerDown,
-      onPointerMove: _onPointerMove,
-      onPointerUp: _onPointerUp,
-      child: widget.child,
+    child: NotificationListener<TextSelectionActivity>(
+      onNotification: _onSelectionActivity,
+      child: Listener(
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerUp,
+        child: widget.child,
+      ),
     ),
   );
 }

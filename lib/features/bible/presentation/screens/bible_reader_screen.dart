@@ -503,9 +503,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             if (_fullTextNeeded[card.id] ?? false)
               ReaderActionButton(
                 tooltip: 'Открыть полный текст',
-                onPressed: () => Navigator.of(
-                  context,
-                ).push(FullCardTextRoute(card: card, showSourceDash: false)),
+                onPressed: () =>
+                    Navigator.of(context).push(FullCardTextRoute(card: card)),
                 icon: CupertinoIcons.fullscreen,
                 color: colors.homeSubtitle,
               ),

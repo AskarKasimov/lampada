@@ -19,6 +19,8 @@ import 'package:lampada/features/day_story/presentation/providers/providers.dart
 import 'package:lampada/features/day_story/presentation/screens/day_story_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../support/text_selection.dart';
+
 const _url = 'https://azbyka.ru/days/sv-ivanov';
 const _title = 'Мц. Иулиании Никомидийской';
 
@@ -80,7 +82,7 @@ void main() {
     expect(find.textContaining('Абзац первый.'), findsNothing);
     await next(tester);
     expect(find.text('Абзац первый.\n\nАбзац второй.'), findsOneWidget);
-    expect(find.text('— Азбука веры'), findsOneWidget);
+    expect(find.text('Азбука веры'), findsOneWidget);
   });
 
   testWidgets('по столбику точек страницы листаются пальцем', (tester) async {
@@ -117,12 +119,12 @@ void main() {
     expect(rail.count, greaterThanOrEqualTo(3));
     await next(tester);
     expect(find.textContaining('детство'), findsOneWidget);
-    expect(find.text('— Азбука веры'), findsNothing);
+    expect(find.text('Азбука веры'), findsNothing);
     for (var page = 2; page < rail.count; page++) {
       await next(tester);
     }
     expect(find.textContaining('подвиг'), findsOneWidget);
-    expect(find.text('— Азбука веры'), findsOneWidget);
+    expect(find.text('Азбука веры'), findsOneWidget);
   });
 
   testWidgets('показывает кнопку «Поделиться» для рассказа', (tester) async {
@@ -153,6 +155,18 @@ void main() {
         matching: find.byType(SelectableShareArea),
       ),
       findsWidgets,
+    );
+    await expectTextCanBeCopied(tester, find.text(_title), contains: _title);
+    await next(tester);
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Абзац первый.'),
+      contains: 'Абзац первый.',
+    );
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Азбука веры'),
+      contains: 'Абзац первый.',
     );
   });
 

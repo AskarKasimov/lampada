@@ -132,7 +132,7 @@ class InterpretationSheet extends StatelessWidget {
                         if (author != null && author!.isNotEmpty) ...[
                           const SizedBox(height: 18),
                           Text(
-                            '— $author',
+                            author!,
                             style: TextStyle(
                               fontSize: 13,
                               letterSpacing: 0.2,

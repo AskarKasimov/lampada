@@ -166,7 +166,7 @@ void main() {
     expect(find.text(body), findsOneWidget);
     expect(tester.widget<Text>(find.text(body)).style?.fontSize, 22);
     expect(
-      tester.getRect(find.text('— Источник')).bottom,
+      tester.getRect(find.text('Источник')).bottom,
       closeTo(tester.getRect(find.byKey(actionsKey)).top - 16, 1),
     );
     expect(tester.takeException(), isNull);
@@ -302,7 +302,7 @@ void main() {
       lessThan(tester.getRect(find.byKey(actionsKey)).top),
     );
     expect(
-      tester.getRect(find.text('— Источник')).bottom,
+      tester.getRect(find.text('Источник')).bottom,
       lessThan(tester.getRect(find.byKey(actionsKey)).top),
     );
     expect(tester.takeException(), isNull);

@@ -138,7 +138,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
 
   /// Притча дня. От [_sectionCard] отличается подписью: у части дней притча
   /// заканчивается абзацем с автором, и он обязан попасть в source — карточка
-  /// и так печатает «— {source}» под телом, иначе автор оказался бы на экране
+  /// и так печатает источник под телом, иначе автор оказался бы на экране
   /// дважды и по-разному.
   DayCardDto? _parableCard(Document doc, String dateStr) {
     final container = doc.querySelector('#pritcha');

@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
-import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
+
+import '../../../../support/text_selection.dart';
 
 const _verse = Verse(number: 1, chapter: 10, text: 'Истинно говорю вам');
 
@@ -14,6 +16,32 @@ Widget _app(Widget child) => MaterialApp(
 );
 
 void main() {
+  testWidgets('выделение стиха не захватывает подпись кнопки толкования', (
+    tester,
+  ) async {
+    var opened = false;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: _app(
+          VerseView(verse: _verse, onOpenInterpretation: () => opened = true),
+        ),
+      ),
+    );
+    await expectTextCanBeCopied(
+      tester,
+      find.text(_verse.text),
+      contains: _verse.text,
+      excludes: 'Толкование',
+    );
+    await expectTextCanBeCopied(
+      tester,
+      find.text('10:1'),
+      contains: _verse.text,
+      excludes: 'Толкование',
+    );
+    await tester.tap(find.byType(VerseInterpretationButton));
+    expect(opened, isTrue);
+  });
   testWidgets('ступени учитывают номер стиха и кнопку толкования', (
     tester,
   ) async {
@@ -149,9 +177,14 @@ void main() {
   });
 
   testWidgets('текст стиха можно выделить и отправить', (tester) async {
-    await tester.pumpWidget(_app(const VerseView(verse: _verse)));
-
-    expect(find.byType(SelectableShareArea), findsOneWidget);
+    await tester.pumpWidget(
+      ProviderScope(child: _app(const VerseView(verse: _verse))),
+    );
+    await expectTextCanBeCopied(
+      tester,
+      find.text(_verse.text),
+      contains: _verse.text,
+    );
   });
 
   testWidgets('под стихом сокращение книги, глава и стих', (tester) async {

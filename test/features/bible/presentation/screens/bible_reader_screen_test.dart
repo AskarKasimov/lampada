@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/fake_analytics.dart';
 import '../../../../support/haptics.dart';
+import '../../../../support/text_selection.dart';
 
 class _RecordingRepository implements BibleRepository {
   final positions = <BibleReadingPosition>[];
@@ -118,6 +119,19 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  for (final mode in BibleReadingSessionMode.values) {
+    testWidgets('в Библии копируется текст стиха в режиме $mode', (
+      tester,
+    ) async {
+      await open(tester, verse: 1, mode: mode);
+      await expectTextCanBeCopied(
+        tester,
+        find.text('В начале'),
+        contains: 'В начале',
+      );
+    });
   }
 
   testWidgets('стих без толкования не обещает его кнопкой', (tester) async {
@@ -260,7 +274,7 @@ void main() {
 
     expect(find.text('Объяснение второго стиха'), findsOneWidget);
     expect(find.text('на Быт.1:2'), findsOneWidget);
-    expect(find.text('— Толковая Библия А.П. Лопухина'), findsOneWidget);
+    expect(find.text('Толковая Библия А.П. Лопухина'), findsOneWidget);
     expect(analytics.names, contains('interpretation_opened'));
   });
 

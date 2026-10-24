@@ -29,6 +29,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/fake_analytics.dart';
+import '../../../../support/text_selection.dart';
 
 class _CourseCardsRepository implements DayCardsRepository {
   _CourseCardsRepository({Map<int, int> failuresRemaining = const {}})
@@ -253,6 +254,17 @@ void main() {
     await tester.tap(find.text('Открыть основы'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('в курсе текст копируется после одного долгого нажатия', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+    await expectTextCanBeCopied(
+      tester,
+      find.text(_currentTopic.body),
+      contains: _currentTopic.body,
+    );
+  });
 
   testWidgets(
     'info на карточках курса открывает описание и возвращает к чтению',
@@ -581,7 +593,7 @@ void main() {
     await tester.tap(find.byTooltip('Открыть полный текст'));
     await tester.pumpAndSettle();
     expect(find.text(body), findsOneWidget);
-    expect(find.text('— Азбука веры'), findsNothing);
+    expect(find.text('Азбука веры'), findsNothing);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(progress.readTypes, isEmpty);
@@ -597,7 +609,7 @@ void main() {
         tester,
         currentTopic: _currentTopic.copyWith(title: 'Первые слова темы'),
       );
-      expect(find.text('— Азбука веры'), findsNothing);
+      expect(find.text('Азбука веры'), findsNothing);
       expect(find.text('Основы веры · Тема №3'), findsOneWidget);
       expect(find.text('Тема №3'), findsNothing);
       expect(find.textContaining('Первые слова темы'), findsNothing);

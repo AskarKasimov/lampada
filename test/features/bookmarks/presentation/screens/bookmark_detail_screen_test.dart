@@ -17,6 +17,8 @@ import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/theme/card_type_style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../support/text_selection.dart';
+
 final _bookmark = Bookmark(
   id: 'interpretation-1',
   kind: BookmarkKind.interpretation,
@@ -73,6 +75,57 @@ void main() {
     // что запись уже сохранена.
     await tester.pumpAndSettle();
   }
+
+  testWidgets('долгое нажатие в закладке позволяет скопировать текст', (
+    tester,
+  ) async {
+    await pump(tester);
+    await expectTextCanBeCopied(
+      tester,
+      find.text(_bookmark.text),
+      contains: _bookmark.text,
+      excludes: '28 июля',
+    );
+    await expectTextCanBeCopied(
+      tester,
+      find.text(_bookmark.source),
+      contains: _bookmark.text,
+      excludes: '28 июля',
+    );
+  });
+
+  testWidgets('движение пальца после долгого нажатия не закрывает закладку', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  fullscreenDialog: true,
+                  builder: (_) => BookmarkDetailScreen(bookmark: _bookmark),
+                ),
+              ),
+              child: const Text('Открыть закладку'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Открыть закладку'));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text(_bookmark.text)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+    await gesture.moveBy(const Offset(150, 0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byType(BookmarkDetailScreen), findsOneWidget);
+  });
 
   for (final brightness in Brightness.values) {
     for (final type in CardType.values) {
@@ -294,7 +347,7 @@ void main() {
     await pump(tester);
 
     expect(find.text(_bookmark.text), findsOneWidget);
-    expect(find.text('— ${_bookmark.source}'), findsOneWidget);
+    expect(find.text(_bookmark.source), findsOneWidget);
     expect(find.text('Толкование'), findsOneWidget);
     expect(find.text('28 июля'), findsOneWidget);
   });

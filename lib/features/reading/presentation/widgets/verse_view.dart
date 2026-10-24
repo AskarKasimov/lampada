@@ -164,12 +164,14 @@ class VerseInterpretationButton extends StatelessWidget {
               const SizedBox(width: 7),
               // Акцент на акцентной заливке в светлой теме даёт 4.1:1, ниже
               // AA для 13pt; тёмный текст держит контраст, иконка — тон.
-              Text(
-                'Толкование',
-                style: TextStyle(
-                  fontSize: 13,
-                  letterSpacing: 0.2,
-                  color: colors.homeIcon,
+              SelectionContainer.disabled(
+                child: Text(
+                  'Толкование',
+                  style: TextStyle(
+                    fontSize: 13,
+                    letterSpacing: 0.2,
+                    color: colors.homeIcon,
+                  ),
                 ),
               ),
             ],

@@ -26,6 +26,8 @@ import 'package:lampada/features/reading/presentation/providers/providers.dart';
 import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../support/text_selection.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -205,10 +207,20 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Притча'), findsOneWidget);
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Притча'),
+      contains: 'Притча',
+    );
     await tester.drag(find.byType(PageView), const Offset(0, -600));
     await tester.pumpAndSettle();
     expect(find.byType(VerseView), findsOneWidget);
     expect(find.text('Первый стих'), findsOneWidget);
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Первый стих'),
+      contains: 'Первый стих',
+    );
     // Под стихом Евангелия дня книга, глава и стих.
     expect(find.text('Ин. 10:1'), findsOneWidget);
 
@@ -887,7 +899,7 @@ void main() {
       await open(tester);
 
       expect(find.text(question), findsOneWidget);
-      expect(find.text('— Азбука веры'), findsNothing);
+      expect(find.text('Азбука веры'), findsNothing);
       final dots = tester.widget<ProgressDots>(find.byType(ProgressDots));
       // Вопрос, ответ, притча и экран итога.
       expect(dots.count, 4);
@@ -895,7 +907,7 @@ void main() {
       await tester.drag(find.byType(PageView), const Offset(0, -600));
       await tester.pumpAndSettle();
       expect(find.text(answer), findsOneWidget);
-      expect(find.text('— Азбука веры'), findsOneWidget);
+      expect(find.text('Азбука веры'), findsOneWidget);
     });
 
     testWidgets('закладка и отправка на странице берут весь текст', (

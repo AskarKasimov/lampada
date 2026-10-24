@@ -11,14 +11,9 @@ import '../widgets/card_content.dart';
 /// Обратная анимация такая же, поэтому закрытие ощущается возвращением к
 /// карточке, а не сменой несвязанного экрана.
 class FullCardTextRoute extends PageRoute<void> {
-  FullCardTextRoute({
-    required this.card,
-    this.showSourceDash = true,
-    this.showSource = true,
-  });
+  FullCardTextRoute({required this.card, this.showSource = true});
 
   final DayCard card;
-  final bool showSourceDash;
   final bool showSource;
 
   @override
@@ -47,11 +42,7 @@ class FullCardTextRoute extends PageRoute<void> {
     BuildContext context,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
-  ) => FullCardTextScreen(
-    card: card,
-    showSourceDash: showSourceDash,
-    showSource: showSource,
-  );
+  ) => FullCardTextScreen(card: card, showSource: showSource);
 
   @override
   Widget buildTransitions(
@@ -81,13 +72,11 @@ class FullCardTextRoute extends PageRoute<void> {
 class FullCardTextScreen extends StatefulWidget {
   const FullCardTextScreen({
     required this.card,
-    this.showSourceDash = true,
     this.showSource = true,
     super.key,
   });
 
   final DayCard card;
-  final bool showSourceDash;
   final bool showSource;
 
   @override
@@ -122,7 +111,6 @@ class _FullCardTextScreenState extends State<FullCardTextScreen> {
               child: CardContent(
                 card: widget.card,
                 showBadge: false,
-                showSourceDash: widget.showSourceDash,
                 showSource: widget.showSource,
                 scrollController: _scrollController,
               ),

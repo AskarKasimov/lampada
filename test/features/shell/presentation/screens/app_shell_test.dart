@@ -17,6 +17,7 @@ import 'package:lampada/features/bible/presentation/navigation/open_bible_viewer
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_tab_screen.dart';
+import 'package:lampada/features/bookmarks/presentation/screens/bookmark_detail_screen.dart';
 import 'package:lampada/features/bookmarks/presentation/screens/bookmarks_screen.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
@@ -815,7 +816,7 @@ void main() {
     expect(find.text('Система'), findsOneWidget);
   });
 
-  testWidgets('копилка открывается из профиля и возвращается в него', (
+  testWidgets('копилка сохраняет навбар и своё место при смене вкладки', (
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
@@ -830,6 +831,14 @@ void main() {
     await settle(tester);
 
     expect(find.byType(BookmarksScreen), findsOneWidget);
+    expect(tabIcon(CupertinoIcons.person_fill).hitTestable(), findsOneWidget);
+    await tester.tap(homeIcon(filled: false));
+    await settle(tester);
+    expect(find.byType(BookmarksScreen), findsNothing);
+    expect(homeIcon(filled: true).hitTestable(), findsOneWidget);
+    await tester.tap(tabIcon(CupertinoIcons.person));
+    await settle(tester);
+    expect(find.byType(BookmarksScreen), findsOneWidget);
     final closeButton = find.descendant(
       of: find.byType(BookmarksScreen),
       matching: find.byTooltip('Закрыть'),
@@ -842,6 +851,102 @@ void main() {
     expect(find.text('Закладки').hitTestable(), findsOneWidget);
     expect(find.text('Тема').hitTestable(), findsOneWidget);
   });
+
+  for (final systemBack in [false, true]) {
+    testWidgets(
+      'чтение закладки сохраняет навбар, возврат через ${systemBack ? "Android Back" : "крестик"} ведёт в список',
+      (tester) async {
+        await prefs.setString(
+          'bookmarks',
+          '[{"id":"verse-Jn.1:1","kind":"verse",'
+              '"text":"Сохранённый стих","source":"Ин. 1:1",'
+              '"label":"Стих","savedAt":"2026-10-24T10:00:00.000"}]',
+        );
+        await tester.pumpWidget(
+          buildApp(platform: TargetPlatform.android, stubBibleChapter: true),
+        );
+        await settle(tester);
+        await tester.tap(tabIcon(CupertinoIcons.person));
+        await settle(tester);
+        await tester.tap(find.text('Закладки').hitTestable());
+        await settle(tester);
+        await tester.tap(find.text('Сохранённый стих').hitTestable());
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 70));
+        final opening = tester.getRect(find.byType(BookmarkDetailScreen));
+        expect(opening.top, greaterThan(0));
+        expect(opening.left, closeTo(0, 0.01));
+        await settle(tester);
+
+        expect(find.byType(BookmarkDetailScreen), findsOneWidget);
+        expect(
+          tester.getRect(find.byType(BookmarkDetailScreen)).top,
+          lessThan(opening.top),
+        );
+        expect(
+          ModalRoute.of(
+            tester.element(find.byType(BookmarkDetailScreen)),
+          )!.fullscreenDialog,
+          isTrue,
+          reason: 'закладка открывается снизу, как остальные модальные читалки',
+        );
+        expect(
+          tabIcon(CupertinoIcons.person_fill).hitTestable(),
+          findsOneWidget,
+        );
+        final share = find.byTooltip('Поделиться').hitTestable();
+        expect(share, findsOneWidget);
+        expect(
+          tester.getRect(share).bottom,
+          lessThan(tester.getRect(find.byType(FloatingNavBar)).top),
+        );
+
+        if (!systemBack) {
+          await tester.tap(find.byTooltip('Открыть главу'));
+          await settle(tester);
+          expect(find.byType(BibleReaderScreen), findsOneWidget);
+          expect(
+            tabIcon(CupertinoIcons.person_fill).hitTestable(),
+            findsNothing,
+          );
+          await tester.tap(find.byTooltip('Закрыть'));
+          await settle(tester);
+          expect(find.byType(BookmarkDetailScreen), findsOneWidget);
+          expect(
+            tabIcon(CupertinoIcons.person_fill).hitTestable(),
+            findsOneWidget,
+          );
+        }
+
+        await tester.tap(homeIcon(filled: false));
+        await settle(tester);
+        expect(find.byType(BookmarkDetailScreen), findsNothing);
+        await tester.tap(tabIcon(CupertinoIcons.person));
+        await settle(tester);
+        expect(find.byType(BookmarkDetailScreen), findsOneWidget);
+
+        if (systemBack) {
+          await tester.binding.handlePopRoute();
+        } else {
+          await tester.tap(find.byTooltip('Закрыть закладку'));
+        }
+        await settle(tester);
+        expect(find.byType(BookmarkDetailScreen), findsNothing);
+        expect(find.byType(BookmarksScreen), findsOneWidget);
+
+        if (systemBack) {
+          await tester.binding.handlePopRoute();
+        } else {
+          // Повторный тап по профилю возвращает к корню его стека.
+          await tester.tap(tabIcon(CupertinoIcons.person_fill));
+        }
+        await settle(tester);
+        expect(find.byType(BookmarksScreen), findsNothing);
+        expect(find.text('Тема').hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('selectedTabProvider переключает вкладку снаружи', (
     tester,
