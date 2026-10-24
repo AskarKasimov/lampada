@@ -98,6 +98,47 @@ void main() {
     expect(haptics, ['HapticFeedbackType.lightImpact']);
   });
 
+  testWidgets('ink лампады заметен при наведении и удержании', (tester) async {
+    await tester.pumpWidget(app(streak: 2));
+
+    final inkWell = tester.widget<InkWell>(find.byType(InkWell));
+    final overlayColor = inkWell.overlayColor!;
+    final hovered = overlayColor.resolve({WidgetState.hovered});
+    final pressed = overlayColor.resolve({WidgetState.pressed});
+
+    expect(hovered, isNotNull);
+    expect(pressed, isNotNull);
+    expect(pressed!.a, greaterThan(hovered!.a));
+  });
+
+  testWidgets('ink лампады рисуется поверх стеклянной подложки шапки', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: FrostedHomeHeader(
+            child: HomeHeader(
+              now: DateTime(2026, 10, 22, 6, 16),
+              streak: 2,
+              onStreakTap: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final materials = find.ancestor(
+      of: find.byType(InkWell),
+      matching: find.byType(Material),
+    );
+    expect(
+      tester.widget<Material>(materials.first).type,
+      MaterialType.transparency,
+    );
+  });
+
   testWidgets('семантическая активация лампадки вызывает обработчик один раз', (
     tester,
   ) async {
@@ -128,6 +169,7 @@ void main() {
 
     final button = find.bySemanticsLabel('Лампадка: 2 дня подряд');
     expect(tester.getSize(button).height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(button).width, greaterThanOrEqualTo(68));
   });
 
   testWidgets('шапка над списком размыта и мягко растворяется книзу', (

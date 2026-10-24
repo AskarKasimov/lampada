@@ -121,31 +121,48 @@ class _StreakButton extends StatelessWidget {
         onTap();
       },
       excludeSemantics: true,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(22),
-        child: ConstrainedBox(
-          // Минимальная зона нажатия по HIG.
-          constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                StreakLampIcon(lit: streak > 0, size: 28),
-                const SizedBox(width: 4),
-                Text(
-                  '$streak',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: streak > 0 ? colors.ink : colors.textSecondary,
+      // FrostedHomeHeader рисует полупрозрачную подложку поверх Scaffold.
+      // Локальный Material удерживает ink над ней, а не под стеклом.
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          // Обычная волна на обеих платформах. Отдельная подложка для курсора
+          // важна: маленькая иконка иначе теряется на фоне при наведении.
+          splashFactory: InkRipple.splashFactory,
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return colors.ink.withValues(alpha: 0.24);
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return colors.ink.withValues(alpha: 0.14);
+            }
+            return null;
+          }),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(22),
+          child: ConstrainedBox(
+            // Минимальная зона нажатия по HIG.
+            constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  StreakLampIcon(lit: streak > 0, size: 28),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$streak',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: streak > 0 ? colors.ink : colors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
