@@ -23,6 +23,7 @@ class StreakCard extends StatelessWidget {
     required this.progress,
     required this.today,
     this.showWeek = false,
+    this.animateChanges = true,
     this.margin,
     super.key,
   });
@@ -33,6 +34,9 @@ class StreakCard extends StatelessWidget {
   /// Последние семь дней с огоньками. Экран итога раскрывает их, когда
   /// лампада загорелась.
   final bool showWeek;
+
+  /// Анимировать смену числа и раскрытие недели.
+  final bool animateChanges;
 
   /// Внешние поля. По умолчанию — боковые поля экрана.
   final EdgeInsetsGeometry? margin;
@@ -58,15 +62,19 @@ class StreakCard extends StatelessWidget {
     final litToday = progress.isLit(today);
     final label = streakDaysLabel(streak);
     final message = _message(streak, litToday);
-    // Смена серии анимируется: на экране завершения это и есть момент,
-    // когда лампада загорается. Reduce Motion оставляет мгновенную смену.
-    final motion = MediaQuery.disableAnimationsOf(context)
+    // Смена серии анимируется при первом завершении; Reduce Motion и повторный
+    // итог сразу показывают готовые число и неделю.
+    final motion = !animateChanges || MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 520);
     final week = showWeek
         ? Padding(
             padding: const EdgeInsets.only(top: 14),
-            child: _WeekRow(progress: progress, today: today),
+            child: _WeekRow(
+              progress: progress,
+              today: today,
+              animateAppearance: animateChanges,
+            ),
           )
         : const SizedBox(width: double.infinity);
 
@@ -333,10 +341,15 @@ class _StreakLampState extends State<_StreakLamp>
 /// Семь дней, заканчивая сегодняшним. Появляясь, лампадки выходят по очереди
 /// слева направо, сегодняшняя последней и с отскоком.
 class _WeekRow extends StatefulWidget {
-  const _WeekRow({required this.progress, required this.today});
+  const _WeekRow({
+    required this.progress,
+    required this.today,
+    required this.animateAppearance,
+  });
 
   final DayProgress progress;
   final DateTime today;
+  final bool animateAppearance;
 
   @override
   State<_WeekRow> createState() => _WeekRowState();
@@ -354,10 +367,18 @@ class _WeekRowState extends State<_WeekRow>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (!widget.animateAppearance || MediaQuery.disableAnimationsOf(context)) {
       _enter.value = 1;
     } else if (_enter.isDismissed) {
       _enter.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _WeekRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.animateAppearance && oldWidget.animateAppearance) {
+      _enter.value = 1;
     }
   }
 

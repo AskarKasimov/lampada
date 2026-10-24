@@ -110,6 +110,32 @@ void main() {
     expect(_lamp('off'), findsNWidgets(4));
   });
 
+  testWidgets('повторный итог показывает ряд недели без анимации', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: StreakCard(
+            progress: _visited([0, 1, 5, 9]),
+            today: _today,
+            showWeek: true,
+            animateChanges: false,
+          ),
+        ),
+      ),
+    );
+
+    final week = find.descendant(
+      of: find.byType(StreakCard),
+      matching: find.byType(FadeTransition),
+    );
+    for (final transition in tester.widgetList<FadeTransition>(week)) {
+      expect(transition.opacity.value, 1);
+    }
+  });
+
   test('подпись к числу дней согласована по падежу', () {
     expect(streakDaysLabel(1), 'день подряд');
     expect(streakDaysLabel(2), 'дня подряд');

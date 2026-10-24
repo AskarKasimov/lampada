@@ -493,11 +493,16 @@ void main() {
       expect((request?.book, request?.chapter), ('Jn', 10));
     });
 
-    testWidgets('повторное завершение сразу ведёт к полной главе', (
+    testWidgets('повторное завершение оставляет экран итога открытым', (
       tester,
     ) async {
       final today = DateTime.now();
-      final container = await open(tester, date: today, recordProgress: true);
+      final container = await open(
+        tester,
+        date: today,
+        recordProgress: true,
+        reduceMotion: false,
+      );
       await next(tester);
       await next(tester);
       expect(find.text('Слава Богу!'), findsOneWidget);
@@ -515,9 +520,15 @@ void main() {
       await tester.pumpAndSettle();
       await next(tester);
 
-      expect(find.byType(DayWisdomScreen), findsNothing);
-      final request = container.read(bibleOpenRequestProvider);
-      expect((request?.book, request?.chapter), ('Jn', 10));
+      expect(find.byType(DayWisdomScreen), findsOneWidget);
+      expect(find.text('Слава Богу!'), findsOneWidget);
+      expect(find.text('Прочитать главу полностью'), findsOneWidget);
+      expect(container.read(bibleOpenRequestProvider), isNull);
+      final streak = find.byType(StreakCard);
+      final counter = tester.widget<AnimatedSwitcher>(
+        find.descendant(of: streak, matching: find.byType(AnimatedSwitcher)),
+      );
+      expect(counter.duration, Duration.zero);
     });
 
     testWidgets('без главы повторное завершение просто показывает итог', (

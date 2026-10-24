@@ -1724,29 +1724,31 @@ void main() {
         });
       });
 
-      testWidgets('повторный итог ведёт в главу и завершением не считается', (
-        tester,
-      ) async {
-        final progress = _FakeProgressRepository()
-          ..seedWisdomCompleted({dateKey(DateTime.now())});
-        await tester.pumpWidget(buildApp(progressRepository: progress));
-        await settle(tester);
-        await tester.tap(entry('Мудрость дня'));
-        await settle(tester);
-
-        for (var i = 0; i < 8; i++) {
-          final reader = find.descendant(
-            of: find.byType(CardViewerScreen),
-            matching: find.byType(PageView),
-          );
-          if (reader.evaluate().isEmpty) break;
-          await tester.drag(reader, const Offset(0, -600));
+      testWidgets(
+        'повторный итог остаётся на экране и завершением не считается',
+        (tester) async {
+          final progress = _FakeProgressRepository()
+            ..seedWisdomCompleted({dateKey(DateTime.now())});
+          await tester.pumpWidget(buildApp(progressRepository: progress));
           await settle(tester);
-        }
+          await tester.tap(entry('Мудрость дня'));
+          await settle(tester);
 
-        expect(analytics.names, isNot(contains('wisdom_completed')));
-        expect(analytics.single('summary_chapter_opened'), {'auto': true});
-      });
+          for (var i = 0; i < 8; i++) {
+            final reader = find.descendant(
+              of: find.byType(CardViewerScreen),
+              matching: find.byType(PageView),
+            );
+            if (reader.evaluate().isEmpty) break;
+            await tester.drag(reader, const Offset(0, -600));
+            await settle(tester);
+          }
+
+          expect(find.text('Слава Богу!'), findsOneWidget);
+          expect(analytics.names, isNot(contains('wisdom_completed')));
+          expect(analytics.names, isNot(contains('summary_chapter_opened')));
+        },
+      );
     });
 
     testWidgets('после первого итога просим оценку, когда юзер ушёл с него', (
