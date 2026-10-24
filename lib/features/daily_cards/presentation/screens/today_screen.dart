@@ -338,8 +338,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     await _maybeAskForReminders(context, ref);
   }
 
-  /// Открытие рассказа считается прочтением: напоминание о святом звало
-  /// именно открыть его.
+  /// Память дня считается прочитанной после последней страницы рассказа.
   Future<void> _openStory(
     BuildContext context,
     String title,
@@ -355,11 +354,16 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             hasIcon: widget.content.iconUrl != null,
           ),
         );
-    unawaited(ref.read(readStoryDaysProvider.notifier).markRead(date));
     return Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (_) => DayStoryScreen(title: title, storyUrl: storyUrl),
+        builder: (_) => DayStoryScreen(
+          title: title,
+          storyUrl: storyUrl,
+          onCompleted: () => unawaited(
+            ref.read(readStoryDaysProvider.notifier).markRead(date),
+          ),
+        ),
       ),
     );
   }

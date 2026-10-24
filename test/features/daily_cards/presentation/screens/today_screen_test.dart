@@ -1040,7 +1040,7 @@ void main() {
       expect(analytics.single('story_opened')['source'], 'notification');
     });
 
-    testWidgets('открытый рассказ отмечается прочитанным за свой день', (
+    testWidgets('рассказ отмечается прочитанным только на последней странице', (
       tester,
     ) async {
       // Иначе напоминание о святом пришло бы тому, кто уже прочитал.
@@ -1057,6 +1057,12 @@ void main() {
       await tester.tap(find.byType(DayMemoryTile));
       await settle(tester);
 
+      expect(
+        prefs.getStringList('story_read_days'),
+        isNot(contains(dateKey(DateTime.now()))),
+      );
+      await tester.drag(find.byType(PageView), const Offset(0, -600));
+      await settle(tester);
       expect(
         prefs.getStringList('story_read_days'),
         contains(dateKey(DateTime.now())),
