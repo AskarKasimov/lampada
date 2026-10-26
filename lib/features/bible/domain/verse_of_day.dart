@@ -30,10 +30,13 @@ class VerseRef {
 }
 
 /// Подборка для «Стиха дня»: известные короткие стихи, которые читаются
-/// без контекста главы. Каждая ссылка держит законченную мысль: если стих
-/// обрывается на запятой или начинается с середины фразы, берём отрывок из
-/// двух-трёх стихов («Пс. 36:5–6»). Мысль длиннее трёх стихов в подборку не
-/// берём. Подборка сверена с текстом Азбуки 24.10.2026. Текст не хранится здесь, а берётся из той же главы
+/// без контекста главы. Карточка должна оставаться короткой, поэтому берём
+/// один стих, если он держит законченную мысль, даже когда фраза идёт
+/// дальше через «;» или «:» («Мф. 11:28»). Второй стих добавляем, только
+/// если первый обрывается на запятой или лишь объявляет следующий
+/// («Пс. 36:5–6»). Мысль длиннее двух стихов в подборку не берём.
+/// Подборка сверена с текстом Азбуки 26.10.2026. Текст не хранится здесь,
+/// а берётся из той же главы
 /// Синодального перевода, что открывает вкладка «Библия», чтобы не
 /// разойтись с ней ни в одной букве.
 ///
@@ -45,7 +48,7 @@ const verseOfDayRefs = <VerseRef>[
   VerseRef('Ps', 15, 8),
   VerseRef('Ps', 17, 2),
   VerseRef('Ps', 18, 2),
-  VerseRef('Ps', 22, 1, to: 3),
+  VerseRef('Ps', 22, 1),
   VerseRef('Ps', 24, 4),
   VerseRef('Ps', 26, 1),
   VerseRef('Ps', 30, 16),
@@ -78,7 +81,7 @@ const verseOfDayRefs = <VerseRef>[
   VerseRef('Ps', 22, 6),
   VerseRef('Ps', 150, 6),
   // Ветхий Завет.
-  VerseRef('Deut', 6, 4, to: 5),
+  VerseRef('Deut', 6, 4),
   VerseRef('Nav', 1, 9),
   VerseRef('Prov', 1, 7),
   VerseRef('Prov', 3, 5),
@@ -87,15 +90,15 @@ const verseOfDayRefs = <VerseRef>[
   VerseRef('Prov', 15, 1),
   VerseRef('Prov', 16, 3),
   VerseRef('Prov', 17, 22),
-  VerseRef('Eccl', 12, 13, to: 14),
+  VerseRef('Eccl', 12, 13),
   VerseRef('Sir', 7, 39),
   VerseRef('Is', 9, 6),
   VerseRef('Is', 26, 3),
-  VerseRef('Is', 40, 30, to: 31),
+  VerseRef('Is', 40, 31),
   VerseRef('Is', 41, 10),
   VerseRef('Is', 43, 1),
   VerseRef('Jer', 29, 11),
-  VerseRef('Lam', 3, 21, to: 22),
+  VerseRef('Lam', 3, 22),
   VerseRef('Mic', 6, 8),
   // Евангелия.
   VerseRef('Mt', 5, 3),
@@ -103,12 +106,12 @@ const verseOfDayRefs = <VerseRef>[
   VerseRef('Mt', 5, 9),
   VerseRef('Mt', 5, 14),
   VerseRef('Mt', 5, 44, to: 45),
-  VerseRef('Mt', 6, 19, to: 21),
+  VerseRef('Mt', 6, 21),
   VerseRef('Mt', 6, 33),
   VerseRef('Mt', 6, 34),
-  VerseRef('Mt', 7, 7, to: 8),
+  VerseRef('Mt', 7, 7),
   VerseRef('Mt', 7, 12),
-  VerseRef('Mt', 11, 28, to: 30),
+  VerseRef('Mt', 11, 28),
   VerseRef('Jn', 14, 1),
   VerseRef('Mt', 18, 19, to: 20),
   VerseRef('Mt', 19, 26),
@@ -119,9 +122,9 @@ const verseOfDayRefs = <VerseRef>[
   VerseRef('Lk', 1, 37),
   VerseRef('Lk', 6, 31),
   VerseRef('Lk', 6, 36),
-  VerseRef('Lk', 6, 37, to: 38),
+  VerseRef('Lk', 6, 37),
   VerseRef('Lk', 11, 9, to: 10),
-  VerseRef('Lk', 12, 33, to: 34),
+  VerseRef('Lk', 21, 19),
   VerseRef('Lk', 18, 27),
   VerseRef('Jn', 1, 5),
   VerseRef('Jn', 3, 16),
@@ -161,8 +164,8 @@ const verseOfDayRefs = <VerseRef>[
   VerseRef('Gal', 5, 22, to: 23),
   VerseRef('Gal', 6, 2),
   VerseRef('Gal', 6, 9),
-  VerseRef('Eph', 2, 8, to: 9),
-  VerseRef('Eph', 4, 31, to: 32),
+  VerseRef('Eph', 2, 8),
+  VerseRef('Eph', 4, 31),
   VerseRef('Phil', 4, 4),
   VerseRef('Phil', 4, 6, to: 7),
   VerseRef('1Jn', 3, 18),

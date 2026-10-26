@@ -10,8 +10,9 @@ void main() {
       expect(book, isNotNull, reason: '${ref.book} нет в каталоге');
       expect(ref.chapter, inInclusiveRange(1, book!.chapterCount));
       expect(ref.verse, greaterThan(0));
-      // Отрывок держит одну законченную мысль и остаётся коротким.
-      expect(ref.to, inInclusiveRange(ref.verse, ref.verse + 2));
+      // Отрывок держит одну законченную мысль и остаётся коротким: второй
+      // стих добавляется только когда без него мысль не закончена.
+      expect(ref.to, inInclusiveRange(ref.verse, ref.verse + 1));
     }
   });
 
@@ -79,5 +80,12 @@ void main() {
   test('Пс. 36:5 идёт вместе с 36:6: стих обрывается на запятой', () {
     expect(verseOfDayRefs, contains(const VerseRef('Ps', 36, 5, to: 6)));
     expect(verseOfDayRefs, isNot(contains(const VerseRef('Ps', 36, 5))));
+  });
+
+  test('законченная мысль стоит одна, даже на «;» или «:»', () {
+    expect(verseOfDayRefs, contains(const VerseRef('Mt', 11, 28)));
+    expect(verseOfDayRefs, contains(const VerseRef('Ps', 22, 1)));
+    expect(verseOfDayRefs, contains(const VerseRef('Lk', 6, 37)));
+    expect(verseOfDayRefs, contains(const VerseRef('Eph', 4, 31)));
   });
 }
