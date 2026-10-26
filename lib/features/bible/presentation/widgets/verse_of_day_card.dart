@@ -51,74 +51,91 @@ class VerseOfDayCard extends ConsumerWidget {
       padding:
           AppSpacing.of(context).horizontal +
           const EdgeInsets.symmetric(vertical: 6),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
+      // Тень снаружи Material: он обрезает Ink по своему прямоугольнику, и
+      // тень срезалась бы ровной линией вместе со скруглением снизу.
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          // Нейтральная подложка: цветные плитки ниже остаются входами в
+          // разделы, а стих читается прямо здесь. В светлой теме подложка чуть
+          // светлее фона, а отделяют её обводка и тень. Подложка
+          // непрозрачная: тень рисуется под всей карточкой и сквозь прозрачную
+          // подложку затемнила бы её.
+          color: isDark
+              ? Color.alphaBlend(
+                  colors.ink.withValues(alpha: 0.09),
+                  colors.background,
+                )
+              : Color.alphaBlend(
+                  Colors.white.withValues(alpha: 0.3),
+                  colors.background,
+                ),
           borderRadius: BorderRadius.circular(24),
-          onTap: verse == null || book == null
-              ? null
-              : () => openBibleViewer(
-                  context,
-                  book: book,
-                  chapter: verse.chapter,
-                  verse: verse.verse,
-                  source: BibleOpenSource.verseOfDay,
-                ),
-          child: Ink(
-            padding: const EdgeInsets.fromLTRB(8, 18, 8, 8),
-            decoration: BoxDecoration(
-              // Нейтральная подложка: цветные плитки ниже остаются входами в
-              // разделы, а стих читается прямо здесь. Она непрозрачная: тень
-              // рисуется под всей карточкой и сквозь прозрачную подложку
-              // затемнила бы её.
-              color: Color.alphaBlend(
-                colors.ink.withValues(alpha: isDark ? 0.07 : 0.045),
-                colors.background,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: AppTheme.cardShadow(context),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Название и ссылка набраны как названия и подписи
-                      // плиток главной: на ней один набор заголовков.
-                      Text('Стих дня', style: AppTheme.cardTitleStyle(context)),
-                      if (verse != null && book != null) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          '${book.abbreviation}. ${verse.reference}',
-                          style: AppTheme.cardCaptionStyle(context),
-                        ),
-                      ],
-                    ],
+          border: Border.all(
+            color: colors.ink.withValues(alpha: isDark ? 0.12 : 0.08),
+            width: 0.5,
+          ),
+          boxShadow: AppTheme.cardShadow(context),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(24),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: verse == null || book == null
+                ? null
+                : () => openBibleViewer(
+                    context,
+                    book: book,
+                    chapter: verse.chapter,
+                    verse: verse.verse,
+                    source: BibleOpenSource.verseOfDay,
                   ),
-                ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                  child: Text(
-                    verse?.text ?? 'Загружаем стих',
-                    style: AppTheme.quoteStyle(context).copyWith(
-                      fontSize: 20,
-                      height: 1.4,
-                      color: verse == null ? colors.homeSubtitle : colors.ink,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 18, 8, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Название и ссылка набраны как названия и подписи
+                        // плиток главной: на ней один набор заголовков.
+                        Text(
+                          'Стих дня',
+                          style: AppTheme.cardTitleStyle(context),
+                        ),
+                        if (verse != null && book != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            '${book.abbreviation}. ${verse.reference}',
+                            style: AppTheme.cardCaptionStyle(context),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                if (verse != null && book != null)
-                  _Actions(verse: verse, book: book)
-                else
-                  // Ряд кнопок резервируем и при загрузке: карточка не растёт.
-                  const SizedBox(height: 48),
-              ],
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                    child: Text(
+                      verse?.text ?? 'Загружаем стих',
+                      style: AppTheme.quoteStyle(context).copyWith(
+                        fontSize: 20,
+                        height: 1.4,
+                        color: verse == null ? colors.homeSubtitle : colors.ink,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (verse != null && book != null)
+                    _Actions(verse: verse, book: book)
+                  else
+                    // Ряд кнопок резервируем и при загрузке: карточка не растёт.
+                    const SizedBox(height: 48),
+                ],
+              ),
             ),
           ),
         ),

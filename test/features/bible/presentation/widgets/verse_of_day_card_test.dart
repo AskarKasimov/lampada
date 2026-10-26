@@ -108,7 +108,19 @@ void main() {
   ) async {
     await pump(tester);
 
-    final card = tester
+    final card = _cardDecoration(tester);
+    expect(card.boxShadow, isNotEmpty);
+    // Тень рисуется под всей карточкой: сквозь полупрозрачную подложку она
+    // затемняла бы саму карточку.
+    expect(card.color!.a, 1);
+  });
+
+  testWidgets('тень не обрезана слоем нажатия', (tester) async {
+    await pump(tester);
+
+    // Material обрезает Ink по своему прямоугольнику: тень в Ink срезалась
+    // бы ровной линией, а нижние углы выглядели бы квадратными.
+    final inkShadows = tester
         .widgetList<Ink>(
           find.descendant(
             of: find.byType(VerseOfDayCard),
@@ -117,11 +129,30 @@ void main() {
         )
         .map((ink) => ink.decoration)
         .whereType<BoxDecoration>()
-        .first;
-    expect(card.boxShadow, isNotEmpty);
-    // Тень рисуется под всей карточкой: сквозь полупрозрачную подложку она
-    // затемняла бы саму карточку.
-    expect(card.color!.a, 1);
+        .where((decoration) => decoration.boxShadow != null);
+    expect(inkShadows, isEmpty);
+    final shadowBox = find.byWidgetPredicate(
+      (widget) =>
+          widget is DecoratedBox &&
+          widget.decoration is BoxDecoration &&
+          (widget.decoration as BoxDecoration).boxShadow != null,
+    );
+    expect(
+      find.descendant(of: shadowBox, matching: find.byType(InkWell)),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('подложка светлее фона и обведена', (tester) async {
+    await pump(tester);
+
+    final card = _cardDecoration(tester);
+    final background = AppTheme.light.scaffoldBackgroundColor;
+    expect(
+      card.color!.computeLuminance(),
+      greaterThan(background.computeLuminance()),
+    );
+    expect(card.border, isNotNull);
   });
 
   testWidgets('отрывок подписан диапазоном стихов', (tester) async {
@@ -207,3 +238,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
+
+/// Подложка карточки: декорация с тенью внутри карточки.
+BoxDecoration _cardDecoration(WidgetTester tester) => tester
+    .widgetList<DecoratedBox>(
+      find.descendant(
+        of: find.byType(VerseOfDayCard),
+        matching: find.byType(DecoratedBox),
+      ),
+    )
+    .map((box) => box.decoration)
+    .whereType<BoxDecoration>()
+    .firstWhere((decoration) => decoration.boxShadow != null);
