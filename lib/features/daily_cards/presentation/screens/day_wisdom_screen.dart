@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +9,7 @@ import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
+import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../reading/domain/entities/daily_reading.dart';
@@ -14,6 +17,7 @@ import '../../../reading/presentation/providers/providers.dart';
 import '../../../reading/presentation/widgets/reading_card_pages.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/split_day_card_text.dart';
+import '../providers/providers.dart';
 import '../widgets/card_content.dart';
 import '../widgets/day_wisdom_complete_view.dart';
 import 'card_viewer_screen.dart';
@@ -56,7 +60,11 @@ class DayWisdomScreen extends ConsumerWidget {
     // затем показываем точки с окончательным количеством карточек.
     if (readingAsync?.isLoading ?? false) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          toolbarHeight: 48,
+          automaticallyImplyLeading: false,
+          actions: [_closeButton(context)],
+        ),
         body: const _ReadingStatus(isLoading: true, onRetry: null),
       );
     }
@@ -85,8 +93,13 @@ class DayWisdomScreen extends ConsumerWidget {
           ),
     ];
     if (contentCards.isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('За этот день карточек нет')),
+      return Scaffold(
+        appBar: AppBar(
+          toolbarHeight: 48,
+          automaticallyImplyLeading: false,
+          actions: [_closeButton(context)],
+        ),
+        body: const Center(child: Text('За этот день карточек нет')),
       );
     }
     final completeIndex = contentCards.length;
@@ -104,6 +117,22 @@ class DayWisdomScreen extends ConsumerWidget {
 
     // Экземпляр берём сейчас: при закрытии ref этого виджета уже недоступен.
     final analytics = ref.read(analyticsProvider);
+    final requestedStart = _viewerStart(
+      startIndex,
+      ordinary,
+      ordinaryPages,
+      contentCards.length,
+    );
+    final savedPosition = switch (ref.read(loadDayWisdomPositionProvider)(
+      date,
+    )) {
+      Success(value: final page) => page,
+      Failure() => null,
+    };
+    final viewerStart = (savedPosition ?? requestedStart).clamp(
+      0,
+      contentCards.length - 1,
+    );
     return CardViewerScreen(
       cards: viewerCards,
       onExit: (furthest) => analytics.log(
@@ -114,17 +143,20 @@ class DayWisdomScreen extends ConsumerWidget {
           completed: furthest >= completeIndex,
         ),
       ),
-      startIndex: _viewerStart(
-        startIndex,
-        ordinary,
-        ordinaryPages,
-        contentCards.length,
-      ),
+      // Итог зажигает лампаду: до него доходят чтением, а не по точкам.
+      lastScrubbablePage: completeIndex - 1,
+      startIndex: viewerStart,
       date: date,
       // Карточки отмечаются прочитанными, но день зажигает только
       // экран завершения, см. DayWisdomCompleteView.countsDay.
       recordProgress: false,
       recordRead: recordRead,
+      onPageChanged: (page) {
+        // Итог не является страницей чтения и не должен сохранять позицию.
+        if (page < completeIndex) {
+          unawaited(ref.read(saveDayWisdomPositionProvider)(date, page));
+        }
+      },
       canMarkRead: (index) =>
           index < ordinaryPages.length ||
           (readingPages != null &&
@@ -142,20 +174,15 @@ class DayWisdomScreen extends ConsumerWidget {
             recordsCompletion: recordRead,
             countsDay: recordProgress,
             onDone: () => Navigator.of(context).pop(),
-            // Глава открывается во вкладке «Библия», а «Мудрость дня»
-            // закрывается: вернувшись на «Главную», юзер видит день.
+            // Просмотр лежит поверх дневной сессии и возвращает к её итогу.
             links: [
               for (final link
-                  in readingPages?.chapterLinks(context) ??
+                  in readingPages?.chapterLinks(
+                        context,
+                        continueAfterDailyReading: true,
+                      ) ??
                       const <ReadingLink>[])
-                (
-                  label: link.label,
-                  onPressed: () {
-                    // Сначала запрос: контекст страницы ещё жив до pop.
-                    link.onPressed();
-                    Navigator.of(context).pop();
-                  },
-                ),
+                (label: link.label, onPressed: link.onPressed),
             ],
           );
         }
@@ -204,6 +231,18 @@ class DayWisdomScreen extends ConsumerWidget {
     );
   }
 }
+
+IconButton _closeButton(BuildContext context) => IconButton(
+  tooltip: 'Закрыть',
+  onPressed: () => Navigator.of(context).pop(),
+  constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+  padding: EdgeInsets.zero,
+  icon: Icon(
+    CupertinoIcons.xmark,
+    size: 22,
+    color: AppColorsExtension.of(context).homeSubtitle,
+  ),
+);
 
 typedef _CardPage = ({DayCard page, DayCard card, bool isLast});
 

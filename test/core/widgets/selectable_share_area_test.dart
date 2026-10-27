@@ -7,6 +7,7 @@ import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
 
 import '../../support/fake_analytics.dart';
+import '../../support/text_selection.dart';
 
 class _RecordingSharePlatform extends SharePlatform {
   ShareParams? params;
@@ -19,7 +20,30 @@ class _RecordingSharePlatform extends SharePlatform {
 }
 
 void main() {
-  testWidgets('не блокирует горизонтальное листание до долгого нажатия', (
+  for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+    testWidgets('одно долгое нажатие открывает копирование на $platform', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: ThemeData(platform: platform),
+            home: const Scaffold(
+              body: SelectableShareArea(
+                child: Center(child: Text('Проверяем выделение')),
+              ),
+            ),
+          ),
+        ),
+      );
+      await expectTextCanBeCopied(
+        tester,
+        find.text('Проверяем выделение'),
+        contains: 'Проверяем выделение',
+      );
+    });
+  }
+  testWidgets('не блокирует листание до выделения и после копирования', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -41,6 +65,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Вторая'), findsOneWidget);
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Вторая'),
+      contains: 'Вторая',
+    );
+    await tester.drag(find.byType(PageView), const Offset(500, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Первая'), findsOneWidget);
   });
 
   testWidgets('показывает «Поделиться» в меню выделения', (tester) async {
@@ -65,8 +97,6 @@ void main() {
     );
 
     await tester.longPress(find.text('Текст материала'));
-    await tester.pump();
-    await tester.longPress(find.text('Текст материала'));
     await tester.pumpAndSettle();
 
     expect(find.byType(SelectionArea), findsOneWidget);
@@ -79,7 +109,7 @@ void main() {
 
     expect(
       platform.params?.text,
-      'материала\n\n'
+      'Текст материала\n\n'
       'Приложение Лампада:\n'
       'App Store: https://clck.su/gXEhl\n'
       'RuStore: https://clck.su/hdeZJ',

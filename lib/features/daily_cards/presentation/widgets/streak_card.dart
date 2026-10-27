@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/day_progress.dart';
-
-const _lampOn = 'assets/illustrations/lampada_on.png';
-const _lampOff = 'assets/illustrations/lampada_off.png';
+import 'streak_lamp_icon.dart';
 
 /// «1 день подряд», «3 дня подряд», «5 дней подряд».
 String streakDaysLabel(int days) {
@@ -17,14 +16,14 @@ String streakDaysLabel(int days) {
   return 'дней подряд';
 }
 
-/// Серия дней («Лампадка»): лампада, число дней и одна фраза.
-/// На главной ряда дней недели нет намеренно: неделя уже есть в полоске
-/// наверху, а второй такой ряд с другим смыслом путал бы.
+/// Серия дней («Лампадка») на экране итога «Мудрости дня»: лампада, число
+/// дней и одна фраза. На главной серию показывают шапка и её шторка.
 class StreakCard extends StatelessWidget {
   const StreakCard({
     required this.progress,
     required this.today,
     this.showWeek = false,
+    this.animateChanges = true,
     this.margin,
     super.key,
   });
@@ -32,11 +31,14 @@ class StreakCard extends StatelessWidget {
   final DayProgress progress;
   final DateTime today;
 
-  /// Последние семь дней с огоньками. Для экрана завершения «Мудрости дня»,
-  /// где полоски недели нет.
+  /// Последние семь дней с огоньками. Экран итога раскрывает их, когда
+  /// лампада загорелась.
   final bool showWeek;
 
-  /// Внешние поля. По умолчанию — поля экрана главной.
+  /// Анимировать смену числа и раскрытие недели.
+  final bool animateChanges;
+
+  /// Внешние поля. По умолчанию — боковые поля экрана.
   final EdgeInsetsGeometry? margin;
 
   String _message(int streak, bool litToday) {
@@ -60,15 +62,19 @@ class StreakCard extends StatelessWidget {
     final litToday = progress.isLit(today);
     final label = streakDaysLabel(streak);
     final message = _message(streak, litToday);
-    // Смена серии анимируется: на экране завершения это и есть момент,
-    // когда лампада загорается. Reduce Motion оставляет мгновенную смену.
-    final motion = MediaQuery.disableAnimationsOf(context)
+    // Смена серии анимируется при первом завершении; Reduce Motion и повторный
+    // итог сразу показывают готовые число и неделю.
+    final motion = !animateChanges || MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 520);
     final week = showWeek
         ? Padding(
             padding: const EdgeInsets.only(top: 14),
-            child: _WeekRow(progress: progress, today: today),
+            child: _WeekRow(
+              progress: progress,
+              today: today,
+              animateAppearance: animateChanges,
+            ),
           )
         : const SizedBox(width: double.infinity);
 
@@ -127,12 +133,10 @@ class StreakCard extends StatelessWidget {
                                 child: Text(
                                   '$streak',
                                   key: ValueKey(streak),
-                                  style: TextStyle(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.1,
-                                    color: colors.ink,
-                                  ),
+                                  style: AppTheme.headingStyle(
+                                    context,
+                                    fontSize: 28,
+                                  ).copyWith(height: 1.1),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -314,9 +318,15 @@ class _StreakLampState extends State<_StreakLamp>
                 child: Stack(
                   children: [
                     if (on < 1)
-                      Opacity(opacity: 1 - on, child: Image.asset(_lampOff)),
+                      Opacity(
+                        opacity: 1 - on,
+                        child: Image.asset(streakLampOffAsset),
+                      ),
                     if (on > 0)
-                      Opacity(opacity: on, child: Image.asset(_lampOn)),
+                      Opacity(
+                        opacity: on,
+                        child: Image.asset(streakLampOnAsset),
+                      ),
                   ],
                 ),
               ),
@@ -331,10 +341,15 @@ class _StreakLampState extends State<_StreakLamp>
 /// Семь дней, заканчивая сегодняшним. Появляясь, лампадки выходят по очереди
 /// слева направо, сегодняшняя последней и с отскоком.
 class _WeekRow extends StatefulWidget {
-  const _WeekRow({required this.progress, required this.today});
+  const _WeekRow({
+    required this.progress,
+    required this.today,
+    required this.animateAppearance,
+  });
 
   final DayProgress progress;
   final DateTime today;
+  final bool animateAppearance;
 
   @override
   State<_WeekRow> createState() => _WeekRowState();
@@ -352,10 +367,18 @@ class _WeekRowState extends State<_WeekRow>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
+    if (!widget.animateAppearance || MediaQuery.disableAnimationsOf(context)) {
       _enter.value = 1;
     } else if (_enter.isDismissed) {
       _enter.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _WeekRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.animateAppearance && oldWidget.animateAppearance) {
+      _enter.value = 1;
     }
   }
 
@@ -431,9 +454,9 @@ class _WeekRowState extends State<_WeekRow>
         child: Transform.scale(
           scale: 1.7,
           child: widget.progress.isLit(day)
-              ? Image.asset(_lampOn)
+              ? Image.asset(streakLampOnAsset)
               // Погашенные дни приглушены, чтобы горящие читались сразу.
-              : Opacity(opacity: 0.35, child: Image.asset(_lampOff)),
+              : Opacity(opacity: 0.35, child: Image.asset(streakLampOffAsset)),
         ),
       ),
     ],

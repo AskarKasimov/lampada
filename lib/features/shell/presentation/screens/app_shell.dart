@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
-import '../../../bible/presentation/providers/providers.dart';
 import '../../../bible/presentation/screens/bible_tab_screen.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
@@ -25,11 +24,11 @@ import '../widgets/floating_nav_bar.dart';
 /// глухая полоса снизу отрезала у экрана заметный кусок. Контент уходит под
 /// капсулу, поэтому скроллящиеся вкладки оставляют снизу [kFloatingNavInset].
 ///
-/// «Главная» и «Библия» — вкладки со своим [Navigator]: «Мудрость дня»,
-/// «Основы веры», каталог и справка открываются внутри вкладки сдвигом
-/// вправо, и навбар остаётся виден. Полноэкранными поверх шелла остаются
-/// только системные по смыслу экраны (разрешение на напоминания, рассказ
-/// о дне) и шторки — они уходят в корневой навигатор.
+/// У каждой вкладки свой [Navigator]: дневные читалки и экраны копилки
+/// открываются внутри вкладки, поэтому навбар остаётся доступен, а смена
+/// вкладки сохраняет открытый материал.
+/// Каталог и справка открываются сдвигом вправо. Просмотр главы по ссылке и
+/// полноэкранные системные экраны уходят в корневой навигатор.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -42,6 +41,7 @@ class _AppShellState extends ConsumerState<AppShell>
   Timer? _dayTimer;
   final _homeNavigatorKey = GlobalKey<NavigatorState>();
   final _bibleNavigatorKey = GlobalKey<NavigatorState>();
+  final _profileNavigatorKey = GlobalKey<NavigatorState>();
 
   /// Читалка Библии грузит главу при построении, поэтому вкладку строим
   /// только после первого входа, а не на старте приложения.
@@ -145,7 +145,7 @@ class _AppShellState extends ConsumerState<AppShell>
       final navigator = switch (selected) {
         ShellTab.today => _homeNavigatorKey.currentState,
         ShellTab.bible => _bibleNavigatorKey.currentState,
-        ShellTab.profile => null,
+        ShellTab.profile => _profileNavigatorKey.currentState,
       };
       if (navigator != null) unawaited(_returnToRoot(navigator));
       return;
@@ -164,14 +164,6 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   Widget build(BuildContext context) {
-    // Глава, запрошенная из другой вкладки, открывается в «Библии» поверх
-    // её корня: каталог или справка не должны её заслонять.
-    ref.listen(bibleOpenRequestProvider, (_, request) {
-      if (request == null) return;
-      ref.read(selectedTabProvider.notifier).select(ShellTab.bible);
-      final navigator = _bibleNavigatorKey.currentState;
-      if (navigator != null) unawaited(_returnToRoot(navigator));
-    });
     final tab = ref.watch(selectedTabProvider);
     if (tab == ShellTab.bible) _bibleVisited = true;
     // Атрибуты профиля аналитики собираются из всех фич, как и расписание.
@@ -200,7 +192,11 @@ class _AppShellState extends ConsumerState<AppShell>
                         )
                       else
                         const SizedBox.shrink(),
-                      const ProfileScreen(),
+                      _tabNavigator(
+                        navigatorKey: _profileNavigatorKey,
+                        active: tab == ShellTab.profile,
+                        root: const ProfileScreen(),
+                      ),
                     ],
                   ),
                 ),

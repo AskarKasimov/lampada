@@ -20,19 +20,26 @@ import '../../../reading/presentation/widgets/interpretation_sheet.dart';
 import '../../../reading/presentation/widgets/verse_view.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
+import '../../domain/entities/bible_reading_position.dart';
 import '../providers/providers.dart';
 import 'bible_screen.dart';
 
+enum BibleReadingSessionMode { main, viewer }
+
 class BibleReaderScreen extends ConsumerStatefulWidget {
   const BibleReaderScreen({
+    required this.sessionMode,
     required this.book,
     required this.chapter,
     this.initialVerse = 1,
+    this.nextChapterOnMissingVerse = false,
     this.onClose,
     this.showClose = true,
     this.openSource = BibleOpenSource.tab,
     super.key,
   });
+
+  final BibleReadingSessionMode sessionMode;
 
   /// Откуда открыта глава: аналитика отличает первый вход, каталог,
   /// чтение дня и закладку.
@@ -47,6 +54,10 @@ class BibleReaderScreen extends ConsumerStatefulWidget {
 
   /// Сохранённый стих открывается в контексте всей главы, без обрезки начала.
   final int initialVerse;
+
+  /// Продолжение дневного отрывка: отсутствующий стих открывает следующую главу.
+  /// Обычное восстановление позиции сохраняет возврат к началу текущей главы.
+  final bool nextChapterOnMissingVerse;
 
   @override
   ConsumerState<BibleReaderScreen> createState() => _BibleReaderScreenState();
@@ -104,6 +115,18 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       final startIndex = chapter.verses.indexWhere(
         (verse) => verse.number == _initialVerse,
       );
+      if (startIndex < 0 &&
+          _initialVerse > 1 &&
+          widget.nextChapterOnMissingVerse) {
+        final next = _chapterAfter(_book, _chapter);
+        if (next != null) {
+          _book = next.$1;
+          _chapter = next.$2;
+          _initialVerse = 1;
+          await _loadInitial();
+          return;
+        }
+      }
       _controller?.dispose();
       setState(() {
         // Ищем номер стиха, а не индекс: в тексте могут быть пропуски номеров.
@@ -139,6 +162,10 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     final book = _lastBook;
     final chapter = _lastChapter;
     if (book == null || chapter == null) return null;
+    return _chapterAfter(book, chapter);
+  }
+
+  (BibleBook, int)? _chapterAfter(BibleBook book, int chapter) {
     if (chapter < book.chapterCount) return (book, chapter + 1);
     final index = bibleBooks.indexWhere((item) => item.code == book.code);
     if (index < 0 || index + 1 == bibleBooks.length) return null;
@@ -214,6 +241,15 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
         fraction: (page - first + 1) / (last - first + 1),
       ),
     );
+    if (widget.sessionMode == BibleReadingSessionMode.main) {
+      ref.read(saveBibleReadingPositionProvider)(
+        BibleReadingPosition(
+          book: position.book.code,
+          chapter: position.chapter,
+          verse: position.verse.number,
+        ),
+      );
+    }
     _markChapterReadIfFinished(page);
   }
 
@@ -288,6 +324,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   Widget _closeAction(AppColorsExtension colors) => IconButton(
     tooltip: 'Закрыть',
     onPressed: widget.onClose ?? () => Navigator.of(context).pop(),
+    constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+    padding: EdgeInsets.zero,
     icon: Icon(CupertinoIcons.xmark, color: colors.homeSubtitle, size: 22),
   );
 
@@ -362,8 +400,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     if (_loadingInitial) {
       return Scaffold(
         appBar: AppBar(
+          toolbarHeight: 48,
           automaticallyImplyLeading: false,
-          leading: widget.showClose ? _catalogAction(colors) : null,
+          leading: _hasCatalogAction ? _catalogAction(colors) : null,
           actions: [
             if (widget.showClose)
               _closeAction(colors)
@@ -377,8 +416,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     if (_initialError != null) {
       return Scaffold(
         appBar: AppBar(
+          toolbarHeight: 48,
           automaticallyImplyLeading: false,
-          leading: widget.showClose ? _catalogAction(colors) : null,
+          leading: _hasCatalogAction ? _catalogAction(colors) : null,
           title: Text(_book.title),
           actions: [
             if (widget.showClose)
@@ -456,6 +496,7 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             // кнопкой под стихом, к которому написано.
             child: VerseView(
               verse: verse,
+              bookAbbreviation: item.book.abbreviation,
               shareContent: SharedContent.bibleVerse,
               onOpenInterpretation: verse.hasInterpretation
                   ? () => InterpretationSheet.show(
@@ -483,9 +524,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
             if (_fullTextNeeded[card.id] ?? false)
               ReaderActionButton(
                 tooltip: 'Открыть полный текст',
-                onPressed: () => Navigator.of(
-                  context,
-                ).push(FullCardTextRoute(card: card, showSourceDash: false)),
+                onPressed: () =>
+                    Navigator.of(context).push(FullCardTextRoute(card: card)),
                 icon: CupertinoIcons.fullscreen,
                 color: colors.homeSubtitle,
               ),
@@ -499,7 +539,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
           ],
         ),
         onClose: widget.onClose ?? () => Navigator.of(context).pop(),
-        topLeftAction: widget.showClose
+        showExit: false,
+        topLeftAction: _hasCatalogAction
             ? _catalogAction(colors)
             : const SizedBox.shrink(),
         topRightAction: widget.showClose
@@ -509,6 +550,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       ),
     );
   }
+
+  bool get _hasCatalogAction =>
+      widget.showClose && widget.sessionMode == BibleReadingSessionMode.main;
 
   DayCard _cardFor(_ReadingVerse position) => DayCard(
     id: 'bible-${position.book.code}-${position.chapter}:${position.verse.number}',
@@ -543,6 +587,8 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
       count: count,
       currentIndex: current,
       accent: colors.accent,
+      // Точки показывают стихи текущей главы, а они идут подряд.
+      onSelect: (index) => _controller!.jumpToPage(first + index),
     );
   }
 

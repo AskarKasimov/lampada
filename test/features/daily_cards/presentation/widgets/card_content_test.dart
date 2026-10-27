@@ -1,12 +1,14 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/core/widgets/reading_overflow_listener.dart';
-import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
+
+import '../../../../support/text_selection.dart';
 
 /// Кириллический наполнитель заданной длины — не привязывает шрифт/скролл-
 /// пороги к реальному контенту с azbyka.ru.
@@ -155,7 +157,7 @@ void main() {
     );
     expect(_fontSizeOf(tester, card.body), 22);
     expect(
-      tester.getRect(find.text('— Тестовый источник')).bottom,
+      tester.getRect(find.text('Тестовый источник')).bottom,
       lessThanOrEqualTo(180),
     );
     expect(tester.takeException(), isNull);
@@ -311,12 +313,36 @@ void main() {
     await tester.pumpWidget(_buildApp(card));
     await tester.pump();
 
-    expect(find.text('— Тестовый источник'), findsOneWidget);
+    expect(find.text('Тестовый источник'), findsOneWidget);
+    expect(find.text('— Тестовый источник'), findsNothing);
   });
 
-  testWidgets('текст карточки можно выделить и отправить', (tester) async {
-    await tester.pumpWidget(_buildApp(_card(_filler(50))));
-
-    expect(find.byType(SelectableShareArea), findsOneWidget);
-  });
+  for (final scrollable in [false, true]) {
+    testWidgets(
+      'текст и источник копируются вместе при scrollable=$scrollable',
+      (tester) async {
+        final card = _card('Текст для копирования');
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              theme: AppTheme.light,
+              home: Scaffold(
+                body: CardContent(card: card, scrollable: scrollable),
+              ),
+            ),
+          ),
+        );
+        await expectTextCanBeCopied(
+          tester,
+          find.text(card.body),
+          contains: card.body,
+        );
+        await expectTextCanBeCopied(
+          tester,
+          find.text(card.source),
+          contains: card.body,
+        );
+      },
+    );
+  }
 }

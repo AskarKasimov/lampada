@@ -3,19 +3,25 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'progress_dots.dart';
+import 'rail_scrubber.dart';
 
 /// Показывает все точки материала; длинная колонка прокручивается к текущей.
+/// С [onSelect] по ней можно листать пальцем ([RailScrubber]).
 class ReaderProgressRail extends StatefulWidget {
   const ReaderProgressRail({
     required this.count,
     required this.currentIndex,
     required this.accent,
+    this.onSelect,
     super.key,
   });
 
   final int count;
   final int currentIndex;
   final Color accent;
+
+  /// Открывает страницу по индексу точки.
+  final ValueChanged<int>? onSelect;
 
   @override
   State<ReaderProgressRail> createState() => ReaderProgressRailState();
@@ -61,12 +67,26 @@ class ReaderProgressRailState extends State<ReaderProgressRail> {
   }
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
+  Widget build(BuildContext context) {
+    final onSelect = widget.onSelect;
+    final rail = _rail(scrollable: onSelect == null);
+    if (onSelect == null) return rail;
+    return RailScrubber(
+      count: widget.count,
+      currentIndex: widget.currentIndex,
+      onSelect: onSelect,
+      child: rail,
+    );
+  }
+
+  Widget _rail({required bool scrollable}) => LayoutBuilder(
     builder: (context, constraints) => SizedBox(
       width: 8,
       height: math.min(widget.count * 14.0, constraints.maxHeight),
       child: SingleChildScrollView(
         controller: _controller,
+        // Под пальцем столбик не прокручивают, а листают им страницы.
+        physics: scrollable ? null : const NeverScrollableScrollPhysics(),
         child: ProgressDots(
           count: widget.count,
           currentIndex: widget.currentIndex,

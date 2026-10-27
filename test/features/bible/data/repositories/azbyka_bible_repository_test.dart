@@ -8,6 +8,7 @@ import 'package:lampada/features/bible/data/dto/bible_chapter_dto.dart';
 import 'package:lampada/features/bible/data/repositories/azbyka_bible_repository.dart';
 import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
+import 'package:lampada/features/bible/domain/entities/bible_reading_position.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _Source implements BibleRemoteDatasource {
@@ -66,6 +67,103 @@ final _legacyCache = jsonEncode({
 });
 
 void main() {
+  test('переносит старое основное место до просмотра той же главы', () async {
+    SharedPreferences.setMockInitialValues({
+      'bible_last_chapter_v1': 'Jn.3',
+      'bible_progress_v1:Jn.3': '{"verse":12,"fraction":0.5}',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final repository = AzbykaBibleRepository(_Source(), prefs);
+
+    expect(
+      (await repository.getReadingPosition() as Success<BibleReadingPosition?>)
+          .value,
+      const BibleReadingPosition(book: 'Jn', chapter: 3, verse: 12),
+    );
+
+    await repository.saveChapterProgress('Jn', 3, (verse: 2, fraction: 0.1));
+
+    expect(
+      (await AzbykaBibleRepository(_Source(), prefs).getReadingPosition()
+              as Success<BibleReadingPosition?>)
+          .value,
+      const BibleReadingPosition(book: 'Jn', chapter: 3, verse: 12),
+    );
+    expect(prefs.getString('bible_last_chapter_v1'), 'Jn.3');
+  });
+
+  test(
+    'новая позиция главного чтения не зависит от общего прогресса',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'bible_reading_position_v1':
+            '{"version":1,"book":"Rom","chapter":8,"verse":12}',
+        'bible_last_chapter_v1': 'Jn.3',
+        'bible_progress_v1:Jn.3': '{"verse":2,"fraction":0.1}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final repository = AzbykaBibleRepository(_Source(), prefs);
+
+      expect(
+        (await repository.getReadingPosition()
+                as Success<BibleReadingPosition?>)
+            .value,
+        const BibleReadingPosition(book: 'Rom', chapter: 8, verse: 12),
+      );
+    },
+  );
+
+  test('повреждённая новая позиция не подменяется старыми ключами', () async {
+    SharedPreferences.setMockInitialValues({
+      'bible_reading_position_v1': '{broken',
+      'bible_last_chapter_v1': 'Jn.3',
+      'bible_progress_v1:Jn.3': '{"verse":16,"fraction":1}',
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    final result = await AzbykaBibleRepository(
+      _Source(),
+      prefs,
+    ).getReadingPosition();
+
+    expect((result as Success<BibleReadingPosition?>).value, isNull);
+    expect(prefs.getString('bible_reading_position_v1'), '{broken');
+  });
+
+  test(
+    'сохраняет проверенную позицию одной версионированной записью',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final repository = AzbykaBibleRepository(_Source(), prefs);
+      const position = BibleReadingPosition(book: 'Rom', chapter: 8, verse: 12);
+
+      expect(
+        await repository.saveReadingPosition(position),
+        isA<Success<void>>(),
+      );
+      expect(jsonDecode(prefs.getString('bible_reading_position_v1')!), {
+        'version': 1,
+        'book': 'Rom',
+        'chapter': 8,
+        'verse': 12,
+      });
+      expect(prefs.getString('bible_last_chapter_v1'), isNull);
+      expect(
+        (await repository.getReadingPosition()
+                as Success<BibleReadingPosition?>)
+            .value,
+        position,
+      );
+      expect(
+        await repository.saveReadingPosition(
+          const BibleReadingPosition(book: 'Jn', chapter: 22, verse: 1),
+        ),
+        isA<Failure<void>>(),
+      );
+    },
+  );
+
   test(
     'чтение позиции ждёт последнего ещё не завершённого сохранения',
     () async {
@@ -83,7 +181,7 @@ void main() {
                   as Success<BibleChapterStatuses>)
               .value;
       await saving;
-      expect(statuses.lastChapter, ('Mk', 2));
+      expect(statuses.lastChapter, isNull);
       expect(statuses.progress[('Mk', 2)]?.verse, 4);
     },
   );
@@ -129,8 +227,8 @@ void main() {
       expect(statuses.progress[('Jn', 3)], (verse: 4, fraction: 0.15));
       expect(statuses.progress[('Jn', 4)], (verse: 2, fraction: 0.1));
       expect(statuses.read, isEmpty);
-      expect(prefs.getString('bible_last_chapter_v1'), 'Jn.3');
-      expect(statuses.lastChapter, ('Jn', 3));
+      expect(prefs.getString('bible_last_chapter_v1'), isNull);
+      expect(statuses.lastChapter, isNull);
       await reopened.markChapterRead('Jn', 3);
       await reopened.saveChapterProgress('Jn', 3, (verse: 1, fraction: 0.05));
       final read =

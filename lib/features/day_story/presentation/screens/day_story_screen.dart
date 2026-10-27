@@ -37,11 +37,13 @@ class DayStoryScreen extends ConsumerWidget {
   const DayStoryScreen({
     required this.title,
     required this.storyUrl,
+    this.onCompleted,
     super.key,
   });
 
   final String title;
   final String storyUrl;
+  final VoidCallback? onCompleted;
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
   Bookmark _bookmarkFor(DayStory story) => Bookmark(
@@ -65,7 +67,19 @@ class DayStoryScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         child: async.when(
-          loading: () => const BrandLoadingView(),
+          loading: () => Stack(
+            fit: StackFit.expand,
+            children: [
+              const BrandLoadingView(),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: _storyCloseButton(context, () {
+                  Navigator.of(context).pop();
+                }),
+              ),
+            ],
+          ),
           error: (e, _) {
             final kind = switch (e) {
               AppFailure(kind: final k) => k,
@@ -95,6 +109,7 @@ class DayStoryScreen extends ConsumerWidget {
                   story: story,
                   bookmark: _bookmarkFor(story),
                   shareText: _shareTextFor(story),
+                  onCompleted: onCompleted,
                   onClose: () => Navigator.of(context).pop(),
                   onExit: (furthest, total, finished) => analytics.log(
                     AnalyticsEvent.storyClosed(
@@ -123,6 +138,7 @@ class _StoryReader extends StatefulWidget {
     required this.story,
     required this.bookmark,
     required this.shareText,
+    required this.onCompleted,
     required this.onClose,
     required this.onExit,
     required this.onFullText,
@@ -132,6 +148,7 @@ class _StoryReader extends StatefulWidget {
   final DayStory story;
   final Bookmark bookmark;
   final String shareText;
+  final VoidCallback? onCompleted;
   final VoidCallback onClose;
 
   /// Закрытие с самой дальней страницей и признаком «долистал до конца».
@@ -147,6 +164,7 @@ class _StoryReaderState extends State<_StoryReader> {
   final _fullTextNeeded = <String, bool>{};
   var _index = 0;
   var _furthest = 0;
+  var _completed = false;
 
   late final List<DayCard> _pages = _pagesOf(widget.title, widget.story);
 
@@ -214,6 +232,10 @@ class _StoryReaderState extends State<_StoryReader> {
             _index = index;
             if (index > _furthest) _furthest = index;
           });
+          if (!_completed && _isLast(index)) {
+            _completed = true;
+            widget.onCompleted?.call();
+          }
         }
       },
       itemBuilder: (context, index) {
@@ -256,6 +278,7 @@ class _StoryReaderState extends State<_StoryReader> {
         count: _pages.length,
         currentIndex: _index,
         accent: colors.accent,
+        onSelect: _controller.jumpToPage,
       ),
       actions: Column(
         mainAxisSize: MainAxisSize.min,
@@ -291,11 +314,8 @@ class _StoryReaderState extends State<_StoryReader> {
       ),
       onClose: widget.onClose,
       closeColor: colors.homeSubtitle,
-      topLeftAction: IconButton(
-        tooltip: 'Закрыть рассказ',
-        icon: Icon(CupertinoIcons.xmark, size: 22, color: colors.homeSubtitle),
-        onPressed: widget.onClose,
-      ),
+      closeOnRight: true,
+      closeTooltip: 'Закрыть рассказ',
     );
   }
 }
@@ -404,19 +424,22 @@ class _StoryStatusView extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 8,
-          right: AppSpacing.of(context).horizontal.right,
-          child: IconButton(
-            tooltip: 'Закрыть рассказ',
-            onPressed: onClose,
-            icon: Icon(
-              CupertinoIcons.xmark,
-              size: 22,
-              color: colors.homeSubtitle,
-            ),
-          ),
+          top: 0,
+          right: 0,
+          child: _storyCloseButton(context, onClose),
         ),
       ],
     );
   }
+}
+
+IconButton _storyCloseButton(BuildContext context, VoidCallback onClose) {
+  final colors = AppColorsExtension.of(context);
+  return IconButton(
+    tooltip: 'Закрыть рассказ',
+    onPressed: onClose,
+    constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+    padding: EdgeInsets.zero,
+    icon: Icon(CupertinoIcons.xmark, size: 22, color: colors.homeSubtitle),
+  );
 }

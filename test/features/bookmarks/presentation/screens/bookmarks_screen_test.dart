@@ -103,17 +103,44 @@ void main() {
     });
   }
 
-  testWidgets('стрелка назад слева возвращает из закладок', (tester) async {
-    var backCalls = 0;
-    await tester.pumpWidget(wrap(BookmarksScreen(onClose: () => backCalls++)));
+  testWidgets('модальный маршрут копилки закрывается правым крестиком', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    fullscreenDialog: true,
+                    builder: (modalContext) => BookmarksScreen(
+                      onClose: () => Navigator.of(modalContext).pop(),
+                    ),
+                  ),
+                ),
+                child: const Text('Открыть копилку'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
-    final back = find.byType(BackButton);
-    expect(back, findsOneWidget);
-    expect(find.byTooltip('Закрыть'), findsNothing);
+    await tester.tap(find.text('Открыть копилку'));
+    await tester.pumpAndSettle();
+    final close = find.byTooltip('Закрыть');
+    expect(close, findsOneWidget);
+    expect(find.byType(BackButton), findsNothing);
     final width = tester.getSize(find.byType(BookmarksScreen)).width;
-    expect(tester.getCenter(back).dx, lessThan(width / 2));
-    await tester.tap(back);
-    expect(backCalls, 1);
+    expect(tester.getCenter(close).dx, greaterThan(width / 2));
+    await tester.tap(close);
+    await tester.pumpAndSettle();
+    expect(find.text('Открыть копилку'), findsOneWidget);
+    expect(find.byType(BookmarksScreen), findsNothing);
   });
 
   testWidgets('пустая копилка — тёплое состояние без назидания', (

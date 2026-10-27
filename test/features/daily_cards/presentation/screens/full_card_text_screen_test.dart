@@ -1,12 +1,58 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_theme.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/full_card_text_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 
+import '../../../../support/text_selection.dart';
+
 void main() {
+  testWidgets('протягивание после долгого нажатия не закрывает полный текст', (
+    tester,
+  ) async {
+    const card = DayCard(
+      id: 'drag-selection',
+      type: CardType.advice,
+      body: 'Текст для выделения пальцем',
+      source: 'Источник',
+    );
+    await _pumpRouteHost(tester, card);
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text(card.body)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+    await gesture.moveBy(const Offset(150, 0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byType(FullCardTextScreen), findsOneWidget);
+  });
+  testWidgets(
+    'копирование оставляет полный текст и возвращает свайп закрытия',
+    (tester) async {
+      const card = DayCard(
+        id: 'selection',
+        type: CardType.advice,
+        body: 'Полный текст карточки',
+        source: 'Источник',
+      );
+      await _pumpRouteHost(tester, card);
+      expect(find.text(card.source), findsOneWidget);
+      expect(find.text('— ${card.source}'), findsNothing);
+      await expectTextCanBeCopied(
+        tester,
+        find.text(card.body),
+        contains: card.body,
+      );
+      expect(find.byType(FullCardTextScreen), findsOneWidget);
+      await tester.drag(find.byType(FullCardTextScreen), const Offset(180, 0));
+      await tester.pumpAndSettle();
+      expect(find.byType(FullCardTextScreen), findsNothing);
+    },
+  );
   testWidgets('свайп вправо закрывает полный текст', (tester) async {
     const card = DayCard(
       id: 'advice-1',
@@ -226,12 +272,14 @@ void main() {
 
 Future<void> _pumpRouteHost(WidgetTester tester, DayCard card) async {
   await tester.pumpWidget(
-    MaterialApp(
-      home: Builder(
-        builder: (context) => TextButton(
-          onPressed: () =>
-              Navigator.of(context).push(FullCardTextRoute(card: card)),
-          child: const Text('Исходный экран'),
+    ProviderScope(
+      child: MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () =>
+                Navigator.of(context).push(FullCardTextRoute(card: card)),
+            child: const Text('Исходный экран'),
+          ),
         ),
       ),
     ),

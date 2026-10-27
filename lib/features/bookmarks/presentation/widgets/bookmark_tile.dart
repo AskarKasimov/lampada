@@ -6,6 +6,7 @@ import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/bookmark.dart';
@@ -86,25 +87,28 @@ class BookmarkTile extends StatelessWidget {
         .log(AnalyticsEvent.bookmarkOpened(kind: bookmark.kind.name));
     Navigator.of(context).push(
       PageRouteBuilder<void>(
+        fullscreenDialog: true,
+        // При свайпе закрытия под карточкой остаётся виден список копилки.
         opaque: false,
-        transitionDuration: const Duration(milliseconds: 280),
-        reverseTransitionDuration: const Duration(milliseconds: 220),
+        transitionDuration: AppMotion.modalEnter,
+        reverseTransitionDuration: AppMotion.modalExit,
         pageBuilder: (_, animation, secondaryAnimation) =>
             BookmarkDetailScreen(bookmark: bookmark),
-        transitionsBuilder: (_, animation, secondaryAnimation, child) {
-          final curve = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          );
-          return FadeTransition(
-            opacity: curve,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.88, end: 1).animate(curve),
+        transitionsBuilder: (_, animation, secondaryAnimation, child) =>
+            SlideTransition(
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                      reverseCurve: Curves.easeInCubic,
+                    ),
+                  ),
               child: child,
             ),
-          );
-        },
       ),
     );
   }

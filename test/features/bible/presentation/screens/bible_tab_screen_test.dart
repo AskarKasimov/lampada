@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_chapter.dart';
+import 'package:lampada/features/bible/domain/entities/bible_reading_position.dart';
 import 'package:lampada/features/bible/domain/repositories/bible_repository.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
@@ -13,6 +14,7 @@ import 'package:lampada/features/bible/presentation/screens/bible_tab_screen.dar
 
 class _PendingStatusesRepository implements BibleRepository {
   final statuses = Completer<Result<BibleChapterStatuses>>();
+  final positions = Completer<Result<BibleReadingPosition?>>();
 
   @override
   Future<Result<BibleChapterStatuses>> getChapterStatuses() => statuses.future;
@@ -31,11 +33,20 @@ class _PendingStatusesRepository implements BibleRepository {
     int chapter,
     BibleChapterProgress progress,
   ) => throw UnimplementedError();
+
+  @override
+  Future<Result<void>> saveReadingPosition(
+    BibleReadingPosition position,
+  ) async => const Success(null);
+
+  @override
+  Future<Result<BibleReadingPosition?>> getReadingPosition() =>
+      positions.future;
 }
 
 /// Чистая установка: места чтения нет, главы грузятся бесконечно.
 class _FreshInstallRepository extends _PendingStatusesRepository {
-  _FreshInstallRepository() {
+  _FreshInstallRepository({BibleReadingPosition? position}) {
     statuses.complete(
       const Success((
         lastChapter: null,
@@ -44,6 +55,7 @@ class _FreshInstallRepository extends _PendingStatusesRepository {
         progress: <BibleChapterId, BibleChapterProgress>{},
       )),
     );
+    positions.complete(Success(position));
   }
 
   @override
@@ -74,13 +86,40 @@ void main() {
     expect(reader.chapter, 1);
   });
 
+  testWidgets('основная вкладка восстанавливает собственную позицию', (
+    tester,
+  ) async {
+    final repository = _FreshInstallRepository(
+      position: const BibleReadingPosition(book: 'Rom', chapter: 8, verse: 12),
+    );
+    final container = ProviderContainer(
+      overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: BibleTabScreen()),
+      ),
+    );
+    await tester.pump();
+
+    final reader = tester.widget<BibleReaderScreen>(
+      find.byType(BibleReaderScreen),
+    );
+    expect(reader.book.code, 'Rom');
+    expect(reader.chapter, 8);
+    expect(reader.initialVerse, 12);
+    expect(reader.sessionMode, BibleReadingSessionMode.main);
+  });
+
   for (final fail in [false, true]) {
     testWidgets(
       'вкладка Библии без кнопки закрытия при ${fail ? "ошибке" : "загрузке"} позиции',
       (tester) async {
         final repository = _PendingStatusesRepository();
         if (fail) {
-          repository.statuses.complete(
+          repository.positions.complete(
             const Failure(
               AppFailure('Ошибка хранилища', kind: FailureKind.unknown),
             ),

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -83,32 +86,141 @@ void main() {
 
   const ending = 'Хотите прочесть главу полностью?';
 
-  testWidgets(
-    'сохраняет дневные стихи и толкование, в конце предлагает полную главу во вкладке Библии',
-    (tester) async {
-      await open(tester, crossesChapter: false);
-      expect(find.text('Дневной стих').hitTestable(), findsOneWidget);
-      expect(find.byType(BibleReaderScreen), findsNothing);
-      await tester.tap(find.byType(VerseInterpretationButton));
-      await tester.pumpAndSettle();
-      expect(find.text('Объяснение стиха'), findsOneWidget);
-      Navigator.of(tester.element(find.text('Объяснение стиха'))).pop();
-      await tester.pumpAndSettle();
-      await next(tester);
-      expect(find.text('Конец главы').hitTestable(), findsOneWidget);
-      await next(tester);
-      expect(find.text(ending).hitTestable(), findsOneWidget);
-      expect(find.byType(BookmarkButton), findsNothing);
-      await tester.tap(find.text('Прочитать главу полностью'));
-      await tester.pumpAndSettle();
-      // Отдельного окна с главой нет: её открывает вкладка «Библия».
-      expect(find.byType(BibleReaderScreen), findsNothing);
-      final request = ProviderScope.containerOf(
-        tester.element(find.byType(ReadingScreen)),
-      ).read(bibleOpenRequestProvider);
-      expect((request?.book, request?.chapter), ('Jn', 10));
-    },
-  );
+  for (final modal in [false, true]) {
+    testWidgets(
+      'выход ReadingScreen в состоянии загрузки соответствует типу маршрута: modal=$modal',
+      (tester) async {
+        final pending = Completer<DailyReading>();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              dailyReadingProvider.overrideWith(
+                (ref, reference) => pending.future,
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.light,
+              home: Builder(
+                builder: (context) => Scaffold(
+                  body: TextButton(
+                    onPressed: () => Navigator.of(context).push<void>(
+                      MaterialPageRoute<void>(
+                        fullscreenDialog: modal,
+                        builder: (_) => ReadingScreen(
+                          reference: 'Jn.10:2-3',
+                          date: DateTime(2026, 9, 26),
+                          recordProgress: false,
+                          recordRead: false,
+                        ),
+                      ),
+                    ),
+                    child: const Text('Источник чтения'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Источник чтения'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        final icon = modal ? CupertinoIcons.xmark : CupertinoIcons.arrow_left;
+        final exit = find.byIcon(icon);
+        expect(exit, findsOneWidget);
+        expect(find.byTooltip(modal ? 'Закрыть' : 'Назад'), findsOneWidget);
+        expect(
+          tester.getCenter(exit).dx >
+              tester.getSize(find.byType(Scaffold).last).width / 2,
+          modal,
+        );
+        final exitY = tester.getCenter(exit).dy;
+        pending.complete(
+          const DailyReading(
+            label: 'Ин.10:2',
+            verses: [Verse(number: 2, chapter: 10, text: 'Стих')],
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Стих'), findsOneWidget);
+        expect(tester.getCenter(find.byIcon(icon)).dy, closeTo(exitY, 0.5));
+      },
+    );
+  }
+
+  testWidgets('ошибка ReadingScreen сохраняет выход push-экрана слева', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          dailyReadingProvider.overrideWith((ref, reference) async {
+            throw Exception('offline');
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ReadingScreen(
+                      reference: 'Jn.10:2-3',
+                      date: DateTime(2026, 9, 26),
+                      recordProgress: false,
+                      recordRead: false,
+                    ),
+                  ),
+                ),
+                child: const Text('Источник чтения'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Источник чтения'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Чтение сейчас недоступно'), findsOneWidget);
+    expect(find.byTooltip('Назад'), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.xmark), findsNothing);
+    expect(
+      tester.getCenter(find.byTooltip('Назад')).dx,
+      lessThan(tester.getSize(find.byType(Scaffold).last).width / 2),
+    );
+  });
+
+  testWidgets('дневные ссылки открывают отдельный просмотр полной главы', (
+    tester,
+  ) async {
+    await open(tester, crossesChapter: false);
+    expect(find.text('Дневной стих').hitTestable(), findsOneWidget);
+    expect(find.byType(BibleReaderScreen), findsNothing);
+    await tester.tap(find.byType(VerseInterpretationButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Объяснение стиха'), findsOneWidget);
+    Navigator.of(tester.element(find.text('Объяснение стиха'))).pop();
+    await tester.pumpAndSettle();
+    await next(tester);
+    expect(find.text('Конец главы').hitTestable(), findsOneWidget);
+    await next(tester);
+    expect(find.text(ending).hitTestable(), findsOneWidget);
+    expect(find.byType(BookmarkButton), findsNothing);
+    await tester.tap(find.text('Прочитать главу полностью'));
+    await tester.pumpAndSettle();
+    final reader = tester.widget<BibleReaderScreen>(
+      find.byType(BibleReaderScreen),
+    );
+    expect(
+      (reader.book.code, reader.chapter, reader.initialVerse),
+      ('Jn', 10, 1),
+    );
+    expect(reader.sessionMode, BibleReadingSessionMode.viewer);
+  });
 
   testWidgets('для отрывка через две главы предлагает обе главы', (
     tester,
@@ -122,10 +234,11 @@ void main() {
     expect(find.text('Прочитать главу 11'), findsOneWidget);
     await tester.tap(find.text('Прочитать главу 11'));
     await tester.pumpAndSettle();
-    final request = ProviderScope.containerOf(
-      tester.element(find.byType(ReadingScreen)),
-    ).read(bibleOpenRequestProvider);
-    expect((request?.book, request?.chapter), ('Jn', 11));
+    final reader = tester.widget<BibleReaderScreen>(
+      find.byType(BibleReaderScreen),
+    );
+    expect((reader.book.code, reader.chapter), ('Jn', 11));
+    expect(reader.sessionMode, BibleReadingSessionMode.viewer);
   });
 
   for (final recordRead in [true, false]) {

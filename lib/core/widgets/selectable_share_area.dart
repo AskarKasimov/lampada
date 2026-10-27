@@ -7,6 +7,7 @@ import '../analytics/analytics_event.dart';
 import '../analytics/analytics_provider.dart';
 import '../format/app_download_links.dart';
 import 'app_share_button.dart' show shareOutcomeOf;
+import 'text_selection_activity.dart';
 
 /// Делает вложенный текст выделяемым, не отнимая горизонтальные свайпы у
 /// PageView на Android.
@@ -28,15 +29,19 @@ class _SelectableShareAreaState extends ConsumerState<SelectableShareArea> {
   SelectedContent? _selectedContent;
   var _selectionEnabled = false;
 
-  void _enableSelection() {
+  Future<void> _enableSelection() async {
     if (_selectionEnabled) return;
+    const TextSelectionActivity(active: true).dispatch(context);
     setState(() => _selectionEnabled = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _selectionAreaKey.currentState?.selectableRegion.selectAll(
-        SelectionChangedCause.toolbar,
-      );
-    });
+    // Сначала монтируется SelectionArea, затем вложенные scroll/selection
+    // контейнеры регистрируют текст. До конца этих кадров selectAll пуст.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    _selectionAreaKey.currentState?.selectableRegion.selectAll(
+      SelectionChangedCause.toolbar,
+    );
   }
 
   void _onSelectionChanged(SelectedContent? content) {
@@ -49,6 +54,7 @@ class _SelectableShareAreaState extends ConsumerState<SelectableShareArea> {
       _selectedContent = content;
       _selectionEnabled = hasSelection;
     });
+    TextSelectionActivity(active: hasSelection).dispatch(context);
   }
 
   Widget _buildContextMenu(
@@ -118,7 +124,6 @@ class _SelectableShareAreaState extends ConsumerState<SelectableShareArea> {
         child: widget.child,
       );
     }
-
     return SelectionArea(
       key: _selectionAreaKey,
       contextMenuBuilder: _buildContextMenu,

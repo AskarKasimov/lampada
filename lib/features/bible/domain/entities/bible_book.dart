@@ -17,6 +17,12 @@ abstract class BibleBook with _$BibleBook {
   ) = _BibleBook;
 }
 
+/// Число глав во всём каталоге: знаменатель доли прочитанной Библии.
+final bibleChapterTotal = bibleBooks.fold(
+  0,
+  (total, book) => total + book.chapterCount,
+);
+
 const bibleBooks = <BibleBook>[
   BibleBook('Gen', 'Бытие', 50, 'Быт'),
   BibleBook('Ex', 'Исход', 40, 'Исх'),

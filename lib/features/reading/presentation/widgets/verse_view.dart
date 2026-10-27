@@ -19,9 +19,14 @@ class VerseView extends StatelessWidget {
     super.key,
     this.onOpenInterpretation,
     this.shareContent = SharedContent.reading,
+    this.bookAbbreviation,
   });
 
   final Verse verse;
+
+  /// Сокращение книги для подписи «Деян. 20:35»: одни «20:35» не говорят,
+  /// из какой книги стих.
+  final String? bookAbbreviation;
 
   /// Тип материала для аналитики отправки выделенного текста: тот же вид
   /// стиха показывает и Библия.
@@ -34,6 +39,9 @@ class VerseView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
 
+    final book = bookAbbreviation;
+    final reference = '${verse.chapter}:${verse.number}';
+    final label = book == null ? reference : '$book. $reference';
     final numberStyle = TextStyle(
       fontSize: 12,
       letterSpacing: 0.4,
@@ -49,7 +57,7 @@ class VerseView extends StatelessWidget {
               18 +
               readingTextHeight(
                 context: context,
-                text: '${verse.chapter}:${verse.number}',
+                text: label,
                 style: numberStyle,
                 maxWidth: constraints.maxWidth,
               ) +
@@ -60,7 +68,7 @@ class VerseView extends StatelessWidget {
               18 +
               readingTextHeight(
                 context: context,
-                text: '${verse.chapter}:${verse.number}',
+                text: label,
                 style: numberStyle,
                 maxWidth: constraints.maxWidth,
                 textScaler: scaler,
@@ -102,10 +110,7 @@ class VerseView extends StatelessWidget {
                   children: [
                     Text(text, textAlign: TextAlign.center, style: bodyStyle),
                     const SizedBox(height: 18),
-                    Text(
-                      '${verse.chapter}:${verse.number}',
-                      style: numberStyle,
-                    ),
+                    Text(label, style: numberStyle),
                     if (onOpenInterpretation != null) ...[
                       const SizedBox(height: 22),
                       VerseInterpretationButton(
@@ -159,12 +164,14 @@ class VerseInterpretationButton extends StatelessWidget {
               const SizedBox(width: 7),
               // Акцент на акцентной заливке в светлой теме даёт 4.1:1, ниже
               // AA для 13pt; тёмный текст держит контраст, иконка — тон.
-              Text(
-                'Толкование',
-                style: TextStyle(
-                  fontSize: 13,
-                  letterSpacing: 0.2,
-                  color: colors.homeIcon,
+              SelectionContainer.disabled(
+                child: Text(
+                  'Толкование',
+                  style: TextStyle(
+                    fontSize: 13,
+                    letterSpacing: 0.2,
+                    color: colors.homeIcon,
+                  ),
                 ),
               ),
             ],

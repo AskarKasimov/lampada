@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
 
+import { PlacementSlide } from "@/components/placement_slide";
 import { StoreSlide } from "@/components/store_slide";
 import { withTimeout } from "@/lib/with_timeout.mjs";
 import { loadContent, type LoadedContent } from "@/lib/screenshot_content";
+import { sharedTitleFontSize } from "@/lib/title_layout";
 
 const EXPORT_TIMEOUT_MS = 30_000;
 const SANS = "var(--font-inter), -apple-system, system-ui, sans-serif";
@@ -20,12 +22,14 @@ function Preview({
   locale,
   index,
   format,
+  titleSize,
   onExport,
 }: {
   slide: Slide;
   locale: string;
   index: number;
   format: Format;
+  titleSize: number;
   onExport: (id: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -62,11 +66,71 @@ function Preview({
             transformOrigin: "top left",
           }}
         >
-          <StoreSlide slide={slide} locale={locale} format={format} />
+          <StoreSlide slide={slide} locale={locale} format={format} titleSize={titleSize} />
         </div>
       </div>
       <p style={{ textAlign: "center", fontSize: 12, color: "#888", margin: "7px 0 0" }}>
         {index + 1}. {slide.label}
+      </p>
+    </div>
+  );
+}
+
+function PlacementPreview({
+  placement,
+  locale,
+  onExport,
+}: {
+  placement: LoadedContent["placements"][number];
+  locale: string;
+  onExport: (id: string) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.1);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const observer = new ResizeObserver(() => {
+      setScale(node.getBoundingClientRect().width / placement.width);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [placement.width]);
+
+  const safe = placement.safeArea;
+  return (
+    <div>
+      <div
+        ref={ref}
+        onClick={() => onExport(placement.id)}
+        title="Кликните, чтобы скачать"
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: `${placement.width}/${placement.height}`,
+          overflow: "hidden",
+          cursor: "pointer",
+        }}
+      >
+        <div style={{ width: placement.width, height: placement.height, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+          <PlacementSlide placement={placement} locale={locale} />
+        </div>
+        {/* Контур безопасной зоны только в превью, в экспорт не попадает. */}
+        <div
+          style={{
+            position: "absolute",
+            left: safe.x * scale,
+            top: safe.y * scale,
+            width: safe.width * scale,
+            height: safe.height * scale,
+            border: "1px dashed rgba(214, 64, 64, 0.7)",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+      <p style={{ textAlign: "center", fontSize: 12, color: "#888", margin: "7px 0 0" }}>
+        {placement.label} · {placement.width}×{placement.height} · пунктир — безопасная зона
       </p>
     </div>
   );
@@ -113,6 +177,10 @@ export default function Page() {
   if (!content || !format) return <p>Загружаю конфигурацию…</p>;
   const loadedContent = content;
   const selectedFormat = format;
+  const titleSize = sharedTitleFontSize(
+    loadedContent.slides.map((slide) => slide.title),
+    selectedFormat,
+  );
 
   function changeLocale(locale: string) {
     const url = new URL(window.location.href);
@@ -121,7 +189,12 @@ export default function Page() {
     setRequestedLocale(locale);
   }
 
-  async function renderBlob(id: string, element: HTMLDivElement) {
+  async function renderBlob(
+    id: string,
+    element: HTMLDivElement,
+    size: { width: number; height: number },
+    name: string,
+  ) {
     // html-to-image не умеет снимать узел за пределами вьюпорта.
     element.style.left = "0px";
     element.style.opacity = "1";
@@ -138,7 +211,7 @@ export default function Page() {
         ),
       );
       await new Promise((resolve) => setTimeout(resolve, 400));
-      const options = { width: selectedFormat.width, height: selectedFormat.height, pixelRatio: 1, cacheBust: true };
+      const options = { width: size.width, height: size.height, pixelRatio: 1, cacheBust: true };
       await withTimeout(toPng(element, options), EXPORT_TIMEOUT_MS, `${id}, прогрев`);
       await new Promise((resolve) => setTimeout(resolve, 150));
       const url = await withTimeout(toPng(element, options), EXPORT_TIMEOUT_MS, id);
@@ -146,11 +219,9 @@ export default function Page() {
       image.src = url;
       await image.decode();
       const canvas = document.createElement("canvas");
-      canvas.width = selectedFormat.width;
-      canvas.height = selectedFormat.height;
-      canvas.getContext("2d")!.drawImage(image, 0, 0, selectedFormat.width, selectedFormat.height);
-      const slideIndex = loadedContent.slides.findIndex((slide) => slide.id === id);
-      const name = `${String(slideIndex + 1).padStart(2, "0")}-${id}-${selectedFormat.width}x${selectedFormat.height}.png`;
+      canvas.width = size.width;
+      canvas.height = size.height;
+      canvas.getContext("2d")!.drawImage(image, 0, 0, size.width, size.height);
       const blob = await new Promise<Blob>((resolve) => canvas.toBlob((value) => resolve(value!)));
       return { name, blob };
     } finally {
@@ -160,13 +231,23 @@ export default function Page() {
     }
   }
 
+  function slideFile(id: string) {
+    const slideIndex = loadedContent.slides.findIndex((slide) => slide.id === id);
+    return `${String(slideIndex + 1).padStart(2, "0")}-${id}-${selectedFormat.width}x${selectedFormat.height}.png`;
+  }
+
   async function exportOne(id: string) {
     const element = exports.current[id];
     if (!element) return;
+    const placement = loadedContent.placements.find((item) => item.id === id);
+    const size = placement ?? selectedFormat;
+    const file = placement
+      ? `${placement.id}-${loadedContent.locale}-${placement.width}x${placement.height}.png`
+      : slideFile(id);
     setExportError(null);
     setBusy(id);
     try {
-      const { name, blob } = await renderBlob(id, element);
+      const { name, blob } = await renderBlob(id, element, size, file);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = name;
@@ -189,7 +270,7 @@ export default function Page() {
         const element = exports.current[slide.id];
         if (!element) continue;
         setBusy(slide.id);
-        const { name, blob } = await renderBlob(slide.id, element);
+        const { name, blob } = await renderBlob(slide.id, element, selectedFormat, slideFile(slide.id));
         zip.file(name, blob);
       }
       const link = document.createElement("a");
@@ -225,13 +306,26 @@ export default function Page() {
         </div>
         {exportError && <p role="alert" style={{ margin: "0 0 20px", color: "#ffb4a9", fontSize: 13 }}>{exportError}</p>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 20 }}>
-          {loadedContent.slides.map((slide, index) => <Preview key={slide.id} slide={slide} locale={loadedContent.locale} index={index} format={selectedFormat} onExport={exportOne} />)}
+          {loadedContent.slides.map((slide, index) => <Preview key={slide.id} slide={slide} locale={loadedContent.locale} index={index} format={selectedFormat} titleSize={titleSize} onExport={exportOne} />)}
         </div>
+        {loadedContent.placements.length > 0 && (
+          <>
+            <h2 style={{ color: "#fff", fontSize: 18, fontWeight: 600, margin: "40px 0 16px" }}>Креативы App Store</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: 24 }}>
+              {loadedContent.placements.map((placement) => <PlacementPreview key={placement.id} placement={placement} locale={loadedContent.locale} onExport={exportOne} />)}
+            </div>
+          </>
+        )}
       </div>
       <div style={{ position: "absolute", top: 0, overflow: "hidden" }}>
         {loadedContent.slides.map((slide) => (
           <div key={`off-${slide.id}`} ref={(element) => { exports.current[slide.id] = element; }} style={{ position: "absolute", left: "-9999px", top: 0, width: selectedFormat.width, height: selectedFormat.height }}>
-            <StoreSlide slide={slide} locale={loadedContent.locale} format={selectedFormat} />
+            <StoreSlide slide={slide} locale={loadedContent.locale} format={selectedFormat} titleSize={titleSize} />
+          </div>
+        ))}
+        {loadedContent.placements.map((placement) => (
+          <div key={`off-${placement.id}`} ref={(element) => { exports.current[placement.id] = element; }} style={{ position: "absolute", left: "-9999px", top: 0, width: placement.width, height: placement.height }}>
+            <PlacementSlide placement={placement} locale={loadedContent.locale} />
           </div>
         ))}
       </div>

@@ -14,6 +14,7 @@ _DayDto _$DayDtoFromJson(Map<String, dynamic> json) => _DayDto(
   title: json['title'] as String?,
   isFast: json['isFast'] as bool? ?? false,
   storyUrl: json['storyUrl'] as String?,
+  pictureUrl: json['pictureUrl'] as String?,
 );
 
 Map<String, dynamic> _$DayDtoToJson(_DayDto instance) => <String, dynamic>{
@@ -22,4 +23,5 @@ Map<String, dynamic> _$DayDtoToJson(_DayDto instance) => <String, dynamic>{
   'title': instance.title,
   'isFast': instance.isFast,
   'storyUrl': instance.storyUrl,
+  'pictureUrl': instance.pictureUrl,
 };

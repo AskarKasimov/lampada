@@ -7,6 +7,8 @@ import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/presentation/widgets/interpretation_sheet.dart';
 
+import '../../../../support/text_selection.dart';
+
 void main() {
   testWidgets('текст толкования можно выделить', (tester) async {
     const verse = Verse(
@@ -29,5 +31,15 @@ void main() {
 
     expect(find.byType(SelectableShareArea), findsOneWidget);
     expect(find.byType(AppShareButton), findsOneWidget);
+    await expectTextCanBeCopied(
+      tester,
+      find.text(verse.interpretation!),
+      contains: verse.interpretation!,
+    );
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Феофилакт'),
+      contains: verse.interpretation!,
+    );
   });
 }

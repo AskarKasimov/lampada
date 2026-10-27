@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,12 +11,15 @@ import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart'
     show bookmarksProvider;
+import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
 import 'package:lampada/features/day_story/presentation/providers/providers.dart';
 import 'package:lampada/features/day_story/presentation/screens/day_story_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/text_selection.dart';
 
 const _url = 'https://azbyka.ru/days/sv-ivanov';
 const _title = 'Мц. Иулиании Никомидийской';
@@ -30,6 +35,13 @@ class _FakeRepository implements DayStoryRepository {
     calls++;
     return _result;
   }
+}
+
+class _PendingRepository implements DayStoryRepository {
+  final completer = Completer<Result<DayStory>>();
+
+  @override
+  Future<Result<DayStory>> fetch(String url) => completer.future;
 }
 
 void main() {
@@ -70,7 +82,21 @@ void main() {
     expect(find.textContaining('Абзац первый.'), findsNothing);
     await next(tester);
     expect(find.text('Абзац первый.\n\nАбзац второй.'), findsOneWidget);
-    expect(find.text('— Азбука веры'), findsOneWidget);
+    expect(find.text('Азбука веры'), findsOneWidget);
+  });
+
+  testWidgets('по столбику точек страницы листаются пальцем', (tester) async {
+    final repo = _FakeRepository(
+      const Success(DayStory(paragraphs: ['Абзац первый.', 'Абзац второй.'])),
+    );
+    await tester.pumpWidget(wrap(repo));
+    await tester.pumpAndSettle();
+
+    final rail = tester.getRect(find.byType(RailScrubber));
+    await tester.tapAt(rail.bottomCenter - const Offset(0, 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Абзац первый.\n\nАбзац второй.'), findsOneWidget);
   });
 
   testWidgets('длинный рассказ делится на страницы, подпись в конце', (
@@ -93,12 +119,12 @@ void main() {
     expect(rail.count, greaterThanOrEqualTo(3));
     await next(tester);
     expect(find.textContaining('детство'), findsOneWidget);
-    expect(find.text('— Азбука веры'), findsNothing);
+    expect(find.text('Азбука веры'), findsNothing);
     for (var page = 2; page < rail.count; page++) {
       await next(tester);
     }
     expect(find.textContaining('подвиг'), findsOneWidget);
-    expect(find.text('— Азбука веры'), findsOneWidget);
+    expect(find.text('Азбука веры'), findsOneWidget);
   });
 
   testWidgets('показывает кнопку «Поделиться» для рассказа', (tester) async {
@@ -130,6 +156,18 @@ void main() {
       ),
       findsWidgets,
     );
+    await expectTextCanBeCopied(tester, find.text(_title), contains: _title);
+    await next(tester);
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Абзац первый.'),
+      contains: 'Абзац первый.',
+    );
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Азбука веры'),
+      contains: 'Абзац первый.',
+    );
   });
 
   testWidgets('сбой загрузки показывает сообщение и кнопку повтора', (
@@ -153,6 +191,80 @@ void main() {
       greaterThan(tester.getSize(find.byType(Scaffold)).width / 2),
     );
   });
+
+  testWidgets(
+    'на обложке крестик находится справа в том же слоте, что при ошибке',
+    (tester) async {
+      final repo = _FakeRepository(
+        const Success(DayStory(paragraphs: ['Абзац первый.'])),
+      );
+
+      await tester.pumpWidget(wrap(repo));
+      await tester.pumpAndSettle();
+
+      final close = find.byTooltip('Закрыть рассказ');
+      expect(close, findsOneWidget);
+      final rect = tester.getRect(close);
+      expect(rect.width, greaterThanOrEqualTo(48));
+      expect(
+        rect.left,
+        greaterThan(tester.getSize(find.byType(Scaffold)).width / 2),
+      );
+      expect(rect.top, lessThan(80));
+    },
+  );
+
+  testWidgets(
+    'можно закрыть рассказ во время загрузки и поздний ответ не возвращает его',
+    (tester) async {
+      final repo = _PendingRepository();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            dayStoryRepositoryProvider.overrideWithValue(repo),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (_) =>
+                          const DayStoryScreen(title: _title, storyUrl: _url),
+                    ),
+                  ),
+                  child: const Text('Источник'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Источник'));
+      await tester.pumpAndSettle();
+
+      final close = find.byTooltip('Закрыть рассказ');
+      expect(close, findsOneWidget);
+      expect(
+        tester.getCenter(close).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold).last).width / 2),
+      );
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(find.text('Источник'), findsOneWidget);
+      expect(find.byType(DayStoryScreen), findsNothing);
+
+      repo.completer.complete(
+        const Success(DayStory(paragraphs: ['Поздний ответ.'])),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Источник'), findsOneWidget);
+      expect(find.text('Поздний ответ.'), findsNothing);
+    },
+  );
 
   testWidgets('без описания показывает спокойное состояние без повтора', (
     tester,

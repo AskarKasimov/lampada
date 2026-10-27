@@ -20,7 +20,6 @@ class CardContent extends StatefulWidget {
     required this.card,
     super.key,
     this.showBadge = true,
-    this.showSourceDash = true,
     this.showSource = true,
     this.scrollable = true,
     this.scrollController,
@@ -33,7 +32,6 @@ class CardContent extends StatefulWidget {
   /// берётся из типа карточки; Библия и рассказ задают свой.
   final SharedContent? shareContent;
   final bool showBadge;
-  final bool showSourceDash;
   final bool showSource;
 
   /// Внутри листаемой читалки вертикальный жест принадлежит переключению
@@ -112,8 +110,7 @@ class _CardContentState extends State<CardContent> {
                   ? 16 +
                         readingTextHeight(
                           context: context,
-                          text:
-                              '${widget.showSourceDash ? '— ' : ''}${card.source}',
+                          text: card.source,
                           style: _sourceStyle(colors),
                           maxWidth: constraints.maxWidth,
                         )
@@ -122,8 +119,7 @@ class _CardContentState extends State<CardContent> {
                   ? 16 +
                         readingTextHeight(
                           context: context,
-                          text:
-                              '${widget.showSourceDash ? '— ' : ''}${card.source}',
+                          text: card.source,
                           style: _sourceStyle(colors),
                           maxWidth: constraints.maxWidth,
                           textScaler: MediaQuery.textScalerOf(context),
@@ -250,25 +246,23 @@ class _CardContentState extends State<CardContent> {
     bool needsFullText,
   ) => ReadingContentPosition(
     needsFullText: needsFullText,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SelectableShareArea(
-          content: _shareContent,
-          child: Text(body, style: bodyStyle, textAlign: TextAlign.center),
-        ),
-        if (widget.showSource) ...[
-          const SizedBox(height: 16),
-          _sourceText(card, colors),
+    child: SelectableShareArea(
+      content: _shareContent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(body, style: bodyStyle, textAlign: TextAlign.center),
+          if (widget.showSource) ...[
+            const SizedBox(height: 16),
+            _sourceText(card, colors),
+          ],
         ],
-      ],
+      ),
     ),
   );
 
-  Widget _sourceText(DayCard card, AppColorsExtension colors) => Text(
-    '${widget.showSourceDash ? '— ' : ''}${card.source}',
-    style: _sourceStyle(colors),
-  );
+  Widget _sourceText(DayCard card, AppColorsExtension colors) =>
+      Text(card.source, style: _sourceStyle(colors));
 
   TextStyle _bodyStyle(BuildContext context, DayCard card) =>
       card.type == CardType.reading

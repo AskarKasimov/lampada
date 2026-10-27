@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../bible/domain/entities/bible_book.dart';
-import '../../../bible/presentation/providers/providers.dart';
+import '../../../bible/presentation/navigation/open_bible_viewer.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../domain/entities/daily_reading.dart';
 import 'interpretation_sheet.dart';
@@ -65,6 +65,7 @@ class ReadingCardPages {
       final verse = reading.verses[index];
       return VerseView(
         verse: verse,
+        bookAbbreviation: _book?.abbreviation,
         onOpenInterpretation: verse.hasInterpretation
             ? () => InterpretationSheet.show(
                 context,
@@ -76,7 +77,6 @@ class ReadingCardPages {
     }
 
     final links = chapterLinks(context);
-    final colors = AppColorsExtension.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -86,7 +86,7 @@ class ReadingCardPages {
                 ? 'Хотите прочесть главу полностью?'
                 : 'Хотите прочесть главы полностью?',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 22, color: colors.ink),
+            style: AppTheme.headingStyle(context, fontSize: 22),
           ),
           const SizedBox(height: 18),
           for (final link in links)
@@ -96,24 +96,50 @@ class ReadingCardPages {
     );
   }
 
-  /// Полные главы отрывка с первого стиха. Пусто, если книгу не узнали.
+  /// Предлагает чтение главы или продолжение после дневного отрывка.
   ///
-  /// Глава открывается во вкладке «Библия», а не отдельным окном: там её
-  /// можно дочитать и листать дальше, место чтения сохраняется.
-  List<ReadingLink> chapterLinks(BuildContext context) {
+  /// Ссылка открывает временный просмотр главы; личное место во вкладке
+  /// «Библия» остаётся отдельным.
+  List<ReadingLink> chapterLinks(
+    BuildContext context, {
+    bool continueAfterDailyReading = false,
+  }) {
     final chapters = _chapters;
     final book = _book;
     if (book == null) return const [];
+    if (continueAfterDailyReading) {
+      final lastVerse = reading.verses.lastOrNull;
+      if (lastVerse == null || !chapters.contains(lastVerse.chapter)) {
+        return const [];
+      }
+      final nextVerse = lastVerse.number + 1;
+      return [
+        (
+          label: 'Продолжить чтение',
+          onPressed: () => openBibleViewer(
+            context,
+            book: book,
+            chapter: lastVerse.chapter,
+            verse: nextVerse,
+            nextChapterOnMissingVerse: true,
+            source: BibleOpenSource.dailyReading,
+          ),
+        ),
+      ];
+    }
     return [
       for (final chapter in chapters)
         (
           label: chapters.length == 1
               ? 'Прочитать главу полностью'
               : 'Прочитать главу $chapter',
-          onPressed: () => ProviderScope.containerOf(
+          onPressed: () => openBibleViewer(
             context,
-            listen: false,
-          ).read(bibleOpenRequestProvider.notifier).open(book.code, chapter),
+            book: book,
+            chapter: chapter,
+            verse: 1,
+            source: BibleOpenSource.dailyReading,
+          ),
         ),
     ];
   }

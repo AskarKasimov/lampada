@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { StoreSlide } from "@/components/store_slide";
 import { parseCaptureRequest } from "@/lib/capture_request";
 import { loadContent, type LoadedContent } from "@/lib/screenshot_content";
+import { sharedTitleFontSize } from "@/lib/title_layout";
 
 export default function CapturePage() {
   const [content, setContent] = useState<LoadedContent | null>(null);
@@ -62,5 +63,11 @@ export default function CapturePage() {
     return <p role="alert">Ошибка capture: Неизвестный запрос для снимка.</p>;
   }
 
-  return <StoreSlide slide={slide} locale={content.locale} format={format} />;
+  const titleSize = sharedTitleFontSize(
+    content.slides.map((item) => item.title),
+    format,
+  );
+  return (
+    <StoreSlide slide={slide} locale={content.locale} format={format} titleSize={titleSize} />
+  );
 }

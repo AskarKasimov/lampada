@@ -9,10 +9,8 @@ part 'day_progress.freezed.dart';
 /// юзер заходил. [readTypes] — срез сегодняшнего дня для сессии и напоминаний.
 /// Domain-модель, без JSON.
 ///
-/// Серия («Лампадка») здесь не хранится, а выводится из [visitedDays]. Так
-/// требует §«Key Entities» спеки — «производное от посещений». Раньше это был
-/// самостоятельный счётчик, который только рос: вернувшись через месяц, юзер
-/// видел «14 дней подряд», потому что сбрасывать его было негде.
+/// Текущая серия выводится из [visitedDays]. Отдельный рекорд сохраняет
+/// максимум из старых версий, которые ограничивали историю посещений.
 @freezed
 abstract class DayProgress with _$DayProgress {
   const DayProgress._();
@@ -35,6 +33,10 @@ abstract class DayProgress with _$DayProgress {
     /// Когда сегодня впервые дочитана «Мудрость дня»; null, если ещё нет.
     /// От этого момента отсчитываются напоминания о святом и курсе.
     DateTime? wisdomCompletedAt,
+
+    /// Сохранённый рекорд, в том числе из прежней ограниченной истории.
+    /// Ноль совместим со старыми сохранениями без отдельного рекорда.
+    @Default(0) int bestStreak,
   }) = _DayProgress;
 
   bool isRead(CardType type) => readTypes.contains(type);
@@ -76,12 +78,7 @@ abstract class DayProgress with _$DayProgress {
   /// серию продлевает, но сам в неё не входит — иначе «5 дней» набиралось бы
   /// из двух заходов.
   int streakOn(DateTime today) {
-    final days = visitedDays.toList()..sort();
-    if (days.isEmpty) return 0;
-
-    final todayKey = dateKey(today);
-    // Будущие даты (сменилась таймзона, переставили часы) в счёт не берём.
-    final past = days.where((d) => d.compareTo(todayKey) <= 0).toList();
+    final past = _pastDays(today);
     if (past.isEmpty) return 0;
 
     var previous = DateTime.parse(past.last);
@@ -96,6 +93,36 @@ abstract class DayProgress with _$DayProgress {
       previous = day;
     }
     return streak;
+  }
+
+  /// Самая длинная серия до [today] включительно, по тем же правилам, что
+  /// [streakOn]. Погасшая серия лучшую не отменяет.
+  int bestStreakOn(DateTime today) {
+    final past = _pastDays(today);
+    var best = 0;
+    var run = 0;
+    DateTime? previous;
+    for (final key in past) {
+      final day = DateTime.parse(key);
+      run = previous != null && _gap(previous, day) <= _maxGapDays
+          ? run + 1
+          : 1;
+      if (run > best) best = run;
+      previous = day;
+    }
+    return bestStreak > best ? bestStreak : best;
+  }
+
+  /// Сколько дней лампада горела в календарном [year].
+  int litDaysInYear(int year) =>
+      visitedDays.where((key) => key.startsWith('$year-')).length;
+
+  /// Дни активности по возрастанию. Будущие даты (сменилась таймзона,
+  /// переставили часы) в счёт не берём.
+  List<String> _pastDays(DateTime today) {
+    final todayKey = dateKey(today);
+    return visitedDays.where((d) => d.compareTo(todayKey) <= 0).toList()
+      ..sort();
   }
 
   /// Разница в календарных днях. Через UTC — иначе переход на летнее время

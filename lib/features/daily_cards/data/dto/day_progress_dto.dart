@@ -29,6 +29,9 @@ abstract class DayProgressDto with _$DayProgressDto {
     /// Момент (ISO 8601, локальное время) первого завершения «Мудрости дня»
     /// за [date]. От него отсчитываются дневные напоминания.
     String? wisdomCompletedAt,
+
+    /// Рекорд серии, в том числе из прежней ограниченной истории посещений.
+    @Default(0) int bestStreak,
   }) = _DayProgressDto;
 
   factory DayProgressDto.fromJson(Map<String, dynamic> json) =>

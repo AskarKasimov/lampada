@@ -13,6 +13,7 @@ import '../../data/datasources/day_cards_remote_datasource.dart';
 import '../../data/repositories/azbyka_day_cards_repository.dart';
 import '../../data/repositories/prefs_course_progress_repository.dart';
 import '../../data/repositories/prefs_day_progress_repository.dart';
+import '../../data/repositories/prefs_day_wisdom_position_repository.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/day_section.dart';
@@ -20,6 +21,7 @@ import '../../domain/entities/today_cards.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
+import '../../domain/repositories/day_wisdom_position_repository.dart';
 import '../../domain/usecases/complete_course_topic.dart';
 import '../../domain/usecases/complete_day_wisdom.dart';
 import '../../domain/usecases/get_completed_course_topics.dart';
@@ -28,8 +30,10 @@ import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
 import '../../domain/usecases/has_started_course.dart';
 import '../../domain/usecases/load_day_progress.dart';
+import '../../domain/usecases/load_day_wisdom_position.dart';
 import '../../domain/usecases/record_card_read.dart';
 import '../../domain/usecases/save_course_topic.dart';
+import '../../domain/usecases/save_day_wisdom_position.dart';
 
 final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
   (ref) => AzbykaDayCardsRepository(
@@ -64,22 +68,6 @@ final dayCardsProvider = FutureProvider.family<TodayCards, String>((
 final todayCardsProvider = FutureProvider<TodayCards>(
   (ref) => ref.watch(dayCardsProvider(dateKey(DateTime.now())).future),
 );
-
-/// Дата, открытая на вкладке «Сегодня». Полоска недели переключает её,
-/// вкладка целиком следует за ней. Нормализована до полуночи, чтобы
-/// сравнения дат не зависели от времени суток.
-final selectedDateProvider = NotifierProvider<SelectedDateNotifier, DateTime>(
-  SelectedDateNotifier.new,
-);
-
-class SelectedDateNotifier extends Notifier<DateTime> {
-  static DateTime _atMidnight(DateTime d) => DateTime(d.year, d.month, d.day);
-
-  @override
-  DateTime build() => _atMidnight(DateTime.now());
-
-  void select(DateTime date) => state = _atMidnight(date);
-}
 
 /// Разовая просьба открыть раздел сегодняшнего дня, как только он готов.
 /// Её оставляют приветствие («Открыть сегодняшний день» обещает чтение, а
@@ -126,6 +114,23 @@ final completeDayWisdomProvider = Provider<CompleteDayWisdom>(
 
 final loadDayProgressProvider = Provider<LoadDayProgress>(
   (ref) => LoadDayProgress(ref.watch(dayProgressRepositoryProvider)),
+);
+
+final dayWisdomPositionRepositoryProvider =
+    Provider<DayWisdomPositionRepository>(
+      (ref) => PrefsDayWisdomPositionRepository(
+        ref.watch(sharedPreferencesProvider),
+      ),
+    );
+
+final loadDayWisdomPositionProvider = Provider<LoadDayWisdomPosition>(
+  (ref) =>
+      LoadDayWisdomPosition(ref.watch(dayWisdomPositionRepositoryProvider)),
+);
+
+final saveDayWisdomPositionProvider = Provider<SaveDayWisdomPosition>(
+  (ref) =>
+      SaveDayWisdomPosition(ref.watch(dayWisdomPositionRepositoryProvider)),
 );
 
 final courseProgressRepositoryProvider = Provider<CourseProgressRepository>(

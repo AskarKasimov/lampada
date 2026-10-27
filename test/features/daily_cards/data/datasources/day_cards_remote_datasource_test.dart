@@ -20,10 +20,12 @@ String _page({
   String? readingsHtml,
   String? parableHtml,
   String? headerHtml,
+  String? sidebarHtml,
 }) =>
     '''
 <html><body>
   ${headerHtml ?? ''}
+  ${sidebarHtml ?? ''}
   <div class="widget quote-of-day">
     <div class="box">
       <p>$quoteBody</p>
@@ -66,6 +68,25 @@ final _matinsAndLiturgyReadings =
     '${_bibref('Jn.10:9-16', 'Ин.10:9–16')} (зач. 36). Лит. – '
     '${_bibref('Gal.1:11-19', 'Гал.1:11–19')} (зач. 200). '
     '${_bibref('Jn.10:1-9', 'Ин.10:1–9')} (зач. 35).';
+
+/// Виджет боковой колонки Азбуки с картинкой: «Картина дня» и «Фото дня»
+/// свёрстаны одинаково и различаются только заголовком.
+String _dayImageWidget(
+  String title,
+  String path, {
+  String host = 'azbyka.ru',
+}) =>
+    '''
+<div class="widget dayfoto">
+  <div class="widget-title">$title <a class="help-link" href="https://azbyka.ru/art/x/"></a></div>
+  <a href="https://azbyka.ru/art/x/" class="foto-box group2" title="Картина">
+    <img class="square50"
+      src="https://$host/days/cache/300x240/storage/images/$path"
+      srcset="https://$host/days/cache/600x480/storage/images/$path 2x"
+      alt="Картина">
+  </a>
+</div>
+''';
 
 const _timeout = Duration(seconds: 3);
 final _date = DateTime(2026, 7, 19);
@@ -155,7 +176,7 @@ void main() {
     });
 
     test('подпись под притчей уходит в источник, а не в текст', () async {
-      // Карточка сама печатает «— {source}» под телом: оставь подпись
+      // Карточка сама печатает источник под телом: оставь подпись
       // абзацем — и автор окажется на экране дважды, по-разному.
       final cards = await _fetch(
         _datasourceServing(
@@ -331,6 +352,50 @@ void main() {
       for (final type in ['advice', 'basics', 'reading']) {
         expect(_cardOfType(cards, type).source, 'Азбука веры');
       }
+    });
+  });
+
+  group('картина дня', () {
+    test('берётся крупная картинка из виджета «Картина дня»', () async {
+      final day = await _fetchDay(
+        _datasourceServing(
+          _page(
+            sidebarHtml:
+                _dayImageWidget('Фото дня', 'photos-of-day/photo.jpg') +
+                _dayImageWidget('Картина дня', 'pictures-of-day/art.jpg'),
+          ),
+        ),
+      );
+
+      // Фото дня свёрстано так же и стоит раньше, но это не картина.
+      expect(
+        day.pictureUrl,
+        'https://azbyka.ru/days/cache/600x480/storage/images/'
+        'pictures-of-day/art.jpg',
+      );
+    });
+
+    test('без виджета картины поле пустое, день не падает', () async {
+      final day = await _fetchDay(_datasourceServing(_page()));
+
+      expect(day.pictureUrl, isNull);
+      expect(day.cards, isNotEmpty);
+    });
+
+    test('картинка не с Азбуки не берётся', () async {
+      final day = await _fetchDay(
+        _datasourceServing(
+          _page(
+            sidebarHtml: _dayImageWidget(
+              'Картина дня',
+              'pictures-of-day/art.jpg',
+              host: 'example.com',
+            ),
+          ),
+        ),
+      );
+
+      expect(day.pictureUrl, isNull);
     });
   });
 

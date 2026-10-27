@@ -9,6 +9,7 @@ import '../../../../core/storage/preference_write.dart';
 import '../../domain/bible_chapter_statuses.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
+import '../../domain/entities/bible_reading_position.dart';
 import '../../domain/repositories/bible_repository.dart';
 import '../datasources/bible_remote_datasource.dart';
 import '../dto/bible_chapter_dto.dart';
@@ -22,9 +23,12 @@ class AzbykaBibleRepository implements BibleRepository {
   static const _cachePrefix = 'bible_chapter_v1:';
   static const _progressPrefix = 'bible_progress_v1:';
   static const _lastChapterKey = 'bible_last_chapter_v1';
+  static const _readingPositionKey = 'bible_reading_position_v1';
   static const _readKey = 'bible_read_chapters_v1';
   Future<void> _pendingProgressWrite = Future.value();
   Future<void> _pendingReadWrite = Future.value();
+  Future<void> _pendingPositionWrite = Future.value();
+  Future<Result<BibleReadingPosition?>>? _positionMigration;
 
   @override
   Future<Result<BibleChapter>> getChapter(String book, int chapter) async {
@@ -162,6 +166,11 @@ class AzbykaBibleRepository implements BibleRepository {
   ) {
     // Последовательные записи сохраняют последний свайп даже при быстром листании.
     final operation = _pendingProgressWrite.then((_) async {
+      // Миграция должна захватить старый стих до первой записи общего прогресса.
+      final migration = await _ensureReadingPositionMigrated();
+      if (migration case Failure(failure: final failure)) {
+        return Failure<void>(failure);
+      }
       try {
         await requirePreferenceWrite(
           _prefs.setString(
@@ -171,9 +180,6 @@ class AzbykaBibleRepository implements BibleRepository {
               'fraction': progress.fraction,
             }),
           ),
-        );
-        await requirePreferenceWrite(
-          _prefs.setString(_lastChapterKey, '$book.$chapter'),
         );
         return const Success<void>(null);
       } on Object catch (error) {
@@ -189,6 +195,163 @@ class AzbykaBibleRepository implements BibleRepository {
     _pendingProgressWrite = operation.then((_) {});
     return operation;
   }
+
+  @override
+  Future<Result<BibleReadingPosition?>> getReadingPosition() async {
+    try {
+      await _pendingPositionWrite;
+      return await _ensureReadingPositionMigrated();
+    } on Object catch (error) {
+      return Failure(
+        AppFailure(
+          'Не удалось восстановить место чтения',
+          kind: FailureKind.unknown,
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<void>> saveReadingPosition(
+    BibleReadingPosition position,
+  ) async {
+    if (!_isValidPosition(position)) {
+      return const Failure(
+        AppFailure('Некорректное место чтения', kind: FailureKind.unknown),
+      );
+    }
+    final migration = await _ensureReadingPositionMigrated();
+    if (migration case Failure(failure: final failure)) {
+      return Failure(failure);
+    }
+    final operation = _pendingPositionWrite.then((_) async {
+      try {
+        await requirePreferenceWrite(
+          _prefs.setString(
+            _readingPositionKey,
+            jsonEncode({
+              'version': 1,
+              'book': position.book,
+              'chapter': position.chapter,
+              'verse': position.verse,
+            }),
+          ),
+        );
+        _positionMigration = Future.value(Success(position));
+        return const Success<void>(null);
+      } on Object catch (error) {
+        return Failure<void>(
+          AppFailure(
+            'Не удалось сохранить место чтения',
+            kind: FailureKind.unknown,
+            cause: error,
+          ),
+        );
+      }
+    });
+    _pendingPositionWrite = operation.then((_) {});
+    return operation;
+  }
+
+  Future<Result<BibleReadingPosition?>> _ensureReadingPositionMigrated() {
+    final current = _positionMigration;
+    if (current != null) return current;
+    final migration = _migrateReadingPosition();
+    late final Future<Result<BibleReadingPosition?>> tracked;
+    tracked = migration.then((result) {
+      // Повтор после ошибки записи безопасен, старые ключи остаются нетронуты.
+      if (result is Failure) _positionMigration = null;
+      return result;
+    });
+    _positionMigration = tracked;
+    return tracked;
+  }
+
+  Future<Result<BibleReadingPosition?>> _migrateReadingPosition() async {
+    try {
+      final raw = _prefs.getString(_readingPositionKey);
+      if (raw != null) {
+        // Повреждённая новая запись не возвращает пользователя к устаревшим данным.
+        return Success(_decodeReadingPosition(raw));
+      }
+      final legacy = _readLegacyReadingPosition();
+      if (legacy == null) return const Success(null);
+      await requirePreferenceWrite(
+        _prefs.setString(
+          _readingPositionKey,
+          jsonEncode({
+            'version': 1,
+            'book': legacy.book,
+            'chapter': legacy.chapter,
+            'verse': legacy.verse,
+          }),
+        ),
+      );
+      return Success(legacy);
+    } on Object catch (error) {
+      return Failure(
+        AppFailure(
+          'Не удалось перенести место чтения',
+          kind: FailureKind.unknown,
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  BibleReadingPosition? _decodeReadingPosition(String raw) {
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      if (json['version'] != 1 ||
+          json['book'] is! String ||
+          json['chapter'] is! int ||
+          json['verse'] is! int) {
+        return null;
+      }
+      final position = BibleReadingPosition(
+        book: json['book'] as String,
+        chapter: json['chapter'] as int,
+        verse: json['verse'] as int,
+      );
+      return _isValidPosition(position) ? position : null;
+    } on Object catch (error) {
+      netLog('основное место чтения повреждено: $error');
+      return null;
+    }
+  }
+
+  BibleReadingPosition? _readLegacyReadingPosition() {
+    final parts = _prefs.getString(_lastChapterKey)?.split('.');
+    if (parts == null || parts.length != 2) return null;
+    final chapter = int.tryParse(parts[1]);
+    if (chapter == null) return null;
+    try {
+      final raw = _prefs.getString('$_progressPrefix${parts[0]}.$chapter');
+      if (raw == null) return null;
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final verse = json['verse'];
+      if (verse is! int) return null;
+      final position = BibleReadingPosition(
+        book: parts[0],
+        chapter: chapter,
+        verse: verse,
+      );
+      return _isValidPosition(position) ? position : null;
+    } on Object catch (error) {
+      netLog('старое место чтения повреждено: $error');
+      return null;
+    }
+  }
+
+  bool _isValidPosition(BibleReadingPosition position) =>
+      position.verse > 0 &&
+      bibleBooks.any(
+        (book) =>
+            book.code == position.book &&
+            position.chapter >= 1 &&
+            position.chapter <= book.chapterCount,
+      );
 
   BibleChapterId? _lastChapter(
     Map<BibleChapterId, BibleChapterProgress> progress,

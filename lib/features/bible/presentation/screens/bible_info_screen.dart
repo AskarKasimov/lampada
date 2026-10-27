@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_theme.dart';
 
 /// Поясняет перевод и статусы плиток глав в каталоге Библии.
 class BibleInfoScreen extends StatelessWidget {
@@ -27,11 +28,7 @@ class BibleInfoScreen extends StatelessWidget {
             children: [
               Text(
                 'Русский Синодальный перевод',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w600,
-                  color: colors.ink,
-                ),
+                style: AppTheme.headingStyle(context),
               ),
               const SizedBox(height: 14),
               Text(

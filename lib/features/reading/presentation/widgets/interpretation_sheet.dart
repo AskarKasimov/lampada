@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
@@ -46,6 +47,10 @@ class InterpretationSheet extends StatelessWidget {
       // Шторка открывается из вкладки со своим навигатором; без корневого
       // навигатора её низ ушёл бы под капсулу навбара.
       useRootNavigator: true,
+      sheetAnimationStyle: const AnimationStyle(
+        duration: AppMotion.modalEnter,
+        reverseDuration: AppMotion.modalExit,
+      ),
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: AppColorsExtension.of(context).background,
@@ -132,7 +137,7 @@ class InterpretationSheet extends StatelessWidget {
                         if (author != null && author!.isNotEmpty) ...[
                           const SizedBox(height: 18),
                           Text(
-                            '— $author',
+                            author!,
                             style: TextStyle(
                               fontSize: 13,
                               letterSpacing: 0.2,

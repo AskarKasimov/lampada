@@ -1,22 +1,25 @@
-import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/course_calendar.dart';
 import '../../domain/entities/day_card.dart';
 import 'day_entry_row.dart';
-import 'home_tile.dart';
+import 'home_grid_tile.dart';
 import 'read_status_checks.dart';
 
-/// Вход в личный курс на вкладке «Главная»: заголовок и полоса прогресса.
-/// Тема и счётчик прочитанного звучат только для скринридера.
+/// Вход в личный курс на вкладке «Главная». Той же анатомии, что плитки
+/// «Памяти дня» и «Мудрости дня»: картина во всю плитку и матовое стекло
+/// снизу, только плитка широкая. В стекле название, счётчик тем и
+/// отметка прочтения. Тема звучит только для скринридера; справка о курсе
+/// открывается из читалки.
 class CourseProgressHeader extends StatelessWidget {
   const CourseProgressHeader({
     required this.topic,
     required this.onTap,
     required this.completedTopicCount,
     this.isUnread = true,
-    this.onInfo,
     super.key,
   });
 
@@ -25,8 +28,13 @@ class CourseProgressHeader extends StatelessWidget {
   final bool isUnread;
   final int? completedTopicCount;
 
-  /// Открывает справку о курсе; без него кнопки нет.
-  final VoidCallback? onInfo;
+  /// «Видение отроку Варфоломею» М. В. Нестерова (1889–1890), общественное
+  /// достояние. Отрок получает дар понимания грамоты: сюжет о начале пути,
+  /// как и курс. Обрезана заранее до широкого кадра с лицами и храмом.
+  static const coverAsset = 'assets/illustrations/course_cover.jpg';
+
+  /// Широкой плитке хватает меньшей высоты, чем квадратным плиткам дня.
+  static const _height = 128.0;
 
   int get _topicNumber {
     final match = RegExp(r'^basics-topic-(\d+)$').firstMatch(topic.id);
@@ -43,26 +51,42 @@ class CourseProgressHeader extends StatelessWidget {
     final title = count == courseTopicCount
         ? 'Курс пройден'
         : topic.title ?? 'Тема $topicNumber';
-    final onInfo = this.onInfo;
-
-    return HomeTile(
-      title: basicsCourseTitle,
-      type: CardType.basics,
-      illustration: (color) =>
-          Icon(CupertinoIcons.book, size: 150, color: color),
-      semanticsLabel: '$basicsCourseTitle. $progressLabel. $title',
-      onTap: onTap,
-      status: ReadStatusChecks(isUnread: isUnread),
-      progress: count == null ? null : count / courseTopicCount,
-      progressLabel: count == null ? null : '$count/$courseTopicCount',
-      action: onInfo == null
-          ? null
-          : IconButton(
-              tooltip: 'О курсе',
-              color: AppColorsExtension.of(context).textSecondary,
-              onPressed: onInfo,
-              icon: const Icon(CupertinoIcons.info),
-            ),
+    return Padding(
+      padding:
+          AppSpacing.of(context).horizontal +
+          const EdgeInsets.symmetric(vertical: 6),
+      child: HomeGridTile(
+        title: basicsCourseTitle,
+        type: CardType.basics,
+        minimumHeight: _height,
+        semanticsLabel: '$basicsCourseTitle. $progressLabel. $title',
+        onTap: onTap,
+        background: (_) => Image.asset(
+          coverAsset,
+          fit: BoxFit.cover,
+          // Лица мальчика и старца в верхней части кадра, низ под стеклом.
+          alignment: const Alignment(0, -0.4),
+          excludeFromSemantics: true,
+        ),
+        titleTrailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (count != null) ...[
+              // На стекле поверх картины серая мелкая подпись терялась:
+              // счётчик тёмный, как название, и крупнее подписи.
+              Text(
+                '$count/$courseTopicCount',
+                style: AppTheme.cardCaptionStyle(context).copyWith(
+                  fontSize: 16,
+                  color: AppColorsExtension.of(context).ink,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            ReadStatusChecks(isUnread: isUnread),
+          ],
+        ),
+      ),
     );
   }
 }

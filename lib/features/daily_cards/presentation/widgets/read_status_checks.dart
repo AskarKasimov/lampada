@@ -26,9 +26,7 @@ class ReadStatusChecks extends StatelessWidget {
                   child: Icon(
                     CupertinoIcons.checkmark_alt,
                     size: 14,
-                    color: isUnread
-                        ? colors.textTertiary.withValues(alpha: 0.4)
-                        : colors.accent,
+                    color: isUnread ? colors.textTertiary : colors.accent,
                   ),
                 ),
             ],

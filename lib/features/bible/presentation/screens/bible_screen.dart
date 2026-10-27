@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
@@ -278,9 +279,10 @@ class _BibleBookTile extends StatelessWidget {
                                       return;
                                     }
                                     Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        fullscreenDialog: true,
+                                      BottomUpModalRoute<void>(
                                         builder: (_) => BibleReaderScreen(
+                                          sessionMode:
+                                              BibleReadingSessionMode.main,
                                           book: book,
                                           chapter: chapter,
                                           initialVerse: progress?.verse ?? 1,

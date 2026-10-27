@@ -1,3 +1,4 @@
-// Высота кремовой маски поверх системного status bar, Dynamic Island и
-// диагональной DEBUG-ленты в исходных Flutter-скриншотах.
-export const screenshotCleanupMaskHeight = 8;
+// Высота маски поверх системного status bar и Dynamic Island в исходных
+// скриншотах, в процентах высоты экрана. Плашки верхней панели приложения
+// начинаются около 7.5%, поэтому выше не поднимать.
+export const screenshotCleanupMaskHeight = 7;

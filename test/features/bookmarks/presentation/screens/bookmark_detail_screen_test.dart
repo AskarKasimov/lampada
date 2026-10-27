@@ -17,6 +17,8 @@ import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/theme/card_type_style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../support/text_selection.dart';
+
 final _bookmark = Bookmark(
   id: 'interpretation-1',
   kind: BookmarkKind.interpretation,
@@ -74,6 +76,57 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('долгое нажатие в закладке позволяет скопировать текст', (
+    tester,
+  ) async {
+    await pump(tester);
+    await expectTextCanBeCopied(
+      tester,
+      find.text(_bookmark.text),
+      contains: _bookmark.text,
+      excludes: '28 июля',
+    );
+    await expectTextCanBeCopied(
+      tester,
+      find.text(_bookmark.source),
+      contains: _bookmark.text,
+      excludes: '28 июля',
+    );
+  });
+
+  testWidgets('движение пальца после долгого нажатия не закрывает закладку', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  fullscreenDialog: true,
+                  builder: (_) => BookmarkDetailScreen(bookmark: _bookmark),
+                ),
+              ),
+              child: const Text('Открыть закладку'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Открыть закладку'));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text(_bookmark.text)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+    await gesture.moveBy(const Offset(150, 0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byType(BookmarkDetailScreen), findsOneWidget);
+  });
+
   for (final brightness in Brightness.values) {
     for (final type in CardType.values) {
       testWidgets('чип $type в навбаре с цветом карточки ($brightness)', (
@@ -111,7 +164,7 @@ void main() {
     }
   }
 
-  testWidgets('сохранённый стих предлагает открыть главу из AppBar', (
+  testWidgets('книжка в нижней панели открывает главу с сохранённого стиха', (
     tester,
   ) async {
     final verse = _bookmark.copyWith(
@@ -126,13 +179,40 @@ void main() {
         of: find.byType(AppBar),
         matching: find.byTooltip('Открыть главу'),
       ),
-      findsOneWidget,
+      findsNothing,
+    );
+    final chapterButton = find.ancestor(
+      of: find.byIcon(CupertinoIcons.book),
+      matching: find.byType(IconButton),
+    );
+    expect(chapterButton, findsOneWidget);
+    expect(tester.getSize(chapterButton), const Size(56, 56));
+    expect(
+      tester.getCenter(chapterButton).dy,
+      lessThan(tester.getCenter(find.byType(BookmarkButton)).dy),
+    );
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: chapterButton,
+              matching: find.byIcon(CupertinoIcons.book),
+            ),
+          )
+          .size,
+      28,
     );
     expect(requestedChapters, isEmpty);
     await tester.tap(find.byTooltip('Открыть главу'));
     await tester.pumpAndSettle();
     expect(requestedChapters, [('Jn', 10)]);
     expect(find.byType(BibleReaderScreen), findsOneWidget);
+    expect(
+      tester
+          .widget<BibleReaderScreen>(find.byType(BibleReaderScreen))
+          .sessionMode,
+      BibleReadingSessionMode.viewer,
+    );
     expect(find.text('Второй стих полной главы').hitTestable(), findsOneWidget);
     final pages = find.byType(PageView);
     await tester.drag(pages, const Offset(0, 600));
@@ -156,6 +236,83 @@ void main() {
   ) async {
     await pump(tester);
     expect(find.byTooltip('Открыть главу'), findsNothing);
+  });
+
+  testWidgets('длинный текст с масштабом оставляет зазор до нижних действий', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 568));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final verse = _bookmark.copyWith(
+      id: 'bible-Jn-10:2',
+      kind: BookmarkKind.verse,
+      text: List.filled(
+        30,
+        'Длинный текст стиха с несколькими словами.',
+      ).join(' '),
+    );
+    await tester.pumpWidget(
+      wrap(
+        MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 568),
+            textScaler: TextScaler.linear(1.7),
+          ),
+          child: BookmarkDetailScreen(bookmark: verse),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -20000),
+    );
+    await tester.pumpAndSettle();
+
+    final date = tester.getRect(find.text('28 июля'));
+    final chapterButton = tester.getRect(
+      find.ancestor(
+        of: find.byTooltip('Открыть главу'),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(date.bottom, lessThanOrEqualTo(chapterButton.top - 16));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('без ссылки резервирует место только под закладку и отправку', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 568));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final longBookmark = _bookmark.copyWith(
+      text: List.filled(30, 'Длинный текст с несколькими словами.').join(' '),
+    );
+    await tester.pumpWidget(
+      wrap(
+        MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 568),
+            textScaler: TextScaler.linear(1.7),
+          ),
+          child: BookmarkDetailScreen(bookmark: longBookmark),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Открыть главу'), findsNothing);
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -20000),
+    );
+    await tester.pumpAndSettle();
+
+    final date = tester.getRect(find.text('28 июля'));
+    final shareButton = tester.getRect(find.byTooltip('Поделиться'));
+    expect(date.bottom, lessThanOrEqualTo(shareButton.top - 16));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('крестик сверху справа, закладка и отправка снизу справа', (
@@ -190,7 +347,7 @@ void main() {
     await pump(tester);
 
     expect(find.text(_bookmark.text), findsOneWidget);
-    expect(find.text('— ${_bookmark.source}'), findsOneWidget);
+    expect(find.text(_bookmark.source), findsOneWidget);
     expect(find.text('Толкование'), findsOneWidget);
     expect(find.text('28 июля'), findsOneWidget);
   });

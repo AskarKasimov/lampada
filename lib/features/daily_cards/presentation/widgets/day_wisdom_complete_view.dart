@@ -12,6 +12,7 @@ import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../domain/entities/day_progress.dart';
 import '../providers/providers.dart';
@@ -22,8 +23,8 @@ import 'streak_card.dart';
 /// Только сюда дошедший день засчитывается в «Лампадку». Первое появление
 /// за день разыграно как маленькое событие: печать с искрами, затем по
 /// очереди текст и серия, в конце лампада загорается на глазах, и уже после
-/// неё раскрывается неделя. Повторно итог не показывается: юзер сразу
-/// переходит к полной главе, если она есть.
+/// неё раскрывается неделя. При повторном чтении тот же итог показывается
+/// сразу и остаётся на экране без анимации.
 class DayWisdomCompleteView extends ConsumerStatefulWidget {
   const DayWisdomCompleteView({
     required this.date,
@@ -46,8 +47,7 @@ class DayWisdomCompleteView extends ConsumerStatefulWidget {
 
   final VoidCallback onDone;
 
-  /// Второстепенные переходы под основной кнопкой, например полная глава.
-  /// Первый из них открывается сам при повторном завершении дня.
+  /// Доступные продолжения чтения, например полные главы.
   final List<({String label, VoidCallback onPressed})> links;
 
   @override
@@ -76,6 +76,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
   DayProgress? _before;
   var _lit = false;
   var _weekShown = false;
+  var _animateStreakChanges = true;
   Timer? _weekTimer;
 
   @override
@@ -84,6 +85,17 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
     _intro.addStatusListener((status) {
       if (status == AnimationStatus.completed) _lightUp();
     });
+    final progress = ref.read(dayProgressProvider).value;
+    if (progress?.isWisdomCompletedOn(widget.date) ?? false) {
+      // Повторный итог должен быть готов до первого кадра: PageView ещё
+      // доводит страницу до конца, пока отложенный arrival не вызвал _arrive.
+      _before = progress;
+      _animateStreakChanges = false;
+      _intro.value = 1;
+      _actions.value = 1;
+      _lit = true;
+      _weekShown = true;
+    }
   }
 
   @override
@@ -127,12 +139,8 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
     if (widget.recordsCompletion) {
       unawaited(_complete(before, repeat: repeat));
     }
-    if (repeat && widget.links.isNotEmpty) {
-      // Итог уже видели: праздновать второй раз незачем, ведём к главе.
-      _openChapter(widget.links.first, auto: true);
-      return;
-    }
     if (repeat || MediaQuery.disableAnimationsOf(context)) {
+      if (repeat) _animateStreakChanges = false;
       _intro.value = 1;
       _actions.value = 1;
       setState(() {
@@ -174,13 +182,10 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
     }
   }
 
-  void _openChapter(
-    ({String label, VoidCallback onPressed}) link, {
-    required bool auto,
-  }) {
+  void _openChapter(({String label, VoidCallback onPressed}) link) {
     ref
         .read(analyticsProvider)
-        .log(AnalyticsEvent.summaryChapterOpened(auto: auto));
+        .log(AnalyticsEvent.summaryChapterOpened(auto: false));
     link.onPressed();
   }
 
@@ -243,11 +248,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                   child: Text(
                     'Слава Богу!',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700,
-                      color: colors.ink,
-                    ),
+                    style: AppTheme.headingStyle(context, fontSize: 32),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -280,30 +281,45 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                       progress: progress,
                       today: DateTime.now(),
                       showWeek: _weekShown,
+                      animateChanges: _animateStreakChanges,
                       margin: EdgeInsets.zero,
                     ),
                   ),
                 ],
                 const SizedBox(height: 32),
+                if (widget.links.isNotEmpty) ...[
+                  _Rise(
+                    animation: _actionStep(0, 0.75),
+                    enabled: _weekShown,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: AppPrimaryButton(
+                        label: widget.links.first.label,
+                        color: colors.accent,
+                        onPressed: () => _openChapter(widget.links.first),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
                 _Rise(
-                  animation: _actionStep(0, 0.75),
+                  animation: _actionStep(0.2, 1),
                   enabled: _weekShown,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: AppPrimaryButton(
-                      label: 'Готово',
-                      color: colors.accent,
-                      onPressed: widget.onDone,
+                  child: TextButton(
+                    onPressed: widget.onDone,
+                    child: Text(
+                      'Вернуться на главную',
+                      style: TextStyle(color: colors.ink),
                     ),
                   ),
                 ),
-                for (final link in widget.links) ...[
+                for (final link in widget.links.skip(1)) ...[
                   const SizedBox(height: 8),
                   _Rise(
                     animation: _actionStep(0.2, 1),
                     enabled: _weekShown,
                     child: TextButton(
-                      onPressed: () => _openChapter(link, auto: false),
+                      onPressed: () => _openChapter(link),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

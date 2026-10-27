@@ -9,7 +9,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/fullscreen_swipe_dismiss.dart';
-import '../../../bible/presentation/screens/bible_reader_screen.dart';
+import '../../../../core/widgets/selectable_share_area.dart';
+import '../../../bible/presentation/navigation/open_bible_viewer.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/theme/card_type_style.dart';
 import '../../domain/entities/bookmark.dart';
@@ -38,6 +39,8 @@ class BookmarkDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final chapter = const ResolveBookmarkChapter()(bookmark);
+    final actionCount = chapter == null ? 2 : 3;
+    final actionColumnHeight = actionCount * 56.0 + (actionCount - 1) * 4.0;
     final brightness = Theme.of(context).brightness;
     final type = switch (bookmark.kind) {
       BookmarkKind.verse || BookmarkKind.interpretation => CardType.reading,
@@ -64,24 +67,11 @@ class BookmarkDetailScreen extends StatelessWidget {
             letterSpacing: 0.2,
           ),
           actions: [
-            if (chapter != null)
-              IconButton(
-                tooltip: 'Открыть главу',
-                icon: Icon(CupertinoIcons.book, color: colors.homeSubtitle),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => BibleReaderScreen(
-                      book: chapter.book,
-                      chapter: chapter.chapter,
-                      initialVerse: chapter.verse,
-                      openSource: BibleOpenSource.bookmark,
-                    ),
-                  ),
-                ),
-              ),
             IconButton(
               tooltip: 'Закрыть закладку',
               onPressed: () => Navigator.of(context).pop(),
+              constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+              padding: EdgeInsets.zero,
               icon: Icon(
                 CupertinoIcons.xmark,
                 size: 22,
@@ -104,21 +94,32 @@ class BookmarkDetailScreen extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                bookmark.text,
-                                textAlign: TextAlign.center,
-                                style: AppTheme.quoteStyle(context).copyWith(
-                                  fontSize: _fontSizeFor(bookmark.text.length),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                '— ${bookmark.source}',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  letterSpacing: 0.2,
-                                  color: colors.textSecondary,
+                              SelectableShareArea(
+                                content: SharedContent.bookmark,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      bookmark.text,
+                                      textAlign: TextAlign.center,
+                                      style: AppTheme.quoteStyle(context)
+                                          .copyWith(
+                                            fontSize: _fontSizeFor(
+                                              bookmark.text.length,
+                                            ),
+                                          ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      bookmark.source,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        letterSpacing: 0.2,
+                                        color: colors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -134,7 +135,7 @@ class BookmarkDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 144),
+                    SizedBox(height: actionColumnHeight + 28 + 16),
                   ],
                 ),
               ),
@@ -144,6 +145,29 @@ class BookmarkDetailScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (chapter != null) ...[
+                      IconButton(
+                        tooltip: 'Открыть главу',
+                        onPressed: () => openBibleViewer(
+                          context,
+                          book: chapter.book,
+                          chapter: chapter.chapter,
+                          verse: chapter.verse,
+                          source: BibleOpenSource.bookmark,
+                        ),
+                        constraints: const BoxConstraints.tightFor(
+                          width: 56,
+                          height: 56,
+                        ),
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          CupertinoIcons.book,
+                          size: 28,
+                          color: colors.homeSubtitle,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     BookmarkButton(
                       bookmark: bookmark,
                       placement: BookmarkPlacement.detail,

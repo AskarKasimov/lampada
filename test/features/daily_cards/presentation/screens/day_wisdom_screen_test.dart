@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,15 +17,137 @@ import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/day_wisdom_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_complete_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_card.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
 import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../support/text_selection.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets(
+    'пустая мудрость в модальном маршруте закрывается крестиком справа',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (_) => DayWisdomScreen(
+                        cards: const [],
+                        startIndex: 0,
+                        date: DateTime(2026, 10, 24),
+                        recordProgress: false,
+                        recordRead: false,
+                      ),
+                    ),
+                  ),
+                  child: const Text('Открыть мудрость'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Открыть мудрость'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final close = find.byTooltip('Закрыть');
+      expect(close, findsOneWidget);
+      expect(
+        tester.getCenter(close).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold).last).width / 2),
+      );
+    },
+  );
+
+  testWidgets(
+    'загрузка мудрости в модальном маршруте сохраняет правый крестик',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final pending = Completer<DailyReading>();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            dailyReadingProvider.overrideWith(
+              (ref, reference) => pending.future,
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      fullscreenDialog: true,
+                      builder: (_) => DayWisdomScreen(
+                        cards: const [
+                          DayCard(
+                            id: 'reading',
+                            type: CardType.reading,
+                            body: 'Ин.10:1',
+                            source: 'Источник',
+                            reference: 'Jn.10:1',
+                          ),
+                        ],
+                        startIndex: 0,
+                        date: DateTime(2026, 10, 24),
+                        recordProgress: false,
+                        recordRead: false,
+                      ),
+                    ),
+                  ),
+                  child: const Text('Открыть мудрость'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Открыть мудрость'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final close = find.byTooltip('Закрыть');
+      expect(close, findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.arrow_left), findsNothing);
+      final loadingY = tester.getCenter(close).dy;
+      expect(
+        tester.getCenter(close).dx,
+        greaterThan(tester.getSize(find.byType(Scaffold).last).width / 2),
+      );
+      pending.complete(
+        const DailyReading(
+          label: 'Ин.10:1',
+          verses: [Verse(number: 1, chapter: 10, text: 'Стих мудрости')],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Стих мудрости'), findsOneWidget);
+      expect(
+        tester.getCenter(find.byIcon(CupertinoIcons.xmark)).dy,
+        closeTo(loadingY, 0.5),
+      );
+    },
+  );
 
   testWidgets('единая листалка ведёт от притчи к первому стиху', (
     tester,
@@ -84,11 +207,103 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Притча'), findsOneWidget);
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Притча'),
+      contains: 'Притча',
+    );
     await tester.drag(find.byType(PageView), const Offset(0, -600));
     await tester.pumpAndSettle();
     expect(find.byType(VerseView), findsOneWidget);
     expect(find.text('Первый стих'), findsOneWidget);
+    await expectTextCanBeCopied(
+      tester,
+      find.text('Первый стих'),
+      contains: 'Первый стих',
+    );
+    // Под стихом Евангелия дня книга, глава и стих.
+    expect(find.text('Ин. 10:1'), findsOneWidget);
+
+    // Экран итога зажигает лампаду, поэтому по точкам до него не долистать:
+    // последняя точка открывает последнюю карточку.
+    final rail = tester.getRect(find.byType(RailScrubber));
+    await tester.tapAt(rail.bottomCenter - const Offset(0, 1));
+    await tester.pumpAndSettle();
+    expect(find.byType(DayWisdomCompleteView), findsNothing);
+    expect(find.text('Первый стих'), findsOneWidget);
+
+    // По столбику точек можно вернуться пальцем к первой карточке.
+    await tester.tapAt(rail.topCenter + const Offset(0, 1));
+    await tester.pumpAndSettle();
+    expect(find.byType(VerseView), findsNothing);
   });
+
+  testWidgets(
+    'сегодняшняя мудрость открывается на последней просмотренной странице',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final today = DateTime.now();
+      var openedDate = today;
+      const cards = [
+        DayCard(
+          id: 'quote',
+          type: CardType.quote,
+          body: 'Первая страница',
+          source: 'Источник',
+        ),
+        DayCard(
+          id: 'advice',
+          type: CardType.advice,
+          body: 'Последняя просмотренная страница',
+          source: 'Источник',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DayWisdomScreen(
+                      cards: cards,
+                      startIndex: 0,
+                      date: openedDate,
+                      recordProgress: false,
+                      recordRead: false,
+                    ),
+                  ),
+                ),
+                child: const Text('Открыть'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Открыть'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(PageView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(find.text('Последняя просмотренная страница'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Назад'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Открыть'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Последняя просмотренная страница'), findsOneWidget);
+      await tester.tap(find.byTooltip('Назад'));
+      await tester.pumpAndSettle();
+      openedDate = today.subtract(const Duration(days: 1));
+      await tester.tap(find.text('Открыть'));
+      await tester.pumpAndSettle();
+      expect(find.text('Первая страница'), findsOneWidget);
+    },
+  );
 
   testWidgets('загрузка не засчитывает Евангелие до первого стиха', (
     tester,
@@ -291,6 +506,7 @@ void main() {
       required bool recordProgress,
       List<DayCard> cards = const [quote, reading],
       bool reduceMotion = true,
+      int lastVerse = 1,
     }) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -299,9 +515,17 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
             dailyReadingProvider.overrideWith(
-              (ref, reference) async => const DailyReading(
-                label: 'Ин.10:1',
-                verses: [Verse(number: 1, chapter: 10, text: 'Стих дня')],
+              (ref, reference) async => DailyReading(
+                label: 'Ин.10:1–$lastVerse',
+                verses: [
+                  const Verse(number: 1, chapter: 10, text: 'Стих дня 1'),
+                  if (lastVerse > 1)
+                    Verse(
+                      number: lastVerse,
+                      chapter: 10,
+                      text: 'Стих дня $lastVerse',
+                    ),
+                ],
               ),
             ),
             bibleChapterProvider.overrideWith(
@@ -362,7 +586,7 @@ void main() {
       expect(find.text('Цитата'), findsOneWidget);
       expect(await lit(), isFalse);
       await next(tester);
-      expect(find.text('Стих дня'), findsOneWidget);
+      expect(find.text('Стих дня 1'), findsOneWidget);
       final progress = await container.read(dayProgressProvider.future);
       expect(progress.isReadOn(today, CardType.quote), isTrue);
       expect(progress.isReadOn(today, CardType.reading), isTrue);
@@ -382,38 +606,55 @@ void main() {
       );
     });
 
-    testWidgets('предложение главы стоит под основной кнопкой', (tester) async {
-      await open(tester, date: DateTime.now(), recordProgress: true);
-      await next(tester);
-      await next(tester);
+    testWidgets(
+      'главная кнопка продолжает чтение после последнего стиха отрывка',
+      (tester) async {
+        await open(
+          tester,
+          date: DateTime.now(),
+          recordProgress: true,
+          lastVerse: 21,
+        );
+        await next(tester);
+        await next(tester);
+        await next(tester);
 
-      expect(find.text('Хотите прочесть главу полностью?'), findsNothing);
-      final done = find.text('Готово');
-      final chapter = find.text('Прочитать главу полностью');
-      expect(done, findsOneWidget);
-      expect(chapter, findsOneWidget);
-      expect(
-        tester.getTopLeft(chapter).dy,
-        greaterThan(tester.getBottomLeft(done).dy),
-      );
+        final continueReading = find.text('Продолжить чтение');
+        expect(continueReading, findsOneWidget);
+        expect(find.text('Вернуться на главную'), findsOneWidget);
 
-      final container = ProviderScope.containerOf(
-        tester.element(find.byType(DayWisdomScreen)),
-      );
-      await tester.tap(chapter);
-      await tester.pumpAndSettle();
-      // Глава открывается во вкладке «Библия», а не отдельным окном поверх.
-      expect(find.byType(BibleReaderScreen), findsNothing);
-      expect(find.byType(DayWisdomScreen), findsNothing);
-      final request = container.read(bibleOpenRequestProvider);
-      expect((request?.book, request?.chapter), ('Jn', 10));
-    });
+        await tester.tap(continueReading);
+        await tester.pumpAndSettle();
+        expect(find.byType(BibleReaderScreen), findsOneWidget);
+        expect(
+          find.byType(DayWisdomScreen, skipOffstage: false),
+          findsOneWidget,
+        );
+        final reader = tester.widget<BibleReaderScreen>(
+          find.byType(BibleReaderScreen),
+        );
+        expect(
+          (reader.book.code, reader.chapter, reader.initialVerse),
+          ('Jn', 10, 22),
+        );
+        expect(reader.sessionMode, BibleReadingSessionMode.viewer);
+        await tester.tap(find.byTooltip('Закрыть'));
+        await tester.pumpAndSettle();
+        expect(find.byType(DayWisdomScreen), findsOneWidget);
+        expect(find.text('Вернуться на главную'), findsOneWidget);
+      },
+    );
 
-    testWidgets('повторное завершение сразу ведёт к полной главе', (
+    testWidgets('повторное завершение оставляет экран итога открытым', (
       tester,
     ) async {
       final today = DateTime.now();
-      final container = await open(tester, date: today, recordProgress: true);
+      final container = await open(
+        tester,
+        date: today,
+        recordProgress: true,
+        reduceMotion: false,
+      );
       await next(tester);
       await next(tester);
       expect(find.text('Слава Богу!'), findsOneWidget);
@@ -423,18 +664,23 @@ void main() {
         )).isWisdomCompletedOn(today),
         isTrue,
       );
-      expect(container.read(bibleOpenRequestProvider), isNull);
-      await tester.tap(find.text('Готово'));
+      expect(find.byType(BibleReaderScreen), findsNothing);
+      await tester.tap(find.text('Вернуться на главную'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Открыть'));
       await tester.pumpAndSettle();
       await next(tester);
-      await next(tester);
 
-      expect(find.byType(DayWisdomScreen), findsNothing);
-      final request = container.read(bibleOpenRequestProvider);
-      expect((request?.book, request?.chapter), ('Jn', 10));
+      expect(find.byType(DayWisdomScreen), findsOneWidget);
+      expect(find.text('Слава Богу!'), findsOneWidget);
+      expect(find.text('Продолжить чтение'), findsOneWidget);
+      expect(find.byType(BibleReaderScreen), findsNothing);
+      final streak = find.byType(StreakCard);
+      final counter = tester.widget<AnimatedSwitcher>(
+        find.descendant(of: streak, matching: find.byType(AnimatedSwitcher)),
+      );
+      expect(counter.duration, Duration.zero);
     });
 
     testWidgets('без главы повторное завершение просто показывает итог', (
@@ -447,7 +693,7 @@ void main() {
         cards: const [quote],
       );
       await next(tester);
-      await tester.tap(find.text('Готово'));
+      await tester.tap(find.text('Вернуться на главную'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Открыть'));
@@ -455,14 +701,18 @@ void main() {
       await next(tester);
 
       expect(find.text('Слава Богу!'), findsOneWidget);
+      expect(find.text('Продолжить чтение'), findsNothing);
+      expect(find.text('Вернуться на главную'), findsOneWidget);
     });
 
-    testWidgets('«Готово» закрывает «Мудрость дня»', (tester) async {
+    testWidgets('«Вернуться на главную» закрывает «Мудрость дня»', (
+      tester,
+    ) async {
       await open(tester, date: DateTime.now(), recordProgress: true);
       await next(tester);
       await next(tester);
 
-      await tester.tap(find.text('Готово'));
+      await tester.tap(find.text('Вернуться на главную'));
       await tester.pumpAndSettle();
 
       expect(find.byType(DayWisdomScreen), findsNothing);
@@ -546,7 +796,7 @@ void main() {
       expect(haptics.length, greaterThan(beforeLighting));
       expect(todayLabel, findsNothing, reason: 'лампада ещё разгорается');
       expect(
-        find.text('Готово').hitTestable(),
+        find.text('Вернуться на главную').hitTestable(),
         findsNothing,
         reason: 'кнопки появляются вместе с неделей',
       );
@@ -560,11 +810,8 @@ void main() {
         findsNothing,
       );
       expect(todayLabel, findsOneWidget);
-      expect(find.text('Готово').hitTestable(), findsOneWidget);
-      expect(
-        find.text('Прочитать главу полностью').hitTestable(),
-        findsOneWidget,
-      );
+      expect(find.text('Вернуться на главную').hitTestable(), findsOneWidget);
+      expect(find.text('Продолжить чтение').hitTestable(), findsOneWidget);
     });
 
     testWidgets('при уменьшении движения итог виден сразу', (tester) async {
@@ -652,7 +899,7 @@ void main() {
       await open(tester);
 
       expect(find.text(question), findsOneWidget);
-      expect(find.text('— Азбука веры'), findsNothing);
+      expect(find.text('Азбука веры'), findsNothing);
       final dots = tester.widget<ProgressDots>(find.byType(ProgressDots));
       // Вопрос, ответ, притча и экран итога.
       expect(dots.count, 4);
@@ -660,7 +907,7 @@ void main() {
       await tester.drag(find.byType(PageView), const Offset(0, -600));
       await tester.pumpAndSettle();
       expect(find.text(answer), findsOneWidget);
-      expect(find.text('— Азбука веры'), findsOneWidget);
+      expect(find.text('Азбука веры'), findsOneWidget);
     });
 
     testWidgets('закладка и отправка на странице берут весь текст', (

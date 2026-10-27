@@ -29,6 +29,10 @@ abstract class DayDto with _$DayDto {
     /// Только ссылка, не текст: страница отдельная, и грузим её лениво,
     /// когда юзер откроет заголовок дня, а не вместе с каждым днём.
     String? storyUrl,
+
+    /// «Картина дня» из боковой колонки Азбуки: живопись на евангельский
+    /// или церковный сюжет. Фон плитки «Мудрость дня».
+    String? pictureUrl,
   }) = _DayDto;
 
   factory DayDto.fromJson(Map<String, dynamic> json) => _$DayDtoFromJson(json);

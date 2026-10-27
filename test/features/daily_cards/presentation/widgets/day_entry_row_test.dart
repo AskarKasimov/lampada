@@ -32,12 +32,7 @@ void main() {
             tester.element(find.byType(DayEntryRow)),
           );
           for (final check in tester.widgetList<Icon>(checks)) {
-            expect(
-              check.color,
-              unread
-                  ? colors.textTertiary.withValues(alpha: 0.4)
-                  : colors.accent,
-            );
+            expect(check.color, unread ? colors.textTertiary : colors.accent);
             expect(check.size, 14);
           }
           final checkBounds = checks

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -83,7 +84,19 @@ class BookmarksScreen extends ConsumerWidget {
         shadowColor: Colors.transparent,
         title: const Text('Копилка смыслов'),
         automaticallyImplyLeading: false,
-        leading: BackButton(onPressed: onClose, color: colors.homeSubtitle),
+        actions: [
+          IconButton(
+            tooltip: 'Закрыть',
+            onPressed: onClose,
+            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+            padding: EdgeInsets.zero,
+            icon: Icon(
+              CupertinoIcons.xmark,
+              size: 22,
+              color: colors.homeSubtitle,
+            ),
+          ),
+        ],
       ),
       body: body,
     );

@@ -41,10 +41,10 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   final NetworkStatus? _networkStatus;
 
   // Меняйте версию при изменении схемы кэша или нормализации его данных.
-  static const _cachePrefix = 'day_cards_cache_v6:';
+  static const _cachePrefix = 'day_cards_cache_v7:';
 
   // SharedPreferences не умеет перечислять ключи по префиксу.
-  static const _cacheIndexKey = 'day_cards_cached_dates_v6';
+  static const _cacheIndexKey = 'day_cards_cached_dates_v7';
 
   // Не даём подневному кэшу расти без ограничения.
   static const _maxCachedDays = 60;
@@ -152,6 +152,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     title: dto.title,
     isFast: dto.isFast,
     storyUrl: dto.storyUrl,
+    pictureUrl: dto.pictureUrl,
   );
 
   List<String> _cachedDates() =>
