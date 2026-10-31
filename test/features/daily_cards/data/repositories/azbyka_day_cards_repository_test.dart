@@ -7,6 +7,7 @@ import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart';
 import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
 import 'package:lampada/features/daily_cards/data/dto/day_dto.dart';
+import 'package:lampada/features/daily_cards/data/dto/day_memory_dto.dart';
 import 'package:lampada/features/daily_cards/data/repositories/azbyka_day_cards_repository.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -38,7 +39,12 @@ class _StoryDatasource implements DayCardsRemoteDatasource {
       const DayDto(
         cards: [_card],
         title: 'Попразднство Преображения Господня',
-        storyUrl: 'https://azbyka.ru/days/prazdnik-preobrazhenie',
+        memories: [
+          DayMemoryDto(
+            title: 'Попразднство Преображения Господня',
+            storyUrl: 'https://azbyka.ru/days/prazdnik-preobrazhenie',
+          ),
+        ],
         pictureUrl: _picture,
       );
 }
@@ -129,8 +135,8 @@ void main() {
     expect(today.cards.single.id, 'quote-2026-07-19');
     // Кэш подневный: ключ включает дату, иначе календарь не смог бы
     // держать больше одного дня.
-    expect(prefs.getString('day_cards_cache_v7:2026-07-19'), isNotNull);
-    expect(prefs.getStringList('day_cards_cached_dates_v7'), ['2026-07-19']);
+    expect(prefs.getString('day_cards_cache_v8:2026-07-19'), isNotNull);
+    expect(prefs.getStringList('day_cards_cached_dates_v8'), ['2026-07-19']);
   });
 
   test('свежие карточки возвращаются при ошибке записи кэша', () async {
@@ -166,7 +172,7 @@ void main() {
     ).getCardsFor(DateTime(2026, 7, 19));
 
     expect(result, isA<Success<TodayCards>>());
-    expect(prefs.getStringList('day_cards_cached_dates_v7'), [
+    expect(prefs.getStringList('day_cards_cached_dates_v8'), [
       '2026-07-19',
       '2026-07-20',
     ]);
@@ -185,7 +191,7 @@ void main() {
       prefs,
     ).getCardsFor(DateTime(2026, 7, 19));
 
-    expect(prefs.getStringList('day_cards_cached_dates_v7'), [
+    expect(prefs.getStringList('day_cards_cached_dates_v8'), [
       '2026-07-19',
       '2026-07-20',
     ]);
@@ -224,7 +230,7 @@ void main() {
     ).getCardsFor(DateTime(2026, 7, 19));
 
     final cached =
-        jsonDecode(prefs.getString('day_cards_cache_v7:2026-07-19')!)
+        jsonDecode(prefs.getString('day_cards_cache_v8:2026-07-19')!)
             as Map<String, dynamic>;
     final card = (cached['cards'] as List).single as Map<String, dynamic>;
     expect(card['reference'], 'Jn.10:1-9');
@@ -266,8 +272,33 @@ void main() {
 
     expect(result, isA<Success<TodayCards>>());
     expect(
-      (result as Success<TodayCards>).value.storyUrl,
+      (result as Success<TodayCards>).value.memories.single.storyUrl,
       'https://azbyka.ru/days/prazdnik-preobrazhenie',
+    );
+  });
+
+  test('кэш v7 с одной ссылкой рассказа заменяется свежим днём', () async {
+    // Прежний кэш знал только первую память дня: из него очередь святых
+    // не собрать, поэтому день перезапрашивается целиком.
+    SharedPreferences.setMockInitialValues({
+      'flutter.day_cards_cache_v7:2026-08-24': jsonEncode({
+        'cards': [_card.toJson()],
+        'title': 'Попразднство Преображения Господня',
+        'storyUrl': 'https://azbyka.ru/days/prazdnik-preobrazhenie',
+        'pictureUrl': _picture,
+      }),
+      'flutter.day_cards_cached_dates_v7': ['2026-08-24'],
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    final result = await _repo(
+      _StoryDatasource(),
+      prefs,
+    ).getCardsFor(DateTime(2026, 8, 24));
+
+    expect(
+      (result as Success<TodayCards>).value.memories.single.title,
+      'Попразднство Преображения Господня',
     );
   });
 
@@ -403,7 +434,7 @@ void main() {
     // доходя до сети. Так удаление «вопроса дня» дало офлайн-экран при живом
     // интернете.
     SharedPreferences.setMockInitialValues({
-      'flutter.day_cards_cache_v7:2026-07-19': jsonEncode({
+      'flutter.day_cards_cache_v8:2026-07-19': jsonEncode({
         'cards': [
           {
             'id': 'legacy-2026-07-19',
@@ -413,7 +444,7 @@ void main() {
           },
         ],
       }),
-      'flutter.day_cards_cached_dates_v7': ['2026-07-19'],
+      'flutter.day_cards_cached_dates_v8': ['2026-07-19'],
     });
     final prefs = await SharedPreferences.getInstance();
     final remote = _FakeDatasource([_card]);
@@ -438,7 +469,7 @@ void main() {
       // хуже промаха: юзер получил бы день, в котором молча нет притчи, и
       // ничто бы на это не намекнуло.
       SharedPreferences.setMockInitialValues({
-        'flutter.day_cards_cache_v7:2026-07-19': jsonEncode({
+        'flutter.day_cards_cache_v8:2026-07-19': jsonEncode({
           'cards': [
             {
               'id': 'quote-2026-07-19',
@@ -454,7 +485,7 @@ void main() {
             },
           ],
         }),
-        'flutter.day_cards_cached_dates_v7': ['2026-07-19'],
+        'flutter.day_cards_cached_dates_v8': ['2026-07-19'],
       });
       final prefs = await SharedPreferences.getInstance();
 

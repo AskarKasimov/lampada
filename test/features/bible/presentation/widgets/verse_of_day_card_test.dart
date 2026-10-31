@@ -78,15 +78,17 @@ void main() {
     await pump(tester);
 
     expect(find.text('Стих дня'), findsOneWidget);
-    expect(find.text('Пс. 22:1'), findsOneWidget);
+    expect(find.text('Псалтирь 22:1'), findsOneWidget);
     // Название карточки набрано как названия плиток главной, ссылка как их
     // подписи: на главной один набор заголовков.
     final title = tester.widget<Text>(find.text('Стих дня')).style!;
     expect(title.fontFamily, 'Lora');
     expect(title.fontSize, AppTheme.cardTitleSize);
     expect(
-      tester.widget<Text>(find.text('Пс. 22:1')).style?.fontSize,
-      AppTheme.cardCaptionStyle(tester.element(find.text('Пс. 22:1'))).fontSize,
+      tester.widget<Text>(find.text('Псалтирь 22:1')).style?.fontSize,
+      AppTheme.cardCaptionStyle(
+        tester.element(find.text('Псалтирь 22:1')),
+      ).fontSize,
     );
     expect(find.text('Синодальный'), findsNothing);
     expect(find.text(_verse.text), findsOneWidget);
@@ -180,7 +182,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Пс. 36:5–6'), findsOneWidget);
+    expect(find.text('Псалтирь 36:5–6'), findsOneWidget);
   });
 
   testWidgets('тап по карточке открывает отдельный просмотр на стихе дня', (

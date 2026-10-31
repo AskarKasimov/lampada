@@ -18,6 +18,7 @@ import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/widgets/verse_of_day_card.dart';
 import 'package:lampada/features/daily_cards/domain/course_calendar.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
+import 'package:lampada/features/daily_cards/domain/entities/day_memory.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_section.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -137,6 +138,7 @@ class _FakeCardsRepository implements DayCardsRepository {
     this.title,
     this.isFast = false,
     this.storyUrl,
+    this.memories,
   });
 
   final requested = <String>[];
@@ -147,7 +149,10 @@ class _FakeCardsRepository implements DayCardsRepository {
   final String? week;
   final String? title;
   final bool isFast;
+
+  /// Ссылка единственной памяти дня с названием [title].
   final String? storyUrl;
+  final List<DayMemory>? memories;
   final _cachedCards = <String, List<DayCard>>{};
   final forceRefreshDates = <String>[];
 
@@ -174,7 +179,12 @@ class _FakeCardsRepository implements DayCardsRepository {
         week: week,
         title: title,
         isFast: isFast,
-        storyUrl: storyUrl,
+        memories:
+            memories ??
+            [
+              if (storyUrl != null)
+                DayMemory(title: title ?? '', storyUrl: storyUrl!),
+            ],
       ),
     );
   }
@@ -788,7 +798,7 @@ void main() {
       await settle(tester);
 
       final verse = tester.getRect(find.byType(VerseOfDayCard));
-      expect(find.text('Ин. 3:16'), findsOneWidget);
+      expect(find.text('От Иоанна 3:16'), findsOneWidget);
       expect(
         verse.top,
         greaterThan(tester.getRect(find.byType(HomeHeader)).bottom - 1),
@@ -953,7 +963,7 @@ void main() {
       expect(plans.top - tile(DayWisdomTile).bottom, greaterThan(16));
     });
 
-    testWidgets('над стихом заголовок с датой, в пост подпись под ней', (
+    testWidgets('над стихом заголовок с датой, в пост подпись справа от неё', (
       tester,
     ) async {
       // Строка седмицы почти ничего не сообщала, а шапку перегружала.
@@ -996,14 +1006,28 @@ void main() {
         tester.getRect(date).left,
         tester.getRect(find.text('Планы')).left,
       );
-      // Пост подписан под датой, а не на плитке и не в шапке.
+      // Пост подписан справа от даты в той же строке, а не на плитке и не
+      // в шапке: лишней высоты подпись не добавляет.
       expect(fast, findsOneWidget);
       expect(
-        tester.getRect(fast).top,
-        greaterThanOrEqualTo(tester.getRect(date).bottom),
+        tester.getRect(fast).left,
+        greaterThan(tester.getRect(date).right),
       );
-      expect(tester.getRect(fast).left, tester.getRect(date).left);
-      expect(tester.getRect(fast).bottom, lessThanOrEqualTo(verse.top));
+      expect(
+        tester.getRect(fast).top,
+        greaterThanOrEqualTo(tester.getRect(date).top),
+      );
+      expect(
+        tester.getRect(fast).bottom,
+        lessThanOrEqualTo(tester.getRect(date).bottom),
+      );
+      // Подпись прижата к правому полю, симметричному левому полю даты.
+      expect(
+        tester.getRect(fast).right,
+        tester.getSize(find.byType(MaterialApp)).width -
+            tester.getRect(date).left,
+      );
+      expect(tester.getRect(date).bottom, lessThanOrEqualTo(verse.top));
     });
 
     testWidgets('в непостный день подписи «Постный день» нет', (tester) async {
@@ -1076,6 +1100,65 @@ void main() {
             .isUnread,
         isFalse,
       );
+    });
+
+    testWidgets('прочитав святого, юзер возвращается к следующему', (
+      tester,
+    ) async {
+      const foma = DayMemory(
+        title: 'Прп. Фомы́, иже в Мале́и',
+        storyUrl: 'https://azbyka.ru/days/sv-foma-malein',
+      );
+      const akakij = DayMemory(
+        title: 'Прп. Ака́кия Синайского',
+        storyUrl: 'https://azbyka.ru/days/sv-akakij-sinajskij',
+      );
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            title: foma.title,
+            memories: const [foma, akakij],
+          ),
+        ),
+      );
+      await settle(tester);
+
+      DayMemoryTile tile() =>
+          tester.widget<DayMemoryTile>(find.byType(DayMemoryTile));
+      Future<void> readStory() async {
+        await tester.tap(find.byType(DayMemoryTile));
+        await settle(tester);
+        await tester.drag(find.byType(PageView), const Offset(0, -600));
+        await settle(tester);
+        await tester.tap(find.byTooltip('Закрыть рассказ'));
+        await settle(tester);
+      }
+
+      expect((tile().title, tile().isRead), (foma.title, false));
+
+      await readStory();
+      // Главная уже показывает следующего святого, и он ещё не прочитан.
+      expect((tile().title, tile().isRead), (akakij.title, false));
+      expect(
+        prefs.getStringList('story_read_days'),
+        contains(dateKey(DateTime.now())),
+      );
+
+      await tester.tap(find.byType(DayMemoryTile));
+      await settle(tester);
+      expect(
+        find.descendant(
+          of: find.byType(DayStoryScreen),
+          matching: find.text(akakij.title),
+        ),
+        findsWidgets,
+      );
+      await tester.tap(find.byTooltip('Закрыть рассказ'));
+      await settle(tester);
+
+      await readStory();
+      // Прочитаны все: снова первый, с горящими галочками.
+      expect((tile().title, tile().isRead), (foma.title, true));
     });
 
     testWidgets('напоминание о курсе открывает тему «Основ веры»', (

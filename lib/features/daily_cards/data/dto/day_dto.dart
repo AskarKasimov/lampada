@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'day_card_dto.dart';
+import 'day_memory_dto.dart';
 
 part 'day_dto.freezed.dart';
 part 'day_dto.g.dart';
@@ -25,10 +26,9 @@ abstract class DayDto with _$DayDto {
     /// значит именно «не постный», а не «неизвестно».
     @Default(false) bool isFast,
 
-    /// Ссылка на страницу праздника или святого — там лежит рассказ о нём.
-    /// Только ссылка, не текст: страница отдельная, и грузим её лениво,
-    /// когда юзер откроет заголовок дня, а не вместе с каждым днём.
-    String? storyUrl,
+    /// Все памяти дня со своими страницами, в порядке Азбуки. Только ссылки,
+    /// не тексты: рассказы на отдельных страницах и грузятся лениво.
+    @Default(<DayMemoryDto>[]) List<DayMemoryDto> memories,
 
     /// «Картина дня» из боковой колонки Азбуки: живопись на евангельский
     /// или церковный сюжет. Фон плитки «Мудрость дня».

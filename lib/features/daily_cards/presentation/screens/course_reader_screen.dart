@@ -8,18 +8,20 @@ import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/reading_overflow_listener.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/course_calendar.dart';
+import '../../domain/course_topic_titles.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/split_course_text.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
+import '../widgets/course_contents_button.dart';
+import '../widgets/course_contents_sheet.dart';
 import '../widgets/reader_progress_rail.dart';
 import '../widgets/vertical_card_reader.dart';
 import 'course_detail_screen.dart';
@@ -69,6 +71,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   bool _canPop = false;
   bool _edgeDismissActive = false;
   double _edgeDismissDistance = 0;
+  bool _pulseContents = false;
 
   int get _initialIndex =>
       _leading + widget.initialPage.clamp(0, _pages.length - 1);
@@ -88,6 +91,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       ..read(dayProgressProvider);
     final topic = _topicNumber(widget.currentTopic.id);
     if (topic > 1) ref.read(courseTopicByNumberProvider(topic - 1));
+    unawaited(_maybeHintContents());
     // Старые версии сохраняли позицию на странице завершения, а ОС могла
     // закрыть приложение раньше записи самого завершения.
     final pastLastChunk = widget.initialPage >= _pages.length;
@@ -236,6 +240,76 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       if (_isBoundary && (_index < _leading) != previous) {
         _onPageChanged(_index);
       }
+    }
+  }
+
+  /// Плашка темы похожа на подпись, поэтому при первом открытии курса она
+  /// пульсирует: на неё можно нажать и открыть оглавление.
+  Future<void> _maybeHintContents() async {
+    final hints = ref.read(courseHintRepositoryProvider);
+    final shown = await hints.contentsHintShown();
+    if (!mounted || shown is! Success<bool> || shown.value) return;
+    setState(() => _pulseContents = true);
+    await hints.markContentsHintShown();
+  }
+
+  Future<void> _openContents(int currentTopic) async {
+    ref
+        .read(analyticsProvider)
+        .log(AnalyticsEvent.courseInfoOpened(CourseInfoScreen.contents));
+    final completed = {
+      ...?ref.read(completedCourseTopicsProvider).value,
+      ..._completed,
+    };
+    final selected = await showCourseContentsSheet(
+      context,
+      titles: courseTopicTitles,
+      currentTopic: currentTopic,
+      completed: completed,
+    );
+    if (selected != null && mounted) unawaited(_jumpToTopic(selected));
+  }
+
+  /// Переход по оглавлению переносит курс на выбранную тему, как закладка в
+  /// книге: лента начинается заново с её первой страницы и сохраняется как
+  /// место чтения. Тема, с которой ушли, при этом не засчитывается.
+  Future<void> _jumpToTopic(int number) async {
+    if (_loading || _isDismissing) return;
+    setState(() => _loading = true);
+    try {
+      final card = await ref.read(courseTopicByNumberProvider(number).future);
+      if (!mounted) return;
+      final pages = _pagesFor(card);
+      setState(() {
+        _pages
+          ..clear()
+          ..addAll(pages);
+        _loadErrors.clear();
+        // Индекс ставим до прыжка: тогда смена страницы не выглядит свайпом
+        // вперёд с последнего чанка и не засчитывает прежнюю тему.
+        _index = _leading;
+        _loading = false;
+      });
+      if (number > 1) ref.read(courseTopicByNumberProvider(number - 1));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_controller.hasClients) return;
+        _controller.jumpToPage(_index);
+        _onPageChanged(_index);
+      });
+    } on Object catch (error) {
+      if (!mounted) return;
+      ref
+          .read(analyticsProvider)
+          .log(
+            AnalyticsEvent.contentLoadFailed(
+              content: LoadedContent.courseTopic,
+              kind: failureKindOf(error),
+            ),
+          );
+      setState(() => _loading = false);
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(const SnackBar(content: Text('Тема недоступна')));
     }
   }
 
@@ -448,11 +522,13 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   ),
                 );
               },
-              header: AppPillBadge(
+              headerInteractive: true,
+              header: CourseContentsButton(
                 label: 'Основы веры · Тема №$topic',
                 background: style.tagBackground,
                 foreground: style.tagForeground,
-                letterSpacing: 0.2,
+                pulse: _pulseContents,
+                onPressed: () => unawaited(_openContents(topic)),
               ),
               leftRail: ReaderProgressRail(
                 key: ValueKey(card.id),
