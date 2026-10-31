@@ -15,6 +15,7 @@ import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:lampada/features/bookmarks/data/repositories/prefs_bookmarks_repository.dart';
 import 'package:lampada/features/bookmarks/domain/entities/bookmark.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
+import 'package:lampada/features/daily_cards/domain/course_topic_titles.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -24,6 +25,8 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_progress_re
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_detail_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/course_contents_button.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/course_contents_sheet.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -663,6 +666,65 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Не удалось сохранить место чтения'), findsOneWidget);
+  });
+
+  testWidgets('плашка темы открывает оглавление курса', (tester) async {
+    await pumpReader(tester);
+
+    await tester.tap(find.text('Основы веры · Тема №3'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseContentsSheet), findsOneWidget);
+    expect(find.text(courseTopicTitles[2]).hitTestable(), findsOneWidget);
+    expect(analytics.single('course_info_opened')['screen'], 'contents');
+  });
+
+  testWidgets('тема из оглавления переносит туда курс', (tester) async {
+    await pumpReader(tester);
+
+    await tester.tap(find.text('Основы веры · Тема №3'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(courseTopicTitles[5]));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseContentsSheet), findsNothing);
+    expect(find.text('Тема 6'), findsOneWidget);
+    expect(find.text('Основы веры · Тема №6'), findsOneWidget);
+    final saved = await PrefsCourseProgressRepository(prefs).currentTopic();
+    expect((saved as Success<int>).value, 6);
+    // Переход по оглавлению — не прочтение: тема 3 не засчитана.
+    expect(progress.readTypes, isEmpty);
+
+    // Курс продолжается с новой темы в обе стороны.
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    expect(find.text('Тема 5'), findsOneWidget);
+  });
+
+  testWidgets('при первом открытии курса плашка темы пульсирует', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    expect(
+      tester
+          .widget<CourseContentsButton>(find.byType(CourseContentsButton))
+          .pulse,
+      isTrue,
+    );
+    expect(prefs.getBool('course_contents_hint_shown'), isTrue);
+  });
+
+  testWidgets('повторно плашка темы не пульсирует', (tester) async {
+    await prefs.setBool('course_contents_hint_shown', true);
+    await pumpReader(tester);
+
+    expect(
+      tester
+          .widget<CourseContentsButton>(find.byType(CourseContentsButton))
+          .pulse,
+      isFalse,
+    );
   });
 
   testWidgets('keeps the course title visible in the reader header', (

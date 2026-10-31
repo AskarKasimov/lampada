@@ -20,6 +20,7 @@ class VerticalCardReader extends StatelessWidget {
     required this.actions,
     required this.onClose,
     required this.closeColor,
+    this.headerInteractive = false,
     this.closeOnRight,
     this.closeTooltip,
     this.showExit = true,
@@ -41,6 +42,10 @@ class VerticalCardReader extends StatelessWidget {
   final ValueChanged<int> onPageChanged;
   final IndexedWidgetBuilder itemBuilder;
   final Widget header;
+
+  /// Обычно плашка шапки только подпись, и касания проходят к странице.
+  /// Курс делает её кнопкой оглавления.
+  final bool headerInteractive;
   final Widget leftRail;
   final Widget actions;
   final VoidCallback onClose;
@@ -95,7 +100,10 @@ class VerticalCardReader extends StatelessWidget {
             top: 8,
             left: 76,
             right: 76,
-            child: IgnorePointer(child: Center(child: header)),
+            child: IgnorePointer(
+              ignoring: !headerInteractive,
+              child: Center(child: header),
+            ),
           ),
           // Колонка шире самих точек: по ней листают пальцем
           // ([RailScrubber]). Точки по-прежнему в 16 pt от края.

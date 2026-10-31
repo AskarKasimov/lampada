@@ -11,6 +11,7 @@ import '../../../../core/result/result.dart';
 import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/datasources/day_cards_remote_datasource.dart';
 import '../../data/repositories/azbyka_day_cards_repository.dart';
+import '../../data/repositories/prefs_course_hint_repository.dart';
 import '../../data/repositories/prefs_course_progress_repository.dart';
 import '../../data/repositories/prefs_day_progress_repository.dart';
 import '../../data/repositories/prefs_day_wisdom_position_repository.dart';
@@ -18,6 +19,7 @@ import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/day_section.dart';
 import '../../domain/entities/today_cards.dart';
+import '../../domain/repositories/course_hint_repository.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
@@ -191,6 +193,10 @@ final completedCourseTopicsProvider = FutureProvider<Set<int>>((ref) async {
     Failure(failure: final failure) => throw failure,
   };
 });
+
+final courseHintRepositoryProvider = Provider<CourseHintRepository>(
+  (ref) => PrefsCourseHintRepository(ref.watch(sharedPreferencesProvider)),
+);
 
 /// Карточка «Основы» для текущей темы курса.
 ///

@@ -286,6 +286,6 @@ enum ShareOutcome { success, dismissed, unavailable }
 
 enum ReviewTrigger { profile, firstCompletion }
 
-enum CourseInfoScreen { courseDetail }
+enum CourseInfoScreen { courseDetail, contents }
 
 enum LoadedContent { day, gospel, story, courseTopic, bibleChapter }
