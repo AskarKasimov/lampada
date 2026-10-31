@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'day_card.dart';
+import 'day_memory.dart';
 
 part 'today_cards.freezed.dart';
 
@@ -19,9 +20,9 @@ abstract class TodayCards with _$TodayCards {
     /// Постный ли день.
     @Default(false) bool isFast,
 
-    /// Ссылка на страницу праздника/святого — рассказ о дне грузится оттуда
-    /// лениво, при открытии заголовка, а не вместе с самим днём.
-    String? storyUrl,
+    /// Памяти дня с рассказами, в порядке Азбуки. Плитка показывает первую
+    /// непрочитанную; рассказы грузятся лениво, а не вместе с днём.
+    @Default(<DayMemory>[]) List<DayMemory> memories,
 
     /// Адрес «Картины дня» Азбуки: иллюстрация плитки «Мудрость дня».
     String? pictureUrl,

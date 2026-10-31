@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
+import 'package:lampada/features/daily_cards/domain/entities/day_memory.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
@@ -54,7 +55,12 @@ void main() {
           todayCardsProvider.overrideWith(
             (ref) async => TodayCards(
               title: 'Святитель Николай',
-              storyUrl: 'https://azbyka.ru/days/sv-nikolaj',
+              memories: const [
+                DayMemory(
+                  title: 'Святитель Николай',
+                  storyUrl: 'https://azbyka.ru/days/sv-nikolaj',
+                ),
+              ],
               cards: const [
                 DayCard(
                   id: 'quote',

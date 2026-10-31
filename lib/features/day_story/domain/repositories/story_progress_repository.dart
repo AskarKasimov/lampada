@@ -1,10 +1,12 @@
 import '../../../../core/result/result.dart';
+import '../entities/story_progress.dart';
 
-/// Дни (yyyy-MM-dd), в которые открывали рассказ «Памяти дня». Нужны, чтобы
-/// не напоминать о святом тому, кто уже прочитал.
+/// Прочитанные рассказы «Памяти дня»: по дням для напоминаний и по ссылкам
+/// для очереди святых дня.
 abstract interface class StoryProgressRepository {
-  Future<Result<Set<String>>> readDays();
+  Future<Result<StoryProgress>> load();
 
-  /// Отмечает рассказ за [date] прочитанным и возвращает обновлённый набор.
-  Future<Result<Set<String>>> markRead(DateTime date);
+  /// Отмечает рассказ [storyUrl] за [date] прочитанным и возвращает
+  /// обновлённый прогресс.
+  Future<Result<StoryProgress>> markRead(DateTime date, String storyUrl);
 }

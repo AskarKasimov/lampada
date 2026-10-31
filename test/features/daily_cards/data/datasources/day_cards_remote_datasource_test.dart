@@ -8,6 +8,7 @@ import 'package:lampada/core/result/result.dart';
 import 'package:lampada/features/daily_cards/data/datasources/day_cards_remote_datasource.dart';
 import 'package:lampada/features/daily_cards/data/dto/day_card_dto.dart';
 import 'package:lampada/features/daily_cards/data/dto/day_dto.dart';
+import 'package:lampada/features/daily_cards/data/dto/day_memory_dto.dart';
 
 /// Страница формы azbyka.ru с подставным содержимым вместо реальных цитат —
 /// так тест проверяет отображение «блок разметки → поле карточки», а не то,
@@ -300,7 +301,7 @@ void main() {
       );
 
       expect(day.title, 'Прп. Сисо́я Великого');
-      expect(day.storyUrl, isNull);
+      expect(day.memories, isEmpty);
     });
 
     test('http-ссылка Азбуки на праздник нормализуется для рассказа', () async {
@@ -316,7 +317,56 @@ void main() {
         ),
       );
 
-      expect(day.storyUrl, 'https://azbyka.ru/days/prazdnik-preobrazhenie');
+      expect(
+        day.memories.single.storyUrl,
+        'https://azbyka.ru/days/prazdnik-preobrazhenie',
+      );
+    });
+
+    test('память дня — каждая ссылка Азбуки со своим названием', () async {
+      final day = await _fetchDay(
+        _datasourceServing(
+          _page(
+            headerHtml:
+                '<div class="text day__text">'
+                '<ul class="paragraph-0"><li>'
+                '<a href="/days/sv-a">Прп. Первого <span class=secondary-content>(X)</span></a>'
+                '<i class="saint-sdesc"></i>, '
+                '<a href="/days/sv-b">прп. Второго <span class=secondary-content>(VI)</span></a>'
+                '</li></ul>'
+                '<ul class="paragraph-2">'
+                '<li><a href="https://azbyka.ru/days/p-znaki-prazdnikov#table">'
+                '<img src="x.svg"></a>'
+                '<a href="https://azbyka.ru/days/sv-c">Мц. Третьей</a></li>'
+                '<li>Обре́тение мощей <a href="/days/sv-d">прп. Четвёртого</a></li>'
+                '<li><a href="https://example.com/sv-e">Чужой</a></li>'
+                '<li><a href="/days/sv-a">Прп. Первого повторно</a></li>'
+                '</ul></div>',
+          ),
+        ),
+      );
+
+      // Пояснение к значку, чужая ссылка и повтор уже взятой памяти в
+      // очередь не попадают. В строке с одной ссылкой название берётся
+      // целиком («Обре́тение мощей…»), с несколькими — по тексту ссылки.
+      expect(day.memories, const [
+        DayMemoryDto(
+          title: 'Прп. Первого',
+          storyUrl: 'https://azbyka.ru/days/sv-a',
+        ),
+        DayMemoryDto(
+          title: 'Прп. Второго',
+          storyUrl: 'https://azbyka.ru/days/sv-b',
+        ),
+        DayMemoryDto(
+          title: 'Мц. Третьей',
+          storyUrl: 'https://azbyka.ru/days/sv-c',
+        ),
+        DayMemoryDto(
+          title: 'Обре́тение мощей прп. Четвёртого',
+          storyUrl: 'https://azbyka.ru/days/sv-d',
+        ),
+      ]);
     });
 
     test('без шапки день остаётся безымянным, но не падает', () async {
@@ -643,6 +693,37 @@ void main() {
       expect(day.week, 'Неделя 7-я по Пятидесятнице');
       expect(day.title, 'Прп. Сисо́я Великого');
       expect(day.isFast, isFalse);
+    });
+
+    test('20 июля разбираются все памяти дня по порядку', () async {
+      final day = await _fetchDay(
+        _datasourceServing(
+          _loadFixture('2026-07-20'),
+          expectUrl: 'https://azbyka.ru/days/2026-07-20',
+        ),
+        DateTime(2026, 7, 20),
+      );
+
+      expect(day.memories.map((m) => m.title), [
+        'Прп. Фомы́, иже в Мале́и',
+        'Прп. Ака́кия Синайского, о котором повествуется в Лествице',
+        'Прп. Евфроси́нии, в миру Евдоки́и, вел. кн. Московской',
+        'Обре́тение мощей прп. Гера́сима Болдинского',
+        'Мчч. Перегри́на, Лукиа́на, Помпе́я, Иси́хия, Па́пия, Саторни́на и Ге́рмана',
+        'Сщмч. Епикте́та, пресвитера, и прмч. Астио́на, монаха',
+        'Сщмч. Еванге́ла, епископа Томского',
+        'Мц. Кириаки́и Никомидийской',
+        'Сщмч. Павла Чернышева, пресвитера',
+        'Иконы Божией Матери: Влахернская',
+      ]);
+      expect(
+        day.memories.first.storyUrl,
+        'https://azbyka.ru/days/sv-foma-malein',
+      );
+      expect(
+        day.memories[4].storyUrl,
+        'https://azbyka.ru/days/svv-peregrin-lukian-pompej-isihij-papij-satornin-dirrahijskie',
+      );
     });
 
     test('20 июля чтение — евангельский отрывок со ссылкой', () async {

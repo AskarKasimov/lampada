@@ -24,6 +24,7 @@ import '../../../reminders/presentation/providers/providers.dart';
 import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../../domain/entities/day_card.dart';
+import '../../domain/entities/day_memory.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/day_section.dart';
 import '../../domain/entities/today_cards.dart';
@@ -338,11 +339,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     await _maybeAskForReminders(context, ref);
   }
 
-  /// Память дня считается прочитанной после последней страницы рассказа.
+  /// Святой дня считается прочитанным после последней страницы рассказа:
+  /// вернувшись на главную, юзер видит на плитке следующего.
   Future<void> _openStory(
     BuildContext context,
-    String title,
-    String storyUrl, {
+    DayMemory memory, {
     OpenSource source = OpenSource.tile,
   }) {
     ref
@@ -357,10 +358,12 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     return Navigator.of(context).push(
       BottomUpModalRoute<void>(
         builder: (_) => DayStoryScreen(
-          title: title,
-          storyUrl: storyUrl,
+          title: memory.title,
+          storyUrl: memory.storyUrl,
           onCompleted: () => unawaited(
-            ref.read(readStoryDaysProvider.notifier).markRead(date),
+            ref
+                .read(storyProgressProvider.notifier)
+                .markRead(date, memory.storyUrl),
           ),
         ),
       ),
@@ -390,29 +393,31 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       switch (section) {
         case DaySection.wisdom when pages.isNotEmpty:
           _openWisdom(source: source);
-        case DaySection.story when _hasStory:
-          _openStory(context, day.title!, day.storyUrl!, source: source);
+        case DaySection.story when _memory != null:
+          _openStory(context, _memory!.memory, source: source);
         default:
           break;
       }
     });
   }
 
-  bool get _hasStory => (day.title ?? '').isNotEmpty && day.storyUrl != null;
+  ({DayMemory memory, bool isRead})? get _memory => widget.content.memory;
 
   /// Память и «Мудрость дня» в один ряд, двумя столбцами одной высоты:
   /// главное на плитках иллюстрации. Если плитка одна, она во всю ширину.
   Widget _dayTiles(BuildContext context, List<DayCard> pages) {
+    final memory = _memory;
     final tiles = [
-      if ((day.title ?? '').isNotEmpty)
+      // Память без своей страницы рассказа не открывает, но день называет.
+      if (memory != null)
         DayMemoryTile(
-          day: day,
+          title: memory.memory.title,
           iconUrl: widget.content.iconUrl,
-          isRead:
-              ref.watch(readStoryDaysProvider).value?.contains(dateKey(date)) ??
-              false,
-          onTap: () => _openStory(context, day.title!, day.storyUrl!),
-        ),
+          isRead: memory.isRead,
+          onTap: () => _openStory(context, memory.memory),
+        )
+      else if (day.title case final title? when title.isNotEmpty)
+        DayMemoryTile(title: title),
       if (pages.isNotEmpty)
         DayWisdomTile(
           isLoading: widget.content.readingIsLoading,
