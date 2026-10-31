@@ -788,7 +788,7 @@ void main() {
       await settle(tester);
 
       final verse = tester.getRect(find.byType(VerseOfDayCard));
-      expect(find.text('Ин. 3:16'), findsOneWidget);
+      expect(find.text('От Иоанна 3:16'), findsOneWidget);
       expect(
         verse.top,
         greaterThan(tester.getRect(find.byType(HomeHeader)).bottom - 1),

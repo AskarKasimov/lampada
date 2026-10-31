@@ -102,6 +102,8 @@ class VerseOfDayCard extends ConsumerWidget {
                       children: [
                         // Название и ссылка набраны как названия и подписи
                         // плиток главной: на ней один набор заголовков.
+                        // Книга названа полностью, как в каталоге Библии:
+                        // сокращения Азбуки читателю не всегда понятны.
                         Text(
                           'Стих дня',
                           style: AppTheme.cardTitleStyle(context),
@@ -109,7 +111,7 @@ class VerseOfDayCard extends ConsumerWidget {
                         if (verse != null && book != null) ...[
                           const SizedBox(height: 3),
                           Text(
-                            '${book.abbreviation}. ${verse.reference}',
+                            '${book.title} ${verse.reference}',
                             style: AppTheme.cardCaptionStyle(context),
                           ),
                         ],
