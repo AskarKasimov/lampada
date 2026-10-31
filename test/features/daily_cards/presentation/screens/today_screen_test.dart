@@ -953,7 +953,7 @@ void main() {
       expect(plans.top - tile(DayWisdomTile).bottom, greaterThan(16));
     });
 
-    testWidgets('над стихом заголовок с датой, в пост подпись под ней', (
+    testWidgets('над стихом заголовок с датой, в пост подпись справа от неё', (
       tester,
     ) async {
       // Строка седмицы почти ничего не сообщала, а шапку перегружала.
@@ -996,14 +996,28 @@ void main() {
         tester.getRect(date).left,
         tester.getRect(find.text('Планы')).left,
       );
-      // Пост подписан под датой, а не на плитке и не в шапке.
+      // Пост подписан справа от даты в той же строке, а не на плитке и не
+      // в шапке: лишней высоты подпись не добавляет.
       expect(fast, findsOneWidget);
       expect(
-        tester.getRect(fast).top,
-        greaterThanOrEqualTo(tester.getRect(date).bottom),
+        tester.getRect(fast).left,
+        greaterThan(tester.getRect(date).right),
       );
-      expect(tester.getRect(fast).left, tester.getRect(date).left);
-      expect(tester.getRect(fast).bottom, lessThanOrEqualTo(verse.top));
+      expect(
+        tester.getRect(fast).top,
+        greaterThanOrEqualTo(tester.getRect(date).top),
+      );
+      expect(
+        tester.getRect(fast).bottom,
+        lessThanOrEqualTo(tester.getRect(date).bottom),
+      );
+      // Подпись прижата к правому полю, симметричному левому полю даты.
+      expect(
+        tester.getRect(fast).right,
+        tester.getSize(find.byType(MaterialApp)).width -
+            tester.getRect(date).left,
+      );
+      expect(tester.getRect(date).bottom, lessThanOrEqualTo(verse.top));
     });
 
     testWidgets('в непостный день подписи «Постный день» нет', (tester) async {

@@ -579,7 +579,7 @@ Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
 
 /// Раздел того, что меняется каждый день: стих, память и «Мудрость дня».
 /// Называется сегодняшней датой; пост относится ко всему дню и подписан
-/// под ней, а не на плитке.
+/// справа от неё, а не на плитке.
 Widget _dayHeader(DateTime date, {bool isFast = false}) => HomeSectionHeader(
   title: russianDayMonth(date),
   caption: isFast ? 'Постный день' : null,
