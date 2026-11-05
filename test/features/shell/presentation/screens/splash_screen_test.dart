@@ -5,6 +5,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -82,6 +83,11 @@ void main() {
         _FakeProgressRepository(),
       ),
       sharedPreferencesProvider.overrideWithValue(prefs),
+      // Без сети: настоящая загрузка оставила бы таймеры повторов после теста.
+      verseOfDayProvider.overrideWith(
+        (ref, key) async =>
+            throw const AppFailure('Нет сети', kind: FailureKind.network),
+      ),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const SplashScreen()),
   );

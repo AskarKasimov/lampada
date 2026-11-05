@@ -239,6 +239,64 @@ void main() {
     expect(find.text('Стих дня'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'стих, не загрузившийся на старте, перезапрашивается при возврате',
+    (tester) async {
+      var loads = 0;
+      await pump(
+        tester,
+        load: () async {
+          loads++;
+          if (loads == 1) {
+            throw const AppFailure('Нет сети', kind: FailureKind.network);
+          }
+          return _verse;
+        },
+      );
+      await tester.pump();
+      expect(find.text('Стих дня'), findsNothing);
+
+      _backgroundAndReturn(tester);
+      await tester.pump();
+      await tester.pump();
+
+      expect(loads, 2);
+      expect(find.text(_verse.text), findsOneWidget);
+    },
+  );
+
+  testWidgets('загруженный стих при возврате не перезапрашивается', (
+    tester,
+  ) async {
+    var loads = 0;
+    await pump(
+      tester,
+      load: () async {
+        loads++;
+        return _verse;
+      },
+    );
+
+    _backgroundAndReturn(tester);
+    await tester.pump();
+
+    expect(loads, 1);
+  });
+}
+
+/// Уход в фон и возврат теми же шагами, что у платформы.
+void _backgroundAndReturn(WidgetTester tester) {
+  for (final state in const [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(state);
+  }
 }
 
 /// Подложка карточки: декорация с тенью внутри карточки.

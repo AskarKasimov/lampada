@@ -151,6 +151,11 @@ class _DelayedCourseProgress extends PrefsCourseProgressRepository {
   }
 }
 
+/// Стих дня без сети: оболочке он не нужен, а настоящая загрузка оставила бы
+/// таймеры повторов после теста.
+Never _noVerse() =>
+    throw const AppFailure('Нет сети', kind: FailureKind.network);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -183,6 +188,7 @@ void main() {
       readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
       sharedPreferencesProvider.overrideWithValue(prefs),
       analyticsProvider.overrideWithValue(analytics),
+      verseOfDayProvider.overrideWith((ref, key) async => _noVerse()),
       if (stubBibleChapter)
         bibleChapterProvider.overrideWith(
           (ref, key) async => BibleChapter(
@@ -964,6 +970,7 @@ void main() {
           _FakeProgressRepository(),
         ),
         sharedPreferencesProvider.overrideWithValue(prefs),
+        verseOfDayProvider.overrideWith((ref, key) async => _noVerse()),
       ],
     );
     addTearDown(container.dispose);
