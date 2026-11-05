@@ -1,9 +1,9 @@
 import '../../../../core/result/result.dart';
 
-/// Одноразовые подсказки читалки курса «Основы веры».
+/// Подсказки читалки курса «Основы веры».
 abstract interface class CourseHintRepository {
-  /// Показывали ли пульсацию плашки темы, которая открывает оглавление.
-  Future<Result<bool>> contentsHintShown();
+  /// Открывал ли юзер оглавление плашкой темы. До этого плашка пульсирует.
+  Future<Result<bool>> contentsOpened();
 
-  Future<Result<void>> markContentsHintShown();
+  Future<Result<void>> markContentsOpened();
 }

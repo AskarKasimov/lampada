@@ -9,10 +9,13 @@ class PrefsCourseHintRepository implements CourseHintRepository {
 
   final SharedPreferences _prefs;
 
-  static const _contentsKey = 'course_contents_hint_shown';
+  // Прежний ключ `course_contents_hint_shown` ставился уже при показе
+  // пульсации. Новый ставит только нажатие, поэтому тем, кто подсказку
+  // видел, но не нажал, она вернётся.
+  static const _contentsKey = 'course_contents_opened';
 
   @override
-  Future<Result<bool>> contentsHintShown() async {
+  Future<Result<bool>> contentsOpened() async {
     try {
       return Success(_prefs.getBool(_contentsKey) ?? false);
     } on Object catch (e) {
@@ -27,7 +30,7 @@ class PrefsCourseHintRepository implements CourseHintRepository {
   }
 
   @override
-  Future<Result<void>> markContentsHintShown() async {
+  Future<Result<void>> markContentsOpened() async {
     try {
       await requirePreferenceWrite(_prefs.setBool(_contentsKey, true));
       return const Success(null);

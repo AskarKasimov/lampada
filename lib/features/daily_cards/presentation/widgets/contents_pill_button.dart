@@ -3,13 +3,16 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/widgets/app_pill_badge.dart';
 
-/// Плашка темы в шапке читалки курса: по тапу открывает оглавление.
+/// Плашка в шапке читалки, которая по тапу открывает оглавление: темы курса
+/// или святых дня.
 ///
-/// Снаружи это та же [AppPillBadge], поэтому при первом открытии курса она
-/// дважды пульсирует (`pulse`): иначе плашку не отличить от подписи.
-class CourseContentsButton extends StatefulWidget {
-  const CourseContentsButton({
+/// Снаружи это та же [AppPillBadge], поэтому, пока юзер ни разу на неё не
+/// нажал, при каждом открытии читалки она дважды пульсирует (`pulse`): иначе
+/// плашку не отличить от подписи.
+class ContentsPillButton extends StatefulWidget {
+  const ContentsPillButton({
     required this.label,
+    required this.contentsLabel,
     required this.background,
     required this.foreground,
     required this.onPressed,
@@ -18,18 +21,21 @@ class CourseContentsButton extends StatefulWidget {
   });
 
   final String label;
+
+  /// Что откроет нажатие, для скринридера: «Оглавление курса».
+  final String contentsLabel;
   final Color background;
   final Color foreground;
   final VoidCallback onPressed;
 
-  /// Однократная подсказка, что на плашку можно нажать.
+  /// Подсказка, что на плашку можно нажать.
   final bool pulse;
 
   @override
-  State<CourseContentsButton> createState() => _CourseContentsButtonState();
+  State<ContentsPillButton> createState() => _ContentsPillButtonState();
 }
 
-class _CourseContentsButtonState extends State<CourseContentsButton>
+class _ContentsPillButtonState extends State<ContentsPillButton>
     with SingleTickerProviderStateMixin {
   // Пауза, чтобы читалка успела выехать, затем два вдоха плашки.
   late final _controller = AnimationController(
@@ -66,7 +72,7 @@ class _CourseContentsButtonState extends State<CourseContentsButton>
   }
 
   @override
-  void didUpdateWidget(CourseContentsButton oldWidget) {
+  void didUpdateWidget(ContentsPillButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.pulse && !oldWidget.pulse) _start();
   }
@@ -101,7 +107,7 @@ class _CourseContentsButtonState extends State<CourseContentsButton>
     );
     return Semantics(
       button: true,
-      label: '${widget.label}. Оглавление курса',
+      label: '${widget.label}. ${widget.contentsLabel}',
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,

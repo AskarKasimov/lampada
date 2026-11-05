@@ -6,13 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('подсказку оглавления показываем один раз за установку', () async {
+  test('подсказка оглавления снимается первым открытием', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
-    final fresh = await PrefsCourseHintRepository(prefs).contentsHintShown();
-    await PrefsCourseHintRepository(prefs).markContentsHintShown();
-    final again = await PrefsCourseHintRepository(prefs).contentsHintShown();
+    final fresh = await PrefsCourseHintRepository(prefs).contentsOpened();
+    await PrefsCourseHintRepository(prefs).markContentsOpened();
+    final again = await PrefsCourseHintRepository(prefs).contentsOpened();
 
     expect((fresh as Success<bool>).value, isFalse);
     expect((again as Success<bool>).value, isTrue);

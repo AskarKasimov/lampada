@@ -7,10 +7,12 @@ import '../../../../core/result/result.dart';
 import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/datasources/day_story_remote_datasource.dart';
 import '../../data/repositories/azbyka_day_story_repository.dart';
+import '../../data/repositories/prefs_story_hint_repository.dart';
 import '../../data/repositories/prefs_story_progress_repository.dart';
 import '../../domain/entities/day_story.dart';
 import '../../domain/entities/story_progress.dart';
 import '../../domain/repositories/day_story_repository.dart';
+import '../../domain/repositories/story_hint_repository.dart';
 import '../../domain/repositories/story_progress_repository.dart';
 import '../../domain/usecases/get_day_story.dart';
 import '../../domain/usecases/story_progress.dart';
@@ -40,6 +42,10 @@ final dayStoryProvider = FutureProvider.family<DayStory, String>(
   // Повтор уже сделан внутри репозитория (свой бюджет и расписание) —
   // без отключения риверпод повторял бы retryDelays поверх retryDelays.
   retry: (_, _) => null,
+);
+
+final storyHintRepositoryProvider = Provider<StoryHintRepository>(
+  (ref) => PrefsStoryHintRepository(ref.watch(sharedPreferencesProvider)),
 );
 
 final storyProgressRepositoryProvider = Provider<StoryProgressRepository>(

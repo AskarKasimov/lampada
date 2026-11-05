@@ -340,7 +340,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   }
 
   /// Святой дня считается прочитанным после последней страницы рассказа:
-  /// вернувшись на главную, юзер видит на плитке следующего.
+  /// вернувшись на главную, юзер видит на плитке следующего. Из рассказа
+  /// можно перейти к любому святому дня, поэтому ему передаём их всех.
   Future<void> _openStory(
     BuildContext context,
     DayMemory memory, {
@@ -360,10 +361,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         builder: (_) => DayStoryScreen(
           title: memory.title,
           storyUrl: memory.storyUrl,
-          onCompleted: () => unawaited(
-            ref
-                .read(storyProgressProvider.notifier)
-                .markRead(date, memory.storyUrl),
+          memories: day.memories,
+          readUrls:
+              ref.read(storyProgressProvider).value?.readOn(date) ?? const {},
+          onCompleted: (storyUrl) => unawaited(
+            ref.read(storyProgressProvider.notifier).markRead(date, storyUrl),
           ),
         ),
       ),

@@ -25,7 +25,7 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_progress_re
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_detail_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
-import 'package:lampada/features/daily_cards/presentation/widgets/course_contents_button.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/contents_pill_button.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_contents_sheet.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
@@ -701,30 +701,38 @@ void main() {
     expect(find.text('Тема 5'), findsOneWidget);
   });
 
-  testWidgets('при первом открытии курса плашка темы пульсирует', (
+  bool contentsPulse(WidgetTester tester) =>
+      tester.widget<ContentsPillButton>(find.byType(ContentsPillButton)).pulse;
+
+  testWidgets('плашка темы пульсирует, пока оглавление не открывали', (
     tester,
   ) async {
     await pumpReader(tester);
 
-    expect(
-      tester
-          .widget<CourseContentsButton>(find.byType(CourseContentsButton))
-          .pulse,
-      isTrue,
-    );
-    expect(prefs.getBool('course_contents_hint_shown'), isTrue);
+    expect(contentsPulse(tester), isTrue);
+    // Показ подсказки её не снимает: она вернётся при следующем открытии.
+    expect(prefs.getBool('course_contents_opened'), isNull);
   });
 
-  testWidgets('повторно плашка темы не пульсирует', (tester) async {
-    await prefs.setBool('course_contents_hint_shown', true);
+  testWidgets('после нажатия на плашку она больше не пульсирует', (
+    tester,
+  ) async {
     await pumpReader(tester);
 
-    expect(
-      tester
-          .widget<CourseContentsButton>(find.byType(CourseContentsButton))
-          .pulse,
-      isFalse,
-    );
+    await tester.tap(find.text('Основы веры · Тема №3'));
+    await tester.pumpAndSettle();
+
+    expect(prefs.getBool('course_contents_opened'), isTrue);
+    expect(contentsPulse(tester), isFalse);
+  });
+
+  testWidgets('если оглавление уже открывали, плашка не пульсирует', (
+    tester,
+  ) async {
+    await prefs.setBool('course_contents_opened', true);
+    await pumpReader(tester);
+
+    expect(contentsPulse(tester), isFalse);
   });
 
   testWidgets('keeps the course title visible in the reader header', (

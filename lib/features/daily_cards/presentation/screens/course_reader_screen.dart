@@ -20,7 +20,7 @@ import '../../domain/split_course_text.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
-import '../widgets/course_contents_button.dart';
+import '../widgets/contents_pill_button.dart';
 import '../widgets/course_contents_sheet.dart';
 import '../widgets/reader_progress_rail.dart';
 import '../widgets/vertical_card_reader.dart';
@@ -72,6 +72,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   bool _edgeDismissActive = false;
   double _edgeDismissDistance = 0;
   bool _pulseContents = false;
+  bool _contentsOpened = false;
 
   int get _initialIndex =>
       _leading + widget.initialPage.clamp(0, _pages.length - 1);
@@ -243,17 +244,25 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     }
   }
 
-  /// Плашка темы похожа на подпись, поэтому при первом открытии курса она
-  /// пульсирует: на неё можно нажать и открыть оглавление.
+  /// Плашка темы похожа на подпись, поэтому, пока юзер ни разу не открыл
+  /// оглавление, она пульсирует при каждом открытии курса.
   Future<void> _maybeHintContents() async {
-    final hints = ref.read(courseHintRepositoryProvider);
-    final shown = await hints.contentsHintShown();
-    if (!mounted || shown is! Success<bool> || shown.value) return;
+    final opened = await ref
+        .read(courseHintRepositoryProvider)
+        .contentsOpened();
+    if (!mounted || _contentsOpened) return;
+    if (opened is! Success<bool> || opened.value) return;
     setState(() => _pulseContents = true);
-    await hints.markContentsHintShown();
   }
 
   Future<void> _openContents(int currentTopic) async {
+    if (!_contentsOpened) {
+      setState(() {
+        _contentsOpened = true;
+        _pulseContents = false;
+      });
+      unawaited(ref.read(courseHintRepositoryProvider).markContentsOpened());
+    }
     ref
         .read(analyticsProvider)
         .log(AnalyticsEvent.courseInfoOpened(CourseInfoScreen.contents));
@@ -523,8 +532,9 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                 );
               },
               headerInteractive: true,
-              header: CourseContentsButton(
+              header: ContentsPillButton(
                 label: 'Основы веры · Тема №$topic',
+                contentsLabel: 'Оглавление курса',
                 background: style.tagBackground,
                 foreground: style.tagForeground,
                 pulse: _pulseContents,

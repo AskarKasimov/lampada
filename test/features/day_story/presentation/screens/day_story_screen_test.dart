@@ -11,12 +11,16 @@ import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:lampada/core/widgets/selectable_share_area.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart'
     show bookmarksProvider;
+import 'package:lampada/features/bookmarks/presentation/widgets/bookmark_button.dart';
+import 'package:lampada/features/daily_cards/domain/entities/day_memory.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/contents_pill_button.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
 import 'package:lampada/features/day_story/presentation/providers/providers.dart';
 import 'package:lampada/features/day_story/presentation/screens/day_story_screen.dart';
+import 'package:lampada/features/day_story/presentation/widgets/day_memories_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/text_selection.dart';
@@ -34,6 +38,17 @@ class _FakeRepository implements DayStoryRepository {
   Future<Result<DayStory>> fetch(String url) async {
     calls++;
     return _result;
+  }
+}
+
+/// Рассказ у каждого святого свой: первый абзац называет ссылку.
+class _ByUrlRepository implements DayStoryRepository {
+  final requested = <String>[];
+
+  @override
+  Future<Result<DayStory>> fetch(String url) async {
+    requested.add(url);
+    return Success(DayStory(paragraphs: ['Рассказ $url.']));
   }
 }
 
@@ -449,6 +464,145 @@ void main() {
 
       expect(find.text(_title), findsWidgets);
       expect(find.byType(Image), findsNothing);
+    });
+  });
+
+  group('список святых дня', () {
+    const iulianija = DayMemory(title: _title, storyUrl: _url);
+    const foma = DayMemory(
+      title: 'Прп. Фомы́, иже в Мале́и',
+      storyUrl: 'https://azbyka.ru/days/sv-foma-malein',
+    );
+    const akakij = DayMemory(
+      title: 'Прп. Ака́кия Синайского',
+      storyUrl: 'https://azbyka.ru/days/sv-akakij-sinajskij',
+    );
+    late List<String> completed;
+
+    Widget wrapDay(
+      DayStoryRepository repository, {
+      List<DayMemory> memories = const [iulianija, foma, akakij],
+      Set<String> readUrls = const {},
+    }) {
+      completed = [];
+      return ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          dayStoryRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: DayStoryScreen(
+            title: _title,
+            storyUrl: _url,
+            memories: memories,
+            readUrls: readUrls,
+            onCompleted: completed.add,
+          ),
+        ),
+      );
+    }
+
+    bool pulse(WidgetTester tester) => tester
+        .widget<ContentsPillButton>(find.byType(ContentsPillButton))
+        .pulse;
+
+    testWidgets('плашка показывает место святого и открывает их список', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        wrapDay(_ByUrlRepository(), readUrls: {foma.storyUrl}),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Память дня · 1 из 3'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DayMemoriesSheet), findsOneWidget);
+      expect(find.bySemanticsLabel('$_title. Сейчас'), findsOneWidget);
+      expect(find.bySemanticsLabel('${foma.title}. Прочитано'), findsOneWidget);
+      expect(find.bySemanticsLabel(akakij.title), findsOneWidget);
+    });
+
+    testWidgets('выбранный святой открывается с обложки', (tester) async {
+      final repo = _ByUrlRepository();
+      await tester.pumpWidget(wrapDay(repo));
+      await tester.pumpAndSettle();
+      await next(tester);
+
+      await tester.tap(find.text('Память дня · 1 из 3'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(akakij.title));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DayMemoriesSheet), findsNothing);
+      expect(repo.requested.last, akakij.storyUrl);
+      expect(find.text('Память дня · 3 из 3'), findsOneWidget);
+      // Новый рассказ начинается с обложки, а не со страницы прежнего.
+      expect(find.text(akakij.title), findsOneWidget);
+      expect(
+        tester
+            .widget<ReaderProgressRail>(find.byType(ReaderProgressRail))
+            .currentIndex,
+        0,
+      );
+
+      await next(tester);
+      expect(find.text('Рассказ ${akakij.storyUrl}.'), findsOneWidget);
+      // Прочитанным отмечается каждый святой, которого дочитали.
+      expect(completed, [_url, akakij.storyUrl]);
+      final bookmark = tester.widget<BookmarkButton>(
+        find.byType(BookmarkButton),
+      );
+      expect(bookmark.bookmark.source, akakij.title);
+    });
+
+    testWidgets('дочитанный святой отмечен в списке сразу', (tester) async {
+      await tester.pumpWidget(wrapDay(_ByUrlRepository()));
+      await tester.pumpAndSettle();
+      await next(tester);
+
+      await tester.tap(find.text('Память дня · 1 из 3'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.bySemanticsLabel('$_title. Сейчас. Прочитано'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('плашка пульсирует, пока список не открывали', (tester) async {
+      await tester.pumpWidget(wrapDay(_ByUrlRepository()));
+      await tester.pumpAndSettle();
+
+      expect(pulse(tester), isTrue);
+      expect(prefs.getBool('story_contents_opened'), isNull);
+
+      await tester.tap(find.text('Память дня · 1 из 3'));
+      await tester.pumpAndSettle();
+
+      expect(prefs.getBool('story_contents_opened'), isTrue);
+      expect(pulse(tester), isFalse);
+    });
+
+    testWidgets('если список уже открывали, плашка не пульсирует', (
+      tester,
+    ) async {
+      await prefs.setBool('story_contents_opened', true);
+      await tester.pumpWidget(wrapDay(_ByUrlRepository()));
+      await tester.pumpAndSettle();
+
+      expect(pulse(tester), isFalse);
+    });
+
+    testWidgets('у одного святого плашка остаётся подписью', (tester) async {
+      await tester.pumpWidget(
+        wrapDay(_ByUrlRepository(), memories: const [iulianija]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ContentsPillButton), findsNothing);
+      expect(find.text('Память дня'), findsOneWidget);
     });
   });
 }
