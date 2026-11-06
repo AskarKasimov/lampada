@@ -439,8 +439,20 @@ debug-сборке.
 `android/app/src/main/AndroidManifest.xml`: debug/profile-манифесты release не
 покрывают.
 
-Аналитика — AppMetrica, активируется в `main()`. Геолокацию и рекламные
-идентификаторы не собираем; разрешение `com.google.android.gms.permission.AD_ID`,
+Аналитика — AppMetrica, активируется в `main()` через
+`AppMetricaAnalytics.activate`. На iOS при первом запуске сначала показывается
+системный запрос App Tracking Transparency (нативный канал
+`lampada/tracking_consent` в `AppDelegate.swift`), и только после ответа SDK
+активируется с `advIdentifiersTracking`: так IDFA согласившихся попадает в
+событие установки, по которому Яндекс Директ атрибутирует рекламу. События до
+активации копятся в `ActivationGate`. В `PrivacyInfo.xcprivacy` объявлен
+трекинг по идентификатору устройства; метку приватности в App Store Connect
+нужно держать в соответствии с ним. `NSPrivacyTrackingDomains` пуст
+намеренно: домен из этого списка iOS блокирует у отказавшихся, и вместе с ним
+пропала бы вся аналитика.
+
+Геолокацию не собираем. На Android рекламный идентификатор не собираем;
+разрешение `com.google.android.gms.permission.AD_ID`,
 которое SDK приносит транзитивно, вырезано из манифеста через
 `tools:node="remove"`. Если понадобится рекламная атрибуция, верните его и
 обновите Data safety в Google Play.

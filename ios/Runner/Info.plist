@@ -28,6 +28,8 @@
 		<false/>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSUserTrackingUsageDescription</key>
+		<string>Так мы поймём, какая реклама помогает людям найти Лампаду. Рекламы внутри приложения нет.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
