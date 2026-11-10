@@ -71,6 +71,7 @@ void main() {
 
     expect(result.litNow, isTrue);
     expect(result.restarted, isTrue);
+    expect(result.before.isLit(now), isFalse);
     expect(result.progress.isLit(now), isTrue);
     expect(result.progress.streakOn(now), 1);
     expect(result.progress.readTypes, isEmpty);

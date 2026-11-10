@@ -27,6 +27,7 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_progress_re
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/card_viewer_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/lamp_lit_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/card_content.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
@@ -1108,10 +1109,55 @@ void main() {
       );
     });
 
-    testWidgets('дочитанный рассказ зажигает сегодняшнюю лампаду', (
+    testWidgets(
+      'рассказ, пролистанный до конца, показывает зажжённую лампаду',
+      (tester) async {
+        final progress = _FakeProgressRepository();
+        await tester.pumpWidget(
+          buildApp(
+            cardsRepository: _FakeCardsRepository(
+              title: 'Мц. Христи́ны Тирской',
+              storyUrl: 'https://azbyka.ru/days/sv-hristina',
+            ),
+            progressRepository: progress,
+          ),
+        );
+        await settle(tester);
+
+        await tester.tap(find.byType(DayMemoryTile));
+        await settle(tester);
+        await tester.drag(find.byType(PageView), const Offset(0, -600));
+        await settle(tester);
+        // Последняя страница ещё читается: день засчитывает свайп за неё.
+        expect(progress.visitedDays, isEmpty);
+        expect(analytics.names, isNot(contains('lamp_lit')));
+
+        await tester.drag(find.byType(PageView), const Offset(0, -600));
+        await tester.pumpAndSettle();
+
+        expect(progress.visitedDays, {dateKey(DateTime.now())});
+        expect(analytics.single('lamp_lit'), {
+          'source': 'story',
+          'streak': 1,
+          'restarted': true,
+        });
+        expect(find.byType(DayStoryScreen), findsNothing);
+        expect(find.byType(LampLitScreen), findsOneWidget);
+        expect(find.text('Память дня прочитана'), findsOneWidget);
+        expect(find.text('Продолжить чтение'), findsNothing);
+
+        await tester.tap(find.text('Вернуться на главную'));
+        await tester.pumpAndSettle();
+        expect(find.byType(LampLitScreen), findsNothing);
+        expect(find.byType(DayMemoryTile), findsOneWidget);
+      },
+    );
+
+    testWidgets('если лампада уже горит, рассказ просто закрывается', (
       tester,
     ) async {
-      final progress = _FakeProgressRepository();
+      final progress = _FakeProgressRepository()
+        ..seedVisited({dateKey(DateTime.now())});
       await tester.pumpWidget(
         buildApp(
           cardsRepository: _FakeCardsRepository(
@@ -1125,19 +1171,14 @@ void main() {
 
       await tester.tap(find.byType(DayMemoryTile));
       await settle(tester);
-      // Открытый, но не дочитанный рассказ день не засчитывает.
-      expect(progress.visitedDays, isEmpty);
-      expect(analytics.names, isNot(contains('lamp_lit')));
-
       await tester.drag(find.byType(PageView), const Offset(0, -600));
       await settle(tester);
+      await tester.drag(find.byType(PageView), const Offset(0, -600));
+      await tester.pumpAndSettle();
 
-      expect(progress.visitedDays, {dateKey(DateTime.now())});
-      expect(analytics.single('lamp_lit'), {
-        'source': 'story',
-        'streak': 1,
-        'restarted': true,
-      });
+      expect(find.byType(DayStoryScreen), findsNothing);
+      expect(find.byType(LampLitScreen), findsNothing);
+      expect(analytics.names, isNot(contains('lamp_lit')));
     });
 
     testWidgets('прочитав святого, юзер возвращается к следующему', (

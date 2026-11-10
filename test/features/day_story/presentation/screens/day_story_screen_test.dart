@@ -427,6 +427,59 @@ void main() {
     expect(find.text('Открыть'), findsOneWidget);
   });
 
+  testWidgets('свайп за последнюю страницу сменяет рассказ его итогом', (
+    tester,
+  ) async {
+    final repo = _FakeRepository(
+      const Success(DayStory(paragraphs: ['Абзац первый.'])),
+    );
+    var finished = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          dayStoryRepositoryProvider.overrideWithValue(repo),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => DayStoryScreen(
+                        title: _title,
+                        storyUrl: _url,
+                        onFinished: () async {
+                          finished++;
+                          return const Text('Итог рассказа');
+                        },
+                      ),
+                    ),
+                  ),
+                  child: const Text('Открыть'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Открыть'));
+    await tester.pumpAndSettle();
+
+    await next(tester);
+    // Последняя страница ещё не конец: юзер её только читает.
+    expect(finished, 0);
+
+    await next(tester);
+    expect(finished, 1);
+    expect(find.byType(DayStoryScreen), findsNothing);
+    expect(find.text('Итог рассказа'), findsOneWidget);
+  });
+
   group('обложка с иконой', () {
     const icon =
         'https://azbyka.ru/days/storage/images/icons-of-saints/1/a.jpg';

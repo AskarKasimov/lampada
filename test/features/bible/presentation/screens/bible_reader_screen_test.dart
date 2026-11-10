@@ -16,6 +16,7 @@ import 'package:lampada/features/bible/domain/entities/bible_reading_position.da
 import 'package:lampada/features/bible/domain/repositories/bible_repository.dart';
 import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/lamp_lit_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
 import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,6 +28,7 @@ import '../../../../support/text_selection.dart';
 class _RecordingRepository implements BibleRepository {
   final positions = <BibleReadingPosition>[];
   final progress = <BibleChapterId, BibleChapterProgress>{};
+  final read = <BibleChapterId>{};
 
   @override
   Future<Result<BibleChapter>> getChapter(String book, int chapter) =>
@@ -36,7 +38,7 @@ class _RecordingRepository implements BibleRepository {
   Future<Result<BibleChapterStatuses>> getChapterStatuses() async => Success((
     lastChapter: null,
     cached: <BibleChapterId>{},
-    read: <BibleChapterId>{},
+    read: {...read},
     progress: {...progress},
   ));
 
@@ -277,14 +279,17 @@ void main() {
     ]);
   });
 
-  testWidgets('дочитанная глава зажигает сегодняшнюю лампаду', (tester) async {
-    await open(tester, verse: 1);
-    // Начатая, но не дочитанная глава день не засчитывает.
+  testWidgets('свайп за последний стих главы показывает зажжённую лампаду', (
+    tester,
+  ) async {
+    await open(tester, verse: 2);
+    // Последний стих ещё читается: день засчитывает свайп за него.
+    expect(analytics.names, contains('bible_chapter_completed'));
     expect(analytics.names, isNot(contains('lamp_lit')));
     expect(prefs.getString('day_progress'), isNull);
 
-    await tester.pumpWidget(const SizedBox.shrink());
-    await open(tester, verse: 2);
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
 
     expect(analytics.single('lamp_lit'), {
       'source': 'bible',
@@ -292,6 +297,38 @@ void main() {
       'restarted': true,
     });
     expect(prefs.getString('day_progress'), contains(dateKey(DateTime.now())));
+    expect(find.byType(LampLitScreen), findsOneWidget);
+    expect(find.text('Глава Библии прочитана'), findsOneWidget);
+    expect(find.text('Вернуться на главную'), findsNothing);
+
+    await tester.tap(find.text('Продолжить чтение'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LampLitScreen), findsNothing);
+    expect(find.byType(BibleReaderScreen), findsOneWidget);
+  });
+
+  testWidgets('дойти до последнего стиха мало, чтобы зажечь лампаду', (
+    tester,
+  ) async {
+    await open(tester, verse: 1);
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Земля же была безвидна'), findsOneWidget);
+    expect(analytics.names, isNot(contains('lamp_lit')));
+    expect(find.byType(LampLitScreen), findsNothing);
+  });
+
+  testWidgets('перечитанная глава лампаду не зажигает', (tester) async {
+    // Как и bible_chapter_completed: засчитывается только первое прочтение.
+    repository.read.add(('Gen', 1));
+    await open(tester, verse: 2);
+
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(analytics.names, isNot(contains('lamp_lit')));
+    expect(find.byType(LampLitScreen), findsNothing);
   });
 
   testWidgets('толкование открывается со стиха главы, как в чтении дня', (

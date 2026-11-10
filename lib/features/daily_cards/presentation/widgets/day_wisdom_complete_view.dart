@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
@@ -16,13 +14,14 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_primary_button.dart';
 import '../../domain/entities/day_progress.dart';
 import '../providers/providers.dart';
+import 'celebration.dart';
 import 'streak_card.dart';
 
 /// Последняя страница «Мудрости дня»: итог дня, серия и выход.
 ///
 /// Из «Мудрости дня» в «Лампадку» засчитывается только дошедший сюда день;
-/// остальные разделы зажигают её своим дочитыванием через `LightDayLamp`,
-/// без отдельного представления. Первое появление за день разыграно как
+/// остальные разделы зажигают её своим дочитыванием и показывают тот же
+/// спектакль в `LampLitScreen`. Первое появление за день разыграно как
 /// маленькое событие: печать с искрами, затем по
 /// очереди текст и серия, в конце лампада загорается на глазах, и уже после
 /// неё раскрывается неделя. При повторном чтении тот же итог показывается
@@ -239,13 +238,13 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _Seal(
+                CelebrationSeal(
                   pop: _step(0, 0.45, Curves.elasticOut),
                   burst: _step(0.08, 0.75, Curves.linear),
                   colors: colors,
                 ),
                 const SizedBox(height: 20),
-                _Rise(
+                CelebrationRise(
                   animation: _step(0.22, 0.55),
                   child: Text(
                     'Слава Богу!',
@@ -254,7 +253,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                   ),
                 ),
                 const SizedBox(height: 8),
-                _Rise(
+                CelebrationRise(
                   animation: _step(0.3, 0.62),
                   child: Text(
                     'Мудрость дня прочитана',
@@ -267,7 +266,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                   ),
                 ),
                 const SizedBox(height: 4),
-                _Rise(
+                CelebrationRise(
                   animation: _step(0.36, 0.68),
                   child: Text(
                     russianDayMonth(widget.date),
@@ -277,7 +276,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                 ),
                 if (progress != null) ...[
                   const SizedBox(height: 28),
-                  _Rise(
+                  CelebrationRise(
                     animation: _step(0.45, 0.8),
                     child: StreakCard(
                       progress: progress,
@@ -290,7 +289,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                 ],
                 const SizedBox(height: 32),
                 if (widget.links.isNotEmpty) ...[
-                  _Rise(
+                  CelebrationRise(
                     animation: _actionStep(0, 0.75),
                     enabled: _weekShown,
                     child: SizedBox(
@@ -304,7 +303,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                   ),
                 ],
                 const SizedBox(height: 8),
-                _Rise(
+                CelebrationRise(
                   animation: _actionStep(0.2, 1),
                   enabled: _weekShown,
                   child: TextButton(
@@ -317,7 +316,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                 ),
                 for (final link in widget.links.skip(1)) ...[
                   const SizedBox(height: 8),
-                  _Rise(
+                  CelebrationRise(
                     animation: _actionStep(0.2, 1),
                     enabled: _weekShown,
                     child: TextButton(
@@ -350,118 +349,4 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
       ),
     );
   }
-}
-
-/// Блок проявляется и всплывает на своё место.
-class _Rise extends StatelessWidget {
-  const _Rise({
-    required this.animation,
-    required this.child,
-    this.enabled = true,
-  });
-
-  final Animation<double> animation;
-  final Widget child;
-
-  /// Пока блок не показан, он не принимает нажатия: прозрачная кнопка
-  /// иначе срабатывала бы от случайного тапа.
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) => IgnorePointer(
-    ignoring: !enabled,
-    child: AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) => Opacity(
-        opacity: animation.value.clamp(0.0, 1.0),
-        child: Transform.translate(
-          offset: Offset(0, 24 * (1 - animation.value)),
-          child: child,
-        ),
-      ),
-      child: child,
-    ),
-  );
-}
-
-/// Печать «прочитано»: выпрыгивает с отскоком, от неё расходятся кольцо
-/// света и искры, как от затеплённой лампады.
-class _Seal extends StatelessWidget {
-  const _Seal({required this.pop, required this.burst, required this.colors});
-
-  final Animation<double> pop;
-  final Animation<double> burst;
-  final AppColorsExtension colors;
-
-  @override
-  Widget build(BuildContext context) => SizedBox.square(
-    dimension: 72,
-    child: CustomPaint(
-      painter: _SparkBurstPainter(
-        progress: burst,
-        spark: colors.flameLight,
-        glow: colors.accent,
-      ),
-      child: ScaleTransition(
-        scale: pop,
-        child: RotationTransition(
-          turns: Tween(begin: -0.12, end: 0.0).animate(pop),
-          child: Icon(
-            CupertinoIcons.checkmark_seal_fill,
-            size: 64,
-            color: colors.accent,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _SparkBurstPainter extends CustomPainter {
-  _SparkBurstPainter({
-    required this.progress,
-    required this.spark,
-    required this.glow,
-  }) : super(repaint: progress);
-
-  final Animation<double> progress;
-  final Color spark;
-  final Color glow;
-
-  static const _sparks = 14;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final t = progress.value;
-    if (t <= 0 || t >= 1) return;
-    final center = size.center(Offset.zero);
-    final fade = 1 - t;
-    final out = Curves.easeOutCubic.transform(t);
-
-    canvas.drawCircle(
-      center,
-      lerpDouble(30, 110, out)!,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4 * fade
-        ..color = glow.withValues(alpha: 0.45 * fade),
-    );
-
-    final paint = Paint();
-    for (var i = 0; i < _sparks; i++) {
-      // Разброс детерминированный: каждая вспышка одинаковая, без рандома.
-      final angle = i * 2 * math.pi / _sparks + (i.isEven ? 0.13 : -0.09);
-      final reach = 78.0 + (i % 3) * 22;
-      final distance = lerpDouble(26, reach, out)!;
-      final radius = (3.2 - (i % 3) * 0.7) * (1 - t * 0.5);
-      final offset =
-          center + Offset(math.cos(angle), math.sin(angle)) * distance;
-      paint.color = (i % 4 == 0 ? glow : spark).withValues(alpha: fade);
-      canvas.drawCircle(offset, radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_SparkBurstPainter oldDelegate) =>
-      oldDelegate.spark != spark || oldDelegate.glow != glow;
 }

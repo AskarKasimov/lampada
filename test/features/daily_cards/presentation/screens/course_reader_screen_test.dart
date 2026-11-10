@@ -25,6 +25,7 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_progress_re
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_detail_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/lamp_lit_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/contents_pill_button.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_contents_sheet.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
@@ -213,7 +214,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     cards = _CourseCardsRepository();
-    progress = _ProgressRepository();
+    // Лампада сегодня уже горит: итог первого зажжения иначе выезжал бы
+    // поверх читалки в каждом тесте со сменой темы. Тесты зажжения гасят её.
+    progress = _ProgressRepository()..visited.add(dateKey(DateTime.now()));
   });
 
   Widget buildApp({
@@ -568,6 +571,7 @@ void main() {
   testWidgets('засчитанная тема пишет завершение и зажжённую лампаду', (
     tester,
   ) async {
+    progress.visited.clear();
     await pumpReader(tester);
 
     await tester.drag(find.byType(PageView), const Offset(0, -500));
@@ -582,6 +586,50 @@ void main() {
       'streak': 1,
       'restarted': true,
     });
+  });
+
+  testWidgets('первое зажжение за день показывает итог темы с лампадой', (
+    tester,
+  ) async {
+    progress.visited.clear();
+    await pumpReader(tester);
+
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LampLitScreen), findsOneWidget);
+    expect(find.text('Тема «Основ веры» прочитана'), findsOneWidget);
+
+    await tester.tap(find.text('Продолжить чтение'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LampLitScreen), findsNothing);
+    expect(find.text('Тема 4'), findsOneWidget);
+  });
+
+  testWidgets('с итога темы можно вернуться на главную', (tester) async {
+    progress.visited.clear();
+    await pumpReader(tester);
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Вернуться на главную'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LampLitScreen), findsNothing);
+    expect(find.byType(CourseReaderScreen), findsNothing);
+    expect(find.text('Открыть основы'), findsOneWidget);
+  });
+
+  testWidgets('если лампада уже горит, итог темы не прерывает чтение', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LampLitScreen), findsNothing);
+    expect(find.text('Тема 4'), findsOneWidget);
   });
 
   testWidgets('вмещающееся предложение длиннее 150 не требует полного экрана', (

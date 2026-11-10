@@ -317,25 +317,29 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
   /// Зажигает сегодняшнюю «Лампадку» после дочитанного до конца раздела и
   /// пишет `lamp_lit`, если день загорелся именно сейчас. Засчитывать ли
   /// день, решает [LightDayLamp]: [contentDate] прошлого дня лампаду не
-  /// зажигает. Возвращает, загорелась ли лампада.
-  Future<bool> lightLamp(LampSource source, {DateTime? contentDate}) async {
+  /// зажигает. Null — запись не удалась.
+  Future<DayLampResult?> lightLamp(
+    LampSource source, {
+    DateTime? contentDate,
+  }) async {
     switch (await ref.read(lightDayLampProvider)(contentDate: contentDate)) {
       case Failure(failure: final f):
         netLog('не удалось зажечь лампаду: $f');
-        return false;
+        return null;
       case Success(value: final result):
         state = AsyncData(result.progress);
-        if (!result.litNow) return false;
-        ref
-            .read(analyticsProvider)
-            .log(
-              AnalyticsEvent.lampLit(
-                source: source,
-                streak: result.progress.streakOn(DateTime.now()),
-                restarted: result.restarted,
-              ),
-            );
-        return true;
+        if (result.litNow) {
+          ref
+              .read(analyticsProvider)
+              .log(
+                AnalyticsEvent.lampLit(
+                  source: source,
+                  streak: result.progress.streakOn(DateTime.now()),
+                  restarted: result.restarted,
+                ),
+              );
+        }
+        return result;
     }
   }
 }

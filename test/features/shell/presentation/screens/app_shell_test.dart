@@ -183,13 +183,15 @@ void main() {
     TargetPlatform? platform,
     CourseProgressRepository? courseProgress,
     bool stubBibleChapter = false,
+    bool lampLit = false,
   }) => ProviderScope(
     overrides: [
       if (courseProgress != null)
         courseProgressRepositoryProvider.overrideWithValue(courseProgress),
       dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
       dayProgressRepositoryProvider.overrideWithValue(
-        _FakeProgressRepository(),
+        _FakeProgressRepository()
+          .._visited = {if (lampLit) dateKey(DateTime.now())},
       ),
       readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
       sharedPreferencesProvider.overrideWithValue(prefs),
@@ -644,7 +646,10 @@ void main() {
       'повторный тап Главная ожидает ${waitForCompletion ? "завершения темы" : "сохранения позиции"}',
       (tester) async {
         final course = _DelayedCourseProgress(prefs);
-        await tester.pumpWidget(buildApp(courseProgress: course));
+        // Лампада уже горит: итог её зажжения перекрыл бы читалку курса.
+        await tester.pumpWidget(
+          buildApp(courseProgress: course, lampLit: true),
+        );
         await settle(tester);
         await tester.tap(find.byType(CourseProgressHeader));
         await settle(tester);

@@ -39,6 +39,7 @@ import '../widgets/streak_sheet.dart';
 import '../widgets/today_offline_view.dart';
 import 'course_reader_route.dart';
 import 'day_wisdom_screen.dart';
+import 'lamp_lit_screen.dart';
 
 /// Дневная сессия: всегда сегодняшний день, без выбора даты.
 ///
@@ -342,7 +343,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   /// Святой дня считается прочитанным после последней страницы рассказа:
   /// вернувшись на главную, юзер видит на плитке следующего. Из рассказа
   /// можно перейти к любому святому дня, поэтому ему передаём их всех.
-  /// Дочитанный рассказ зажигает и «Лампадку», если день всё ещё сегодняшний.
+  /// Свайп за последнюю страницу зажигает «Лампадку», если день всё ещё
+  /// сегодняшний, и первое зажжение за день показывает итог вместо главной.
   Future<void> _openStory(
     BuildContext context,
     DayMemory memory, {
@@ -365,14 +367,18 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           memories: day.memories,
           readUrls:
               ref.read(storyProgressProvider).value?.readOn(date) ?? const {},
-          onCompleted: (storyUrl) {
-            unawaited(
-              ref.read(storyProgressProvider.notifier).markRead(date, storyUrl),
-            );
-            unawaited(
-              ref
-                  .read(dayProgressProvider.notifier)
-                  .lightLamp(LampSource.story, contentDate: date),
+          onCompleted: (storyUrl) => unawaited(
+            ref.read(storyProgressProvider.notifier).markRead(date, storyUrl),
+          ),
+          onFinished: () async {
+            final lamp = await ref
+                .read(dayProgressProvider.notifier)
+                .lightLamp(LampSource.story, contentDate: date);
+            if (lamp == null || !lamp.litNow) return null;
+            return LampLitScreen(
+              before: lamp.before,
+              title: 'Память дня прочитана',
+              canContinue: false,
             );
           },
         ),

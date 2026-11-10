@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -45,6 +46,7 @@ class DayStoryScreen extends ConsumerStatefulWidget {
     this.memories = const [],
     this.readUrls = const {},
     this.onCompleted,
+    this.onFinished,
     super.key,
   });
 
@@ -60,6 +62,11 @@ class DayStoryScreen extends ConsumerStatefulWidget {
 
   /// Дочитан рассказ по этой ссылке.
   final ValueChanged<String>? onCompleted;
+
+  /// Юзер пролистал дальше последней страницы. Вернувшийся экран (итог с
+  /// зажжённой лампадой) заменяет рассказ; без него рассказ просто
+  /// закрывается.
+  final Future<Widget?> Function()? onFinished;
 
   @override
   ConsumerState<DayStoryScreen> createState() => _DayStoryScreenState();
@@ -115,6 +122,19 @@ class _DayStoryScreenState extends ConsumerState<DayStoryScreen> {
     final url = _memory.storyUrl;
     _completed.add(url);
     widget.onCompleted?.call(url);
+  }
+
+  Future<void> _finish() async {
+    final next = await widget.onFinished?.call();
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    if (next == null) {
+      navigator.pop();
+      return;
+    }
+    unawaited(
+      navigator.pushReplacement(BottomUpModalRoute<void>(builder: (_) => next)),
+    );
   }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
@@ -210,6 +230,7 @@ class _DayStoryScreenState extends ConsumerState<DayStoryScreen> {
                   shareText: _shareTextFor(story),
                   onCompleted: _onCompleted,
                   onClose: () => Navigator.of(context).pop(),
+                  onFinish: () => unawaited(_finish()),
                   onExit: (furthest, total, finished) => analytics.log(
                     AnalyticsEvent.storyClosed(
                       pagesSeen: furthest + 1,
@@ -241,6 +262,7 @@ class _StoryReader extends StatefulWidget {
     required this.shareText,
     required this.onCompleted,
     required this.onClose,
+    required this.onFinish,
     required this.onExit,
     required this.onFullText,
     super.key,
@@ -254,6 +276,9 @@ class _StoryReader extends StatefulWidget {
   final String shareText;
   final VoidCallback? onCompleted;
   final VoidCallback onClose;
+
+  /// Свайп дальше последней страницы: рассказ дочитан до конца.
+  final VoidCallback onFinish;
 
   /// Закрытие с самой дальней страницей и признаком «долистал до конца».
   final void Function(int furthest, int total, bool finished) onExit;
@@ -320,7 +345,7 @@ class _StoryReaderState extends State<_StoryReader> {
     if (_closing || !_controller.hasClients) return;
     if ((_controller.page ?? 0) < _pages.length - 0.001) return;
     _closing = true;
-    widget.onClose();
+    widget.onFinish();
   }
 
   @override

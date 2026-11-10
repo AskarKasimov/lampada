@@ -150,7 +150,8 @@ void main() {
           .lightLamp(LampSource.story, contentDate: DateTime.now());
 
       final progress = container.read(dayProgressProvider).requireValue;
-      expect(lit, isTrue);
+      expect(lit?.litNow, isTrue);
+      expect(lit?.before.isLit(DateTime.now()), isFalse);
       expect(progress.isLit(DateTime.now()), isTrue);
       expect(progress.readTypes, isEmpty);
       expect(analytics.single('lamp_lit'), {
@@ -171,7 +172,7 @@ void main() {
       await notifier.lightLamp(LampSource.bible);
       final again = await notifier.lightLamp(LampSource.story);
 
-      expect(again, isFalse);
+      expect(again?.litNow, isFalse);
       expect(analytics.single('lamp_lit')['source'], 'bible');
     });
 
@@ -188,7 +189,7 @@ void main() {
           .lightLamp(LampSource.story, contentDate: yesterday);
 
       final progress = container.read(dayProgressProvider).requireValue;
-      expect(lit, isFalse);
+      expect(lit?.litNow, isFalse);
       expect(progress.visitedDays, isEmpty);
       expect(analytics.names, isNot(contains('lamp_lit')));
     });
@@ -205,7 +206,7 @@ void main() {
           .read(dayProgressProvider.notifier)
           .lightLamp(LampSource.story);
 
-      expect(lit, isFalse);
+      expect(lit, isNull);
       expect(analytics.names, isNot(contains('lamp_lit')));
     });
   });

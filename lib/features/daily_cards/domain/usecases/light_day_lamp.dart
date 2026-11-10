@@ -3,9 +3,15 @@ import '../../../../core/result/result.dart';
 import '../entities/day_progress.dart';
 import '../repositories/day_progress_repository.dart';
 
-/// Итог попытки зажечь «Лампадку»: прогресс после неё, загорелся ли
-/// сегодняшний день именно сейчас и началась ли серия заново.
-typedef DayLampResult = ({DayProgress progress, bool litNow, bool restarted});
+/// Итог попытки зажечь «Лампадку»: прогресс до и после неё, загорелся ли
+/// сегодняшний день именно сейчас и началась ли серия заново. Прогресс «до»
+/// нужен итогу раздела: лампада на нём загорается на глазах.
+typedef DayLampResult = ({
+  DayProgress before,
+  DayProgress progress,
+  bool litNow,
+  bool restarted,
+});
 
 /// Зажигает сегодняшнюю «Лампадку», когда раздел дочитан до конца: рассказ
 /// «Памяти дня» или глава Библии. «Мудрость дня» и тема курса зажигают её
@@ -34,13 +40,19 @@ class LightDayLamp {
     final countsToday =
         contentDate == null || dateKey(contentDate) == dateKey(now);
     if (!countsToday || before.isLit(now)) {
-      return Success((progress: before, litNow: false, restarted: false));
+      return Success((
+        before: before,
+        progress: before,
+        litNow: false,
+        restarted: false,
+      ));
     }
     switch (await _repository.markVisited(date: now)) {
       case Failure(failure: final failure):
         return Failure(failure);
       case Success(value: final after):
         return Success((
+          before: before,
           progress: after,
           litNow: after.isLit(now),
           restarted: before.streakOn(now) == 0,

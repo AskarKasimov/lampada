@@ -26,6 +26,7 @@ import '../widgets/reader_progress_rail.dart';
 import '../widgets/vertical_card_reader.dart';
 import 'course_detail_screen.dart';
 import 'full_card_text_screen.dart';
+import 'lamp_lit_screen.dart';
 
 typedef _TopicPage = ({DayCard topic, String text, int index, int count});
 
@@ -146,7 +147,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         previousIndex < _pages.length) {
       final left = _pages[previousIndex];
       if (left.index == left.count - 1) {
-        _queueCompletion(_topicNumber(left.topic.id));
+        _queueCompletion(_topicNumber(left.topic.id), celebrate: true);
       }
     }
     if (_isBoundary) {
@@ -322,7 +323,10 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     }
   }
 
-  void _queueCompletion(int topic) {
+  /// [celebrate] — тему завершил свайп с её последней страницы. Только тогда
+  /// первое за день зажжение показывает итог: при восстановлении после сбоя
+  /// и на финале курса он закрыл бы ещё не прочитанный текст.
+  void _queueCompletion(int topic, {bool celebrate = false}) {
     if (_completed.contains(topic) ||
         _completing.contains(topic) ||
         _isDismissing) {
@@ -332,17 +336,16 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       _completing.add(topic);
       _completionErrors.remove(topic);
     });
-    _pendingCompletion = _pendingCompletion.then((_) => _completeTopic(topic));
+    _pendingCompletion = _pendingCompletion.then(
+      (_) => _completeTopic(topic, celebrate: celebrate),
+    );
     unawaited(_pendingCompletion);
   }
 
-  Future<void> _completeTopic(int topic) async {
+  Future<void> _completeTopic(int topic, {required bool celebrate}) async {
     // Синхронно, чтобы не задерживать запись: провайдеры прогреты в initState.
     final completedBefore = ref.read(completedCourseTopicsProvider).value;
-    final litBefore = ref
-        .read(dayProgressProvider)
-        .value
-        ?.isLit(DateTime.now());
+    final before = ref.read(dayProgressProvider).value;
     final result = await ref.read(completeCourseTopicProvider)(topic);
     if (!mounted) return;
     setState(() {
@@ -370,8 +373,34 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     if (result is Success) {
       ref.invalidate(dayProgressProvider);
       // После инвалидации: лампаду сравниваем с уже перезагруженным днём.
-      unawaited(_logCompletion(topic, completedBefore, litBefore));
+      // Итог не входит в очередь завершений: закрытие курса ждёт её, а
+      // кнопка «Вернуться на главную» сама закрывает курс.
+      unawaited(
+        _afterCompletion(topic, completedBefore, before, celebrate: celebrate),
+      );
     }
+  }
+
+  Future<void> _afterCompletion(
+    int topic,
+    Set<int>? completedBefore,
+    DayProgress? before, {
+    required bool celebrate,
+  }) async {
+    final lit = await _logCompletion(
+      topic,
+      completedBefore,
+      before?.isLit(DateTime.now()),
+    );
+    if (!lit || !celebrate || before == null || !mounted || _isDismissing) {
+      return;
+    }
+    final exit = await showLampLit(
+      context,
+      before: before,
+      title: 'Тема «Основ веры» прочитана',
+    );
+    if (exit == LampLitExit.home && mounted) await _dismiss();
   }
 
   void _openFullText(Route<void> route) {
@@ -381,7 +410,8 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
 
   /// Тема засчитывается и при восстановлении после сбоя: в аналитику идёт
   /// только новая отметка. Лампада сравнивается с прогрессом до записи.
-  Future<void> _logCompletion(
+  /// Возвращает, загорелась ли лампада этой темой.
+  Future<bool> _logCompletion(
     int topic,
     Set<int>? completedBefore,
     bool? litBefore,
@@ -399,15 +429,15 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         analytics.log(AnalyticsEvent.courseFinished());
       }
     }
-    if (litBefore ?? true) return;
+    if (litBefore ?? true) return false;
     final DayProgress after;
     try {
       after = await ref.read(dayProgressProvider.future);
     } on Object {
-      return;
+      return false;
     }
     final today = DateTime.now();
-    if (!after.isLit(today)) return;
+    if (!after.isLit(today)) return false;
     analytics.log(
       AnalyticsEvent.lampLit(
         source: LampSource.course,
@@ -415,6 +445,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         restarted: after.streakOn(today) == 1,
       ),
     );
+    return true;
   }
 
   Future<void> _dismiss() async {

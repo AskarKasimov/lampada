@@ -14,11 +14,13 @@ import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/full_card_text_screen.dart';
+import '../../../daily_cards/presentation/screens/lamp_lit_screen.dart';
 import '../../../daily_cards/presentation/widgets/reader_progress_rail.dart';
 import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
 import '../../../reading/domain/entities/daily_reading.dart';
 import '../../../reading/presentation/widgets/interpretation_sheet.dart';
 import '../../../reading/presentation/widgets/verse_view.dart';
+import '../../domain/bible_chapter_statuses.dart';
 import '../../domain/entities/bible_book.dart';
 import '../../domain/entities/bible_chapter.dart';
 import '../../domain/entities/bible_reading_position.dart';
@@ -214,7 +216,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   }
 
   void _onPageChanged(int page) {
+    final previous = _page;
     setState(() => _page = page);
+    if (page == previous + 1) _lightLampAfter(previous);
     _saveReadingPosition(page);
     // Скачиваем следующую главу только после явного свайпа за последний стих.
     if (page == _verses.length && !_loadingNext && _nextError == null) {
@@ -254,19 +258,53 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     _markChapterReadIfFinished(page);
   }
 
-  void _markChapterReadIfFinished(int page) {
-    if (page < 0 || page >= _verses.length) return;
+  /// Каждая загрузка приносит главу целиком, поэтому последний в ней стих
+  /// можно узнать и до загрузки следующей главы.
+  bool _isLastOfChapter(int page) =>
+      page >= 0 &&
+      page < _verses.length &&
+      (page + 1 >= _verses.length ||
+          !_sameChapter(_verses[page], _verses[page + 1]));
+
+  /// Главы, впервые дочитанные в этой читалке: их лампада ждёт свайпа за
+  /// последний стих.
+  final _newlyRead = <BibleChapterId>{};
+
+  /// Свайп за последний стих впервые дочитанной главы зажигает сегодняшнюю
+  /// «Лампадку», как итог «Мудрости дня» за последней карточкой. Глава не
+  /// привязана к дате, поэтому засчитывается и в основном чтении, и в
+  /// просмотре поверх него.
+  Future<void> _lightLampAfter(int page) async {
+    if (!_isLastOfChapter(page)) return;
     final verse = _verses[page];
-    // Каждая загрузка приносит главу целиком, поэтому последний в ней стих
-    // можно узнать и до загрузки следующей главы.
-    if (page + 1 < _verses.length && _sameChapter(verse, _verses[page + 1])) {
-      return;
-    }
+    if (!_newlyRead.remove((verse.book.code, verse.chapter))) return;
+    final lamp = await ref
+        .read(dayProgressProvider.notifier)
+        .lightLamp(LampSource.bible);
+    if (lamp == null || !lamp.litNow || !mounted) return;
+    await showLampLit(
+      context,
+      before: lamp.before,
+      title: 'Глава Библии прочитана',
+      canGoHome: false,
+    );
+  }
+
+  Future<void> _markChapterReadIfFinished(int page) async {
+    if (!_isLastOfChapter(page)) return;
+    final verse = _verses[page];
     final id = (verse.book.code, verse.chapter);
-    if (ref.read(bibleChapterStatusesProvider).value?.read.contains(id) ??
-        false) {
-      return;
+    if (_newlyRead.contains(id)) return;
+    // Глава, открытая сразу на последнем стихе, доходит сюда раньше
+    // статусов: без ожидания перечитанная глава считалась бы новой.
+    BibleChapterStatuses? statuses;
+    try {
+      statuses = await ref.read(bibleChapterStatusesProvider.future);
+    } on Object {
+      statuses = null;
     }
+    if (!mounted || (statuses?.read.contains(id) ?? false)) return;
+    if (!_newlyRead.add(id)) return;
     ref
         .read(analyticsProvider)
         .log(
@@ -278,9 +316,6 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     ref
         .read(bibleChapterStatusesProvider.notifier)
         .markRead(verse.book.code, verse.chapter);
-    // Глава не привязана к дате: дочитанная сегодня зажигает сегодняшний
-    // день и в основном чтении, и в просмотре поверх него.
-    ref.read(dayProgressProvider.notifier).lightLamp(LampSource.bible);
   }
 
   void _logLoadFailed(Object error) => ref
