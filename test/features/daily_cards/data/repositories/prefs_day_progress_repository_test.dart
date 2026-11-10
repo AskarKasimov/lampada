@@ -137,6 +137,31 @@ void main() {
     expect(p.isLit(yesterday), isFalse);
   });
 
+  test('markVisited зажигает день без отметок карточек и итога', () async {
+    final repo = await build();
+    await repo.markRead(CardType.quote, markVisited: false);
+
+    final p = _unwrap(await repo.markVisited());
+
+    expect(p.isLit(fixedNow), isTrue);
+    expect(p.streakOn(fixedNow), 1);
+    expect(p.bestStreakOn(fixedNow), 1);
+    expect(p.readTypes, {CardType.quote});
+    expect(p.isWisdomCompletedOn(fixedNow), isFalse);
+    final reloaded = _unwrap(await repo.loadToday());
+    expect(reloaded.isLit(fixedNow), isTrue);
+    expect(reloaded.readTypes, {CardType.quote});
+  });
+
+  test('повторный markVisited не дублирует день', () async {
+    final repo = await build();
+    await repo.markVisited();
+
+    final p = _unwrap(await repo.markVisited());
+
+    expect(p.visitedDays, {dateKey(fixedNow)});
+  });
+
   test('completeWisdom не теряет прочитанное за день', () async {
     final repo = await build();
     await repo.markRead(CardType.quote, markVisited: false);

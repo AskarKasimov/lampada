@@ -235,6 +235,12 @@ class _FakeProgressRepository implements DayProgressRepository {
     return Success(_current);
   }
 
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    return Success(_current);
+  }
+
   Set<CardType> get readTypes => _read;
   Set<String> get visitedDays => _visited;
 
@@ -1100,6 +1106,38 @@ void main() {
             .isUnread,
         isFalse,
       );
+    });
+
+    testWidgets('дочитанный рассказ зажигает сегодняшнюю лампаду', (
+      tester,
+    ) async {
+      final progress = _FakeProgressRepository();
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            title: 'Мц. Христи́ны Тирской',
+            storyUrl: 'https://azbyka.ru/days/sv-hristina',
+          ),
+          progressRepository: progress,
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(find.byType(DayMemoryTile));
+      await settle(tester);
+      // Открытый, но не дочитанный рассказ день не засчитывает.
+      expect(progress.visitedDays, isEmpty);
+      expect(analytics.names, isNot(contains('lamp_lit')));
+
+      await tester.drag(find.byType(PageView), const Offset(0, -600));
+      await settle(tester);
+
+      expect(progress.visitedDays, {dateKey(DateTime.now())});
+      expect(analytics.single('lamp_lit'), {
+        'source': 'story',
+        'streak': 1,
+        'restarted': true,
+      });
     });
 
     testWidgets('прочитав святого, юзер возвращается к следующему', (

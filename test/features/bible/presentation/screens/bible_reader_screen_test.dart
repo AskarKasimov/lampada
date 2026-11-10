@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/analytics/analytics_provider.dart';
+import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
@@ -274,6 +275,23 @@ void main() {
     expect(repository.positions, [
       const BibleReadingPosition(book: 'Gen', chapter: 1, verse: 2),
     ]);
+  });
+
+  testWidgets('дочитанная глава зажигает сегодняшнюю лампаду', (tester) async {
+    await open(tester, verse: 1);
+    // Начатая, но не дочитанная глава день не засчитывает.
+    expect(analytics.names, isNot(contains('lamp_lit')));
+    expect(prefs.getString('day_progress'), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await open(tester, verse: 2);
+
+    expect(analytics.single('lamp_lit'), {
+      'source': 'bible',
+      'streak': 1,
+      'restarted': true,
+    });
+    expect(prefs.getString('day_progress'), contains(dateKey(DateTime.now())));
   });
 
   testWidgets('толкование открывается со стиха главы, как в чтении дня', (

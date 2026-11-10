@@ -244,7 +244,9 @@ enum OnboardingStep { time, reader }
 /// главную. Старые события с ним остаются в истории AppMetrica.
 enum OpenSource { tile, notification }
 
-enum LampSource { wisdom, course }
+/// Что зажгло сегодняшнюю «Лампадку»: итог «Мудрости дня», тема курса,
+/// дочитанный рассказ «Памяти дня» или глава Библии.
+enum LampSource { wisdom, course, story, bible }
 
 /// Раздел дня; повторяет `DaySection`, но core не зависит от фич.
 enum AnalyticsSection { wisdom, story, course }

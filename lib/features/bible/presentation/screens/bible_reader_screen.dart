@@ -12,6 +12,7 @@ import '../../../../core/widgets/reading_overflow_listener.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
+import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/full_card_text_screen.dart';
 import '../../../daily_cards/presentation/widgets/reader_progress_rail.dart';
 import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
@@ -277,6 +278,9 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     ref
         .read(bibleChapterStatusesProvider.notifier)
         .markRead(verse.book.code, verse.chapter);
+    // Глава не привязана к дате: дочитанная сегодня зажигает сегодняшний
+    // день и в основном чтении, и в просмотре поверх него.
+    ref.read(dayProgressProvider.notifier).lightLamp(LampSource.bible);
   }
 
   void _logLoadFailed(Object error) => ref

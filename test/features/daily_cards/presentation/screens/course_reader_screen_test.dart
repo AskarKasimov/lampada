@@ -98,6 +98,14 @@ class _ProgressRepository implements DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   }) async => Success(DayProgress(readTypes: readTypes, visitedDays: const {}));
+
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    visited.add(dateKey(date ?? DateTime.now()));
+    return Success(
+      DayProgress(readTypes: readTypes, visitedDays: {...visited}),
+    );
+  }
 }
 
 class _FailingCourseProgressRepository implements CourseProgressRepository {

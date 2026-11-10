@@ -139,6 +139,28 @@ class PrefsDayProgressRepository implements DayProgressRepository {
     }
   }
 
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    try {
+      final dto = _forToday(_read());
+      final allVisited = {...dto.visitedDays, dateKey(date ?? _clock())};
+      final updated = dto.copyWith(
+        visitedDays: allVisited.toList()..sort(),
+        bestStreak: _bestStreak(dto, allVisited),
+      );
+      await _write(updated);
+      return Success(updated.toEntity());
+    } on Object catch (e) {
+      return Failure(
+        AppFailure(
+          'Не удалось сохранить прогресс',
+          kind: FailureKind.unknown,
+          cause: e,
+        ),
+      );
+    }
+  }
+
   int _bestStreak(DayProgressDto dto, Set<String> visitedDays) {
     final progress = dto.copyWith(visitedDays: visitedDays.toList()).toEntity();
     return progress.bestStreakOn(_clock());

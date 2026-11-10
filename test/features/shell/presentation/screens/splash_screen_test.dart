@@ -67,6 +67,11 @@ class _FakeProgressRepository implements DayProgressRepository {
     return Success(DayProgress(readTypes: _read, visitedDays: _visited));
   }
 
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    return Success(DayProgress(readTypes: _read, visitedDays: _visited));
+  }
 }
 
 void main() {

@@ -115,6 +115,12 @@ class _FakeProgressRepository implements DayProgressRepository {
     }
     return Success(_current);
   }
+
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    return Success(_current);
+  }
 }
 
 /// Евангелие дня не должно ходить в сеть: иначе плитка «Мудрость дня»

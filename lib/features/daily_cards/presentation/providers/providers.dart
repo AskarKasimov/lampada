@@ -31,6 +31,7 @@ import '../../domain/usecases/get_course_page.dart';
 import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
 import '../../domain/usecases/has_started_course.dart';
+import '../../domain/usecases/light_day_lamp.dart';
 import '../../domain/usecases/load_day_progress.dart';
 import '../../domain/usecases/load_day_wisdom_position.dart';
 import '../../domain/usecases/record_card_read.dart';
@@ -111,6 +112,10 @@ final recordCardReadProvider = Provider<RecordCardRead>(
 
 final completeDayWisdomProvider = Provider<CompleteDayWisdom>(
   (ref) => CompleteDayWisdom(ref.watch(dayProgressRepositoryProvider)),
+);
+
+final lightDayLampProvider = Provider<LightDayLamp>(
+  (ref) => LightDayLamp(ref.watch(dayProgressRepositoryProvider)),
 );
 
 final loadDayProgressProvider = Provider<LoadDayProgress>(
@@ -308,4 +313,29 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
           markVisited: markVisited,
         ),
       );
+
+  /// Зажигает сегодняшнюю «Лампадку» после дочитанного до конца раздела и
+  /// пишет `lamp_lit`, если день загорелся именно сейчас. Засчитывать ли
+  /// день, решает [LightDayLamp]: [contentDate] прошлого дня лампаду не
+  /// зажигает. Возвращает, загорелась ли лампада.
+  Future<bool> lightLamp(LampSource source, {DateTime? contentDate}) async {
+    switch (await ref.read(lightDayLampProvider)(contentDate: contentDate)) {
+      case Failure(failure: final f):
+        netLog('не удалось зажечь лампаду: $f');
+        return false;
+      case Success(value: final result):
+        state = AsyncData(result.progress);
+        if (!result.litNow) return false;
+        ref
+            .read(analyticsProvider)
+            .log(
+              AnalyticsEvent.lampLit(
+                source: source,
+                streak: result.progress.streakOn(DateTime.now()),
+                restarted: result.restarted,
+              ),
+            );
+        return true;
+    }
+  }
 }

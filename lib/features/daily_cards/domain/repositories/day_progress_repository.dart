@@ -26,4 +26,10 @@ abstract interface class DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   });
+
+  /// Зажигает «Лампадку» [date], не отмечая ни карточек, ни итога
+  /// «Мудрости дня»: так серию продлевают разделы без карточки дня
+  /// (рассказ «Памяти дня», глава Библии). Засчитывать ли день, решает
+  /// `LightDayLamp`, а не вызывающий экран.
+  Future<Result<DayProgress>> markVisited({DateTime? date});
 }
