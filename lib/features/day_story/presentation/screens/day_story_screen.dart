@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
-import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -64,10 +63,10 @@ class DayStoryScreen extends ConsumerStatefulWidget {
   /// Дочитан рассказ по этой ссылке.
   final ValueChanged<String>? onCompleted;
 
-  /// Юзер пролистал дальше последней страницы. Вернувшийся экран (итог с
+  /// Юзер пролистал дальше последней страницы. Вернувшийся маршрут (итог с
   /// зажжённой лампадой) заменяет рассказ; без него рассказ просто
   /// закрывается.
-  final Future<Widget?> Function()? onFinished;
+  final Future<Route<void>?> Function()? onFinished;
 
   /// Сегодняшняя лампада ещё не горит, и дочитанный рассказ её зажжёт: в
   /// конце столбика точек ждёт итог.
@@ -137,9 +136,7 @@ class _DayStoryScreenState extends ConsumerState<DayStoryScreen> {
       navigator.pop();
       return;
     }
-    unawaited(
-      navigator.pushReplacement(BottomUpModalRoute<void>(builder: (_) => next)),
-    );
+    unawaited(navigator.pushReplacement(next));
   }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.

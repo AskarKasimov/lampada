@@ -123,6 +123,8 @@ class ReadingCardPages {
             verse: nextVerse,
             nextChapterOnMissingVerse: true,
             source: BibleOpenSource.dailyReading,
+            // Просмотр лежит поверх «Мудрости дня»: запросы зададут после неё.
+            askAfterClose: false,
           ),
         ),
       ];
@@ -139,6 +141,8 @@ class ReadingCardPages {
             chapter: chapter,
             verse: 1,
             source: BibleOpenSource.dailyReading,
+            // Просмотр лежит поверх «Мудрости дня»: запросы зададут после неё.
+            askAfterClose: false,
           ),
         ),
     ];

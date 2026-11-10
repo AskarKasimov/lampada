@@ -8,9 +8,11 @@ import '../../../../core/analytics/analytics_provider.dart';
 import '../../../bible/presentation/screens/bible_tab_screen.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
+import '../../../profile/presentation/providers/providers.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_scheduler.dart';
 import '../providers/shell_providers.dart';
+import '../services/after_reading_prompts.dart';
 import '../widgets/analytics_profile_sync.dart';
 import '../widgets/floating_nav_bar.dart';
 
@@ -53,6 +55,19 @@ class _AppShellState extends ConsumerState<AppShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _scheduleDayChange();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _askReviewOnReturn());
+  }
+
+  /// Первый вход запоминает день, а вернувшегося в один из следующих дней
+  /// (холодным стартом или из фона) один раз просим оценить приложение.
+  Future<void> _askReviewOnReturn() async {
+    if (!mounted) return;
+    if (!await ref.read(claimReviewRequestProvider).onAppOpen()) return;
+    if (!mounted) return;
+    ref
+        .read(analyticsProvider)
+        .log(AnalyticsEvent.reviewRequested(ReviewTrigger.nextDay));
+    await ref.read(profileActionsServiceProvider).requestReview();
   }
 
   void _scheduleDayChange() {
@@ -72,7 +87,10 @@ class _AppShellState extends ConsumerState<AppShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refreshDay();
+    if (state == AppLifecycleState.resumed) {
+      _refreshDay();
+      unawaited(_askReviewOnReturn());
+    }
   }
 
   @override
@@ -160,6 +178,11 @@ class _AppShellState extends ConsumerState<AppShell>
           }),
         );
     ref.read(selectedTabProvider.notifier).select(selected);
+    // Вкладка «Библия» сама читалка, закрыть её можно только уходом: это и
+    // есть закрытие чтения.
+    if (current == ShellTab.bible) {
+      unawaited(askAfterReading(context, ReminderPromptTrigger.bible));
+    }
   }
 
   @override

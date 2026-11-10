@@ -18,10 +18,8 @@ import '../../../bible/presentation/providers/providers.dart'
 import '../../../bible/presentation/widgets/verse_of_day_card.dart';
 import '../../../day_story/presentation/providers/providers.dart';
 import '../../../day_story/presentation/screens/day_story_screen.dart';
-import '../../../profile/presentation/providers/providers.dart';
 import '../../../reading/presentation/providers/providers.dart';
-import '../../../reminders/presentation/providers/providers.dart';
-import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
+import '../../../shell/presentation/services/after_reading_prompts.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_memory.dart';
@@ -294,7 +292,6 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     if (widget.content.readingIsLoading) return;
     final pages = _pages;
     final firstUnread = pages.indexWhere((card) => !_isRead(card));
-    final completedBefore = _wisdomEverCompleted;
     ref
         .read(analyticsProvider)
         .log(
@@ -319,25 +316,11 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
         ),
       ),
     );
-    if (mounted) await _maybeAskReminders();
-    if (mounted && !completedBefore && _wisdomEverCompleted) {
-      ref
-          .read(analyticsProvider)
-          .log(AnalyticsEvent.reviewRequested(ReviewTrigger.firstCompletion));
-      await ref.read(profileActionsServiceProvider).requestReview();
+    // Итог «Мудрости» лежит внутри листалки: запросы идут после её закрытия
+    // и не перекрывают лампаду.
+    if (mounted) {
+      await askAfterReading(context, ReminderPromptTrigger.wisdom);
     }
-  }
-
-  /// Оценку просим один раз: когда юзер впервые прошёл «Мудрость дня» и ушёл
-  /// с итога. Пока он смотрит на лампаду, системный диалог её не перекрывает.
-  bool get _wisdomEverCompleted =>
-      ref.read(dayProgressProvider).value?.wisdomCompletedDays.isNotEmpty ??
-      false;
-
-  /// Просит разрешение после закрытия контента, не на старте сессии.
-  Future<void> _maybeAskReminders() async {
-    if (!_recordProgress) return;
-    await _maybeAskForReminders(context, ref);
   }
 
   /// Святой дня считается прочитанным после последней страницы рассказа:
@@ -349,7 +332,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
     BuildContext context,
     DayMemory memory, {
     OpenSource source = OpenSource.tile,
-  }) {
+  }) async {
     ref
         .read(analyticsProvider)
         .log(
@@ -359,7 +342,8 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
             hasIcon: widget.content.iconUrl != null,
           ),
         );
-    return Navigator.of(context).push(
+    Route<void>? lampRoute;
+    await Navigator.of(context).push(
       BottomUpModalRoute<void>(
         builder: (_) => DayStoryScreen(
           title: memory.title,
@@ -375,16 +359,23 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
                 .read(dayProgressProvider.notifier)
                 .lightLamp(LampSource.story, contentDate: date);
             if (lamp == null || !lamp.litNow) return null;
-            return LampLitScreen(
-              before: lamp.before,
-              title: 'Память дня прочитана',
-              canContinue: false,
+            return lampRoute = BottomUpModalRoute<void>(
+              builder: (_) => LampLitScreen(
+                before: lamp.before,
+                title: 'Память дня прочитана',
+                canContinue: false,
+              ),
             );
           },
           lampPending: _isToday && !progress.isLit(DateTime.now()),
         ),
       ),
     );
+    // Итог лампады заменяет рассказ: запросы ждут, пока закроют и его.
+    await lampRoute?.popped;
+    if (context.mounted) {
+      await askAfterReading(context, ReminderPromptTrigger.story);
+    }
   }
 
   bool _isRead(DayCard card) => progress.isReadOn(date, card.type);
@@ -580,23 +571,6 @@ class _CourseHomeSection extends ConsumerWidget {
             ),
     );
   }
-}
-
-Future<void> _maybeAskForReminders(BuildContext context, WidgetRef ref) async {
-  final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
-  if (read.isEmpty) return;
-
-  // Прогресс сохраняется асинхронно, поэтому ожидаем провайдер, а не value.
-  final settings = await ref.read(reminderSettingsProvider.future);
-  if (settings.asked || !context.mounted) return;
-
-  // Вопрос о разрешении накрывает весь шелл, вместе с навбаром.
-  await Navigator.of(context, rootNavigator: true).push(
-    BottomUpModalRoute<void>(
-      builder: (_) =>
-          const ReminderPermissionScreen(trigger: ReminderPromptTrigger.wisdom),
-    ),
-  );
 }
 
 /// Раздел того, что меняется каждый день: стих, память и «Мудрость дня».

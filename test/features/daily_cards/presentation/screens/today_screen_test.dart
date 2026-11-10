@@ -1818,6 +1818,49 @@ void main() {
       expect(find.textContaining('на 36% чаще'), findsOneWidget);
     });
 
+    testWidgets('после закрытия недочитанного рассказа тоже спрашиваем', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(
+        buildApp(
+          cardsRepository: _FakeCardsRepository(
+            title: 'Мц. Христи́ны Тирской',
+            storyUrl: 'https://azbyka.ru/days/sv-hristina',
+          ),
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(find.byType(DayMemoryTile));
+      await settle(tester);
+      await tester.tap(find.byTooltip('Закрыть рассказ'));
+      await settle(tester);
+
+      expect(find.byType(ReminderPermissionScreen), findsOneWidget);
+      expect(analytics.single('reminder_prompt_shown'), {'trigger': 'story'});
+    });
+
+    testWidgets('после закрытия недочитанного курса тоже спрашиваем', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(buildApp(courseTopic: _basics));
+      await settle(tester);
+
+      await tester.tap(find.byType(CourseProgressHeader));
+      await settle(tester);
+      await tester.tap(find.byTooltip('Закрыть'));
+      await settle(tester);
+      await settle(tester);
+
+      expect(find.byType(CourseReaderScreen), findsNothing);
+      expect(find.byType(ReminderPermissionScreen), findsOneWidget);
+      expect(analytics.single('reminder_prompt_shown'), {'trigger': 'course'});
+    });
+
     testWidgets('спрашиваем один раз, даже после отказа', (tester) async {
       await pumpFresh(tester);
       await tester.tap(entry('Мудрость дня'));
@@ -1941,7 +1984,7 @@ void main() {
       );
     });
 
-    testWidgets('после первого итога просим оценку, когда юзер ушёл с него', (
+    testWidgets('после итога просим оценку, когда юзер ушёл с него', (
       tester,
     ) async {
       final actions = _FakeProfileActions();
@@ -1957,26 +2000,12 @@ void main() {
 
       expect(find.byType(CardViewerScreen), findsNothing);
       expect(actions.reviewRequests, 1);
+      expect(analytics.single('review_requested'), {
+        'trigger': 'first_reading',
+      });
     });
 
-    testWidgets('после повторного итога оценку не просим', (tester) async {
-      final actions = _FakeProfileActions();
-      final yesterday = DateTime.now().subtract(const Duration(days: 1));
-      final progress = _FakeProgressRepository()
-        ..seedWisdomCompleted({dateKey(yesterday)});
-      await tester.pumpWidget(
-        buildApp(progressRepository: progress, profileActions: actions),
-      );
-      await settle(tester);
-
-      await reachSummary(tester);
-      await tester.tap(find.text('Вернуться на главную'));
-      await settle(tester);
-
-      expect(actions.reviewRequests, 0);
-    });
-
-    testWidgets('ушли до итога: оценку не просим', (tester) async {
+    testWidgets('ушли, не дочитав: оценку всё равно просим', (tester) async {
       final actions = _FakeProfileActions();
       await tester.pumpWidget(buildApp(profileActions: actions));
       await settle(tester);
@@ -1987,7 +2016,74 @@ void main() {
       await settle(tester);
 
       expect(find.byType(CardViewerScreen), findsNothing);
+      expect(actions.reviewRequests, 1);
+    });
+
+    testWidgets('после первого рассказа оценку просим', (tester) async {
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(
+        buildApp(
+          profileActions: actions,
+          cardsRepository: _FakeCardsRepository(
+            title: 'Мц. Христи́ны Тирской',
+            storyUrl: 'https://azbyka.ru/days/sv-hristina',
+          ),
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(find.byType(DayMemoryTile));
+      await settle(tester);
+      await tester.tap(find.byTooltip('Закрыть рассказ'));
+      await settle(tester);
+
+      expect(actions.reviewRequests, 1);
+    });
+
+    testWidgets('после итога лампады рассказа оценку просим на главной', (
+      tester,
+    ) async {
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(
+        buildApp(
+          profileActions: actions,
+          cardsRepository: _FakeCardsRepository(
+            title: 'Мц. Христи́ны Тирской',
+            storyUrl: 'https://azbyka.ru/days/sv-hristina',
+          ),
+        ),
+      );
+      await settle(tester);
+
+      await tester.tap(find.byType(DayMemoryTile));
+      await settle(tester);
+      await tester.drag(find.byType(PageView), const Offset(0, -600));
+      await settle(tester);
+      await tester.drag(find.byType(PageView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+      // Итог ещё на экране: диалог его не перебивает.
+      expect(find.byType(LampLitScreen), findsOneWidget);
       expect(actions.reviewRequests, 0);
+
+      await tester.tap(find.text('Вернуться на главную'));
+      await tester.pumpAndSettle();
+
+      expect(actions.reviewRequests, 1);
+    });
+
+    testWidgets('второй раз оценку не просим', (tester) async {
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(buildApp(profileActions: actions));
+      await settle(tester);
+
+      for (var i = 0; i < 2; i++) {
+        await tester.tap(entry('Мудрость дня'));
+        await settle(tester);
+        await tester.tap(find.byTooltip('Закрыть'));
+        await settle(tester);
+      }
+
+      expect(actions.reviewRequests, 1);
     });
   });
 }

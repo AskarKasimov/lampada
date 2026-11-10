@@ -15,6 +15,7 @@ import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/bible/presentation/widgets/verse_of_day_card.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart';
+import 'package:lampada/features/reminders/presentation/screens/reminder_permission_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/fake_analytics.dart';
@@ -201,6 +202,20 @@ void main() {
     expect(reader.initialVerse, 1);
     expect(reader.sessionMode, BibleReadingSessionMode.viewer);
     expect(reader.openSource, BibleOpenSource.verseOfDay);
+  });
+
+  testWidgets('после закрытия главы спрашиваем про напоминания', (
+    tester,
+  ) async {
+    await pump(tester);
+
+    await tester.tap(find.byType(VerseOfDayCard));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Закрыть'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BibleReaderScreen), findsNothing);
+    expect(find.byType(ReminderPermissionScreen), findsOneWidget);
   });
 
   testWidgets('стих сохраняется в копилку той же закладкой, что в Библии', (

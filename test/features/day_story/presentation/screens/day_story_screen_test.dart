@@ -454,7 +454,9 @@ void main() {
                         storyUrl: _url,
                         onFinished: () async {
                           finished++;
-                          return const Text('Итог рассказа');
+                          return MaterialPageRoute<void>(
+                            builder: (_) => const Text('Итог рассказа'),
+                          );
                         },
                       ),
                     ),
