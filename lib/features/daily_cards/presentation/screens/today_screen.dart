@@ -381,6 +381,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
               canContinue: false,
             );
           },
+          lampPending: _isToday && !progress.isLit(DateTime.now()),
         ),
       ),
     );

@@ -18,6 +18,7 @@ import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/lamp_lit_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:lampada/features/reading/presentation/widgets/verse_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -305,6 +306,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LampLitScreen), findsNothing);
     expect(find.byType(BibleReaderScreen), findsOneWidget);
+  });
+
+  bool lampDot(WidgetTester tester) => tester
+      .widget<ReaderProgressRail>(find.byType(ReaderProgressRail))
+      .lampDot;
+
+  testWidgets('у новой главы при незажжённой лампаде есть точка итога', (
+    tester,
+  ) async {
+    await open(tester, verse: 1);
+
+    expect(lampDot(tester), isTrue);
+  });
+
+  testWidgets('у перечитываемой главы точки итога нет', (tester) async {
+    repository.read.add(('Gen', 1));
+    await open(tester, verse: 1);
+
+    expect(lampDot(tester), isFalse);
+  });
+
+  testWidgets('при горящей лампаде точки итога нет', (tester) async {
+    await prefs.setString(
+      'day_progress',
+      '{"date":"${dateKey(DateTime.now())}","readTypes":[],'
+          '"visitedDays":["${dateKey(DateTime.now())}"]}',
+    );
+    await open(tester, verse: 1);
+
+    expect(lampDot(tester), isFalse);
   });
 
   testWidgets('дойти до последнего стиха мало, чтобы зажечь лампаду', (

@@ -487,6 +487,9 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     final visible = _visible;
     final card = visible.topic;
     final topic = _topicNumber(card.id);
+    // Пока прогресс не загружен, точку не обещаем: лампада может уже гореть.
+    final lampPending =
+        !(ref.watch(dayProgressProvider).value?.isLit(DateTime.now()) ?? true);
     return PopScope<void>(
       canPop: _canPop,
       onPopInvokedWithResult: (didPop, _) {
@@ -576,6 +579,8 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                 count: visible.count,
                 currentIndex: _isBoundary ? -1 : visible.index,
                 accent: style.accent,
+                // Последняя тема курса засчитывается показом, без итога.
+                lampDot: lampPending && topic < courseTopicCount,
                 // Граница PageView может показывать заглушку, но точки всё ещё
                 // принадлежат последней настоящей теме в _pages.
                 onSelect: (index) {

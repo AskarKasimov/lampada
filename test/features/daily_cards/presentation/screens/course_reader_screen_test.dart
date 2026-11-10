@@ -30,6 +30,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/contents_pill_
 import 'package:lampada/features/daily_cards/presentation/widgets/course_contents_sheet.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/fake_analytics.dart';
@@ -604,6 +605,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LampLitScreen), findsNothing);
     expect(find.text('Тема 4'), findsOneWidget);
+  });
+
+  testWidgets('пока лампада не горит, в конце темы ждёт точка итога', (
+    tester,
+  ) async {
+    progress.visited.clear();
+    await pumpReader(tester);
+
+    expect(
+      tester
+          .widget<ReaderProgressRail>(find.byType(ReaderProgressRail))
+          .lampDot,
+      isTrue,
+    );
+  });
+
+  testWidgets('при горящей лампаде точки итога нет', (tester) async {
+    await pumpReader(tester);
+
+    expect(
+      tester
+          .widget<ReaderProgressRail>(find.byType(ReaderProgressRail))
+          .lampDot,
+      isFalse,
+    );
   });
 
   testWidgets('с итога темы можно вернуться на главную', (tester) async {

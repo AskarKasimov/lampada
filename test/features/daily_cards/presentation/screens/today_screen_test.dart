@@ -38,6 +38,7 @@ import 'package:lampada/features/daily_cards/presentation/widgets/home_header.da
 import 'package:lampada/features/daily_cards/presentation/widgets/home_section_header.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/read_status_checks.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_sheet.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
 import 'package:lampada/features/day_story/domain/repositories/day_story_repository.dart';
@@ -1152,6 +1153,34 @@ void main() {
         expect(find.byType(DayMemoryTile), findsOneWidget);
       },
     );
+
+    for (final lit in [false, true]) {
+      testWidgets(
+        'точка итога в рассказе ${lit ? "не нужна при горящей" : "ждёт незажжённую"} лампаду',
+        (tester) async {
+          final progress = _FakeProgressRepository();
+          if (lit) progress.seedVisited({dateKey(DateTime.now())});
+          await tester.pumpWidget(
+            buildApp(
+              cardsRepository: _FakeCardsRepository(
+                title: 'Мц. Христи́ны Тирской',
+                storyUrl: 'https://azbyka.ru/days/sv-hristina',
+              ),
+              progressRepository: progress,
+            ),
+          );
+          await settle(tester);
+
+          await tester.tap(find.byType(DayMemoryTile));
+          await settle(tester);
+
+          final rail = tester.widget<ReaderProgressRail>(
+            find.byType(ReaderProgressRail),
+          );
+          expect(rail.lampDot, !lit);
+        },
+      );
+    }
 
     testWidgets('если лампада уже горит, рассказ просто закрывается', (
       tester,

@@ -621,11 +621,25 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
     }
     final count = last - first + 1;
     final current = page - first;
+    final id = (position.book.code, position.chapter);
+    // Итог ждёт только новую главу и только пока сегодня лампада не горит.
+    // Пока статусы или прогресс не загружены, точку не обещаем.
+    final lampPending =
+        !(ref.watch(dayProgressProvider).value?.isLit(DateTime.now()) ??
+            true) &&
+        (_newlyRead.contains(id) ||
+            !(ref
+                    .watch(bibleChapterStatusesProvider)
+                    .value
+                    ?.read
+                    .contains(id) ??
+                true));
     return ReaderProgressRail(
       key: ValueKey('${position.book.code}-${position.chapter}'),
       count: count,
       currentIndex: current,
       accent: colors.accent,
+      lampDot: lampPending,
       // Точки показывают стихи текущей главы, а они идут подряд.
       onSelect: (index) => _controller!.jumpToPage(first + index),
     );

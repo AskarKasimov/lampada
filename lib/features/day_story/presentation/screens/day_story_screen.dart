@@ -47,6 +47,7 @@ class DayStoryScreen extends ConsumerStatefulWidget {
     this.readUrls = const {},
     this.onCompleted,
     this.onFinished,
+    this.lampPending = false,
     super.key,
   });
 
@@ -67,6 +68,10 @@ class DayStoryScreen extends ConsumerStatefulWidget {
   /// зажжённой лампадой) заменяет рассказ; без него рассказ просто
   /// закрывается.
   final Future<Widget?> Function()? onFinished;
+
+  /// Сегодняшняя лампада ещё не горит, и дочитанный рассказ её зажжёт: в
+  /// конце столбика точек ждёт итог.
+  final bool lampPending;
 
   @override
   ConsumerState<DayStoryScreen> createState() => _DayStoryScreenState();
@@ -231,6 +236,7 @@ class _DayStoryScreenState extends ConsumerState<DayStoryScreen> {
                   onCompleted: _onCompleted,
                   onClose: () => Navigator.of(context).pop(),
                   onFinish: () => unawaited(_finish()),
+                  lampPending: widget.lampPending,
                   onExit: (furthest, total, finished) => analytics.log(
                     AnalyticsEvent.storyClosed(
                       pagesSeen: furthest + 1,
@@ -263,6 +269,7 @@ class _StoryReader extends StatefulWidget {
     required this.onCompleted,
     required this.onClose,
     required this.onFinish,
+    required this.lampPending,
     required this.onExit,
     required this.onFullText,
     super.key,
@@ -279,6 +286,7 @@ class _StoryReader extends StatefulWidget {
 
   /// Свайп дальше последней страницы: рассказ дочитан до конца.
   final VoidCallback onFinish;
+  final bool lampPending;
 
   /// Закрытие с самой дальней страницей и признаком «долистал до конца».
   final void Function(int furthest, int total, bool finished) onExit;
@@ -403,6 +411,7 @@ class _StoryReaderState extends State<_StoryReader> {
         count: _pages.length,
         currentIndex: _index,
         accent: colors.accent,
+        lampDot: widget.lampPending,
         onSelect: _controller.jumpToPage,
       ),
       actions: Column(

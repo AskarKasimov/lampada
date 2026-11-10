@@ -629,7 +629,12 @@ void main() {
       expect(find.text('Ин. 3:1'), findsOneWidget);
       expect(find.text('— 3:1'), findsNothing);
       expect(find.text('От Иоанна 3:1'), findsNothing);
-      expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);
+      expect(
+        tester
+            .widget<ReaderProgressRail>(find.byType(ReaderProgressRail))
+            .count,
+        2,
+      );
       final back = find.byIcon(CupertinoIcons.xmark);
       expect(back, findsOneWidget);
       expect(
@@ -776,7 +781,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 176);
+    expect(
+      tester.widget<ReaderProgressRail>(find.byType(ReaderProgressRail)).count,
+      176,
+    );
     expect(find.text('⋮'), findsNothing);
     tester
         .widget<VerticalCardReader>(find.byType(VerticalCardReader))
