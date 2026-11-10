@@ -66,6 +66,7 @@ class _FakeProgressRepository implements DayProgressRepository {
     }
     return Success(DayProgress(readTypes: _read, visitedDays: _visited));
   }
+
 }
 
 void main() {
@@ -109,7 +110,9 @@ void main() {
     expect(find.byType(AppShell), findsNothing);
   });
 
-  testWidgets('кнопка приветствия открывает день', (tester) async {
+  testWidgets('кнопка приветствия ведёт на главную, а не в чтение', (
+    tester,
+  ) async {
     // Регрессия: колбэк держал контекст сплэша, а тот после pushReplacement
     // размонтирован. Тап бросал «This widget has been unmounted», и снаружи
     // кнопка выглядела молчащей. Тест приветствия в одиночку это пропускал —
@@ -123,15 +126,13 @@ void main() {
     await tester.tap(find.text('Открыть сегодняшний день'));
     await settle(tester);
 
-    // skipOffstage: false — «Сегодня» тут же само открывает первую карточку
-    // отдельным маршрутом, и шелл уходит за кадр. Нам важно, что он в дереве.
-    expect(find.byType(AppShell, skipOffstage: false), findsOneWidget);
+    expect(find.byType(AppShell), findsOneWidget);
     // Приветствие именно УДАЛЕНО из дерева: pushReplacement, а не push.
     expect(find.byType(WelcomeScreen, skipOffstage: false), findsNothing);
     expect(prefs.getBool('onboarding_shown'), isTrue);
-    // Кнопка обещает сегодняшний день: ведём прямо в чтение, не на главную.
-    expect(find.byType(CardViewerScreen), findsOneWidget);
-    expect(find.text('Мысль дня'), findsOneWidget);
+    // Раздел выбирает сам юзер: «Мудрость дня» сама не открывается.
+    expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);
+    expect(find.text('Мысль дня', skipOffstage: false), findsNothing);
   });
 
   testWidgets('второй запуск приветствие пропускает', (tester) async {

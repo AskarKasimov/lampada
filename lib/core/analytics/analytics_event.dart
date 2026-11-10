@@ -240,7 +240,9 @@ String _snake(String camel) =>
 
 enum OnboardingStep { time, reader }
 
-enum OpenSource { tile, onboarding, notification }
+/// `onboarding` больше не отправляется: после приветствия юзер попадает на
+/// главную. Старые события с ним остаются в истории AppMetrica.
+enum OpenSource { tile, notification }
 
 enum LampSource { wisdom, course }
 

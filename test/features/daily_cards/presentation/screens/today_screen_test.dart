@@ -376,7 +376,7 @@ void main() {
     expect(find.byType(CourseProgressHeader), findsOneWidget);
   });
 
-  testWidgets('просьба из приветствия сразу открывает «Мудрость дня»', (
+  testWidgets('просьба из напоминания сразу открывает «Мудрость дня»', (
     tester,
   ) async {
     await tester.pumpWidget(

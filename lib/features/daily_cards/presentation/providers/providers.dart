@@ -72,16 +72,15 @@ final todayCardsProvider = FutureProvider<TodayCards>(
 );
 
 /// Разовая просьба открыть раздел сегодняшнего дня, как только он готов.
-/// Её оставляют приветствие («Открыть сегодняшний день» обещает чтение, а
-/// не главную) и нажатие на напоминание (оно зовёт в конкретный раздел).
+/// Её оставляет нажатие на напоминание: оно зовёт в конкретный раздел.
 final openDaySectionRequestProvider =
     NotifierProvider<OpenDaySectionRequestNotifier, SectionRequest?>(
       OpenDaySectionRequestNotifier.new,
     );
 
-/// Кто попросил открыть раздел: аналитика различает переход из
-/// приветствия и из напоминания.
-enum SectionRequestOrigin { onboarding, notification }
+/// Кто попросил открыть раздел. Значение переходит в `source` событий
+/// открытия по имени (`OpenSource.values.byName`), поэтому имена совпадают.
+enum SectionRequestOrigin { notification }
 
 typedef SectionRequest = ({DaySection section, SectionRequestOrigin origin});
 

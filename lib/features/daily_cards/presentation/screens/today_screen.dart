@@ -375,7 +375,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
   bool _isRead(DayCard card) => progress.isReadOn(date, card.type);
 
   /// Обновляет кэш, не скрывая прежний контент при ошибке.
-  /// Открывает раздел по просьбе приветствия или напоминания, когда
+  /// Открывает раздел по просьбе напоминания, когда
   /// сегодняшний день загружен. «Мудрость» ждёт и Евангелие, как и тап по
   /// плитке. Если раздела у дня нет, просьбу просто снимаем.
   void _openRequestedSection(List<DayCard> pages) {

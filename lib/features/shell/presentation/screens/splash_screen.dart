@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/brand_loading_view.dart';
-import '../../../daily_cards/domain/entities/day_section.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../onboarding/presentation/providers/providers.dart';
 import '../../../onboarding/presentation/screens/welcome_screen.dart';
@@ -38,21 +37,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   /// Приветствие показываем ОДИН раз и только перед первым контентом.
   /// Дальше оно сменяется шеллом тем же приёмом, что и сплэш, — так переход
-  /// «приветствие → первая карточка» выглядит одним движением.
+  /// «приветствие → главная» выглядит одним движением. Раздел юзер выбирает
+  /// сам: новые приходят за разным, и навязанная «Мудрость дня» чаще
+  /// оставалась недочитанной, чем приводила к привычке.
   ///
   /// Контекст для второго перехода берём из `pageBuilder`, а не из состояния
   /// сплэша: после `pushReplacement` сплэш размонтирован, и обращение к его
   /// `context` бросает «This widget has been unmounted». Внешне это выглядело
   /// как молчащая кнопка.
   Widget _welcome() => WelcomeScreen(
-    onStart: (welcomeContext) {
-      // ref сплэша к этому моменту уже недоступен: берём контейнер из
-      // контекста приветствия.
-      ProviderScope.containerOf(welcomeContext, listen: false)
-          .read(openDaySectionRequestProvider.notifier)
-          .request(DaySection.wisdom, origin: SectionRequestOrigin.onboarding);
-      _replaceWith(welcomeContext, const AppShell());
-    },
+    onStart: (welcomeContext) => _replaceWith(welcomeContext, const AppShell()),
   );
 
   void _replaceWith(BuildContext context, Widget screen) {
