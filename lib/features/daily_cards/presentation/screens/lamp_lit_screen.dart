@@ -84,6 +84,7 @@ class _LampLitScreenState extends ConsumerState<LampLitScreen>
 
   var _lit = false;
   var _weekShown = false;
+  var _explainFreeze = false;
   Timer? _weekTimer;
 
   @override
@@ -93,6 +94,15 @@ class _LampLitScreenState extends ConsumerState<LampLitScreen>
       if (status == AnimationStatus.completed) _lightUp();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+    unawaited(_checkFreeze());
+  }
+
+  Future<void> _checkFreeze() async {
+    final explain = await ref.read(explainStreakFreezeProvider)(
+      before: widget.before,
+      today: DateTime.now(),
+    );
+    if (explain && mounted) setState(() => _explainFreeze = true);
   }
 
   @override
@@ -222,6 +232,7 @@ class _LampLitScreenState extends ConsumerState<LampLitScreen>
                           progress: progress,
                           today: today,
                           showWeek: _weekShown,
+                          explainFreeze: _explainFreeze,
                           margin: EdgeInsets.zero,
                         ),
                       ),

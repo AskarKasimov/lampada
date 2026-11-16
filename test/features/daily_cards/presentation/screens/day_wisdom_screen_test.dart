@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
@@ -507,8 +508,9 @@ void main() {
       List<DayCard> cards = const [quote, reading],
       bool reduceMotion = true,
       int lastVerse = 1,
+      Map<String, Object> prefsValues = const {},
     }) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues(prefsValues);
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
@@ -717,6 +719,41 @@ void main() {
 
       expect(find.byType(DayWisdomScreen), findsNothing);
       expect(find.text('Открыть'), findsOneWidget);
+    });
+
+    testWidgets('первая заморозка объясняется на итоге дня', (tester) async {
+      final now = DateTime.now();
+      final container = await open(
+        tester,
+        date: now,
+        recordProgress: true,
+        prefsValues: {
+          'flutter.day_progress': jsonEncode({
+            'date': dateKey(now),
+            'readTypes': <String>[],
+            'visitedDays': [
+              dateKey(DateTime(now.year, now.month, now.day - 2)),
+            ],
+          }),
+        },
+      );
+      await next(tester);
+      await next(tester);
+
+      final card = tester.widget<StreakCard>(find.byType(StreakCard));
+      expect(card.explainFreeze, isTrue);
+      expect(find.textContaining('была заморожена на день'), findsOneWidget);
+      // Вчерашний день серии отмечен замороженной лампадой.
+      expect(
+        find.image(const AssetImage('assets/illustrations/lampada_frozen.png')),
+        findsOneWidget,
+      );
+      expect(
+        container
+            .read(sharedPreferencesProvider)
+            .getBool('streak_freeze_explained'),
+        isTrue,
+      );
     });
 
     testWidgets('без Евангелия завершение идёт сразу после карточек', (

@@ -95,6 +95,26 @@ abstract class DayProgress with _$DayProgress {
     return streak;
   }
 
+  /// Лампада заморожена: вчерашний день пропущен, но серия ещё жива. Это
+  /// ровно тот одиночный пропуск, который [streakOn] прощает; сегодняшнее
+  /// чтение лампаду размораживает, второй пропуск подряд её гасит.
+  bool isFrozenOn(DateTime today) {
+    if (isLit(today)) return false;
+    final past = _pastDays(today);
+    if (past.isEmpty) return false;
+    return _gap(DateTime.parse(past.last), today) == _maxGapDays;
+  }
+
+  /// Был ли [day] прощённым пропуском: заходы накануне и на следующий день
+  /// есть, а в сам день нет. Неделя серии рисует такой день замороженной
+  /// лампадой.
+  bool wasFrozenOn(DateTime day) {
+    if (isLit(day)) return false;
+    final previous = DateTime(day.year, day.month, day.day - 1);
+    final next = DateTime(day.year, day.month, day.day + 1);
+    return isLit(previous) && isLit(next);
+  }
+
   /// Самая длинная серия до [today] включительно, по тем же правилам, что
   /// [streakOn]. Погасшая серия лучшую не отменяет.
   int bestStreakOn(DateTime today) {
