@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../shell/presentation/widgets/floating_nav_bar.dart';
@@ -20,7 +21,12 @@ class BookmarksScreen extends ConsumerWidget {
   final VoidCallback? onClose;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => AnalyticsScreen(
+    screen: AppScreen.bookmarks,
+    child: _buildScreen(context, ref),
+  );
+
+  Widget _buildScreen(BuildContext context, WidgetRef ref) {
     final async = ref.watch(bookmarksProvider);
     final colors = AppColorsExtension.of(context);
 

@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -28,7 +30,12 @@ class ReadingScreen extends ConsumerWidget {
   final bool recordRead;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => AnalyticsScreen(
+    screen: AppScreen.reading,
+    child: _buildScreen(context, ref),
+  );
+
+  Widget _buildScreen(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dailyReadingProvider(reference));
     return async.when(
       loading: () =>

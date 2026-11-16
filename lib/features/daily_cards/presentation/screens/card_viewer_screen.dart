@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
@@ -111,6 +112,11 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     super.initState();
     _markCurrentAsRead(widget.startIndex);
     widget.onPageChanged?.call(widget.startIndex);
+    AnalyticsScreen.reportPage(
+      context,
+      page: widget.startIndex,
+      pagesTotal: _pageCount,
+    );
   }
 
   @override
@@ -170,6 +176,11 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
           });
           _markCurrentAsRead(page);
           widget.onPageChanged?.call(page);
+          AnalyticsScreen.reportPage(
+            context,
+            page: page,
+            pagesTotal: _pageCount,
+          );
         },
         itemBuilder: (context, index) => _cardPage(index),
         header:

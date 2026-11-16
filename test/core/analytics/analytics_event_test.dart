@@ -25,6 +25,30 @@ void main() {
     expect(event.params, {'choice': 'later'});
   });
 
+  test('уход в фон передаёт экран, вкладку и страницу', () {
+    final event = AnalyticsEvent.appBackgrounded(
+      screen: AppScreen.courseReader,
+      tab: AnalyticsTab.home,
+      page: 3,
+      pagesTotal: 12,
+    );
+
+    expect(event.name, 'app_backgrounded');
+    expect(event.params, {
+      'screen': 'course_reader',
+      'tab': 'home',
+      'page': 3,
+      'pages_total': 12,
+    });
+    expect(
+      AnalyticsEvent.appBackgrounded(
+        screen: AppScreen.profile,
+        tab: AnalyticsTab.profile,
+      ).params,
+      {'screen': 'profile', 'tab': 'profile'},
+    );
+  });
+
   test('имена всех событий в snake_case', () {
     final samples = [
       AnalyticsEvent.onboardingStepViewed(OnboardingStep.reader),

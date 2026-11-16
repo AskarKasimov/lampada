@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/reading_overflow_listener.dart';
@@ -434,7 +435,14 @@ class _BibleReaderScreenState extends ConsumerState<BibleReaderScreen> {
   );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnalyticsScreen(
+    screen: widget.sessionMode == BibleReadingSessionMode.viewer
+        ? AppScreen.bibleViewer
+        : AppScreen.bible,
+    child: _buildScreen(context),
+  );
+
+  Widget _buildScreen(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     if (_loadingInitial) {
       return Scaffold(

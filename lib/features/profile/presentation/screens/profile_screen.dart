@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -28,7 +29,12 @@ class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => AnalyticsScreen(
+    screen: AppScreen.profile,
+    child: _buildScreen(context, ref),
+  );
+
+  Widget _buildScreen(BuildContext context, WidgetRef ref) {
     final colors = AppColorsExtension.of(context);
     final navInset = FloatingNavInset.of(context);
     final actions = ref.read(profileActionsServiceProvider);

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -174,7 +175,10 @@ class _DayStoryScreenState extends ConsumerState<DayStoryScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      AnalyticsScreen(screen: AppScreen.story, child: _buildScreen(context));
+
+  Widget _buildScreen(BuildContext context) {
     final storyUrl = _memory.storyUrl;
     final async = ref.watch(dayStoryProvider(storyUrl));
     // При закрытии ref этого виджета уже недоступен.
@@ -348,6 +352,7 @@ class _StoryReaderState extends State<_StoryReader> {
   void initState() {
     super.initState();
     _controller.addListener(_closeAtExit);
+    AnalyticsScreen.reportPage(context, page: 0, pagesTotal: _pages.length);
   }
 
   /// Закрываем, только когда служебная страница встала на место: смена
@@ -374,6 +379,13 @@ class _StoryReaderState extends State<_StoryReader> {
           _index = index;
           if (index > _furthest) _furthest = index;
         });
+        if (!_isExit(index)) {
+          AnalyticsScreen.reportPage(
+            context,
+            page: index,
+            pagesTotal: _pages.length,
+          );
+        }
         if (!_completed && _isLast(index)) {
           _completed = true;
           widget.onCompleted?.call();

@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -77,7 +79,10 @@ class StreakSheet extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      AnalyticsScreen(screen: AppScreen.streak, child: _buildScreen(context));
+
+  Widget _buildScreen(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final streak = progress.streakOn(today);
     return SafeArea(

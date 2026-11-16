@@ -395,6 +395,86 @@ void main() {
     });
   });
 
+  group('уход в фон', () {
+    void toBackground(WidgetTester tester) {
+      for (final state in const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+    }
+
+    void toForeground(WidgetTester tester) {
+      for (final state in const [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+    }
+
+    testWidgets('с главной пишет экран и вкладку', (tester) async {
+      await tester.pumpWidget(buildApp());
+      await settle(tester);
+
+      toBackground(tester);
+
+      expect(analytics.single('app_backgrounded'), {
+        'screen': 'home',
+        'tab': 'home',
+      });
+    });
+
+    testWidgets('из Мудрости дня пишет читалку и страницу', (tester) async {
+      await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+      await settle(tester);
+      await tester.tap(find.text('Мудрость дня'));
+      await settle(tester);
+
+      toBackground(tester);
+
+      final params = analytics.single('app_backgrounded');
+      expect(params['screen'], 'wisdom');
+      expect(params['tab'], 'home');
+      expect(params['page'], 1);
+      expect(params['pages_total'], isA<int>());
+    });
+
+    testWidgets('открытая на другой вкладке читалка не мешает', (tester) async {
+      await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+      await settle(tester);
+      await tester.tap(find.text('Мудрость дня'));
+      await settle(tester);
+      await tester.tap(tabIcon(CupertinoIcons.person));
+      await settle(tester);
+
+      toBackground(tester);
+
+      expect(analytics.single('app_backgrounded'), {
+        'screen': 'profile',
+        'tab': 'profile',
+      });
+    });
+
+    testWidgets('одно событие на каждый уход в фон', (tester) async {
+      await tester.pumpWidget(buildApp());
+      await settle(tester);
+
+      toBackground(tester);
+      toForeground(tester);
+      await settle(tester);
+      toBackground(tester);
+
+      expect(
+        analytics.names.where((n) => n == 'app_backgrounded'),
+        hasLength(2),
+      );
+    });
+  });
+
   testWidgets('из Библии навбар переключает на Профиль', (tester) async {
     await prefs.setString(
       'bible_chapter_v1:Jn.1',

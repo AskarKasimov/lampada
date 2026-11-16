@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/navigation/bottom_up_modal_route.dart';
@@ -55,7 +56,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   double _headerHeight = 0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      AnalyticsScreen(screen: AppScreen.home, child: _buildScreen(context));
+
+  Widget _buildScreen(BuildContext context) {
     // «Сегодня» берём при каждой перестройке: при возврате в приложение
     // прогресс перечитывается, и после полуночи экран сам переходит на
     // новый день.

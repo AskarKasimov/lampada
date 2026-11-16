@@ -129,6 +129,21 @@ class AnalyticsEvent {
   factory AnalyticsEvent.tabOpened(AnalyticsTab tab) =>
       AnalyticsEvent._('tab_opened', {'tab': tab});
 
+  /// Уход приложения в фон: экран, который юзер видел последним. [page] —
+  /// номер страницы читалки с единицы, [pagesTotal] — все её страницы,
+  /// включая итог.
+  factory AnalyticsEvent.appBackgrounded({
+    required AppScreen screen,
+    required AnalyticsTab tab,
+    int? page,
+    int? pagesTotal,
+  }) => AnalyticsEvent._('app_backgrounded', {
+    'screen': screen,
+    'tab': tab,
+    'page': page,
+    'pages_total': pagesTotal,
+  });
+
   // Библия.
   factory AnalyticsEvent.bibleChapterOpened({
     required String book,
@@ -259,6 +274,31 @@ enum ReminderPromptTrigger { wisdom, course, story, bible }
 enum ReminderPromptChoice { allow, later, dismissed }
 
 enum AnalyticsTab { home, bible, profile }
+
+/// Экран для `app_backgrounded`. Шторки, которые юзер может читать долго,
+/// считаются отдельными экранами.
+enum AppScreen {
+  home,
+  wisdom,
+  reading,
+  story,
+  dayMemories,
+  courseReader,
+  courseDetail,
+  courseContents,
+  fullText,
+  lampLit,
+  streak,
+  bible,
+  bibleViewer,
+  bibleCatalog,
+  bibleInfo,
+  interpretation,
+  profile,
+  bookmarks,
+  bookmarkDetail,
+  reminderPermission,
+}
 
 enum BibleOpenSource {
   firstOpen,
