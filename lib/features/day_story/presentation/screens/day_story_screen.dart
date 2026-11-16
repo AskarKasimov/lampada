@@ -208,6 +208,7 @@ class _DayStoryScreenState extends ConsumerState<DayStoryScreen> {
               ),
               child: _StoryStatusView(
                 kind: kind,
+                header: _header(context),
                 onRetry: () {
                   analytics.log(
                     AnalyticsEvent.contentRetryTapped(LoadedContent.story),
@@ -219,7 +220,10 @@ class _DayStoryScreenState extends ConsumerState<DayStoryScreen> {
             );
           },
           data: (story) => story.paragraphs.isEmpty
-              ? _StoryStatusView(onClose: () => Navigator.of(context).pop())
+              ? _StoryStatusView(
+                  header: _header(context),
+                  onClose: () => Navigator.of(context).pop(),
+                )
               : _StoryReader(
                   // Другой святой читается с обложки, а не со страницы
                   // прежнего рассказа.
@@ -300,6 +304,9 @@ class _StoryReaderState extends State<_StoryReader> {
   var _furthest = 0;
   var _completed = false;
 
+  /// Свайп дошёл до служебной страницы за последней.
+  var _atExit = false;
+
   late final List<DayCard> _pages = _pagesOf(widget.title, widget.story);
 
   /// Тип нужен карточке только для шрифта: рассказ набран, как притча дня.
@@ -361,15 +368,15 @@ class _StoryReaderState extends State<_StoryReader> {
       controller: _controller,
       itemCount: _pages.length + 1,
       onPageChanged: (index) {
-        if (!_isExit(index)) {
-          setState(() {
-            _index = index;
-            if (index > _furthest) _furthest = index;
-          });
-          if (!_completed && _isLast(index)) {
-            _completed = true;
-            widget.onCompleted?.call();
-          }
+        setState(() {
+          _atExit = _isExit(index);
+          if (_atExit) return;
+          _index = index;
+          if (index > _furthest) _furthest = index;
+        });
+        if (!_completed && _isLast(index)) {
+          _completed = true;
+          widget.onCompleted?.call();
         }
       },
       itemBuilder: (context, index) {
@@ -406,7 +413,9 @@ class _StoryReaderState extends State<_StoryReader> {
       headerInteractive: widget.headerInteractive,
       leftRail: ReaderProgressRail(
         count: _pages.length,
-        currentIndex: _index,
+        // Пока выезжает итог, текущей становится точка лампады: иначе она
+        // осталась бы под последней страницей как недочитанная.
+        currentIndex: _atExit && widget.lampPending ? _pages.length : _index,
         accent: colors.accent,
         lampDot: widget.lampPending,
         onSelect: _controller.jumpToPage,
@@ -505,8 +514,16 @@ class _StoryCover extends StatelessWidget {
 }
 
 class _StoryStatusView extends StatelessWidget {
-  const _StoryStatusView({required this.onClose, this.kind, this.onRetry});
+  const _StoryStatusView({
+    required this.header,
+    required this.onClose,
+    this.kind,
+    this.onRetry,
+  });
 
+  /// Плашка «Память дня», как в листалке: у одного святого может не быть
+  /// описания или оно не загрузилось, а остальные святые дня доступны.
+  final Widget header;
   final FailureKind? kind;
   final VoidCallback? onRetry;
   final VoidCallback onClose;
@@ -554,6 +571,9 @@ class _StoryStatusView extends StatelessWidget {
             ),
           ),
         ),
+        // Отступы повторяют шапку [VerticalCardReader], чтобы плашка не
+        // прыгала при переключении между рассказом и пустым экраном.
+        Positioned(top: 8, left: 76, right: 76, child: Center(child: header)),
         Positioned(
           top: 0,
           right: 0,
