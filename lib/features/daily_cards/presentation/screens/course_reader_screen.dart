@@ -8,22 +8,25 @@ import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
 import '../../../../core/widgets/reading_overflow_listener.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../domain/course_calendar.dart';
+import '../../domain/course_topic_titles.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/split_course_text.dart';
 import '../providers/providers.dart';
 import '../theme/card_type_style.dart';
 import '../widgets/card_content.dart';
+import '../widgets/contents_pill_button.dart';
+import '../widgets/course_contents_sheet.dart';
 import '../widgets/reader_progress_rail.dart';
 import '../widgets/vertical_card_reader.dart';
 import 'course_detail_screen.dart';
 import 'full_card_text_screen.dart';
+import 'lamp_lit_screen.dart';
 
 typedef _TopicPage = ({DayCard topic, String text, int index, int count});
 
@@ -69,6 +72,8 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
   bool _canPop = false;
   bool _edgeDismissActive = false;
   double _edgeDismissDistance = 0;
+  bool _pulseContents = false;
+  bool _contentsOpened = false;
 
   int get _initialIndex =>
       _leading + widget.initialPage.clamp(0, _pages.length - 1);
@@ -88,6 +93,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       ..read(dayProgressProvider);
     final topic = _topicNumber(widget.currentTopic.id);
     if (topic > 1) ref.read(courseTopicByNumberProvider(topic - 1));
+    unawaited(_maybeHintContents());
     // Старые версии сохраняли позицию на странице завершения, а ОС могла
     // закрыть приложение раньше записи самого завершения.
     final pastLastChunk = widget.initialPage >= _pages.length;
@@ -141,7 +147,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         previousIndex < _pages.length) {
       final left = _pages[previousIndex];
       if (left.index == left.count - 1) {
-        _queueCompletion(_topicNumber(left.topic.id));
+        _queueCompletion(_topicNumber(left.topic.id), celebrate: true);
       }
     }
     if (_isBoundary) {
@@ -239,7 +245,88 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     }
   }
 
-  void _queueCompletion(int topic) {
+  /// Плашка темы похожа на подпись, поэтому, пока юзер ни разу не открыл
+  /// оглавление, она пульсирует при каждом открытии курса.
+  Future<void> _maybeHintContents() async {
+    final opened = await ref
+        .read(courseHintRepositoryProvider)
+        .contentsOpened();
+    if (!mounted || _contentsOpened) return;
+    if (opened is! Success<bool> || opened.value) return;
+    setState(() => _pulseContents = true);
+  }
+
+  Future<void> _openContents(int currentTopic) async {
+    if (!_contentsOpened) {
+      setState(() {
+        _contentsOpened = true;
+        _pulseContents = false;
+      });
+      unawaited(ref.read(courseHintRepositoryProvider).markContentsOpened());
+    }
+    ref
+        .read(analyticsProvider)
+        .log(AnalyticsEvent.courseInfoOpened(CourseInfoScreen.contents));
+    final completed = {
+      ...?ref.read(completedCourseTopicsProvider).value,
+      ..._completed,
+    };
+    final selected = await showCourseContentsSheet(
+      context,
+      titles: courseTopicTitles,
+      currentTopic: currentTopic,
+      completed: completed,
+    );
+    if (selected != null && mounted) unawaited(_jumpToTopic(selected));
+  }
+
+  /// Переход по оглавлению переносит курс на выбранную тему, как закладка в
+  /// книге: лента начинается заново с её первой страницы и сохраняется как
+  /// место чтения. Тема, с которой ушли, при этом не засчитывается.
+  Future<void> _jumpToTopic(int number) async {
+    if (_loading || _isDismissing) return;
+    setState(() => _loading = true);
+    try {
+      final card = await ref.read(courseTopicByNumberProvider(number).future);
+      if (!mounted) return;
+      final pages = _pagesFor(card);
+      setState(() {
+        _pages
+          ..clear()
+          ..addAll(pages);
+        _loadErrors.clear();
+        // Индекс ставим до прыжка: тогда смена страницы не выглядит свайпом
+        // вперёд с последнего чанка и не засчитывает прежнюю тему.
+        _index = _leading;
+        _loading = false;
+      });
+      if (number > 1) ref.read(courseTopicByNumberProvider(number - 1));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_controller.hasClients) return;
+        _controller.jumpToPage(_index);
+        _onPageChanged(_index);
+      });
+    } on Object catch (error) {
+      if (!mounted) return;
+      ref
+          .read(analyticsProvider)
+          .log(
+            AnalyticsEvent.contentLoadFailed(
+              content: LoadedContent.courseTopic,
+              kind: failureKindOf(error),
+            ),
+          );
+      setState(() => _loading = false);
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(const SnackBar(content: Text('Тема недоступна')));
+    }
+  }
+
+  /// [celebrate] — тему завершил свайп с её последней страницы. Только тогда
+  /// первое за день зажжение показывает итог: при восстановлении после сбоя
+  /// и на финале курса он закрыл бы ещё не прочитанный текст.
+  void _queueCompletion(int topic, {bool celebrate = false}) {
     if (_completed.contains(topic) ||
         _completing.contains(topic) ||
         _isDismissing) {
@@ -249,17 +336,16 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
       _completing.add(topic);
       _completionErrors.remove(topic);
     });
-    _pendingCompletion = _pendingCompletion.then((_) => _completeTopic(topic));
+    _pendingCompletion = _pendingCompletion.then(
+      (_) => _completeTopic(topic, celebrate: celebrate),
+    );
     unawaited(_pendingCompletion);
   }
 
-  Future<void> _completeTopic(int topic) async {
+  Future<void> _completeTopic(int topic, {required bool celebrate}) async {
     // Синхронно, чтобы не задерживать запись: провайдеры прогреты в initState.
     final completedBefore = ref.read(completedCourseTopicsProvider).value;
-    final litBefore = ref
-        .read(dayProgressProvider)
-        .value
-        ?.isLit(DateTime.now());
+    final before = ref.read(dayProgressProvider).value;
     final result = await ref.read(completeCourseTopicProvider)(topic);
     if (!mounted) return;
     setState(() {
@@ -287,8 +373,34 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     if (result is Success) {
       ref.invalidate(dayProgressProvider);
       // После инвалидации: лампаду сравниваем с уже перезагруженным днём.
-      unawaited(_logCompletion(topic, completedBefore, litBefore));
+      // Итог не входит в очередь завершений: закрытие курса ждёт её, а
+      // кнопка «Вернуться на главную» сама закрывает курс.
+      unawaited(
+        _afterCompletion(topic, completedBefore, before, celebrate: celebrate),
+      );
     }
+  }
+
+  Future<void> _afterCompletion(
+    int topic,
+    Set<int>? completedBefore,
+    DayProgress? before, {
+    required bool celebrate,
+  }) async {
+    final lit = await _logCompletion(
+      topic,
+      completedBefore,
+      before?.isLit(DateTime.now()),
+    );
+    if (!lit || !celebrate || before == null || !mounted || _isDismissing) {
+      return;
+    }
+    final exit = await showLampLit(
+      context,
+      before: before,
+      title: 'Тема «Основ веры» прочитана',
+    );
+    if (exit == LampLitExit.home && mounted) await _dismiss();
   }
 
   void _openFullText(Route<void> route) {
@@ -298,7 +410,8 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
 
   /// Тема засчитывается и при восстановлении после сбоя: в аналитику идёт
   /// только новая отметка. Лампада сравнивается с прогрессом до записи.
-  Future<void> _logCompletion(
+  /// Возвращает, загорелась ли лампада этой темой.
+  Future<bool> _logCompletion(
     int topic,
     Set<int>? completedBefore,
     bool? litBefore,
@@ -316,15 +429,15 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         analytics.log(AnalyticsEvent.courseFinished());
       }
     }
-    if (litBefore ?? true) return;
+    if (litBefore ?? true) return false;
     final DayProgress after;
     try {
       after = await ref.read(dayProgressProvider.future);
     } on Object {
-      return;
+      return false;
     }
     final today = DateTime.now();
-    if (!after.isLit(today)) return;
+    if (!after.isLit(today)) return false;
     analytics.log(
       AnalyticsEvent.lampLit(
         source: LampSource.course,
@@ -332,6 +445,7 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
         restarted: after.streakOn(today) == 1,
       ),
     );
+    return true;
   }
 
   Future<void> _dismiss() async {
@@ -373,6 +487,9 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
     final visible = _visible;
     final card = visible.topic;
     final topic = _topicNumber(card.id);
+    // Пока прогресс не загружен, точку не обещаем: лампада может уже гореть.
+    final lampPending =
+        !(ref.watch(dayProgressProvider).value?.isLit(DateTime.now()) ?? true);
     return PopScope<void>(
       canPop: _canPop,
       onPopInvokedWithResult: (didPop, _) {
@@ -448,17 +565,22 @@ class _CourseReaderScreenState extends ConsumerState<CourseReaderScreen> {
                   ),
                 );
               },
-              header: AppPillBadge(
+              headerInteractive: true,
+              header: ContentsPillButton(
                 label: 'Основы веры · Тема №$topic',
+                contentsLabel: 'Оглавление курса',
                 background: style.tagBackground,
                 foreground: style.tagForeground,
-                letterSpacing: 0.2,
+                pulse: _pulseContents,
+                onPressed: () => unawaited(_openContents(topic)),
               ),
               leftRail: ReaderProgressRail(
                 key: ValueKey(card.id),
                 count: visible.count,
                 currentIndex: _isBoundary ? -1 : visible.index,
                 accent: style.accent,
+                // Последняя тема курса засчитывается показом, без итога.
+                lampDot: lampPending && topic < courseTopicCount,
                 // Граница PageView может показывать заглушку, но точки всё ещё
                 // принадлежат последней настоящей теме в _pages.
                 onSelect: (index) {

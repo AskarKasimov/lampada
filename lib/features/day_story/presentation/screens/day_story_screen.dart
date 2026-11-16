@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,13 +21,16 @@ import '../../../../core/widgets/selectable_share_area.dart';
 import '../../../bookmarks/domain/entities/bookmark.dart';
 import '../../../bookmarks/presentation/widgets/bookmark_button.dart';
 import '../../../daily_cards/domain/entities/day_card.dart';
+import '../../../daily_cards/domain/entities/day_memory.dart';
 import '../../../daily_cards/domain/split_day_card_text.dart';
 import '../../../daily_cards/presentation/screens/full_card_text_screen.dart';
 import '../../../daily_cards/presentation/widgets/card_content.dart';
+import '../../../daily_cards/presentation/widgets/contents_pill_button.dart';
 import '../../../daily_cards/presentation/widgets/reader_progress_rail.dart';
 import '../../../daily_cards/presentation/widgets/vertical_card_reader.dart';
 import '../../domain/entities/day_story.dart';
 import '../providers/providers.dart';
+import '../widgets/day_memories_sheet.dart';
 
 /// Рассказ о празднике или святом дня — открывается тапом по заголовку
 /// на «Сегодня».
@@ -33,33 +38,144 @@ import '../providers/providers.dart';
 /// Рассказ бывает на несколько экранов (у больших праздников с историческим
 /// разбором на тысячи слов), поэтому он идёт листалкой по страницам, как
 /// карточки дня, а не простынёй с прокруткой.
-class DayStoryScreen extends ConsumerWidget {
+class DayStoryScreen extends ConsumerStatefulWidget {
   const DayStoryScreen({
     required this.title,
     required this.storyUrl,
+    this.memories = const [],
+    this.readUrls = const {},
     this.onCompleted,
+    this.onFinished,
+    this.lampPending = false,
     super.key,
   });
 
   final String title;
   final String storyUrl;
-  final VoidCallback? onCompleted;
+
+  /// Все памяти дня по порядку. Если их больше одной, плашка «Память дня»
+  /// открывает их список, и рассказ переключается на выбранного святого.
+  final List<DayMemory> memories;
+
+  /// Рассказы дня, прочитанные до открытия: отметки в списке святых.
+  final Set<String> readUrls;
+
+  /// Дочитан рассказ по этой ссылке.
+  final ValueChanged<String>? onCompleted;
+
+  /// Юзер пролистал дальше последней страницы. Вернувшийся маршрут (итог с
+  /// зажжённой лампадой) заменяет рассказ; без него рассказ просто
+  /// закрывается.
+  final Future<Route<void>?> Function()? onFinished;
+
+  /// Сегодняшняя лампада ещё не горит, и дочитанный рассказ её зажжёт: в
+  /// конце столбика точек ждёт итог.
+  final bool lampPending;
+
+  @override
+  ConsumerState<DayStoryScreen> createState() => _DayStoryScreenState();
+}
+
+class _DayStoryScreenState extends ConsumerState<DayStoryScreen> {
+  late var _memory = DayMemory(title: widget.title, storyUrl: widget.storyUrl);
+
+  /// Дочитанные за это открытие: список святых отмечает их сразу.
+  final _completed = <String>{};
+  bool _pulseContents = false;
+  bool _contentsOpened = false;
+
+  int get _memoryIndex =>
+      widget.memories.indexWhere((m) => m.storyUrl == _memory.storyUrl);
+  bool get _hasContents => widget.memories.length > 1 && _memoryIndex >= 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_hasContents) unawaited(_maybeHintContents());
+  }
+
+  /// Плашка похожа на подпись, поэтому, пока юзер ни разу не открыл список
+  /// святых, она пульсирует при каждом открытии рассказа.
+  Future<void> _maybeHintContents() async {
+    final opened = await ref.read(storyHintRepositoryProvider).contentsOpened();
+    if (!mounted || _contentsOpened) return;
+    if (opened is! Success<bool> || opened.value) return;
+    setState(() => _pulseContents = true);
+  }
+
+  Future<void> _openContents() async {
+    if (!_contentsOpened) {
+      setState(() {
+        _contentsOpened = true;
+        _pulseContents = false;
+      });
+      unawaited(ref.read(storyHintRepositoryProvider).markContentsOpened());
+    }
+    final selected = await showDayMemoriesSheet(
+      context,
+      memories: widget.memories,
+      currentUrl: _memory.storyUrl,
+      readUrls: {...widget.readUrls, ..._completed},
+    );
+    if (selected == null || !mounted) return;
+    if (selected.storyUrl == _memory.storyUrl) return;
+    setState(() => _memory = selected);
+  }
+
+  void _onCompleted() {
+    final url = _memory.storyUrl;
+    _completed.add(url);
+    widget.onCompleted?.call(url);
+  }
+
+  Future<void> _finish() async {
+    final next = await widget.onFinished?.call();
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    if (next == null) {
+      navigator.pop();
+      return;
+    }
+    unawaited(navigator.pushReplacement(next));
+  }
 
   /// savedAt — заглушка, момент сохранения ставит сама кнопка.
   Bookmark _bookmarkFor(DayStory story) => Bookmark(
-    id: 'story-$storyUrl',
+    id: 'story-${_memory.storyUrl}',
     kind: BookmarkKind.story,
     text: story.paragraphs.join('\n\n'),
-    source: title,
+    source: _memory.title,
     label: 'Память дня',
     savedAt: DateTime.fromMillisecondsSinceEpoch(0),
   );
 
   String _shareTextFor(DayStory story) =>
-      '$title\n\n${story.paragraphs.join('\n\n')}\n\n— Азбука веры';
+      '${_memory.title}\n\n${story.paragraphs.join('\n\n')}\n\n— Азбука веры';
+
+  Widget _header(BuildContext context) {
+    final colors = AppColorsExtension.of(context);
+    final background = colors.ink.withValues(alpha: 0.06);
+    if (!_hasContents) {
+      return AppPillBadge(
+        label: 'Память дня',
+        background: background,
+        foreground: colors.textSecondary,
+        letterSpacing: 0.2,
+      );
+    }
+    return ContentsPillButton(
+      label: 'Память дня · ${_memoryIndex + 1} из ${widget.memories.length}',
+      contentsLabel: 'Список святых дня',
+      background: background,
+      foreground: colors.textSecondary,
+      pulse: _pulseContents,
+      onPressed: () => unawaited(_openContents()),
+    );
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final storyUrl = _memory.storyUrl;
     final async = ref.watch(dayStoryProvider(storyUrl));
     // При закрытии ref этого виджета уже недоступен.
     final analytics = ref.read(analyticsProvider);
@@ -105,12 +221,19 @@ class DayStoryScreen extends ConsumerWidget {
           data: (story) => story.paragraphs.isEmpty
               ? _StoryStatusView(onClose: () => Navigator.of(context).pop())
               : _StoryReader(
-                  title: title,
+                  // Другой святой читается с обложки, а не со страницы
+                  // прежнего рассказа.
+                  key: ValueKey(storyUrl),
+                  title: _memory.title,
                   story: story,
+                  header: _header(context),
+                  headerInteractive: _hasContents,
                   bookmark: _bookmarkFor(story),
                   shareText: _shareTextFor(story),
-                  onCompleted: onCompleted,
+                  onCompleted: _onCompleted,
                   onClose: () => Navigator.of(context).pop(),
+                  onFinish: () => unawaited(_finish()),
+                  lampPending: widget.lampPending,
                   onExit: (furthest, total, finished) => analytics.log(
                     AnalyticsEvent.storyClosed(
                       pagesSeen: furthest + 1,
@@ -136,20 +259,31 @@ class _StoryReader extends StatefulWidget {
   const _StoryReader({
     required this.title,
     required this.story,
+    required this.header,
+    required this.headerInteractive,
     required this.bookmark,
     required this.shareText,
     required this.onCompleted,
     required this.onClose,
+    required this.onFinish,
+    required this.lampPending,
     required this.onExit,
     required this.onFullText,
+    super.key,
   });
 
   final String title;
   final DayStory story;
+  final Widget header;
+  final bool headerInteractive;
   final Bookmark bookmark;
   final String shareText;
   final VoidCallback? onCompleted;
   final VoidCallback onClose;
+
+  /// Свайп дальше последней страницы: рассказ дочитан до конца.
+  final VoidCallback onFinish;
+  final bool lampPending;
 
   /// Закрытие с самой дальней страницей и признаком «долистал до конца».
   final void Function(int furthest, int total, bool finished) onExit;
@@ -216,7 +350,7 @@ class _StoryReaderState extends State<_StoryReader> {
     if (_closing || !_controller.hasClients) return;
     if ((_controller.page ?? 0) < _pages.length - 0.001) return;
     _closing = true;
-    widget.onClose();
+    widget.onFinish();
   }
 
   @override
@@ -268,16 +402,13 @@ class _StoryReaderState extends State<_StoryReader> {
           ),
         );
       },
-      header: AppPillBadge(
-        label: 'Память дня',
-        background: colors.ink.withValues(alpha: 0.06),
-        foreground: colors.textSecondary,
-        letterSpacing: 0.2,
-      ),
+      header: widget.header,
+      headerInteractive: widget.headerInteractive,
       leftRail: ReaderProgressRail(
         count: _pages.length,
         currentIndex: _index,
         accent: colors.accent,
+        lampDot: widget.lampPending,
         onSelect: _controller.jumpToPage,
       ),
       actions: Column(

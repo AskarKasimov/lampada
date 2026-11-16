@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
+import 'package:lampada/features/daily_cards/domain/entities/day_memory.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/day_content_provider.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/day_story/domain/entities/day_story.dart';
+import 'package:lampada/features/day_story/domain/entities/story_progress.dart';
 import 'package:lampada/features/day_story/presentation/providers/providers.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
@@ -15,7 +17,7 @@ const _key = '2026-09-15';
 const _url = 'https://azbyka.ru/days/pokrov';
 const _day = TodayCards(
   title: 'Память дня',
-  storyUrl: _url,
+  memories: [DayMemory(title: 'Память дня', storyUrl: _url)],
   cards: [
     DayCard(
       id: 'reading',
@@ -208,4 +210,65 @@ void main() {
     expect(content.story, isNull);
     expect(content.iconUrl, isNull);
   });
+
+  test('после прочтения святого день показывает следующего', () async {
+    const first = DayMemory(title: 'Прп. Фомы', storyUrl: 'https://a/foma');
+    const second = DayMemory(
+      title: 'Прп. Акакия',
+      storyUrl: 'https://a/akakij',
+    );
+    const third = DayMemory(title: 'Мц. Кириакии', storyUrl: 'https://a/kir');
+    final stories = <String>[];
+    final container = ProviderContainer(
+      overrides: [
+        dayCardsProvider.overrideWith(
+          (ref, key) async =>
+              const TodayCards(cards: [], memories: [first, second, third]),
+        ),
+        storyProgressProvider.overrideWith(
+          () => _FixedStoryProgress(
+            StoryProgress(
+              readDays: {_key},
+              readStories: {
+                _key: {first.storyUrl},
+              },
+            ),
+          ),
+        ),
+        dayStoryProvider.overrideWith((ref, url) async {
+          stories.add(url);
+          return DayStory(paragraphs: [url], iconUrl: '$url.jpg');
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.listen(
+      dayContentProvider(_key),
+      (_, _) {},
+      fireImmediately: true,
+    );
+
+    final content = await waitForContent(
+      container,
+      _key,
+      (content) =>
+          content.memory?.memory == second &&
+          (content.story?.hasValue ?? false),
+    );
+
+    expect(content.memory, (memory: second, isRead: false));
+    expect(content.iconUrl, 'https://a/akakij.jpg');
+    // Следующий святой подгружается заранее: вернувшись из рассказа, юзер
+    // видит его икону сразу. Прочитанный первый не перезапрашивается.
+    expect(stories, unorderedEquals([second.storyUrl, third.storyUrl]));
+  });
+}
+
+class _FixedStoryProgress extends StoryProgressNotifier {
+  _FixedStoryProgress(this._progress);
+
+  final StoryProgress _progress;
+
+  @override
+  Future<StoryProgress> build() async => _progress;
 }

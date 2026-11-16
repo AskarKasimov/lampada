@@ -15,6 +15,7 @@ import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/bible/presentation/screens/bible_reader_screen.dart';
 import 'package:lampada/features/bible/presentation/widgets/verse_of_day_card.dart';
 import 'package:lampada/features/bookmarks/presentation/providers/providers.dart';
+import 'package:lampada/features/reminders/presentation/screens/reminder_permission_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/fake_analytics.dart';
@@ -78,15 +79,17 @@ void main() {
     await pump(tester);
 
     expect(find.text('Стих дня'), findsOneWidget);
-    expect(find.text('Пс. 22:1'), findsOneWidget);
+    expect(find.text('Псалтирь 22:1'), findsOneWidget);
     // Название карточки набрано как названия плиток главной, ссылка как их
     // подписи: на главной один набор заголовков.
     final title = tester.widget<Text>(find.text('Стих дня')).style!;
     expect(title.fontFamily, 'Lora');
     expect(title.fontSize, AppTheme.cardTitleSize);
     expect(
-      tester.widget<Text>(find.text('Пс. 22:1')).style?.fontSize,
-      AppTheme.cardCaptionStyle(tester.element(find.text('Пс. 22:1'))).fontSize,
+      tester.widget<Text>(find.text('Псалтирь 22:1')).style?.fontSize,
+      AppTheme.cardCaptionStyle(
+        tester.element(find.text('Псалтирь 22:1')),
+      ).fontSize,
     );
     expect(find.text('Синодальный'), findsNothing);
     expect(find.text(_verse.text), findsOneWidget);
@@ -180,7 +183,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Пс. 36:5–6'), findsOneWidget);
+    expect(find.text('Псалтирь 36:5–6'), findsOneWidget);
   });
 
   testWidgets('тап по карточке открывает отдельный просмотр на стихе дня', (
@@ -199,6 +202,20 @@ void main() {
     expect(reader.initialVerse, 1);
     expect(reader.sessionMode, BibleReadingSessionMode.viewer);
     expect(reader.openSource, BibleOpenSource.verseOfDay);
+  });
+
+  testWidgets('после закрытия главы спрашиваем про напоминания', (
+    tester,
+  ) async {
+    await pump(tester);
+
+    await tester.tap(find.byType(VerseOfDayCard));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Закрыть'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BibleReaderScreen), findsNothing);
+    expect(find.byType(ReminderPermissionScreen), findsOneWidget);
   });
 
   testWidgets('стих сохраняется в копилку той же закладкой, что в Библии', (
@@ -237,6 +254,64 @@ void main() {
     expect(find.text('Стих дня'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'стих, не загрузившийся на старте, перезапрашивается при возврате',
+    (tester) async {
+      var loads = 0;
+      await pump(
+        tester,
+        load: () async {
+          loads++;
+          if (loads == 1) {
+            throw const AppFailure('Нет сети', kind: FailureKind.network);
+          }
+          return _verse;
+        },
+      );
+      await tester.pump();
+      expect(find.text('Стих дня'), findsNothing);
+
+      _backgroundAndReturn(tester);
+      await tester.pump();
+      await tester.pump();
+
+      expect(loads, 2);
+      expect(find.text(_verse.text), findsOneWidget);
+    },
+  );
+
+  testWidgets('загруженный стих при возврате не перезапрашивается', (
+    tester,
+  ) async {
+    var loads = 0;
+    await pump(
+      tester,
+      load: () async {
+        loads++;
+        return _verse;
+      },
+    );
+
+    _backgroundAndReturn(tester);
+    await tester.pump();
+
+    expect(loads, 1);
+  });
+}
+
+/// Уход в фон и возврат теми же шагами, что у платформы.
+void _backgroundAndReturn(WidgetTester tester) {
+  for (final state in const [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(state);
+  }
 }
 
 /// Подложка карточки: декорация с тенью внутри карточки.

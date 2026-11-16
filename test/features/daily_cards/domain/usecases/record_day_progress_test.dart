@@ -49,6 +49,13 @@ class _SpyRepository implements DayProgressRepository {
     if (markVisited) _visited = {..._visited, day};
     return Success(_current);
   }
+
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    calls.add('markVisited');
+    _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    return Success(_current);
+  }
 }
 
 void main() {

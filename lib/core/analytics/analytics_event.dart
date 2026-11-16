@@ -240,16 +240,21 @@ String _snake(String camel) =>
 
 enum OnboardingStep { time, reader }
 
-enum OpenSource { tile, onboarding, notification }
+/// `onboarding` больше не отправляется: после приветствия юзер попадает на
+/// главную. Старые события с ним остаются в истории AppMetrica.
+enum OpenSource { tile, notification }
 
-enum LampSource { wisdom, course }
+/// Что зажгло сегодняшнюю «Лампадку»: итог «Мудрости дня», тема курса,
+/// дочитанный рассказ «Памяти дня» или глава Библии.
+enum LampSource { wisdom, course, story, bible }
 
 /// Раздел дня; повторяет `DaySection`, но core не зависит от фич.
 enum AnalyticsSection { wisdom, story, course }
 
 enum ReminderSlot { morning, evening, afterWisdom }
 
-enum ReminderPromptTrigger { wisdom, course }
+/// После какого раздела спросили про напоминания: первый закрытый раздел.
+enum ReminderPromptTrigger { wisdom, course, story, bible }
 
 enum ReminderPromptChoice { allow, later, dismissed }
 
@@ -284,8 +289,11 @@ enum ShareMethod { button, selection }
 
 enum ShareOutcome { success, dismissed, unavailable }
 
-enum ReviewTrigger { profile, firstCompletion }
+/// Откуда запрос оценки: кнопка в профиле, первый закрытый раздел или
+/// вход в один из дней после первого. `first_completion` (первый итог
+/// «Мудрости дня») больше не отправляется и остался в старых данных.
+enum ReviewTrigger { profile, firstReading, nextDay }
 
-enum CourseInfoScreen { courseDetail }
+enum CourseInfoScreen { courseDetail, contents }
 
 enum LoadedContent { day, gospel, story, courseTopic, bibleChapter }

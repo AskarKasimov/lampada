@@ -41,6 +41,10 @@ class _FailOnceDayProgress implements DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   }) => delegate.completeWisdom(date: date, markVisited: markVisited);
+
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) =>
+      delegate.markVisited(date: date);
 }
 
 void main() {

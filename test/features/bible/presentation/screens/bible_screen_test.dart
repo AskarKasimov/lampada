@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/result/result.dart';
+import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_colors.dart';
 import 'package:lampada/features/bible/domain/bible_chapter_statuses.dart';
 import 'package:lampada/features/bible/domain/entities/bible_book.dart';
@@ -19,6 +20,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/full_card_text
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/vertical_card_reader.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeRepository implements BibleRepository {
   BibleChapterId? lastChapter;
@@ -128,6 +130,14 @@ class _LongChapterRepository extends _FakeRepository {
 }
 
 void main() {
+  // Дочитанная глава зажигает «Лампадку», а прогресс дня живёт в
+  // shared_preferences.
+  late SharedPreferences prefs;
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+  });
+
   testWidgets('Повторить после ошибки первой главы заново загружает текст', (
     tester,
   ) async {
@@ -135,6 +145,7 @@ void main() {
       ProviderScope(
         retry: (_, _) => null,
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FailOnceRepository()),
         ],
         child: const MaterialApp(
@@ -159,6 +170,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(home: Scaffold(body: BibleScreen())),
@@ -189,6 +201,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(
@@ -213,6 +226,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(
@@ -250,7 +264,10 @@ void main() {
     final repository = _DelayedRepository();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          bibleRepositoryProvider.overrideWithValue(repository),
+        ],
         child: const MaterialApp(
           home: BibleReaderScreen(
             sessionMode: BibleReadingSessionMode.main,
@@ -296,7 +313,10 @@ void main() {
         final repository = _LongChapterRepository();
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
+            overrides: [
+              sharedPreferencesProvider.overrideWithValue(prefs),
+              bibleRepositoryProvider.overrideWithValue(repository),
+            ],
             child: MaterialApp(
               theme: ThemeData(extensions: [colors]),
               home: const Scaffold(body: BibleScreen()),
@@ -350,6 +370,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(home: Scaffold(body: BibleScreen())),
@@ -371,6 +392,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
             bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
           ],
           child: MaterialApp(
@@ -403,6 +425,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(home: Scaffold(body: BibleScreen())),
@@ -431,6 +454,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(home: Scaffold(body: BibleScreen())),
@@ -460,6 +484,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(home: Scaffold(body: BibleScreen())),
@@ -481,7 +506,10 @@ void main() {
     final repository = _FakeRepository();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          bibleRepositoryProvider.overrideWithValue(repository),
+        ],
         child: const MaterialApp(home: Scaffold(body: BibleScreen())),
       ),
     );
@@ -537,6 +565,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
         ],
         child: const MaterialApp(home: Scaffold(body: BibleScreen())),
@@ -562,6 +591,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
             bibleRepositoryProvider.overrideWithValue(_FakeRepository()),
           ],
           child: MaterialApp(
@@ -599,7 +629,12 @@ void main() {
       expect(find.text('Ин. 3:1'), findsOneWidget);
       expect(find.text('— 3:1'), findsNothing);
       expect(find.text('От Иоанна 3:1'), findsNothing);
-      expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 2);
+      expect(
+        tester
+            .widget<ReaderProgressRail>(find.byType(ReaderProgressRail))
+            .count,
+        2,
+      );
       final back = find.byIcon(CupertinoIcons.xmark);
       expect(back, findsOneWidget);
       expect(
@@ -619,7 +654,10 @@ void main() {
     final repository = _FakeRepository();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [bibleRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          bibleRepositoryProvider.overrideWithValue(repository),
+        ],
         child: const MaterialApp(
           home: BibleReaderScreen(
             sessionMode: BibleReadingSessionMode.viewer,
@@ -665,6 +703,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(
             _LongVerseRepository(repeats: 20),
           ),
@@ -689,6 +728,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_LongVerseRepository()),
         ],
         child: const MaterialApp(
@@ -726,6 +766,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
           bibleRepositoryProvider.overrideWithValue(_LongChapterRepository()),
         ],
         child: const MaterialApp(
@@ -740,7 +781,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(tester.widget<ProgressDots>(find.byType(ProgressDots)).count, 176);
+    expect(
+      tester.widget<ReaderProgressRail>(find.byType(ReaderProgressRail)).count,
+      176,
+    );
     expect(find.text('⋮'), findsNothing);
     tester
         .widget<VerticalCardReader>(find.byType(VerticalCardReader))

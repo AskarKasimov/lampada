@@ -1,13 +1,12 @@
 import 'dart:async';
 
-import 'package:appmetrica_plugin/appmetrica_plugin.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/analytics/analytics_event.dart';
 import 'core/analytics/analytics_provider.dart';
+import 'core/analytics/appmetrica_analytics.dart';
 import 'core/storage/shared_preferences_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
@@ -24,19 +23,10 @@ const _appMetricaApiKey = '7de1fcc9-da6e-4bc5-a828-e8238be0f32f';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Как можно раньше: SDK вешается на FlutterError.onError и считает сессию
-  // с холодного старта. Не ждём ответа нативной части, чтобы не тормозить
-  // запуск. Геолокацию и рекламные идентификаторы не собираем: приложению
-  // они не нужны, а AD_ID на Android ещё и вырезан из манифеста.
-  unawaited(
-    AppMetrica.activate(
-      const AppMetricaConfig(
-        _appMetricaApiKey,
-        locationTracking: false,
-        advIdentifiersTracking: false,
-        logs: kDebugMode,
-      ),
-    ),
-  );
+  // с холодного старта. Не ждём активации, чтобы не тормозить запуск: на
+  // первом запуске iOS она ждёт ответа на запрос трекинга, а события до неё
+  // копятся (см. AppMetricaAnalytics.activate).
+  unawaited(AppMetricaAnalytics.activate(_appMetricaApiKey));
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
     overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],

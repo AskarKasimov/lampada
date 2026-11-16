@@ -11,6 +11,7 @@ import '../../../../core/result/result.dart';
 import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/datasources/day_cards_remote_datasource.dart';
 import '../../data/repositories/azbyka_day_cards_repository.dart';
+import '../../data/repositories/prefs_course_hint_repository.dart';
 import '../../data/repositories/prefs_course_progress_repository.dart';
 import '../../data/repositories/prefs_day_progress_repository.dart';
 import '../../data/repositories/prefs_day_wisdom_position_repository.dart';
@@ -18,6 +19,7 @@ import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/day_section.dart';
 import '../../domain/entities/today_cards.dart';
+import '../../domain/repositories/course_hint_repository.dart';
 import '../../domain/repositories/course_progress_repository.dart';
 import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
@@ -29,6 +31,7 @@ import '../../domain/usecases/get_course_page.dart';
 import '../../domain/usecases/get_course_topic.dart';
 import '../../domain/usecases/get_today_cards.dart';
 import '../../domain/usecases/has_started_course.dart';
+import '../../domain/usecases/light_day_lamp.dart';
 import '../../domain/usecases/load_day_progress.dart';
 import '../../domain/usecases/load_day_wisdom_position.dart';
 import '../../domain/usecases/record_card_read.dart';
@@ -70,16 +73,15 @@ final todayCardsProvider = FutureProvider<TodayCards>(
 );
 
 /// Разовая просьба открыть раздел сегодняшнего дня, как только он готов.
-/// Её оставляют приветствие («Открыть сегодняшний день» обещает чтение, а
-/// не главную) и нажатие на напоминание (оно зовёт в конкретный раздел).
+/// Её оставляет нажатие на напоминание: оно зовёт в конкретный раздел.
 final openDaySectionRequestProvider =
     NotifierProvider<OpenDaySectionRequestNotifier, SectionRequest?>(
       OpenDaySectionRequestNotifier.new,
     );
 
-/// Кто попросил открыть раздел: аналитика различает переход из
-/// приветствия и из напоминания.
-enum SectionRequestOrigin { onboarding, notification }
+/// Кто попросил открыть раздел. Значение переходит в `source` событий
+/// открытия по имени (`OpenSource.values.byName`), поэтому имена совпадают.
+enum SectionRequestOrigin { notification }
 
 typedef SectionRequest = ({DaySection section, SectionRequestOrigin origin});
 
@@ -110,6 +112,10 @@ final recordCardReadProvider = Provider<RecordCardRead>(
 
 final completeDayWisdomProvider = Provider<CompleteDayWisdom>(
   (ref) => CompleteDayWisdom(ref.watch(dayProgressRepositoryProvider)),
+);
+
+final lightDayLampProvider = Provider<LightDayLamp>(
+  (ref) => LightDayLamp(ref.watch(dayProgressRepositoryProvider)),
 );
 
 final loadDayProgressProvider = Provider<LoadDayProgress>(
@@ -191,6 +197,10 @@ final completedCourseTopicsProvider = FutureProvider<Set<int>>((ref) async {
     Failure(failure: final failure) => throw failure,
   };
 });
+
+final courseHintRepositoryProvider = Provider<CourseHintRepository>(
+  (ref) => PrefsCourseHintRepository(ref.watch(sharedPreferencesProvider)),
+);
 
 /// Карточка «Основы» для текущей темы курса.
 ///
@@ -303,4 +313,33 @@ class DayProgressNotifier extends AsyncNotifier<DayProgress> {
           markVisited: markVisited,
         ),
       );
+
+  /// Зажигает сегодняшнюю «Лампадку» после дочитанного до конца раздела и
+  /// пишет `lamp_lit`, если день загорелся именно сейчас. Засчитывать ли
+  /// день, решает [LightDayLamp]: [contentDate] прошлого дня лампаду не
+  /// зажигает. Null — запись не удалась.
+  Future<DayLampResult?> lightLamp(
+    LampSource source, {
+    DateTime? contentDate,
+  }) async {
+    switch (await ref.read(lightDayLampProvider)(contentDate: contentDate)) {
+      case Failure(failure: final f):
+        netLog('не удалось зажечь лампаду: $f');
+        return null;
+      case Success(value: final result):
+        state = AsyncData(result.progress);
+        if (result.litNow) {
+          ref
+              .read(analyticsProvider)
+              .log(
+                AnalyticsEvent.lampLit(
+                  source: source,
+                  streak: result.progress.streakOn(DateTime.now()),
+                  restarted: result.restarted,
+                ),
+              );
+        }
+        return result;
+    }
+  }
 }

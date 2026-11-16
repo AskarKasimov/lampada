@@ -17,9 +17,9 @@ mixin _$TodayCards {
  List<DayCard> get cards;/// Седмица церковного года: «Седмица 10-я по Пятидесятнице».
  String? get week;/// Первая память дня: «Мц. Христи́ны Тирской».
  String? get title;/// Постный ли день.
- bool get isFast;/// Ссылка на страницу праздника/святого — рассказ о дне грузится оттуда
-/// лениво, при открытии заголовка, а не вместе с самим днём.
- String? get storyUrl;/// Адрес «Картины дня» Азбуки: иллюстрация плитки «Мудрость дня».
+ bool get isFast;/// Памяти дня с рассказами, в порядке Азбуки. Плитка показывает первую
+/// непрочитанную; рассказы грузятся лениво, а не вместе с днём.
+ List<DayMemory> get memories;/// Адрес «Картины дня» Азбуки: иллюстрация плитки «Мудрость дня».
  String? get pictureUrl;
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
@@ -31,16 +31,16 @@ $TodayCardsCopyWith<TodayCards> get copyWith => _$TodayCardsCopyWithImpl<TodayCa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TodayCards&&const DeepCollectionEquality().equals(other.cards, cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&(identical(other.storyUrl, storyUrl) || other.storyUrl == storyUrl)&&(identical(other.pictureUrl, pictureUrl) || other.pictureUrl == pictureUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TodayCards&&const DeepCollectionEquality().equals(other.cards, cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&const DeepCollectionEquality().equals(other.memories, memories)&&(identical(other.pictureUrl, pictureUrl) || other.pictureUrl == pictureUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cards),week,title,isFast,storyUrl,pictureUrl);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cards),week,title,isFast,const DeepCollectionEquality().hash(memories),pictureUrl);
 
 @override
 String toString() {
-  return 'TodayCards(cards: $cards, week: $week, title: $title, isFast: $isFast, storyUrl: $storyUrl, pictureUrl: $pictureUrl)';
+  return 'TodayCards(cards: $cards, week: $week, title: $title, isFast: $isFast, memories: $memories, pictureUrl: $pictureUrl)';
 }
 
 
@@ -51,7 +51,7 @@ abstract mixin class $TodayCardsCopyWith<$Res>  {
   factory $TodayCardsCopyWith(TodayCards value, $Res Function(TodayCards) _then) = _$TodayCardsCopyWithImpl;
 @useResult
 $Res call({
- List<DayCard> cards, String? week, String? title, bool isFast, String? storyUrl, String? pictureUrl
+ List<DayCard> cards, String? week, String? title, bool isFast, List<DayMemory> memories, String? pictureUrl
 });
 
 
@@ -68,14 +68,14 @@ class _$TodayCardsCopyWithImpl<$Res>
 
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? storyUrl = freezed,Object? pictureUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? memories = null,Object? pictureUrl = freezed,}) {
   return _then(_self.copyWith(
 cards: null == cards ? _self.cards : cards // ignore: cast_nullable_to_non_nullable
 as List<DayCard>,week: freezed == week ? _self.week : week // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,isFast: null == isFast ? _self.isFast : isFast // ignore: cast_nullable_to_non_nullable
-as bool,storyUrl: freezed == storyUrl ? _self.storyUrl : storyUrl // ignore: cast_nullable_to_non_nullable
-as String?,pictureUrl: freezed == pictureUrl ? _self.pictureUrl : pictureUrl // ignore: cast_nullable_to_non_nullable
+as bool,memories: null == memories ? _self.memories : memories // ignore: cast_nullable_to_non_nullable
+as List<DayMemory>,pictureUrl: freezed == pictureUrl ? _self.pictureUrl : pictureUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -161,10 +161,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl,  String? pictureUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  List<DayMemory> memories,  String? pictureUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TodayCards() when $default != null:
-return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_that.pictureUrl);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.memories,_that.pictureUrl);case _:
   return orElse();
 
 }
@@ -182,10 +182,10 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl,  String? pictureUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  List<DayMemory> memories,  String? pictureUrl)  $default,) {final _that = this;
 switch (_that) {
 case _TodayCards():
-return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_that.pictureUrl);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.memories,_that.pictureUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -202,10 +202,10 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  String? storyUrl,  String? pictureUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<DayCard> cards,  String? week,  String? title,  bool isFast,  List<DayMemory> memories,  String? pictureUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _TodayCards() when $default != null:
-return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_that.pictureUrl);case _:
+return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.memories,_that.pictureUrl);case _:
   return null;
 
 }
@@ -217,7 +217,7 @@ return $default(_that.cards,_that.week,_that.title,_that.isFast,_that.storyUrl,_
 
 
 class _TodayCards extends TodayCards {
-  const _TodayCards({required final  List<DayCard> cards, this.week, this.title, this.isFast = false, this.storyUrl, this.pictureUrl}): _cards = cards,super._();
+  const _TodayCards({required final  List<DayCard> cards, this.week, this.title, this.isFast = false, final  List<DayMemory> memories = const <DayMemory>[], this.pictureUrl}): _cards = cards,_memories = memories,super._();
   
 
  final  List<DayCard> _cards;
@@ -233,9 +233,17 @@ class _TodayCards extends TodayCards {
 @override final  String? title;
 /// Постный ли день.
 @override@JsonKey() final  bool isFast;
-/// Ссылка на страницу праздника/святого — рассказ о дне грузится оттуда
-/// лениво, при открытии заголовка, а не вместе с самим днём.
-@override final  String? storyUrl;
+/// Памяти дня с рассказами, в порядке Азбуки. Плитка показывает первую
+/// непрочитанную; рассказы грузятся лениво, а не вместе с днём.
+ final  List<DayMemory> _memories;
+/// Памяти дня с рассказами, в порядке Азбуки. Плитка показывает первую
+/// непрочитанную; рассказы грузятся лениво, а не вместе с днём.
+@override@JsonKey() List<DayMemory> get memories {
+  if (_memories is EqualUnmodifiableListView) return _memories;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_memories);
+}
+
 /// Адрес «Картины дня» Азбуки: иллюстрация плитки «Мудрость дня».
 @override final  String? pictureUrl;
 
@@ -249,16 +257,16 @@ _$TodayCardsCopyWith<_TodayCards> get copyWith => __$TodayCardsCopyWithImpl<_Tod
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TodayCards&&const DeepCollectionEquality().equals(other._cards, _cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&(identical(other.storyUrl, storyUrl) || other.storyUrl == storyUrl)&&(identical(other.pictureUrl, pictureUrl) || other.pictureUrl == pictureUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TodayCards&&const DeepCollectionEquality().equals(other._cards, _cards)&&(identical(other.week, week) || other.week == week)&&(identical(other.title, title) || other.title == title)&&(identical(other.isFast, isFast) || other.isFast == isFast)&&const DeepCollectionEquality().equals(other._memories, _memories)&&(identical(other.pictureUrl, pictureUrl) || other.pictureUrl == pictureUrl));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_cards),week,title,isFast,storyUrl,pictureUrl);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_cards),week,title,isFast,const DeepCollectionEquality().hash(_memories),pictureUrl);
 
 @override
 String toString() {
-  return 'TodayCards(cards: $cards, week: $week, title: $title, isFast: $isFast, storyUrl: $storyUrl, pictureUrl: $pictureUrl)';
+  return 'TodayCards(cards: $cards, week: $week, title: $title, isFast: $isFast, memories: $memories, pictureUrl: $pictureUrl)';
 }
 
 
@@ -269,7 +277,7 @@ abstract mixin class _$TodayCardsCopyWith<$Res> implements $TodayCardsCopyWith<$
   factory _$TodayCardsCopyWith(_TodayCards value, $Res Function(_TodayCards) _then) = __$TodayCardsCopyWithImpl;
 @override @useResult
 $Res call({
- List<DayCard> cards, String? week, String? title, bool isFast, String? storyUrl, String? pictureUrl
+ List<DayCard> cards, String? week, String? title, bool isFast, List<DayMemory> memories, String? pictureUrl
 });
 
 
@@ -286,14 +294,14 @@ class __$TodayCardsCopyWithImpl<$Res>
 
 /// Create a copy of TodayCards
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? storyUrl = freezed,Object? pictureUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? cards = null,Object? week = freezed,Object? title = freezed,Object? isFast = null,Object? memories = null,Object? pictureUrl = freezed,}) {
   return _then(_TodayCards(
 cards: null == cards ? _self._cards : cards // ignore: cast_nullable_to_non_nullable
 as List<DayCard>,week: freezed == week ? _self.week : week // ignore: cast_nullable_to_non_nullable
 as String?,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,isFast: null == isFast ? _self.isFast : isFast // ignore: cast_nullable_to_non_nullable
-as bool,storyUrl: freezed == storyUrl ? _self.storyUrl : storyUrl // ignore: cast_nullable_to_non_nullable
-as String?,pictureUrl: freezed == pictureUrl ? _self.pictureUrl : pictureUrl // ignore: cast_nullable_to_non_nullable
+as bool,memories: null == memories ? _self._memories : memories // ignore: cast_nullable_to_non_nullable
+as List<DayMemory>,pictureUrl: freezed == pictureUrl ? _self.pictureUrl : pictureUrl // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

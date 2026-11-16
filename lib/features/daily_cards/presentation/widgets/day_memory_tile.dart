@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/entities/day_card.dart';
-import '../../domain/entities/today_cards.dart';
 import 'home_grid_tile.dart';
 import 'read_status_checks.dart';
 
@@ -14,20 +13,21 @@ import 'read_status_checks.dart';
 /// загрузилась, плитка не пустая: на ней имя святого.
 class DayMemoryTile extends StatelessWidget {
   const DayMemoryTile({
-    required this.day,
+    required this.title,
     this.iconUrl,
     this.onTap,
     this.isRead = false,
     super.key,
   });
 
-  final TodayCards day;
+  /// Имя святого или праздника, которого сейчас показывает плитка.
+  final String title;
   final String? iconUrl;
 
-  /// Открывает рассказ. Без ссылки на рассказ плитка не нажимается.
+  /// Открывает рассказ. Без рассказа плитка не нажимается.
   final VoidCallback? onTap;
 
-  /// Рассказ дня уже открывали: отметка как у «Мудрости дня».
+  /// Рассказ этого святого прочитан: отметка как у «Мудрости дня».
   final bool isRead;
 
   /// Розовый свободен на главной: «Мудрость» янтарная, курс зелёный.
@@ -35,14 +35,14 @@ class DayMemoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = day.title!.trim();
+    final title = this.title.trim();
     final iconUrl = this.iconUrl;
     return HomeGridTile(
       title: 'Память дня',
       type: _type,
       semanticsLabel: 'Память дня: $title${isRead ? '. Прочитано' : ''}',
       titleTrailing: ReadStatusChecks(isUnread: !isRead),
-      onTap: day.storyUrl == null ? null : onTap,
+      onTap: onTap,
       background: (_) => iconUrl == null
           ? _NameFallback(name: title)
           : Image.network(

@@ -13,6 +13,7 @@ import '../../domain/repositories/day_cards_repository.dart';
 import '../datasources/day_cards_remote_datasource.dart';
 import '../dto/day_dto.dart';
 import '../mappers/day_card_mapper.dart';
+import '../mappers/day_memory_mapper.dart';
 
 /// Кэширует карточки по точной дате и преобразует ошибки data-слоя в Failure.
 class AzbykaDayCardsRepository implements DayCardsRepository {
@@ -41,10 +42,10 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
   final NetworkStatus? _networkStatus;
 
   // Меняйте версию при изменении схемы кэша или нормализации его данных.
-  static const _cachePrefix = 'day_cards_cache_v7:';
+  static const _cachePrefix = 'day_cards_cache_v8:';
 
   // SharedPreferences не умеет перечислять ключи по префиксу.
-  static const _cacheIndexKey = 'day_cards_cached_dates_v7';
+  static const _cacheIndexKey = 'day_cards_cached_dates_v8';
 
   // Не даём подневному кэшу расти без ограничения.
   static const _maxCachedDays = 60;
@@ -151,7 +152,7 @@ class AzbykaDayCardsRepository implements DayCardsRepository {
     week: dto.week,
     title: dto.title,
     isFast: dto.isFast,
-    storyUrl: dto.storyUrl,
+    memories: dto.memories.map((m) => m.toEntity()).toList(),
     pictureUrl: dto.pictureUrl,
   );
 

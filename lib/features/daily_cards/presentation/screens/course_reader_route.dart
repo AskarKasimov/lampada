@@ -5,8 +5,7 @@ import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/navigation/bottom_up_modal_route.dart';
 import '../../../../core/result/result.dart';
-import '../../../reminders/presentation/providers/providers.dart';
-import '../../../reminders/presentation/screens/reminder_permission_screen.dart';
+import '../../../shell/presentation/services/after_reading_prompts.dart';
 import '../../domain/entities/day_card.dart';
 import '../providers/providers.dart';
 import 'course_reader_screen.dart';
@@ -74,15 +73,5 @@ Future<void> openCourseReader(
     ),
   );
   if (!context.mounted) return;
-
-  final read = ref.read(dayProgressProvider).value?.readTypes ?? const {};
-  if (read.isEmpty) return;
-  final settings = await ref.read(reminderSettingsProvider.future);
-  if (settings.asked || !context.mounted) return;
-  await Navigator.of(context, rootNavigator: true).push(
-    BottomUpModalRoute<void>(
-      builder: (_) =>
-          const ReminderPermissionScreen(trigger: ReminderPromptTrigger.course),
-    ),
-  );
+  await askAfterReading(context, ReminderPromptTrigger.course);
 }

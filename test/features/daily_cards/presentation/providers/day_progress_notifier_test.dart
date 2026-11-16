@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lampada/core/analytics/analytics_event.dart';
+import 'package:lampada/core/analytics/analytics_provider.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
@@ -10,6 +12,8 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_cards_repos
 import 'package:lampada/features/daily_cards/domain/repositories/day_progress_repository.dart';
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../support/fake_analytics.dart';
 
 const _cards = [
   DayCard(id: 'q', type: CardType.quote, body: 'b', source: 's'),
@@ -73,12 +77,17 @@ class _FailingDayProgressRepository implements DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   }) async => const Failure(_failure);
+
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async =>
+      const Failure(_failure);
 }
 
 Future<ProviderContainer> _container(
   DayCardsRepository cards, {
   DayProgressRepository? progressRepository,
   CourseProgressRepository? courseRepository,
+  FakeAnalytics? analytics,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -90,6 +99,7 @@ Future<ProviderContainer> _container(
         dayProgressRepositoryProvider.overrideWithValue(progressRepository),
       if (courseRepository != null)
         courseProgressRepositoryProvider.overrideWithValue(courseRepository),
+      analyticsProvider.overrideWithValue(analytics ?? FakeAnalytics()),
     ],
   );
   await container.read(todayCardsProvider.future);
@@ -125,6 +135,80 @@ void main() {
     expect(progress.isWisdomCompletedOn(DateTime.now()), isTrue);
     expect(progress.isLit(DateTime.now()), isTrue);
     expect(progress.readTypes, isEmpty);
+  });
+
+  group('lightLamp', () {
+    test('зажигает сегодняшний день и пишет lamp_lit с источником', () async {
+      final analytics = FakeAnalytics();
+      final container = await _container(
+        _FreshCardsRepository(),
+        analytics: analytics,
+      );
+
+      final lit = await container
+          .read(dayProgressProvider.notifier)
+          .lightLamp(LampSource.story, contentDate: DateTime.now());
+
+      final progress = container.read(dayProgressProvider).requireValue;
+      expect(lit?.litNow, isTrue);
+      expect(lit?.before.isLit(DateTime.now()), isFalse);
+      expect(progress.isLit(DateTime.now()), isTrue);
+      expect(progress.readTypes, isEmpty);
+      expect(analytics.single('lamp_lit'), {
+        'source': 'story',
+        'streak': 1,
+        'restarted': true,
+      });
+    });
+
+    test('уже горящий день не пишет lamp_lit повторно', () async {
+      final analytics = FakeAnalytics();
+      final container = await _container(
+        _FreshCardsRepository(),
+        analytics: analytics,
+      );
+      final notifier = container.read(dayProgressProvider.notifier);
+
+      await notifier.lightLamp(LampSource.bible);
+      final again = await notifier.lightLamp(LampSource.story);
+
+      expect(again?.litNow, isFalse);
+      expect(analytics.single('lamp_lit')['source'], 'bible');
+    });
+
+    test('раздел прошлого дня лампаду не зажигает', () async {
+      final analytics = FakeAnalytics();
+      final container = await _container(
+        _FreshCardsRepository(),
+        analytics: analytics,
+      );
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+
+      final lit = await container
+          .read(dayProgressProvider.notifier)
+          .lightLamp(LampSource.story, contentDate: yesterday);
+
+      final progress = container.read(dayProgressProvider).requireValue;
+      expect(lit?.litNow, isFalse);
+      expect(progress.visitedDays, isEmpty);
+      expect(analytics.names, isNot(contains('lamp_lit')));
+    });
+
+    test('сбой записи не пишет lamp_lit', () async {
+      final analytics = FakeAnalytics();
+      final container = await _container(
+        _FreshCardsRepository(),
+        progressRepository: _FailingDayProgressRepository(),
+        analytics: analytics,
+      );
+
+      final lit = await container
+          .read(dayProgressProvider.notifier)
+          .lightLamp(LampSource.story);
+
+      expect(lit, isNull);
+      expect(analytics.names, isNot(contains('lamp_lit')));
+    });
   });
 
   test('прочтение основ не сдвигает тему личного курса', () async {

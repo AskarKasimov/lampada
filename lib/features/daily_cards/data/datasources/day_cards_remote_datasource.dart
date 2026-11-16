@@ -11,6 +11,7 @@ import '../../../../core/network/remote_fetch_exception.dart';
 import '../../../../core/result/result.dart';
 import '../dto/day_card_dto.dart';
 import '../dto/day_dto.dart';
+import '../dto/day_memory_dto.dart';
 
 /// Источник дневного контента. Реализация ниже скрейпит azbyka.ru —
 /// абстракция позволяет подменить её в тестах репозитория.
@@ -88,7 +89,7 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
         week: _weekOf(doc),
         title: _titleOf(doc),
         isFast: _isFastDay(doc),
-        storyUrl: _storyUrlOf(doc),
+        memories: _memoriesOf(doc),
         pictureUrl: _pictureUrlOf(doc),
       );
 
@@ -222,20 +223,38 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     return _cleaned(item);
   }
 
-  /// Ссылка на страницу праздника/святого — там лежит рассказ о дне.
+  /// Все памяти дня со своими страницами: святые, праздники, иконы.
   ///
-  /// Тот же `<li>`, что читает [_titleOf]. Первой ссылкой в нём иногда стоит
-  /// иконка-легенда («что означают эти значки», ведёт на `p-znaki-prazdnikov`)
-  /// — у неё нет текста, только `<img>`. Берём первую ссылку с НЕПУСТЫМ
-  /// текстом: это и есть память дня, а не пояснение к значку.
-  static String? _storyUrlOf(Document doc) {
-    final item = doc.querySelector('.day__text ul li');
-    if (item == null) return null;
-    final link = item
-        .querySelectorAll('a[href]')
-        .where((a) => a.text.trim().isNotEmpty)
-        .firstOrNull;
-    final href = link?.attributes['href'];
+  /// Первой ссылкой в строке иногда стоит иконка-легенда («что означают эти
+  /// значки», ведёт на `p-znaki-prazdnikov`) без текста, только `<img>`:
+  /// её пропускаем. Строка с одной ссылкой называет память целиком
+  /// («Обре́тение мощей прп. Гера́сима», «Иконы Божией Матери: Влахернская»),
+  /// а строка с несколькими святыми делится по ссылкам. Повтор той же
+  /// страницы второй раз в очередь не ставим.
+  static List<DayMemoryDto> _memoriesOf(Document doc) {
+    final memories = <DayMemoryDto>[];
+    final seen = <String>{};
+    for (final item in doc.querySelectorAll('.day__text ul li')) {
+      item.querySelectorAll('.secondary-content').forEach((e) => e.remove());
+      final links = [
+        for (final a in item.querySelectorAll('a[href]'))
+          if (_cleaned(a) case final text?)
+            if (_azbykaUrl(a.attributes['href']) case final url?)
+              (text: text, url: url),
+      ];
+      for (final link in links) {
+        if (!seen.add(link.url)) continue;
+        final title = links.length == 1 ? _cleaned(item)! : link.text;
+        memories.add(
+          DayMemoryDto(title: _capitalized(title), storyUrl: link.url),
+        );
+      }
+    }
+    return memories;
+  }
+
+  /// Ссылка на страницу Азбуки, приведённая к HTTPS, или null для чужих.
+  static String? _azbykaUrl(String? href) {
     if (href == null || href.isEmpty) return null;
     final uri = Uri.tryParse(href);
     if (uri == null) return null;
@@ -250,6 +269,11 @@ class AzbykaDayCardsRemoteDatasource implements DayCardsRemoteDatasource {
     }
     return Uri.parse('https://azbyka.ru').resolveUri(uri).toString();
   }
+
+  /// Вторая память в строке идёт со строчной («прп. Ака́кия»), а в очереди
+  /// она стоит отдельно и начинается как название.
+  static String _capitalized(String text) =>
+      text[0].toUpperCase() + text.substring(1);
 
   /// «Картина дня» из боковой колонки.
   ///

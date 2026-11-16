@@ -17,14 +17,41 @@ import '../providers/providers.dart';
 /// «Стих дня» на главной. Пока стих грузится, карточка уже стоит на месте,
 /// чтобы плитки под ней не прыгали. Без сети и без кэша главы карточки нет:
 /// пустая рамка с ошибкой над дневными плитками только мешала бы.
-class VerseOfDaySection extends ConsumerWidget {
+class VerseOfDaySection extends ConsumerStatefulWidget {
   const VerseOfDaySection({required this.date, super.key});
 
   final DateTime date;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final verse = ref.watch(verseOfDayProvider(dateKey(date)));
+  ConsumerState<VerseOfDaySection> createState() => _VerseOfDaySectionState();
+}
+
+class _VerseOfDaySectionState extends ConsumerState<VerseOfDaySection> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Стих новой даты запрашивается в момент возврата из фона, когда сеть
+    // ещё может не подняться. Без перезапроса карточка пропала бы до
+    // перезапуска приложения или pull-to-refresh.
+    _lifecycle = AppLifecycleListener(onResume: _retryFailed);
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  void _retryFailed() {
+    final provider = verseOfDayProvider(dateKey(widget.date));
+    if (ref.read(provider).hasError) ref.invalidate(provider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final verse = ref.watch(verseOfDayProvider(dateKey(widget.date)));
     if (verse.value case final verse?) return VerseOfDayCard(verse: verse);
     // Ошибку проверяем через hasError: при перезапросе состояние остаётся
     // загрузкой, но прежняя ошибка уже известна.
@@ -102,6 +129,8 @@ class VerseOfDayCard extends ConsumerWidget {
                       children: [
                         // Название и ссылка набраны как названия и подписи
                         // плиток главной: на ней один набор заголовков.
+                        // Книга названа полностью, как в каталоге Библии:
+                        // сокращения Азбуки читателю не всегда понятны.
                         Text(
                           'Стих дня',
                           style: AppTheme.cardTitleStyle(context),
@@ -109,7 +138,7 @@ class VerseOfDayCard extends ConsumerWidget {
                         if (verse != null && book != null) ...[
                           const SizedBox(height: 3),
                           Text(
-                            '${book.abbreviation}. ${verse.reference}',
+                            '${book.title} ${verse.reference}',
                             style: AppTheme.cardCaptionStyle(context),
                           ),
                         ],

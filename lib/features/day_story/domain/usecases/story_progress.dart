@@ -1,20 +1,22 @@
 import '../../../../core/result/result.dart';
+import '../entities/story_progress.dart';
 import '../repositories/story_progress_repository.dart';
 
-/// Дни, в которые рассказ «Памяти дня» уже открывали.
-class LoadReadStoryDays {
-  const LoadReadStoryDays(this._repository);
+/// Прочитанные рассказы «Памяти дня».
+class LoadStoryProgress {
+  const LoadStoryProgress(this._repository);
 
   final StoryProgressRepository _repository;
 
-  Future<Result<Set<String>>> call() => _repository.readDays();
+  Future<Result<StoryProgress>> call() => _repository.load();
 }
 
-/// Открытие рассказа считается прочтением: напоминание зовёт открыть его.
+/// Показ последней страницы рассказа считается прочтением этого святого.
 class MarkStoryRead {
   const MarkStoryRead(this._repository);
 
   final StoryProgressRepository _repository;
 
-  Future<Result<Set<String>>> call(DateTime date) => _repository.markRead(date);
+  Future<Result<StoryProgress>> call(DateTime date, String storyUrl) =>
+      _repository.markRead(date, storyUrl);
 }

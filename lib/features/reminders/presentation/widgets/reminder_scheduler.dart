@@ -58,8 +58,14 @@ class _ReminderSchedulerState extends ConsumerState<ReminderScheduler> {
     if (day == null || progress == null) return;
 
     final now = widget.clock();
+    // Хоть один прочитанный святой дня снимает напоминание о памяти.
     final storyRead =
-        ref.read(readStoryDaysProvider).value?.contains(dateKey(now)) ?? false;
+        ref
+            .read(storyProgressProvider)
+            .value
+            ?.readDays
+            .contains(dateKey(now)) ??
+        false;
     final completedTopics = ref.read(completedCourseTopicsProvider).value;
     final plan = planReminders(
       now: now,
@@ -67,7 +73,7 @@ class _ReminderSchedulerState extends ConsumerState<ReminderScheduler> {
       sections: day.cards.map((c) => c.type).toList(),
       wisdomCompletedAt: progress.wisdomCompletedAt,
       // Без ссылки рассказа не открыть: звать к нему незачем.
-      storyTitle: day.storyUrl == null ? null : day.title,
+      storyTitle: day.memories.firstOrNull?.title,
       storyRead: storyRead,
       courseAvailable:
           completedTopics == null || completedTopics.length < courseTopicCount,
@@ -109,7 +115,7 @@ class _ReminderSchedulerState extends ConsumerState<ReminderScheduler> {
       ..listen(dayProgressProvider, (_, _) => _reschedule())
       ..listen(todayCardsProvider, (_, _) => _reschedule())
       ..listen(reminderSettingsProvider, (_, _) => _reschedule())
-      ..listen(readStoryDaysProvider, (_, _) => _reschedule())
+      ..listen(storyProgressProvider, (_, _) => _reschedule())
       ..listen(completedCourseTopicsProvider, (_, _) => _reschedule());
 
     // Первый расчёт: слушатели срабатывают только на ИЗМЕНЕНИЯ, а к моменту

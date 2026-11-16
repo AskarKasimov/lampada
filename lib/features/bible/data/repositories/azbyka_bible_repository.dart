@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,10 +17,18 @@ import '../dto/bible_chapter_dto.dart';
 import '../mappers/bible_chapter_mapper.dart';
 
 class AzbykaBibleRepository implements BibleRepository {
-  AzbykaBibleRepository(this._source, this._prefs);
+  AzbykaBibleRepository(
+    this._source,
+    this._prefs, {
+    List<Duration> retryDelays = const [
+      Duration(seconds: 1),
+      Duration(seconds: 1),
+    ],
+  }) : _retryDelays = retryDelays;
 
   final BibleRemoteDatasource _source;
   final SharedPreferences _prefs;
+  final List<Duration> _retryDelays;
   static const _cachePrefix = 'bible_chapter_v1:';
   static const _progressPrefix = 'bible_progress_v1:';
   static const _lastChapterKey = 'bible_last_chapter_v1';
@@ -39,7 +48,12 @@ class AzbykaBibleRepository implements BibleRepository {
       }
       final BibleChapterDto downloaded;
       try {
-        downloaded = await _source.fetchChapter(book, chapter);
+        // С кэшем глава откроется и без сети, ждать повторов незачем.
+        downloaded = await _fetchWithRetries(
+          book,
+          chapter,
+          retries: cached == null ? _retryDelays : const [],
+        );
       } on Object catch (error) {
         // Глава без толкования лучше, чем никакой: офлайн она открывается.
         if (cached == null) rethrow;
@@ -74,6 +88,28 @@ class AzbykaBibleRepository implements BibleRepository {
           cause: error,
         ),
       );
+    }
+  }
+
+  /// Сразу после возврата из фона iOS часто рвёт первый запрос, пока сеть не
+  /// поднялась: такой сбой повторяем. Таймаут и сменившуюся вёрстку — нет:
+  /// первый уже съел время ожидания, вторая повторится так же.
+  Future<BibleChapterDto> _fetchWithRetries(
+    String book,
+    int chapter, {
+    required List<Duration> retries,
+  }) async {
+    for (var attempt = 0; ; attempt++) {
+      try {
+        return await _source.fetchChapter(book, chapter);
+      } on RemoteFetchException catch (error) {
+        final retryable =
+            error.kind != FailureKind.unknown &&
+            error.cause is! TimeoutException;
+        if (!retryable || attempt >= retries.length) rethrow;
+        netLog('глава $book.$chapter, попытка ${attempt + 1}: $error');
+        await Future<void>.delayed(retries[attempt]);
+      }
     }
   }
 

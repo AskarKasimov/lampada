@@ -38,7 +38,10 @@ void main() {
     requestedChapters = [];
     // Экран открывают из списка уже сохранённой записи — сеем её заранее,
     // а не заводим отдельную заглушку копилки.
+    // Про напоминания уже спрашивали: запрос после закрытия главы
+    // накрыл бы закладку.
     SharedPreferences.setMockInitialValues({
+      'flutter.reminders_asked': true,
       'flutter.bookmarks':
           '[{'
           '"id":"interpretation-1","kind":"interpretation",'

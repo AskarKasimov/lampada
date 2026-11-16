@@ -5,6 +5,7 @@ import 'package:lampada/core/format/date_key.dart';
 import 'package:lampada/core/result/result.dart';
 import 'package:lampada/core/storage/shared_preferences_provider.dart';
 import 'package:lampada/core/theme/app_theme.dart';
+import 'package:lampada/features/bible/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -65,6 +66,12 @@ class _FakeProgressRepository implements DayProgressRepository {
     }
     return Success(DayProgress(readTypes: _read, visitedDays: _visited));
   }
+
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    return Success(DayProgress(readTypes: _read, visitedDays: _visited));
+  }
 }
 
 void main() {
@@ -82,6 +89,11 @@ void main() {
         _FakeProgressRepository(),
       ),
       sharedPreferencesProvider.overrideWithValue(prefs),
+      // Без сети: настоящая загрузка оставила бы таймеры повторов после теста.
+      verseOfDayProvider.overrideWith(
+        (ref, key) async =>
+            throw const AppFailure('Нет сети', kind: FailureKind.network),
+      ),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const SplashScreen()),
   );
@@ -103,7 +115,9 @@ void main() {
     expect(find.byType(AppShell), findsNothing);
   });
 
-  testWidgets('кнопка приветствия открывает день', (tester) async {
+  testWidgets('кнопка приветствия ведёт на главную, а не в чтение', (
+    tester,
+  ) async {
     // Регрессия: колбэк держал контекст сплэша, а тот после pushReplacement
     // размонтирован. Тап бросал «This widget has been unmounted», и снаружи
     // кнопка выглядела молчащей. Тест приветствия в одиночку это пропускал —
@@ -117,15 +131,13 @@ void main() {
     await tester.tap(find.text('Открыть сегодняшний день'));
     await settle(tester);
 
-    // skipOffstage: false — «Сегодня» тут же само открывает первую карточку
-    // отдельным маршрутом, и шелл уходит за кадр. Нам важно, что он в дереве.
-    expect(find.byType(AppShell, skipOffstage: false), findsOneWidget);
+    expect(find.byType(AppShell), findsOneWidget);
     // Приветствие именно УДАЛЕНО из дерева: pushReplacement, а не push.
     expect(find.byType(WelcomeScreen, skipOffstage: false), findsNothing);
     expect(prefs.getBool('onboarding_shown'), isTrue);
-    // Кнопка обещает сегодняшний день: ведём прямо в чтение, не на главную.
-    expect(find.byType(CardViewerScreen), findsOneWidget);
-    expect(find.text('Мысль дня'), findsOneWidget);
+    // Раздел выбирает сам юзер: «Мудрость дня» сама не открывается.
+    expect(find.byType(CardViewerScreen, skipOffstage: false), findsNothing);
+    expect(find.text('Мысль дня', skipOffstage: false), findsNothing);
   });
 
   testWidgets('второй запуск приветствие пропускает', (tester) async {

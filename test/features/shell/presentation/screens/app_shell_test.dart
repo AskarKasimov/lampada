@@ -31,10 +31,13 @@ import 'package:lampada/features/daily_cards/presentation/screens/course_reader_
 import 'package:lampada/features/daily_cards/presentation/screens/day_wisdom_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
+import 'package:lampada/features/profile/presentation/providers/providers.dart';
 import 'package:lampada/features/profile/presentation/screens/profile_screen.dart';
+import 'package:lampada/features/profile/presentation/services/profile_actions_service.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/domain/repositories/reading_repository.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
+import 'package:lampada/features/reminders/presentation/screens/reminder_permission_screen.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
 import 'package:lampada/features/shell/presentation/widgets/floating_nav_bar.dart';
@@ -115,10 +118,35 @@ class _FakeProgressRepository implements DayProgressRepository {
     }
     return Success(_current);
   }
+
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    _visited = {..._visited, dateKey(date ?? DateTime.now())};
+    return Success(_current);
+  }
 }
 
 /// Евангелие дня не должно ходить в сеть: иначе плитка «Мудрость дня»
 /// остаётся в загрузке и не открывается.
+class _FakeProfileActions implements ProfileActionsService {
+  int reviewRequests = 0;
+
+  @override
+  String get reviewLabel => 'Оставить отзыв';
+
+  @override
+  Future<void> openUrl(String url) async {}
+
+  @override
+  Future<ShareOutcome?> shareApp() async => null;
+
+  @override
+  Future<bool> requestReview() async {
+    reviewRequests++;
+    return true;
+  }
+}
+
 class _FakeReadingRepository implements ReadingRepository {
   @override
   Future<Result<DailyReading>> getReading(
@@ -151,6 +179,11 @@ class _DelayedCourseProgress extends PrefsCourseProgressRepository {
   }
 }
 
+/// Стих дня без сети: оболочке он не нужен, а настоящая загрузка оставила бы
+/// таймеры повторов после теста.
+Never _noVerse() =>
+    throw const AppFailure('Нет сети', kind: FailureKind.network);
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -172,17 +205,24 @@ void main() {
     TargetPlatform? platform,
     CourseProgressRepository? courseProgress,
     bool stubBibleChapter = false,
+    bool lampLit = false,
+    ProfileActionsService? profileActions,
   }) => ProviderScope(
     overrides: [
+      profileActionsServiceProvider.overrideWithValue(
+        profileActions ?? _FakeProfileActions(),
+      ),
       if (courseProgress != null)
         courseProgressRepositoryProvider.overrideWithValue(courseProgress),
       dayCardsRepositoryProvider.overrideWithValue(_FakeCardsRepository()),
       dayProgressRepositoryProvider.overrideWithValue(
-        _FakeProgressRepository(),
+        _FakeProgressRepository()
+          .._visited = {if (lampLit) dateKey(DateTime.now())},
       ),
       readingRepositoryProvider.overrideWithValue(_FakeReadingRepository()),
       sharedPreferencesProvider.overrideWithValue(prefs),
       analyticsProvider.overrideWithValue(analytics),
+      verseOfDayProvider.overrideWith((ref, key) async => _noVerse()),
       if (stubBibleChapter)
         bibleChapterProvider.overrideWith(
           (ref, key) async => BibleChapter(
@@ -274,6 +314,85 @@ void main() {
     await settle(tester);
     expect(find.text('Новый Завет'), findsOneWidget);
     expect(find.byType(FloatingNavBar), findsOneWidget);
+  });
+
+  testWidgets('уход с вкладки Библии спрашивает про напоминания', (
+    tester,
+  ) async {
+    await prefs.setBool('reminders_asked', false);
+    await prefs.setString(
+      'bible_chapter_v1:Jn.1',
+      '{"book":"Jn","number":1,"verses":[{"number":1,"text":"Первый стих Иоанна"}]}',
+    );
+    await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+    await settle(tester);
+    await tester.tap(tabIcon(CupertinoIcons.book));
+    await settle(tester);
+    expect(find.byType(ReminderPermissionScreen), findsNothing);
+
+    await tester.tap(homeIcon(filled: false));
+    await settle(tester);
+
+    expect(find.byType(ReminderPermissionScreen), findsOneWidget);
+    expect(analytics.single('reminder_prompt_shown'), {'trigger': 'bible'});
+  });
+
+  group('запрос оценки при входе', () {
+    /// Уход в фон и возврат: фреймворк требует переходов по порядку.
+    void backgroundAndReturn(WidgetTester tester) {
+      for (final state in const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+    }
+
+    testWidgets('в день первого входа оценку не просим', (tester) async {
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(buildApp(profileActions: actions));
+      await settle(tester);
+
+      expect(actions.reviewRequests, 0);
+      expect(prefs.getString('review_first_open_day'), dateKey(DateTime.now()));
+    });
+
+    testWidgets('на следующий день оценку просим один раз', (tester) async {
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      await prefs.setString('review_first_open_day', dateKey(yesterday));
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(buildApp(profileActions: actions));
+      await settle(tester);
+
+      expect(actions.reviewRequests, 1);
+      expect(analytics.single('review_requested'), {'trigger': 'next_day'});
+
+      // Возврат из фона в тот же день повторно не просит.
+      backgroundAndReturn(tester);
+      await settle(tester);
+      expect(actions.reviewRequests, 1);
+    });
+
+    testWidgets('возврат из фона на следующий день просит оценку', (
+      tester,
+    ) async {
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(buildApp(profileActions: actions));
+      await settle(tester);
+      expect(actions.reviewRequests, 0);
+
+      // Приложение висело в фоне со вчерашнего дня.
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      await prefs.setString('review_first_open_day', dateKey(yesterday));
+      backgroundAndReturn(tester);
+      await settle(tester);
+
+      expect(actions.reviewRequests, 1);
+    });
   });
 
   testWidgets('из Библии навбар переключает на Профиль', (tester) async {
@@ -632,7 +751,10 @@ void main() {
       'повторный тап Главная ожидает ${waitForCompletion ? "завершения темы" : "сохранения позиции"}',
       (tester) async {
         final course = _DelayedCourseProgress(prefs);
-        await tester.pumpWidget(buildApp(courseProgress: course));
+        // Лампада уже горит: итог её зажжения перекрыл бы читалку курса.
+        await tester.pumpWidget(
+          buildApp(courseProgress: course, lampLit: true),
+        );
         await settle(tester);
         await tester.tap(find.byType(CourseProgressHeader));
         await settle(tester);
@@ -964,6 +1086,7 @@ void main() {
           _FakeProgressRepository(),
         ),
         sharedPreferencesProvider.overrideWithValue(prefs),
+        verseOfDayProvider.overrideWith((ref, key) async => _noVerse()),
       ],
     );
     addTearDown(container.dispose);

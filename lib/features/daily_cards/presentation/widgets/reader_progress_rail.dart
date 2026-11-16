@@ -13,15 +13,24 @@ class ReaderProgressRail extends StatefulWidget {
     required this.currentIndex,
     required this.accent,
     this.onSelect,
+    this.lampDot = false,
     super.key,
   });
 
+  /// Число страниц раздела, без точки итога.
   final int count;
   final int currentIndex;
   final Color accent;
 
   /// Открывает страницу по индексу точки.
   final ValueChanged<int>? onSelect;
+
+  /// За последней страницей ждёт итог с зажжением лампады: в конце столбика
+  /// его точка, как у итога «Мудрости дня». Долистать до неё пальцем нельзя,
+  /// до итога доходят чтением.
+  final bool lampDot;
+
+  int get _dots => count + (lampDot ? 1 : 0);
 
   @override
   State<ReaderProgressRail> createState() => ReaderProgressRailState();
@@ -72,9 +81,9 @@ class ReaderProgressRailState extends State<ReaderProgressRail> {
     final rail = _rail(scrollable: onSelect == null);
     if (onSelect == null) return rail;
     return RailScrubber(
-      count: widget.count,
+      count: widget._dots,
       currentIndex: widget.currentIndex,
-      onSelect: onSelect,
+      onSelect: (index) => onSelect(math.min(index, widget.count - 1)),
       child: rail,
     );
   }
@@ -82,16 +91,16 @@ class ReaderProgressRailState extends State<ReaderProgressRail> {
   Widget _rail({required bool scrollable}) => LayoutBuilder(
     builder: (context, constraints) => SizedBox(
       width: 8,
-      height: math.min(widget.count * 14.0, constraints.maxHeight),
+      height: math.min(widget._dots * 14.0, constraints.maxHeight),
       child: SingleChildScrollView(
         controller: _controller,
         // Под пальцем столбик не прокручивают, а листают им страницы.
         physics: scrollable ? null : const NeverScrollableScrollPhysics(),
         child: ProgressDots(
-          count: widget.count,
+          count: widget._dots,
           currentIndex: widget.currentIndex,
           axis: Axis.vertical,
-          accentColors: List.filled(widget.count, widget.accent),
+          accentColors: List.filled(widget._dots, widget.accent),
         ),
       ),
     ),

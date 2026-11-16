@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +57,29 @@ class _InterpretedSource implements BibleRemoteDatasource {
     );
   }
 }
+
+/// Отдаёт сбои из [failures] по очереди, затем главу.
+class _FlakySource implements BibleRemoteDatasource {
+  _FlakySource(this.failures);
+
+  final List<Object> failures;
+  int calls = 0;
+
+  @override
+  Future<BibleChapterDto> fetchChapter(String book, int chapter) async {
+    calls++;
+    if (calls <= failures.length) throw failures[calls - 1];
+    return BibleChapterDto(
+      book: book,
+      number: chapter,
+      verses: const [BibleVerseDto(number: 34, text: 'Заповедь новую')],
+      interpretationsChecked: true,
+    );
+  }
+}
+
+RemoteFetchException _dropped() =>
+    RemoteFetchException(FailureKind.network, Exception('соединение сброшено'));
 
 /// Запись главы, сохранённая до появления толкований.
 final _legacyCache = jsonEncode({
@@ -315,5 +339,79 @@ void main() {
         (await repository.getChapter('Jn', 3) as Success<BibleChapter>).value;
     expect(chapter.verses.single.text, 'Стих');
     expect(chapter.verses.single.interpretation, isNull);
+  });
+  group('повторы загрузки главы', () {
+    Future<AzbykaBibleRepository> repository(_FlakySource source) async {
+      SharedPreferences.setMockInitialValues({});
+      return AzbykaBibleRepository(
+        source,
+        await SharedPreferences.getInstance(),
+        retryDelays: const [Duration.zero, Duration.zero],
+      );
+    }
+
+    test('мгновенный сбой сети повторяется, и глава приходит', () async {
+      final source = _FlakySource([_dropped(), _dropped()]);
+
+      final result = await (await repository(source)).getChapter('Jn', 13);
+
+      expect((result as Success<BibleChapter>).value.verses.single.number, 34);
+      expect(source.calls, 3);
+    });
+
+    test('при главе в кэше сбой не повторяется: она уже открывается', () async {
+      SharedPreferences.setMockInitialValues({
+        'bible_chapter_v1:Jn.3': _legacyCache,
+      });
+      final source = _FlakySource([_dropped()]);
+      final repository = AzbykaBibleRepository(
+        source,
+        await SharedPreferences.getInstance(),
+        retryDelays: const [Duration.zero, Duration.zero],
+      );
+
+      final result = await repository.getChapter('Jn', 3);
+
+      expect(
+        (result as Success<BibleChapter>).value.verses.single.text,
+        'Стих',
+      );
+      expect(source.calls, 1);
+    });
+
+    test('после трёх сбоев сети глава не загружена', () async {
+      final source = _FlakySource([_dropped(), _dropped(), _dropped()]);
+
+      final result = await (await repository(source)).getChapter('Jn', 13);
+
+      expect(
+        (result as Failure<BibleChapter>).failure.kind,
+        FailureKind.network,
+      );
+      expect(source.calls, 3);
+    });
+
+    test('таймаут не повторяется: он уже съел время ожидания', () async {
+      final source = _FlakySource([
+        RemoteFetchException(FailureKind.network, TimeoutException('10 с')),
+      ]);
+
+      await (await repository(source)).getChapter('Jn', 13);
+
+      expect(source.calls, 1);
+    });
+
+    test('сменившаяся вёрстка не повторяется', () async {
+      final source = _FlakySource([
+        RemoteFetchException(
+          FailureKind.unknown,
+          const FormatException('нет стихов'),
+        ),
+      ]);
+
+      await (await repository(source)).getChapter('Jn', 13);
+
+      expect(source.calls, 1);
+    });
   });
 }

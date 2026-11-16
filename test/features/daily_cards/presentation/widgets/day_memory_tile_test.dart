@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lampada/core/theme/app_colors.dart';
 import 'package:lampada/core/theme/app_theme.dart';
-import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/day_memory_tile.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/frosted_fade.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/home_grid_tile.dart';
@@ -12,7 +11,6 @@ import 'package:lampada/features/daily_cards/presentation/widgets/read_status_ch
 
 import 'frosted_fade_expectations.dart';
 
-const _story = 'https://azbyka.ru/days/pokrov';
 const _icon =
     'https://azbyka.ru/days/storage/images/icons-of-holidays/14/a.jpg';
 const _title = 'Покров Пресвятой Владычицы нашей Богородицы и Приснодевы Марии';
@@ -43,13 +41,7 @@ void main() {
   ) async {
     var taps = 0;
     await tester.pumpWidget(
-      _wrap(
-        DayMemoryTile(
-          day: const TodayCards(cards: [], title: _title, storyUrl: _story),
-          iconUrl: _icon,
-          onTap: () => taps++,
-        ),
-      ),
+      _wrap(DayMemoryTile(title: _title, iconUrl: _icon, onTap: () => taps++)),
     );
 
     // Пока икона грузится, имени на плитке нет.
@@ -66,13 +58,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      _wrap(
-        DayMemoryTile(
-          day: const TodayCards(cards: [], title: 'Пасха', storyUrl: _story),
-          iconUrl: _icon,
-          onTap: () {},
-        ),
-      ),
+      _wrap(DayMemoryTile(title: 'Пасха', iconUrl: _icon, onTap: () {})),
     );
     // В тестах сеть отвечает ошибкой, и картинка уходит в errorBuilder.
     await tester.pump();
@@ -90,13 +76,7 @@ void main() {
 
   testWidgets('икона занимает всю плитку', (tester) async {
     await tester.pumpWidget(
-      _wrap(
-        DayMemoryTile(
-          day: const TodayCards(cards: [], title: _title, storyUrl: _story),
-          iconUrl: _icon,
-          onTap: () {},
-        ),
-      ),
+      _wrap(DayMemoryTile(title: _title, iconUrl: _icon, onTap: () {})),
     );
     await tester.pump();
 
@@ -115,13 +95,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      _wrap(
-        DayMemoryTile(
-          day: const TodayCards(cards: [], title: _title, storyUrl: _story),
-          iconUrl: _icon,
-          onTap: () {},
-        ),
-      ),
+      _wrap(DayMemoryTile(title: _title, iconUrl: _icon, onTap: () {})),
     );
     await tester.pump();
 
@@ -162,14 +136,7 @@ void main() {
   });
 
   testWidgets('без иконы на плитке имя святого', (tester) async {
-    await tester.pumpWidget(
-      _wrap(
-        DayMemoryTile(
-          day: const TodayCards(cards: [], title: 'Пасха', storyUrl: _story),
-          onTap: () {},
-        ),
-      ),
-    );
+    await tester.pumpWidget(_wrap(DayMemoryTile(title: 'Пасха', onTap: () {})));
     await tester.pump();
 
     expect(find.byType(Image), findsNothing);
@@ -177,34 +144,10 @@ void main() {
     expect(find.text('Пасха'), findsOneWidget);
   });
 
-  testWidgets('пост на плитке не отмечается', (tester) async {
-    await tester.pumpWidget(
-      _wrap(
-        const DayMemoryTile(
-          day: TodayCards(
-            cards: [],
-            title: _title,
-            storyUrl: _story,
-            isFast: true,
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.text('Постный день'), findsNothing);
-  });
-
   testWidgets('галочки справа от подписи, как у «Мудрости дня»', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      _wrap(
-        const DayMemoryTile(
-          day: TodayCards(cards: [], title: 'Пасха', storyUrl: _story),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_wrap(const DayMemoryTile(title: 'Пасха')));
 
     final checks = find.byType(ReadStatusChecks);
     expect(checks, findsOneWidget);
@@ -219,12 +162,7 @@ void main() {
 
   testWidgets('прочитанный рассказ отмечен галочками', (tester) async {
     await tester.pumpWidget(
-      _wrap(
-        const DayMemoryTile(
-          day: TodayCards(cards: [], title: 'Пасха', storyUrl: _story),
-          isRead: true,
-        ),
-      ),
+      _wrap(const DayMemoryTile(title: 'Пасха', isRead: true)),
     );
 
     expect(
@@ -237,14 +175,8 @@ void main() {
     );
   });
 
-  testWidgets('без ссылки на рассказ плитка не нажимается', (tester) async {
-    await tester.pumpWidget(
-      _wrap(
-        const DayMemoryTile(
-          day: TodayCards(cards: [], title: _title),
-        ),
-      ),
-    );
+  testWidgets('без рассказа плитка не нажимается', (tester) async {
+    await tester.pumpWidget(_wrap(const DayMemoryTile(title: _title)));
     await tester.pump();
 
     final tile = tester.widget<HomeGridTile>(find.byType(HomeGridTile));

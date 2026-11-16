@@ -15,6 +15,7 @@ import 'package:lampada/core/widgets/app_share_button.dart';
 import 'package:lampada/features/bookmarks/data/repositories/prefs_bookmarks_repository.dart';
 import 'package:lampada/features/bookmarks/domain/entities/bookmark.dart';
 import 'package:lampada/features/daily_cards/data/repositories/prefs_course_progress_repository.dart';
+import 'package:lampada/features/daily_cards/domain/course_topic_titles.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_card.dart';
 import 'package:lampada/features/daily_cards/domain/entities/day_progress.dart';
 import 'package:lampada/features/daily_cards/domain/entities/today_cards.dart';
@@ -24,8 +25,12 @@ import 'package:lampada/features/daily_cards/domain/repositories/day_progress_re
 import 'package:lampada/features/daily_cards/presentation/providers/providers.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_detail_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/course_reader_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/screens/lamp_lit_screen.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/contents_pill_button.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/course_contents_sheet.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/reader_progress_rail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/fake_analytics.dart';
@@ -95,6 +100,14 @@ class _ProgressRepository implements DayProgressRepository {
     DateTime? date,
     bool markVisited = true,
   }) async => Success(DayProgress(readTypes: readTypes, visitedDays: const {}));
+
+  @override
+  Future<Result<DayProgress>> markVisited({DateTime? date}) async {
+    visited.add(dateKey(date ?? DateTime.now()));
+    return Success(
+      DayProgress(readTypes: readTypes, visitedDays: {...visited}),
+    );
+  }
 }
 
 class _FailingCourseProgressRepository implements CourseProgressRepository {
@@ -202,7 +215,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     cards = _CourseCardsRepository();
-    progress = _ProgressRepository();
+    // Лампада сегодня уже горит: итог первого зажжения иначе выезжал бы
+    // поверх читалки в каждом тесте со сменой темы. Тесты зажжения гасят её.
+    progress = _ProgressRepository()..visited.add(dateKey(DateTime.now()));
   });
 
   Widget buildApp({
@@ -557,6 +572,7 @@ void main() {
   testWidgets('засчитанная тема пишет завершение и зажжённую лампаду', (
     tester,
   ) async {
+    progress.visited.clear();
     await pumpReader(tester);
 
     await tester.drag(find.byType(PageView), const Offset(0, -500));
@@ -571,6 +587,75 @@ void main() {
       'streak': 1,
       'restarted': true,
     });
+  });
+
+  testWidgets('первое зажжение за день показывает итог темы с лампадой', (
+    tester,
+  ) async {
+    progress.visited.clear();
+    await pumpReader(tester);
+
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LampLitScreen), findsOneWidget);
+    expect(find.text('Тема «Основ веры» прочитана'), findsOneWidget);
+
+    await tester.tap(find.text('Продолжить чтение'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LampLitScreen), findsNothing);
+    expect(find.text('Тема 4'), findsOneWidget);
+  });
+
+  testWidgets('пока лампада не горит, в конце темы ждёт точка итога', (
+    tester,
+  ) async {
+    progress.visited.clear();
+    await pumpReader(tester);
+
+    expect(
+      tester
+          .widget<ReaderProgressRail>(find.byType(ReaderProgressRail))
+          .lampDot,
+      isTrue,
+    );
+  });
+
+  testWidgets('при горящей лампаде точки итога нет', (tester) async {
+    await pumpReader(tester);
+
+    expect(
+      tester
+          .widget<ReaderProgressRail>(find.byType(ReaderProgressRail))
+          .lampDot,
+      isFalse,
+    );
+  });
+
+  testWidgets('с итога темы можно вернуться на главную', (tester) async {
+    progress.visited.clear();
+    await pumpReader(tester);
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Вернуться на главную'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LampLitScreen), findsNothing);
+    expect(find.byType(CourseReaderScreen), findsNothing);
+    expect(find.text('Открыть основы'), findsOneWidget);
+  });
+
+  testWidgets('если лампада уже горит, итог темы не прерывает чтение', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    await tester.drag(find.byType(PageView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LampLitScreen), findsNothing);
+    expect(find.text('Тема 4'), findsOneWidget);
   });
 
   testWidgets('вмещающееся предложение длиннее 150 не требует полного экрана', (
@@ -663,6 +748,73 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Не удалось сохранить место чтения'), findsOneWidget);
+  });
+
+  testWidgets('плашка темы открывает оглавление курса', (tester) async {
+    await pumpReader(tester);
+
+    await tester.tap(find.text('Основы веры · Тема №3'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseContentsSheet), findsOneWidget);
+    expect(find.text(courseTopicTitles[2]).hitTestable(), findsOneWidget);
+    expect(analytics.single('course_info_opened')['screen'], 'contents');
+  });
+
+  testWidgets('тема из оглавления переносит туда курс', (tester) async {
+    await pumpReader(tester);
+
+    await tester.tap(find.text('Основы веры · Тема №3'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(courseTopicTitles[5]));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CourseContentsSheet), findsNothing);
+    expect(find.text('Тема 6'), findsOneWidget);
+    expect(find.text('Основы веры · Тема №6'), findsOneWidget);
+    final saved = await PrefsCourseProgressRepository(prefs).currentTopic();
+    expect((saved as Success<int>).value, 6);
+    // Переход по оглавлению — не прочтение: тема 3 не засчитана.
+    expect(progress.readTypes, isEmpty);
+
+    // Курс продолжается с новой темы в обе стороны.
+    await tester.drag(find.byType(PageView), const Offset(0, 500));
+    await tester.pumpAndSettle();
+    expect(find.text('Тема 5'), findsOneWidget);
+  });
+
+  bool contentsPulse(WidgetTester tester) =>
+      tester.widget<ContentsPillButton>(find.byType(ContentsPillButton)).pulse;
+
+  testWidgets('плашка темы пульсирует, пока оглавление не открывали', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    expect(contentsPulse(tester), isTrue);
+    // Показ подсказки её не снимает: она вернётся при следующем открытии.
+    expect(prefs.getBool('course_contents_opened'), isNull);
+  });
+
+  testWidgets('после нажатия на плашку она больше не пульсирует', (
+    tester,
+  ) async {
+    await pumpReader(tester);
+
+    await tester.tap(find.text('Основы веры · Тема №3'));
+    await tester.pumpAndSettle();
+
+    expect(prefs.getBool('course_contents_opened'), isTrue);
+    expect(contentsPulse(tester), isFalse);
+  });
+
+  testWidgets('если оглавление уже открывали, плашка не пульсирует', (
+    tester,
+  ) async {
+    await prefs.setBool('course_contents_opened', true);
+    await pumpReader(tester);
+
+    expect(contentsPulse(tester), isFalse);
   });
 
   testWidgets('keeps the course title visible in the reader header', (
