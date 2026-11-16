@@ -98,6 +98,30 @@ void main() {
     expect(dto.paragraphs, ['Первый абзац жития.', 'Второй абзац жития.']);
   });
 
+  test('история иконы Богородицы извлекается без соседних разделов', () async {
+    // Структура страницы «Одигитрии Шуйской»: даты празднования и тропари
+    // свёрстаны тем же .brif, но вне .ikon-description.
+    final datasource = _servingHtml(
+      '<html><body>'
+      '<div class="block"><h2>Празднование</h2></div>'
+      '<div class="brif celebration"><p>15 ноября</p></div>'
+      '<div class="block ikon-description"><h2>История</h2>'
+      '<div class="brif expandable">'
+      '<p>Первый абзац истории.</p><p>Второй абзац истории.</p>'
+      '</div><div class="read-more">Развернуть</div></div>'
+      '<div id="tropari" class="block"><div class="brif expandable">'
+      '<p>Текст тропаря</p></div></div>'
+      '</body></html>',
+    );
+
+    final dto = await datasource.fetch(
+      'https://azbyka.ru/days/ikona-odigitrija-shujskaja',
+      timeout: const Duration(seconds: 5),
+    );
+
+    expect(dto.paragraphs, ['Первый абзац истории.', 'Второй абзац истории.']);
+  });
+
   test('заголовки секции вырезаются, а не попадают абзацем', () async {
     final datasource = _servingHtml(
       '<html><body><div class="block saint-description"><div class="brif">'
@@ -285,6 +309,18 @@ void main() {
           'saints-group/87/group.jpg"></a>',
         ),
         'https://azbyka.ru/days/storage/images/saints-group/87/group.jpg',
+      );
+    });
+
+    test('у иконы Богородицы берёт её изображение из галереи', () async {
+      expect(
+        await iconOf(
+          '<a data-fancybox-href="https://azbyka.ru/days/storage/images/'
+          'icons-of-our-lady/164/main.png"></a>'
+          '<a data-fancybox-href="/days/storage/images/photos-of-day/a.jpg">'
+          '</a>',
+        ),
+        'https://azbyka.ru/days/storage/images/icons-of-our-lady/164/main.png',
       );
     });
 
