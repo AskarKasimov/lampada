@@ -4,13 +4,14 @@ import '../../../../core/result/result.dart';
 import '../../../../core/storage/preference_write.dart';
 import '../../domain/repositories/review_prompt_repository.dart';
 
-/// Состояние запросов оценки в shared_preferences: два простых значения.
+/// Состояние запросов оценки в shared_preferences: три простых значения.
 class PrefsReviewPromptRepository implements ReviewPromptRepository {
   PrefsReviewPromptRepository(this._prefs);
 
   final SharedPreferences _prefs;
 
   static const _firstOpenKey = 'review_first_open_day';
+  static const _lastRequestKey = 'review_last_request_day';
   static const _requestedKey = 'review_requested';
 
   @override
@@ -19,6 +20,7 @@ class PrefsReviewPromptRepository implements ReviewPromptRepository {
       final names = ReviewMoment.values.asNameMap();
       return Success((
         firstOpenDay: _prefs.getString(_firstOpenKey),
+        lastRequestDay: _prefs.getString(_lastRequestKey),
         // Незнакомые значения могли записать будущие версии: пропускаем.
         requested: {
           for (final name
@@ -44,6 +46,12 @@ class PrefsReviewPromptRepository implements ReviewPromptRepository {
       if (firstOpenDay != null) {
         await requirePreferenceWrite(
           _prefs.setString(_firstOpenKey, firstOpenDay),
+        );
+      }
+      final lastRequestDay = state.lastRequestDay;
+      if (lastRequestDay != null) {
+        await requirePreferenceWrite(
+          _prefs.setString(_lastRequestKey, lastRequestDay),
         );
       }
       await requirePreferenceWrite(

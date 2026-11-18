@@ -268,10 +268,13 @@ enum AnalyticsSection { wisdom, story, course }
 
 enum ReminderSlot { morning, evening, afterWisdom }
 
-/// После какого раздела спросили про напоминания: первый закрытый раздел.
-enum ReminderPromptTrigger { wisdom, course, story, bible }
+/// Когда спросили про напоминания: первый закрытый раздел или вход на
+/// следующий день (`next_day`), где сразу показывается системное окно.
+enum ReminderPromptTrigger { wisdom, course, story, bible, nextDay }
 
-enum ReminderPromptChoice { allow, later, dismissed }
+/// Ответ на запрос напоминаний. `system` — показали сразу системное окно,
+/// без нашего экрана; ответ системы лежит в `os_granted`.
+enum ReminderPromptChoice { allow, later, dismissed, system }
 
 enum AnalyticsTab { home, bible, profile }
 
@@ -329,10 +332,12 @@ enum ShareMethod { button, selection }
 
 enum ShareOutcome { success, dismissed, unavailable }
 
-/// Откуда запрос оценки: кнопка в профиле, первый закрытый раздел или
-/// вход в один из дней после первого. `first_completion` (первый итог
-/// «Мудрости дня») больше не отправляется и остался в старых данных.
-enum ReviewTrigger { profile, firstReading, nextDay }
+/// Откуда запрос оценки: кнопка в профиле, первый закрытый раздел,
+/// первый закрытый раздел в один из дней после первого (`next_day`; до
+/// версии 1.8.0 так отмечался сам вход) или вход в один из дней после
+/// первого (`app_open`). `first_completion` (первый итог «Мудрости дня»)
+/// больше не отправляется и остался в старых данных.
+enum ReviewTrigger { profile, firstReading, nextDay, appOpen }
 
 enum CourseInfoScreen { courseDetail, contents }
 

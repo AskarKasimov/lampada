@@ -16,6 +16,7 @@ void main() {
     final state = (await repository.load() as Success<ReviewPromptState>).value;
 
     expect(state.firstOpenDay, isNull);
+    expect(state.lastRequestDay, isNull);
     expect(state.requested, isEmpty);
   });
 
@@ -27,12 +28,17 @@ void main() {
 
     await repository.save((
       firstOpenDay: '2026-11-10',
-      requested: {ReviewMoment.firstReading},
+      lastRequestDay: '2026-11-12',
+      requested: {ReviewMoment.firstReading, ReviewMoment.laterDayOpen},
     ));
     final state = (await repository.load() as Success<ReviewPromptState>).value;
 
     expect(state.firstOpenDay, '2026-11-10');
-    expect(state.requested, {ReviewMoment.firstReading});
+    expect(state.lastRequestDay, '2026-11-12');
+    expect(state.requested, {
+      ReviewMoment.firstReading,
+      ReviewMoment.laterDayOpen,
+    });
   });
 
   test('незнакомые моменты из будущих версий пропускаются', () async {

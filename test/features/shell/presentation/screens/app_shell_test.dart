@@ -31,12 +31,16 @@ import 'package:lampada/features/daily_cards/presentation/screens/course_reader_
 import 'package:lampada/features/daily_cards/presentation/screens/day_wisdom_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/screens/today_screen.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/course_progress_header.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_tile.dart';
 import 'package:lampada/features/profile/presentation/providers/providers.dart';
 import 'package:lampada/features/profile/presentation/screens/profile_screen.dart';
 import 'package:lampada/features/profile/presentation/services/profile_actions_service.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/domain/repositories/reading_repository.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
+import 'package:lampada/features/reminders/data/services/notification_service.dart';
+import 'package:lampada/features/reminders/domain/entities/planned_reminder.dart';
+import 'package:lampada/features/reminders/presentation/providers/providers.dart';
 import 'package:lampada/features/reminders/presentation/screens/reminder_permission_screen.dart';
 import 'package:lampada/features/shell/presentation/providers/shell_providers.dart';
 import 'package:lampada/features/shell/presentation/screens/app_shell.dart';
@@ -128,6 +132,30 @@ class _FakeProgressRepository implements DayProgressRepository {
 
 /// Евангелие дня не должно ходить в сеть: иначе плитка «Мудрость дня»
 /// остаётся в загрузке и не открывается.
+class _FakeNotifications implements NotificationService {
+  _FakeNotifications({this.permitted = true});
+
+  /// По умолчанию система уже разрешила уведомления: запрос при входе на
+  /// следующий день не мешает остальным тестам.
+  final bool permitted;
+  int requests = 0;
+
+  @override
+  Future<void> init({void Function(NotificationTap tap)? onTap}) async {}
+  @override
+  Future<bool> requestPermission() async {
+    requests++;
+    return true;
+  }
+
+  @override
+  Future<bool> isPermitted() async => permitted;
+  @override
+  Future<void> schedule(List<PlannedReminder> reminders) async {}
+  @override
+  Future<void> cancelAll() async {}
+}
+
 class _FakeProfileActions implements ProfileActionsService {
   int reviewRequests = 0;
 
@@ -207,8 +235,12 @@ void main() {
     bool stubBibleChapter = false,
     bool lampLit = false,
     ProfileActionsService? profileActions,
+    NotificationService? notifications,
   }) => ProviderScope(
     overrides: [
+      notificationServiceProvider.overrideWithValue(
+        notifications ?? _FakeNotifications(),
+      ),
       profileActionsServiceProvider.overrideWithValue(
         profileActions ?? _FakeProfileActions(),
       ),
@@ -337,7 +369,7 @@ void main() {
     expect(analytics.single('reminder_prompt_shown'), {'trigger': 'bible'});
   });
 
-  group('запрос оценки при входе', () {
+  group('запросы при входе в следующие дни', () {
     /// Уход в фон и возврат: фреймворк требует переходов по порядку.
     void backgroundAndReturn(WidgetTester tester) {
       for (final state in const [
@@ -361,27 +393,120 @@ void main() {
       expect(prefs.getString('review_first_open_day'), dateKey(DateTime.now()));
     });
 
-    testWidgets('на следующий день оценку просим один раз', (tester) async {
+    /// Открыть «Мудрость дня» и закрыть крестиком, не дочитав.
+    Future<void> openAndCloseWisdom(WidgetTester tester) async {
+      await tester.tap(find.text('Мудрость дня'));
+      await settle(tester);
+      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await settle(tester);
+    }
+
+    testWidgets('на следующий день оценку просим сразу при входе', (
+      tester,
+    ) async {
       final yesterday = DateTime.now().subtract(const Duration(days: 1));
       await prefs.setString('review_first_open_day', dateKey(yesterday));
+      await prefs.setStringList('review_requested', ['firstReading']);
       final actions = _FakeProfileActions();
-      await tester.pumpWidget(buildApp(profileActions: actions));
+      await tester.pumpWidget(
+        buildApp(profileActions: actions, platform: TargetPlatform.iOS),
+      );
       await settle(tester);
-
       expect(actions.reviewRequests, 1);
-      expect(analytics.single('review_requested'), {'trigger': 'next_day'});
+      expect(analytics.single('review_requested'), {'trigger': 'app_open'});
 
-      // Возврат из фона в тот же день повторно не просит.
+      // Возврат из фона и закрытие раздела в тот же день больше не просят.
       backgroundAndReturn(tester);
       await settle(tester);
+      await openAndCloseWisdom(tester);
       expect(actions.reviewRequests, 1);
     });
 
-    testWidgets('возврат из фона на следующий день просит оценку', (
+    testWidgets('в день запроса уведомлений оценка ждёт закрытия раздела', (
       tester,
     ) async {
+      final yesterday = dateKey(
+        DateTime.now().subtract(const Duration(days: 1)),
+      );
+      await prefs.setString('review_first_open_day', yesterday);
+      await prefs.setStringList('review_requested', ['firstReading']);
+      await prefs.setString('reminders_first_open_day', yesterday);
+      final notifications = _FakeNotifications(permitted: false);
       final actions = _FakeProfileActions();
-      await tester.pumpWidget(buildApp(profileActions: actions));
+      await tester.pumpWidget(
+        buildApp(
+          profileActions: actions,
+          notifications: notifications,
+          platform: TargetPlatform.iOS,
+        ),
+      );
+      await settle(tester);
+
+      expect(notifications.requests, 1);
+      expect(analytics.single('reminder_prompt_shown'), {
+        'trigger': 'next_day',
+      });
+      expect(analytics.single('reminder_prompt_answered'), {
+        'choice': 'system',
+        'os_granted': true,
+      });
+      expect(prefs.getBool('reminders_enabled'), isTrue);
+      // Оценка не идёт вторым системным окном подряд. Само окно на iOS
+      // переводит приложение в inactive и обратно, это не новый вход.
+      expect(actions.reviewRequests, 0);
+      for (final state in const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await settle(tester);
+      expect(actions.reviewRequests, 0);
+
+      await openAndCloseWisdom(tester);
+      expect(actions.reviewRequests, 1);
+      expect(analytics.single('review_requested'), {'trigger': 'next_day'});
+    });
+
+    testWidgets('включённые напоминания повторно не запрашиваем', (
+      tester,
+    ) async {
+      final yesterday = dateKey(
+        DateTime.now().subtract(const Duration(days: 1)),
+      );
+      await prefs.setString('review_first_open_day', yesterday);
+      await prefs.setString('reminders_first_open_day', yesterday);
+      await prefs.setBool('reminders_enabled', true);
+      final notifications = _FakeNotifications(permitted: false);
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(
+        buildApp(profileActions: actions, notifications: notifications),
+      );
+      await settle(tester);
+
+      expect(notifications.requests, 0);
+      expect(analytics.names, isNot(contains('reminder_prompt_shown')));
+    });
+
+    testWidgets('в день первого входа системный запрос не показываем', (
+      tester,
+    ) async {
+      final notifications = _FakeNotifications(permitted: false);
+      await tester.pumpWidget(buildApp(notifications: notifications));
+      await settle(tester);
+
+      expect(notifications.requests, 0);
+      expect(prefs.getString('reminders_first_open_day'), isNotNull);
+    });
+
+    testWidgets('приложение, висевшее в фоне со вчера, просит при возврате', (
+      tester,
+    ) async {
+      await prefs.setStringList('review_requested', ['firstReading']);
+      final actions = _FakeProfileActions();
+      await tester.pumpWidget(
+        buildApp(profileActions: actions, platform: TargetPlatform.iOS),
+      );
       await settle(tester);
       expect(actions.reviewRequests, 0);
 
@@ -390,7 +515,6 @@ void main() {
       await prefs.setString('review_first_open_day', dateKey(yesterday));
       backgroundAndReturn(tester);
       await settle(tester);
-
       expect(actions.reviewRequests, 1);
     });
   });
@@ -759,6 +883,33 @@ void main() {
     await settle(tester);
     expect(find.byType(DayWisdomScreen), findsNothing);
     expect(find.text('Мудрость дня'), findsOneWidget);
+  });
+
+  group('прыжок «Мудрости дня» для новичка', () {
+    bool hops(WidgetTester tester) =>
+        tester.widget<DayWisdomTile>(find.byType(DayWisdomTile)).hop;
+
+    testWidgets('прыгает, пока её ни разу не открывали', (tester) async {
+      await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+      await settle(tester);
+      expect(hops(tester), isTrue);
+
+      await tester.tap(find.text('Мудрость дня'));
+      await settle(tester);
+      await tester.tap(find.byIcon(CupertinoIcons.xmark));
+      await settle(tester);
+
+      expect(hops(tester), isFalse);
+      expect(prefs.getBool('day_wisdom_opened'), isTrue);
+    });
+
+    testWidgets('после первого открытия больше не прыгает', (tester) async {
+      await prefs.setBool('day_wisdom_opened', true);
+      await tester.pumpWidget(buildApp(platform: TargetPlatform.iOS));
+      await settle(tester);
+
+      expect(hops(tester), isFalse);
+    });
   });
 
   testWidgets('кнопки Мудрости дня не уходят под навбар', (tester) async {
