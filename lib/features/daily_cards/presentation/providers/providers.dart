@@ -16,6 +16,7 @@ import '../../data/repositories/prefs_course_progress_repository.dart';
 import '../../data/repositories/prefs_day_progress_repository.dart';
 import '../../data/repositories/prefs_day_wisdom_position_repository.dart';
 import '../../data/repositories/prefs_streak_hint_repository.dart';
+import '../../data/repositories/prefs_wisdom_hint_repository.dart';
 import '../../domain/entities/day_card.dart';
 import '../../domain/entities/day_progress.dart';
 import '../../domain/entities/day_section.dart';
@@ -26,6 +27,7 @@ import '../../domain/repositories/day_cards_repository.dart';
 import '../../domain/repositories/day_progress_repository.dart';
 import '../../domain/repositories/day_wisdom_position_repository.dart';
 import '../../domain/repositories/streak_hint_repository.dart';
+import '../../domain/repositories/wisdom_hint_repository.dart';
 import '../../domain/usecases/complete_course_topic.dart';
 import '../../domain/usecases/complete_day_wisdom.dart';
 import '../../domain/usecases/explain_streak_freeze.dart';
@@ -40,6 +42,7 @@ import '../../domain/usecases/load_day_wisdom_position.dart';
 import '../../domain/usecases/record_card_read.dart';
 import '../../domain/usecases/save_course_topic.dart';
 import '../../domain/usecases/save_day_wisdom_position.dart';
+import '../../domain/usecases/should_hint_day_wisdom.dart';
 
 final dayCardsRepositoryProvider = Provider<DayCardsRepository>(
   (ref) => AzbykaDayCardsRepository(
@@ -127,6 +130,14 @@ final streakHintRepositoryProvider = Provider<StreakHintRepository>(
 
 final explainStreakFreezeProvider = Provider<ExplainStreakFreeze>(
   (ref) => ExplainStreakFreeze(ref.watch(streakHintRepositoryProvider)),
+);
+
+final wisdomHintRepositoryProvider = Provider<WisdomHintRepository>(
+  (ref) => PrefsWisdomHintRepository(ref.watch(sharedPreferencesProvider)),
+);
+
+final shouldHintDayWisdomProvider = Provider<ShouldHintDayWisdom>(
+  (ref) => ShouldHintDayWisdom(ref.watch(wisdomHintRepositoryProvider)),
 );
 
 final loadDayProgressProvider = Provider<LoadDayProgress>(

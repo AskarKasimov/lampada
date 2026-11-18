@@ -5,6 +5,7 @@ import '../theme/card_type_style.dart';
 import 'home_grid_tile.dart';
 import 'orthodox_cross.dart';
 import 'read_status_checks.dart';
+import 'wisdom_hop.dart';
 
 /// Крупный вход в дневные материалы с отметкой их общего прочтения. Фоном
 /// служит «Картина дня» Азбуки; без неё, и пока она не загрузилась или если
@@ -15,6 +16,7 @@ class DayWisdomTile extends StatelessWidget {
     required this.onTap,
     this.isLoading = false,
     this.pictureUrl,
+    this.hop = false,
     super.key,
   });
 
@@ -25,13 +27,19 @@ class DayWisdomTile extends StatelessWidget {
   /// Адрес «Картины дня».
   final String? pictureUrl;
 
+  /// Плитка подпрыгивает, зовя новичка, который её ещё не открывал.
+  final bool hop;
+
   /// Крест почти во всю плитку, как икона у соседней памяти дня. Он чуть
   /// уходит за нижний край, но верх и подножие остаются видны.
   static const _crossSize = 170.0;
   static const _crossOffset = Offset(-14, -18);
 
   @override
-  Widget build(BuildContext context) => HomeGridTile(
+  Widget build(BuildContext context) =>
+      WisdomHop(active: hop && !isLoading, child: _tile());
+
+  Widget _tile() => HomeGridTile(
     title: 'Мудрость дня',
     type: CardType.quote,
     background: (style) => switch (pictureUrl) {

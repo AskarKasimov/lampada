@@ -21,6 +21,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/day_wisdom_scr
 import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_complete_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/section_pill_intro.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_card.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
@@ -967,6 +968,63 @@ void main() {
       await open(tester, startIndex: 1);
 
       expect(find.text('Короткая притча.'), findsOneWidget);
+    });
+  });
+
+  group('первое знакомство с разделами', () {
+    const cards = [
+      DayCard(id: 'q', type: CardType.quote, body: 'Мысль', source: 'И'),
+      DayCard(id: 'a', type: CardType.advice, body: 'Совет', source: 'И'),
+    ];
+
+    Widget wisdom(SharedPreferences prefs) => ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: MaterialApp(
+        theme: AppTheme.light,
+        home: DayWisdomScreen(
+          cards: cards,
+          startIndex: 0,
+          date: DateTime(2026, 11, 17),
+          recordProgress: false,
+          recordRead: false,
+        ),
+      ),
+    );
+
+    double pillScale(WidgetTester tester) => tester
+        .widget<Transform>(
+          find.descendant(
+            of: find.byType(SectionPillIntro),
+            matching: find.byType(Transform),
+          ),
+        )
+        .transform
+        .getMaxScaleOnAxis();
+
+    testWidgets('показанный крупно раздел запоминается', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(wisdom(prefs));
+      // Время покадрово: анимация отсчитывает его от первого кадра.
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(pillScale(tester), greaterThan(1.3));
+      await tester.pumpAndSettle();
+
+      expect(prefs.getStringList('wisdom_sections_introduced'), ['quote']);
+    });
+
+    testWidgets('знакомый раздел больше не представляется', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'flutter.wisdom_sections_introduced': ['quote'],
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(wisdom(prefs));
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(pillScale(tester), 1);
+      }
     });
   });
 }

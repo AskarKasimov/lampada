@@ -139,8 +139,21 @@ class DayWisdomScreen extends ConsumerWidget {
       0,
       contentCards.length - 1,
     );
+    // Каждый раздел при первом показе представляется крупной плашкой. Не
+    // смогли прочитать отметку: лучше не показывать, чем повторять.
+    final hints = ref.read(wisdomHintRepositoryProvider);
+    final introduced = switch (hints.introducedSections()) {
+      Success(value: final types) => types,
+      Failure() => CardType.values.toSet(),
+    };
     return CardViewerScreen(
       cards: viewerCards,
+      introduceSections: {
+        for (final card in contentCards)
+          if (!introduced.contains(card.type)) card.type,
+      },
+      onSectionIntroduced: (type) =>
+          unawaited(hints.markSectionIntroduced(type)),
       onExit: (furthest) => analytics.log(
         AnalyticsEvent.wisdomClosed(
           dayOffset: dayOffset(date),
