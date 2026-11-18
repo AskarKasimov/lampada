@@ -11,6 +11,7 @@ import 'core/storage/shared_preferences_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'features/daily_cards/presentation/providers/providers.dart';
+import 'features/daily_cards/presentation/widgets/day_preloader.dart';
 import 'features/daily_cards/presentation/widgets/refresh_on_resume.dart';
 import 'features/reminders/domain/usecases/plan_reminders.dart';
 import 'features/reminders/presentation/providers/providers.dart';
@@ -75,7 +76,9 @@ class LampadaApp extends ConsumerWidget {
       // Через builder, а не обёрткой вокруг home: сплэш уходит на Home
       // через pushReplacement, и обёртка вокруг home: умерла бы вместе с
       // маршрутом сплэша. builder оборачивает Navigator и живёт всегда.
-      builder: (context, child) => RefreshOnResume(child: child!),
+      // Предзагрузка дня там же: она нужна с запуска, ещё до главной.
+      builder: (context, child) =>
+          RefreshOnResume(child: DayPreloader(child: child!)),
       home: const SplashScreen(),
     );
   }
