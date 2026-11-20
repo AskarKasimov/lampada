@@ -110,6 +110,62 @@ void main() {
     expect(_lamp('off'), findsNWidgets(4));
   });
 
+  testWidgets('прощённый вчерашний пропуск в неделе заморожен', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: StreakCard(
+            progress: _visited([0, 2]),
+            today: _today,
+            showWeek: true,
+          ),
+        ),
+      ),
+    );
+
+    // Вчера не читали, но серия жива: день отмечен замороженной лампадой.
+    expect(_lamp('frozen'), findsOneWidget);
+    // Сегодня, позавчера и сама лампада серии горят.
+    expect(_lamp('on'), findsNWidgets(3));
+  });
+
+  group('объяснение заморозки', () {
+    const explanation =
+        'Вчерашний пропуск не погасил лампаду: она была заморожена на день, '
+        'и серия сохранилась.';
+
+    Widget card(DayProgress progress) => MaterialApp(
+      theme: AppTheme.light,
+      home: Scaffold(
+        body: StreakCard(
+          progress: progress,
+          today: _today,
+          explainFreeze: true,
+        ),
+      ),
+    );
+
+    testWidgets('после зажжения сменяет обычную фразу', (tester) async {
+      await tester.pumpWidget(card(_visited([0, 2])));
+
+      expect(find.text(explanation), findsOneWidget);
+      expect(find.textContaining('Загляните завтра'), findsNothing);
+    });
+
+    testWidgets('до зажжения карточка зовёт дочитать, как обычно', (
+      tester,
+    ) async {
+      await tester.pumpWidget(card(_visited([2])));
+
+      expect(find.text(explanation), findsNothing);
+      expect(
+        find.text('Дочитайте сегодня любой раздел, чтобы лампада не погасла.'),
+        findsOneWidget,
+      );
+    });
+  });
+
   testWidgets('повторный итог показывает ряд недели без анимации', (
     tester,
   ) async {

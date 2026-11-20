@@ -15,16 +15,18 @@ abstract interface class DayStoryRemoteDatasource {
 }
 
 /// Извлекает полный текст рассказа из блока `.brif` страницы Азбуки
-/// и икону праздника или святого.
+/// и икону праздника, святого или иконы Богородицы.
 class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
   AzbykaDayStoryRemoteDatasource({http.Client? client})
     : _client = client ?? http.Client();
 
   final http.Client _client;
 
+  /// У каждого вида памяти свой блок описания: праздник, святой, собор
+  /// святых и икона Богородицы («История» на её странице).
   static const _selector =
       '.holiday-description .brif, .saint-description .brif, '
-      '.saints-group-description .brif';
+      '.saints-group-description .brif, .ikon-description .brif';
 
   @override
   Future<DayStoryDto> fetch(String url, {required Duration timeout}) async {
@@ -75,7 +77,8 @@ class AzbykaDayStoryRemoteDatasource implements DayStoryRemoteDatasource {
   /// Иконы лежат в своих папках хранилища. Фото дня и общая картинка
   /// сайта иконой не считаются.
   static final _iconPath = RegExp(
-    r'/storage/images/(icons-of-holidays|icons-of-saints|saints-group)/',
+    r'/storage/images/'
+    r'(icons-of-holidays|icons-of-saints|saints-group|icons-of-our-lady)/',
   );
 
   /// Сначала оригинал из галереи: у соборов святых в og:image стоит общая

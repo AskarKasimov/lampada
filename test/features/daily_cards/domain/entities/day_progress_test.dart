@@ -91,6 +91,47 @@ void main() {
     });
   });
 
+  group('заморозка лампады', () {
+    test('после одного пропущенного дня лампада заморожена', () {
+      expect(_progressDaysAgo([2, 3]).isFrozenOn(_today), isTrue);
+    });
+
+    test('сегодняшнее чтение лампаду размораживает', () {
+      expect(_progressDaysAgo([0, 2, 3]).isFrozenOn(_today), isFalse);
+    });
+
+    test('вчерашний заход: пропуска нет, заморозки тоже', () {
+      expect(_progressDaysAgo([1]).isFrozenOn(_today), isFalse);
+    });
+
+    test('два пропуска подряд гасят лампаду, а не замораживают', () {
+      expect(_progressDaysAgo([3]).isFrozenOn(_today), isFalse);
+    });
+
+    test('без активности замораживать нечего', () {
+      expect(_progressDaysAgo([]).isFrozenOn(_today), isFalse);
+    });
+
+    test('прощённый пропуск между двумя заходами был заморожен', () {
+      final yesterday = _today.subtract(const Duration(days: 1));
+      expect(_progressDaysAgo([0, 2]).wasFrozenOn(yesterday), isTrue);
+    });
+
+    test('день с активностью замороженным не бывает', () {
+      expect(_progressDaysAgo([0, 1, 2]).wasFrozenOn(_today), isFalse);
+    });
+
+    test('день в разрыве из двух пропусков не заморожен', () {
+      final yesterday = _today.subtract(const Duration(days: 1));
+      expect(_progressDaysAgo([0, 3]).wasFrozenOn(yesterday), isFalse);
+    });
+
+    test('пропуск, после которого ещё не заходили, пока не прощён', () {
+      final yesterday = _today.subtract(const Duration(days: 1));
+      expect(_progressDaysAgo([2]).wasFrozenOn(yesterday), isFalse);
+    });
+  });
+
   group('огонёк дня', () {
     test('isLit отмечает только дни с активностью', () {
       final progress = _progressDaysAgo([0, 2]);

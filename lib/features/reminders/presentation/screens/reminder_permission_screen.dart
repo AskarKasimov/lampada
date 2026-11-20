@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -53,7 +54,12 @@ class _ReminderPermissionScreenState
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnalyticsScreen(
+    screen: AppScreen.reminderPermission,
+    child: _buildScreen(context),
+  );
+
+  Widget _buildScreen(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final notifier = ref.read(reminderSettingsProvider.notifier);
 

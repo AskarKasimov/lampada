@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/navigation/bottom_up_modal_route.dart';
@@ -55,7 +56,10 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   double _headerHeight = 0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      AnalyticsScreen(screen: AppScreen.home, child: _buildScreen(context));
+
+  Widget _buildScreen(BuildContext context) {
     // «Сегодня» берём при каждой перестройке: при возврате в приложение
     // прогресс перечитывается, и после полуночи экран сам переходит на
     // новый день.
@@ -288,8 +292,26 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
       day.cards.where((c) => c.type != CardType.basics).toList()
         ..sort((a, b) => a.type.index.compareTo(b.type.index));
 
+  /// Плитка «Мудрости дня» прыгает, пока новичок её ни разу не открыл.
+  bool _hintWisdom = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadWisdomHint());
+  }
+
+  Future<void> _loadWisdomHint() async {
+    final hint = await ref.read(shouldHintDayWisdomProvider)(progress);
+    if (mounted && hint) setState(() => _hintWisdom = true);
+  }
+
   Future<void> _openWisdom({OpenSource source = OpenSource.tile}) async {
     if (widget.content.readingIsLoading) return;
+    if (_hintWisdom) {
+      setState(() => _hintWisdom = false);
+      unawaited(ref.read(wisdomHintRepositoryProvider).markWisdomOpened());
+    }
     final pages = _pages;
     final firstUnread = pages.indexWhere((card) => !_isRead(card));
     ref
@@ -431,6 +453,7 @@ class _DayBlocksState extends ConsumerState<_DayBlocks> {
           isLoading: widget.content.readingIsLoading,
           isUnread: pages.any((card) => !_isRead(card)),
           pictureUrl: day.pictureUrl,
+          hop: _hintWisdom,
           onTap: _openWisdom,
         ),
     ];

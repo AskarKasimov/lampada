@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/format/russian_date.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -36,7 +37,12 @@ class BookmarkDetailScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnalyticsScreen(
+    screen: AppScreen.bookmarkDetail,
+    child: _buildScreen(context),
+  );
+
+  Widget _buildScreen(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final chapter = const ResolveBookmarkChapter()(bookmark);
     final actionCount = chapter == null ? 2 : 3;

@@ -43,11 +43,22 @@ class _FakeRepository implements DayStoryRepository {
 
 /// Рассказ у каждого святого свой: первый абзац называет ссылку.
 class _ByUrlRepository implements DayStoryRepository {
+  _ByUrlRepository({this.empty = const {}, this.offline = const {}});
+
+  /// Ссылки, у которых на источнике нет описания.
+  final Set<String> empty;
+
+  /// Ссылки, которые не загружаются из-за сети.
+  final Set<String> offline;
   final requested = <String>[];
 
   @override
   Future<Result<DayStory>> fetch(String url) async {
     requested.add(url);
+    if (empty.contains(url)) return const Success(DayStory(paragraphs: []));
+    if (offline.contains(url)) {
+      return Failure(AppFailure('Ошибка', kind: FailureKind.network));
+    }
     return Success(DayStory(paragraphs: ['Рассказ $url.']));
   }
 }
@@ -482,6 +493,43 @@ void main() {
     expect(find.text('Итог рассказа'), findsOneWidget);
   });
 
+  testWidgets('свайп к итогу переводит на точку лампады', (tester) async {
+    final repo = _FakeRepository(
+      const Success(DayStory(paragraphs: ['Абзац первый.'])),
+    );
+    // Итог ещё не готов: рассказ остаётся на экране, как во время перехода.
+    final summary = Completer<Route<void>?>();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          dayStoryRepositoryProvider.overrideWithValue(repo),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: DayStoryScreen(
+            title: _title,
+            storyUrl: _url,
+            lampPending: true,
+            onFinished: () => summary.future,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    ReaderProgressRail rail() =>
+        tester.widget<ReaderProgressRail>(find.byType(ReaderProgressRail));
+
+    await next(tester);
+    expect(rail().currentIndex, 1);
+
+    await next(tester);
+    // Точка лампады идёт сразу за страницами рассказа и теперь текущая.
+    expect(rail().lampDot, isTrue);
+    expect(rail().currentIndex, rail().count);
+  });
+
   group('обложка с иконой', () {
     const icon =
         'https://azbyka.ru/days/storage/images/icons-of-saints/1/a.jpg';
@@ -648,6 +696,37 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(pulse(tester), isFalse);
+    });
+
+    testWidgets('без описания плашка переключает на другого святого', (
+      tester,
+    ) async {
+      final repo = _ByUrlRepository(empty: {_url});
+      await tester.pumpWidget(wrapDay(repo));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Нет описания сегодня'), findsOneWidget);
+      await tester.tap(find.text('Память дня · 1 из 3'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(akakij.title));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Нет описания сегодня'), findsNothing);
+      expect(find.text('Память дня · 3 из 3'), findsOneWidget);
+      expect(find.text(akakij.title), findsOneWidget);
+    });
+
+    testWidgets('при сбое загрузки плашка тоже открывает список святых', (
+      tester,
+    ) async {
+      await tester.pumpWidget(wrapDay(_ByUrlRepository(offline: {_url})));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Нет подключения к интернету'), findsOneWidget);
+      await tester.tap(find.text('Память дня · 1 из 3'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DayMemoriesSheet), findsOneWidget);
     });
 
     testWidgets('у одного святого плашка остаётся подписью', (tester) async {

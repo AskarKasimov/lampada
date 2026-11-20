@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/fullscreen_swipe_dismiss.dart';
@@ -94,6 +96,9 @@ class _FullCardTextScreenState extends State<FullCardTextScreen> {
 
   @override
   Widget build(BuildContext context) =>
+      AnalyticsScreen(screen: AppScreen.fullText, child: _buildScreen(context));
+
+  Widget _buildScreen(BuildContext context) =>
       FullscreenSwipeDismiss(child: _screen(context));
 
   Widget _screen(BuildContext context) {

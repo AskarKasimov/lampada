@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_pill_badge.dart';
 import '../../../../core/widgets/app_share_button.dart';
@@ -19,6 +20,8 @@ import '../widgets/card_content.dart';
 import '../widgets/card_swipe_nudge.dart';
 import '../widgets/progress_dots.dart';
 import '../widgets/rail_scrubber.dart';
+import '../widgets/section_pill_intro.dart';
+import '../widgets/swipe_up_hint.dart';
 import '../widgets/vertical_card_reader.dart';
 import 'full_card_text_screen.dart';
 
@@ -44,6 +47,8 @@ class CardViewerScreen extends ConsumerStatefulWidget {
     this.onExit,
     this.onPageChanged,
     this.lastScrubbablePage,
+    this.introduceSections = const {},
+    this.onSectionIntroduced,
     super.key,
   });
 
@@ -89,11 +94,22 @@ class CardViewerScreen extends ConsumerStatefulWidget {
   /// Вызывается при показе страницы, включая исходную при открытии.
   final ValueChanged<int>? onPageChanged;
 
+  /// Разделы, которые юзер видит впервые: на первой их странице плашка
+  /// проявляется на своём месте чуть крупнее и пружиной садится в обычный
+  /// размер ([SectionPillIntro]), текст при этом не трогается. После знакомства на исходной странице палец
+  /// дважды проводит вверх ([SwipeUpHint]): ленту листают свайпом.
+  final Set<CardType> introduceSections;
+
+  /// Раздел представлен; читалка зовёт это и при «Уменьшении движения»,
+  /// когда знакомство пропущено, чтобы не предлагать его снова.
+  final ValueChanged<CardType>? onSectionIntroduced;
+
   @override
   ConsumerState<CardViewerScreen> createState() => _CardViewerScreenState();
 }
 
-class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
+class _CardViewerScreenState extends ConsumerState<CardViewerScreen>
+    with SingleTickerProviderStateMixin {
   final _fullTextNeeded = <String, bool>{};
 
   late final PageController _controller = PageController(
@@ -104,6 +120,19 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
   String? _markedCardId;
   var _swipeNudgeHasStarted = false;
 
+  static const _introMotion = SectionIntroMotion();
+  late final _intro = AnimationController(
+    vsync: this,
+    duration: Duration(microseconds: (_introMotion.duration * 1e6).round()),
+  );
+  late final _toIntroduce = {...widget.introduceSections};
+
+  /// Страница, на которой сейчас идёт знакомство с разделом.
+  int? _introPage;
+
+  /// Палец, показывающий свайп вверх, после знакомства с первым разделом.
+  var _showSwipeHint = false;
+
   int get _pageCount => widget.cards.length;
 
   @override
@@ -111,11 +140,27 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     super.initState();
     _markCurrentAsRead(widget.startIndex);
     widget.onPageChanged?.call(widget.startIndex);
+    // Знакомство с разделом заменяет обычный кивок карточки: подсказка
+    // прокрутки придёт после него и будет заметнее.
+    if (_toIntroduce.contains(widget.cards[widget.startIndex].type)) {
+      _swipeNudgeHasStarted = true;
+    }
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _afterRouteShown(
+        () => _maybeIntroduce(widget.startIndex, hintSwipe: true),
+      ),
+    );
+    AnalyticsScreen.reportPage(
+      context,
+      page: widget.startIndex,
+      pagesTotal: _pageCount,
+    );
   }
 
   @override
   void dispose() {
     widget.onExit?.call(_furthest);
+    _intro.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -128,6 +173,42 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
             oldWidget.cards[_index].id != widget.cards[_index].id)) {
       _markCurrentAsRead(_index);
     }
+  }
+
+  /// Первая страница раздела, который юзер видит впервые, начинается с
+  /// крупной плашки. Служебные страницы со своей шапкой не представляются.
+  /// Экран выезжает снизу больше полсекунды: знакомство, начатое раньше,
+  /// разыгралось бы на ходу, а место плашки измерилось бы со сдвигом.
+  void _afterRouteShown(VoidCallback action) {
+    if (!mounted) return;
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation == null || animation.isCompleted) return action();
+    void listener(AnimationStatus status) {
+      if (!status.isCompleted) return;
+      animation.removeStatusListener(listener);
+      action();
+    }
+
+    animation.addStatusListener(listener);
+  }
+
+  void _maybeIntroduce(int page, {bool hintSwipe = false}) {
+    if (!mounted || page >= widget.cards.length) return;
+    final type = widget.cards[page].type;
+    if (!_toIntroduce.contains(type)) return;
+    if (widget.headerBuilder?.call(context, page) != null) return;
+    _toIntroduce.remove(type);
+    widget.onSectionIntroduced?.call(type);
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    setState(() => _introPage = page);
+    _intro.forward(from: 0).then((_) {
+      if (!mounted) return;
+      setState(() {
+        _introPage = null;
+        // Юзер мог уже сам пролистать: тогда подсказка не нужна.
+        _showSwipeHint = hintSwipe && _index == page;
+      });
+    });
   }
 
   /// Засчитывает карточку прочитанной сразу при показе, не дожидаясь
@@ -160,52 +241,86 @@ class _CardViewerScreenState extends ConsumerState<CardViewerScreen> {
     final brightness = Theme.of(context).brightness;
     final cardStyle = widget.cards[_index].type.styleFor(brightness);
     return Scaffold(
-      body: VerticalCardReader(
-        controller: _controller,
-        itemCount: _pageCount,
-        onPageChanged: (page) {
-          setState(() {
-            _index = page;
-            if (page > _furthest) _furthest = page;
-          });
-          _markCurrentAsRead(page);
-          widget.onPageChanged?.call(page);
+      body: Listener(
+        // Первое касание убирает палец: юзер уже листает сам.
+        onPointerDown: (_) {
+          if (_showSwipeHint) setState(() => _showSwipeHint = false);
         },
-        itemBuilder: (context, index) => _cardPage(index),
-        header:
-            widget.headerBuilder?.call(context, _index) ??
-            AppPillBadge(
-              label: cardStyle.label,
-              background: cardStyle.tagBackground,
-              foreground: cardStyle.tagForeground,
-              letterSpacing: 0.2,
+        child: Stack(
+          children: [
+            VerticalCardReader(
+              controller: _controller,
+              itemCount: _pageCount,
+              onPageChanged: (page) {
+                setState(() {
+                  _index = page;
+                  if (page > _furthest) _furthest = page;
+                });
+                _markCurrentAsRead(page);
+                widget.onPageChanged?.call(page);
+                _maybeIntroduce(page);
+                AnalyticsScreen.reportPage(
+                  context,
+                  page: page,
+                  pagesTotal: _pageCount,
+                );
+              },
+              itemBuilder: (context, index) => _cardPage(index),
+              header:
+                  widget.headerBuilder?.call(context, _index) ??
+                  SectionPillIntro(
+                    controller: _intro,
+                    playing: _introPage == _index,
+                    child: AppPillBadge(
+                      label: cardStyle.label,
+                      background: cardStyle.tagBackground,
+                      foreground: cardStyle.tagForeground,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+              leftRail: RailScrubber(
+                count: _pageCount,
+                currentIndex: _index,
+                onSelect: (page) => _controller.jumpToPage(
+                  math.min(page, widget.lastScrubbablePage ?? page),
+                ),
+                child: ProgressDots(
+                  count: _pageCount,
+                  currentIndex: _index,
+                  axis: Axis.vertical,
+                  accentColors: [
+                    for (final card in widget.cards)
+                      card.type.styleFor(brightness).accent,
+                  ],
+                ),
+              ),
+              actions:
+                  widget.actionsBuilder?.call(context, _index) ??
+                  _actionsFor(
+                    widget.cards[_index],
+                    widget.wholeCardOf?.call(_index) ?? widget.cards[_index],
+                    brightness,
+                    colors.homeSubtitle,
+                  ),
+              onClose: () => Navigator.of(context).pop(),
+              closeColor: colors.homeSubtitle,
             ),
-        leftRail: RailScrubber(
-          count: _pageCount,
-          currentIndex: _index,
-          onSelect: (page) => _controller.jumpToPage(
-            math.min(page, widget.lastScrubbablePage ?? page),
-          ),
-          child: ProgressDots(
-            count: _pageCount,
-            currentIndex: _index,
-            axis: Axis.vertical,
-            accentColors: [
-              for (final card in widget.cards)
-                card.type.styleFor(brightness).accent,
-            ],
-          ),
+            if (_showSwipeHint)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Align(
+                    // Под текстом, в нижней трети: палец не закрывает
+                    // мысль и ведёт туда, откуда придёт следующая карточка.
+                    alignment: const Alignment(0, 0.72),
+                    child: SwipeUpHint(
+                      color: colors.homeSubtitle,
+                      onDone: () => setState(() => _showSwipeHint = false),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
-        actions:
-            widget.actionsBuilder?.call(context, _index) ??
-            _actionsFor(
-              widget.cards[_index],
-              widget.wholeCardOf?.call(_index) ?? widget.cards[_index],
-              brightness,
-              colors.homeSubtitle,
-            ),
-        onClose: () => Navigator.of(context).pop(),
-        closeColor: colors.homeSubtitle,
       ),
     );
   }

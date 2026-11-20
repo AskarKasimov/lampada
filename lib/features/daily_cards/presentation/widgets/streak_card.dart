@@ -24,6 +24,7 @@ class StreakCard extends StatelessWidget {
     required this.today,
     this.showWeek = false,
     this.animateChanges = true,
+    this.explainFreeze = false,
     this.margin,
     super.key,
   });
@@ -38,6 +39,10 @@ class StreakCard extends StatelessWidget {
   /// Анимировать смену числа и раскрытие недели.
   final bool animateChanges;
 
+  /// Сегодняшнее чтение пришло после первой в жизни заморозки: когда
+  /// лампада загорится, фраза объяснит, почему серия не прервалась.
+  final bool explainFreeze;
+
   /// Внешние поля. По умолчанию — боковые поля экрана.
   final EdgeInsetsGeometry? margin;
 
@@ -48,6 +53,10 @@ class StreakCard extends StatelessWidget {
     if (streak == 0) return 'Дочитайте любой раздел, и лампада загорится.';
     if (!litToday) {
       return 'Дочитайте сегодня любой раздел, чтобы лампада не погасла.';
+    }
+    if (explainFreeze) {
+      return 'Вчерашний пропуск не погасил лампаду: она была заморожена на '
+          'день, и серия сохранилась.';
     }
     if (streak == 1) {
       return 'Хорошее начало. Загляните завтра, чтобы лампада не погасла.';
@@ -457,6 +466,9 @@ class _WeekRowState extends State<_WeekRow>
           scale: 1.7,
           child: widget.progress.isLit(day)
               ? Image.asset(streakLampOnAsset)
+              // Прощённый пропуск не приглушаем: серия на нём не прервалась.
+              : widget.progress.wasFrozenOn(day)
+              ? Image.asset(streakLampFrozenAsset)
               // Погашенные дни приглушены, чтобы горящие читались сразу.
               : Opacity(opacity: 0.35, child: Image.asset(streakLampOffAsset)),
         ),

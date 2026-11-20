@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -74,7 +75,12 @@ class InterpretationSheet extends StatelessWidget {
   ].join('\n\n');
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnalyticsScreen(
+    screen: AppScreen.interpretation,
+    child: _buildScreen(context),
+  );
+
+  Widget _buildScreen(BuildContext context) {
     final colors = AppColorsExtension.of(context);
 
     return SafeArea(

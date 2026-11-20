@@ -6,8 +6,11 @@ import '../../../../core/analytics/analytics_provider.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/storage/shared_preferences_provider.dart';
 import '../../data/repositories/prefs_reminder_repository.dart';
+import '../../data/repositories/prefs_return_prompt_repository.dart';
 import '../../data/services/notification_service.dart';
 import '../../domain/repositories/reminder_repository.dart';
+import '../../domain/repositories/return_prompt_repository.dart';
+import '../../domain/usecases/claim_return_reminder_prompt.dart';
 import '../../domain/usecases/plan_reminders.dart';
 
 final notificationServiceProvider = Provider<NotificationService>(
@@ -19,6 +22,14 @@ final reminderRepositoryProvider = Provider<ReminderRepository>(
 );
 
 const planReminders = PlanReminders();
+
+final returnPromptRepositoryProvider = Provider<ReturnPromptRepository>(
+  (ref) => PrefsReturnPromptRepository(ref.watch(sharedPreferencesProvider)),
+);
+
+final claimReturnReminderPromptProvider = Provider<ClaimReturnReminderPrompt>(
+  (ref) => ClaimReturnReminderPrompt(ref.watch(returnPromptRepositoryProvider)),
+);
 
 /// Настройка напоминаний. Загружается один раз и живёт в состоянии: экран
 /// запроса, Профиль и планировщик должны видеть одно и то же.

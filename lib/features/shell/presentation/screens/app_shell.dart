@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../bible/presentation/screens/bible_tab_screen.dart';
 import '../../../daily_cards/presentation/providers/providers.dart';
 import '../../../daily_cards/presentation/screens/today_screen.dart';
-import '../../../profile/presentation/providers/providers.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../reminders/presentation/widgets/reminder_scheduler.dart';
 import '../providers/shell_providers.dart';
@@ -50,24 +50,26 @@ class _AppShellState extends ConsumerState<AppShell>
   bool _bibleVisited = false;
   final _returningToRoot = <NavigatorState>{};
 
+  /// Переходы в фон идут через hidden и paused, а на iOS бывают повторы:
+  /// уход считаем один раз до следующего возврата.
+  bool _backgroundLogged = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _scheduleDayChange();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _askReviewOnReturn());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _askOnReturn());
   }
 
-  /// Первый вход запоминает день, а вернувшегося в один из следующих дней
-  /// (холодным стартом или из фона) один раз просим оценить приложение.
-  Future<void> _askReviewOnReturn() async {
+  /// Вернувшегося в один из следующих дней (холодным стартом или из фона)
+  /// один раз спрашиваем про уведомления и один раз просим оценку, но не
+  /// оба окна при одном входе.
+  Future<void> _askOnReturn() async {
     if (!mounted) return;
-    if (!await ref.read(claimReviewRequestProvider).onAppOpen()) return;
+    final remindersAsked = await askRemindersOnReturn(context);
     if (!mounted) return;
-    ref
-        .read(analyticsProvider)
-        .log(AnalyticsEvent.reviewRequested(ReviewTrigger.nextDay));
-    await ref.read(profileActionsServiceProvider).requestReview();
+    await askReviewOnOpen(context, remindersAsked: remindersAsked);
   }
 
   void _scheduleDayChange() {
@@ -88,10 +90,53 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // Системное окно (уведомления, оценка) на iOS уводит приложение лишь
+      // в inactive: возврат из него не новый вход, иначе за одним окном
+      // сразу встало бы другое.
+      final returned = _backgroundLogged;
+      _backgroundLogged = false;
       _refreshDay();
-      unawaited(_askReviewOnReturn());
+      if (returned) unawaited(_askOnReturn());
+    } else if (state == AppLifecycleState.paused && !_backgroundLogged) {
+      _backgroundLogged = true;
+      _logBackgrounded();
     }
   }
+
+  /// С какого экрана ушли: смахивание из переключателя приложений после
+  /// этого события уже не наблюдается, поэтому уход фиксируем здесь.
+  void _logBackgrounded() {
+    final tab = ref.read(selectedTabProvider);
+    final snapshot = ref
+        .read(screenTrackerProvider)
+        .current(
+          hostRoute: ModalRoute.of(context),
+          tabNavigator: _navigatorOf(tab),
+        );
+    if (snapshot == null) return;
+    ref
+        .read(analyticsProvider)
+        .log(
+          AnalyticsEvent.appBackgrounded(
+            screen: snapshot.screen,
+            tab: _analyticsTab(tab),
+            page: snapshot.page,
+            pagesTotal: snapshot.pagesTotal,
+          ),
+        );
+  }
+
+  NavigatorState? _navigatorOf(ShellTab tab) => switch (tab) {
+    ShellTab.today => _homeNavigatorKey.currentState,
+    ShellTab.bible => _bibleNavigatorKey.currentState,
+    ShellTab.profile => _profileNavigatorKey.currentState,
+  };
+
+  static AnalyticsTab _analyticsTab(ShellTab tab) => switch (tab) {
+    ShellTab.today => AnalyticsTab.home,
+    ShellTab.bible => AnalyticsTab.bible,
+    ShellTab.profile => AnalyticsTab.profile,
+  };
 
   @override
   void dispose() {
@@ -160,23 +205,13 @@ class _AppShellState extends ConsumerState<AppShell>
     // Повторный тап по активной вкладке возвращает к её началу, как
     // в системном таббаре iOS.
     if (selected == current) {
-      final navigator = switch (selected) {
-        ShellTab.today => _homeNavigatorKey.currentState,
-        ShellTab.bible => _bibleNavigatorKey.currentState,
-        ShellTab.profile => _profileNavigatorKey.currentState,
-      };
+      final navigator = _navigatorOf(selected);
       if (navigator != null) unawaited(_returnToRoot(navigator));
       return;
     }
     ref
         .read(analyticsProvider)
-        .log(
-          AnalyticsEvent.tabOpened(switch (selected) {
-            ShellTab.today => AnalyticsTab.home,
-            ShellTab.bible => AnalyticsTab.bible,
-            ShellTab.profile => AnalyticsTab.profile,
-          }),
-        );
+        .log(AnalyticsEvent.tabOpened(_analyticsTab(selected)));
     ref.read(selectedTabProvider.notifier).select(selected);
     // Вкладка «Библия» сама читалка, закрыть её можно только уходом: это и
     // есть закрытие чтения.

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/analytics/analytics_event.dart';
 import '../../../../core/analytics/analytics_on_show.dart';
 import '../../../../core/analytics/analytics_provider.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/format/date_key.dart';
 import '../../../../core/result/result.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -42,7 +43,12 @@ class DayWisdomScreen extends ConsumerWidget {
   final bool recordRead;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => AnalyticsScreen(
+    screen: AppScreen.wisdom,
+    child: _buildScreen(context, ref),
+  );
+
+  Widget _buildScreen(BuildContext context, WidgetRef ref) {
     final ordinary = cards
         .where(
           (card) =>
@@ -133,8 +139,21 @@ class DayWisdomScreen extends ConsumerWidget {
       0,
       contentCards.length - 1,
     );
+    // Каждый раздел при первом показе представляется крупной плашкой. Не
+    // смогли прочитать отметку: лучше не показывать, чем повторять.
+    final hints = ref.read(wisdomHintRepositoryProvider);
+    final introduced = switch (hints.introducedSections()) {
+      Success(value: final types) => types,
+      Failure() => CardType.values.toSet(),
+    };
     return CardViewerScreen(
       cards: viewerCards,
+      introduceSections: {
+        for (final card in contentCards)
+          if (!introduced.contains(card.type)) card.type,
+      },
+      onSectionIntroduced: (type) =>
+          unawaited(hints.markSectionIntroduced(type)),
       onExit: (furthest) => analytics.log(
         AnalyticsEvent.wisdomClosed(
           dayOffset: dayOffset(date),

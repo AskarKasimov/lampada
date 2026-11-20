@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -73,7 +75,12 @@ class _CourseContentsSheetState extends State<CourseContentsSheet> {
   static const _titleSize = 16.0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnalyticsScreen(
+    screen: AppScreen.courseContents,
+    child: _buildScreen(context),
+  );
+
+  Widget _buildScreen(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final style = CardType.basics.styleFor(Theme.of(context).brightness);
     final padding = AppSpacing.of(context).horizontal;

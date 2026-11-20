@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 const streakLampOnAsset = 'assets/illustrations/lampada_on.png';
 const streakLampOffAsset = 'assets/illustrations/lampada_off.png';
 
+/// Прощённый пропуск: в неделе серии такой день не гаснет, а замерзает.
+const streakLampFrozenAsset = 'assets/illustrations/lampada_frozen.png';
+
 /// Маленькая лампада серии: горит, пока серия жива. Те же ассеты, что у
 /// большой лампады итога «Мудрости дня», чтобы знак серии был один.
 class StreakLampIcon extends StatelessWidget {

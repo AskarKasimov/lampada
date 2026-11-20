@@ -78,6 +78,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
   var _lit = false;
   var _weekShown = false;
   var _animateStreakChanges = true;
+  var _explainFreeze = false;
   Timer? _weekTimer;
 
   @override
@@ -140,6 +141,9 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
     if (widget.recordsCompletion) {
       unawaited(_complete(before, repeat: repeat));
     }
+    if (!repeat && widget.countsDay && before != null) {
+      unawaited(_checkFreeze(before));
+    }
     if (repeat || MediaQuery.disableAnimationsOf(context)) {
       if (repeat) _animateStreakChanges = false;
       _intro.value = 1;
@@ -181,6 +185,14 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
         ),
       );
     }
+  }
+
+  Future<void> _checkFreeze(DayProgress before) async {
+    final explain = await ref.read(explainStreakFreezeProvider)(
+      before: before,
+      today: DateTime.now(),
+    );
+    if (explain && mounted) setState(() => _explainFreeze = true);
   }
 
   void _openChapter(({String label, VoidCallback onPressed}) link) {
@@ -283,6 +295,7 @@ class _DayWisdomCompleteViewState extends ConsumerState<DayWisdomCompleteView>
                       today: DateTime.now(),
                       showWeek: _weekShown,
                       animateChanges: _animateStreakChanges,
+                      explainFreeze: _explainFreeze,
                       margin: EdgeInsets.zero,
                     ),
                   ),

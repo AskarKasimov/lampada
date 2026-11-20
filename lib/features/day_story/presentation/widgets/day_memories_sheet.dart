@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -49,7 +51,12 @@ class DayMemoriesSheet extends StatelessWidget {
   final Set<String> readUrls;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnalyticsScreen(
+    screen: AppScreen.dayMemories,
+    child: _buildScreen(context),
+  );
+
+  Widget _buildScreen(BuildContext context) {
     final colors = AppColorsExtension.of(context);
     final padding = AppSpacing.of(context).horizontal;
     final read = memories.where((m) => readUrls.contains(m.storyUrl)).length;

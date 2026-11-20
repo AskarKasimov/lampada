@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/analytics/analytics_event.dart';
+import '../../../../core/analytics/screen_tracker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -13,7 +15,12 @@ class CourseDetailScreen extends ConsumerWidget {
   const CourseDetailScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => AnalyticsScreen(
+    screen: AppScreen.courseDetail,
+    child: _buildScreen(context, ref),
+  );
+
+  Widget _buildScreen(BuildContext context, WidgetRef ref) {
     final colors = AppColorsExtension.of(context);
     final topic = ref.watch(courseTopicProvider);
     final completed = ref.watch(completedCourseTopicsProvider);

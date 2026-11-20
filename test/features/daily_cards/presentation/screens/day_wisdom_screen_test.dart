@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ import 'package:lampada/features/daily_cards/presentation/screens/day_wisdom_scr
 import 'package:lampada/features/daily_cards/presentation/widgets/day_wisdom_complete_view.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/progress_dots.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/rail_scrubber.dart';
+import 'package:lampada/features/daily_cards/presentation/widgets/section_pill_intro.dart';
 import 'package:lampada/features/daily_cards/presentation/widgets/streak_card.dart';
 import 'package:lampada/features/reading/domain/entities/daily_reading.dart';
 import 'package:lampada/features/reading/presentation/providers/providers.dart';
@@ -507,8 +509,9 @@ void main() {
       List<DayCard> cards = const [quote, reading],
       bool reduceMotion = true,
       int lastVerse = 1,
+      Map<String, Object> prefsValues = const {},
     }) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues(prefsValues);
       final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
@@ -717,6 +720,41 @@ void main() {
 
       expect(find.byType(DayWisdomScreen), findsNothing);
       expect(find.text('Открыть'), findsOneWidget);
+    });
+
+    testWidgets('первая заморозка объясняется на итоге дня', (tester) async {
+      final now = DateTime.now();
+      final container = await open(
+        tester,
+        date: now,
+        recordProgress: true,
+        prefsValues: {
+          'flutter.day_progress': jsonEncode({
+            'date': dateKey(now),
+            'readTypes': <String>[],
+            'visitedDays': [
+              dateKey(DateTime(now.year, now.month, now.day - 2)),
+            ],
+          }),
+        },
+      );
+      await next(tester);
+      await next(tester);
+
+      final card = tester.widget<StreakCard>(find.byType(StreakCard));
+      expect(card.explainFreeze, isTrue);
+      expect(find.textContaining('была заморожена на день'), findsOneWidget);
+      // Вчерашний день серии отмечен замороженной лампадой.
+      expect(
+        find.image(const AssetImage('assets/illustrations/lampada_frozen.png')),
+        findsOneWidget,
+      );
+      expect(
+        container
+            .read(sharedPreferencesProvider)
+            .getBool('streak_freeze_explained'),
+        isTrue,
+      );
     });
 
     testWidgets('без Евангелия завершение идёт сразу после карточек', (
@@ -930,6 +968,63 @@ void main() {
       await open(tester, startIndex: 1);
 
       expect(find.text('Короткая притча.'), findsOneWidget);
+    });
+  });
+
+  group('первое знакомство с разделами', () {
+    const cards = [
+      DayCard(id: 'q', type: CardType.quote, body: 'Мысль', source: 'И'),
+      DayCard(id: 'a', type: CardType.advice, body: 'Совет', source: 'И'),
+    ];
+
+    Widget wisdom(SharedPreferences prefs) => ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: MaterialApp(
+        theme: AppTheme.light,
+        home: DayWisdomScreen(
+          cards: cards,
+          startIndex: 0,
+          date: DateTime(2026, 11, 17),
+          recordProgress: false,
+          recordRead: false,
+        ),
+      ),
+    );
+
+    double pillScale(WidgetTester tester) => tester
+        .widget<Transform>(
+          find.descendant(
+            of: find.byType(SectionPillIntro),
+            matching: find.byType(Transform),
+          ),
+        )
+        .transform
+        .getMaxScaleOnAxis();
+
+    testWidgets('показанный крупно раздел запоминается', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(wisdom(prefs));
+      // Время покадрово: анимация отсчитывает его от первого кадра.
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(pillScale(tester), greaterThan(1.3));
+      await tester.pumpAndSettle();
+
+      expect(prefs.getStringList('wisdom_sections_introduced'), ['quote']);
+    });
+
+    testWidgets('знакомый раздел больше не представляется', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'flutter.wisdom_sections_introduced': ['quote'],
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await tester.pumpWidget(wisdom(prefs));
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(pillScale(tester), 1);
+      }
     });
   });
 }

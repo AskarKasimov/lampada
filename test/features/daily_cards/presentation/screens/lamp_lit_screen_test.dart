@@ -16,18 +16,21 @@ void main() {
   LampLitExit? exit;
 
   /// Прогресс в хранилище уже зажжён: страницу открывают после записи.
-  Future<void> pumpLauncher(
+  Future<SharedPreferences> pumpLauncher(
     WidgetTester tester, {
     bool canContinue = true,
     bool settle = true,
+    DayProgress before = before,
+    Map<String, Object> prefsValues = const {},
   }) async {
     exit = null;
     SharedPreferences.setMockInitialValues({
       'flutter.day_progress': jsonEncode({
         'date': dateKey(DateTime.now()),
         'readTypes': <String>[],
-        'visitedDays': [dateKey(DateTime.now())],
+        'visitedDays': [...before.visitedDays, dateKey(DateTime.now())],
       }),
+      ...prefsValues,
     });
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(
@@ -59,6 +62,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
     }
+    return prefs;
   }
 
   StreakCard card(WidgetTester tester) =>
@@ -83,6 +87,42 @@ void main() {
     expect(card(tester).progress.isLit(DateTime.now()), isFalse);
     expect(card(tester).showWeek, isFalse);
     await tester.pumpAndSettle();
+  });
+
+  group('после вчерашнего пропуска', () {
+    final now = DateTime.now();
+    final frozen = DayProgress(
+      readTypes: const {},
+      visitedDays: {dateKey(DateTime(now.year, now.month, now.day - 2))},
+    );
+
+    testWidgets('первая заморозка объясняется в карточке серии', (
+      tester,
+    ) async {
+      final prefs = await pumpLauncher(tester, before: frozen);
+
+      expect(card(tester).explainFreeze, isTrue);
+      expect(find.textContaining('была заморожена на день'), findsOneWidget);
+      expect(prefs.getBool('streak_freeze_explained'), isTrue);
+    });
+
+    testWidgets('следующие заморозки без объяснения', (tester) async {
+      await pumpLauncher(
+        tester,
+        before: frozen,
+        prefsValues: {'flutter.streak_freeze_explained': true},
+      );
+
+      expect(card(tester).explainFreeze, isFalse);
+      expect(find.textContaining('была заморожена'), findsNothing);
+    });
+  });
+
+  testWidgets('без пропуска заморозку не объясняем', (tester) async {
+    final prefs = await pumpLauncher(tester);
+
+    expect(card(tester).explainFreeze, isFalse);
+    expect(prefs.getBool('streak_freeze_explained'), isNull);
   });
 
   testWidgets('«Продолжить чтение» возвращает к разделу', (tester) async {
